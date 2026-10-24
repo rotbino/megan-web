@@ -1,17 +1,17 @@
-import { BadgeCheck, Crown, AlertTriangle, Clock3 } from 'lucide-react';
+import { BadgeCheck, TrendingUp, AlertTriangle, Clock3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-/** نشان «فروشنده ویژه» — طلایی متمایز از برند تیل */
-export function SpecialSellerBadge({ className, compact = false }: { className?: string; compact?: boolean }) {
+/** نشان «نردبان» — آگهی نردبان‌شده بالای نتایج می‌آید (۱۰ هزار تومان در روز) */
+export function LadderBadge({ className, compact = false }: { className?: string; compact?: boolean }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-md bg-gold-soft px-2 py-0.5 text-[11px] font-bold text-gold-foreground ring-1 ring-gold/30',
+        'inline-flex items-center gap-1 rounded-sm bg-ladder-soft px-1.5 py-0.5 text-[11px] font-bold text-ladder ring-1 ring-ladder/25',
         className,
       )}
     >
-      <Crown size={12} strokeWidth={2.4} />
-      {!compact && 'فروشنده ویژه'}
+      <TrendingUp size={12} strokeWidth={2.4} />
+      {!compact && 'نردبان'}
     </span>
   );
 }
@@ -31,7 +31,7 @@ export function OldAdBadge({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200',
+        'inline-flex items-center gap-1 rounded-sm bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200',
         className,
       )}
     >
@@ -54,9 +54,9 @@ export function TimeAgo({ iso, className }: { iso: string; className?: string })
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60_000);
-  if (m < 60) return 'لحظه‌ای پیش';
+  if (m < 60) return 'امروز';
   const h = Math.floor(m / 60);
-  if (h < 24) return `${fa(h)} ساعت پیش`;
+  if (h < 24) return 'امروز';
   const d = Math.floor(h / 24);
   if (d < 7) return `${fa(d)} روز پیش`;
   return new Intl.DateTimeFormat('fa-IR', { day: 'numeric', month: 'long' }).format(new Date(iso));

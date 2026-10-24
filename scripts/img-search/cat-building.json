@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "query": "construction building materials cement bricks",
+  "count": 3,
+  "ranked": false,
+  "captioned_count": 0,
+  "results": [
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/70101f5bfcfb.png",
+      "caption": "",
+      "source": "GoCodes Asset Tracking",
+      "original_width": "1200px",
+      "original_height": "675px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/bfc0276c4fed.png",
+      "caption": "",
+      "source": "Sawariya Cement Products",
+      "original_width": "1536px",
+      "original_height": "1024px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/aaaba80263ed.jpg",
+      "caption": "",
+      "source": "Amazon.in",
+      "original_width": "894px",
+      "original_height": "894px"
+    }
+  ]
+}

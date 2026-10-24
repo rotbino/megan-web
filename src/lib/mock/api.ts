@@ -1,7 +1,7 @@
 /**
  * لایه API ماک — شبیه‌سازی تماس‌های شبکه با تأخیر.
  * در فاز اتصال به بک‌اند، همین اینترفیس‌ها به fetch واقعی
- * (megan-back: /api/v1/...) تغییر می‌کنند و هوک‌های React Query دست‌نخورده می‌مانند.
+ * (بک‌اند ایمچ: /api/v1/...) تغییر می‌کنند و هوک‌های React Query دست‌نخورده می‌مانند.
  */
 
 import {
@@ -84,14 +84,9 @@ export async function getProducts(query: ProductQuery = {}): Promise<Paged<Produ
     case 'newest':
       items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
       break;
-    case 'cheapest':
-      items.sort((a, b) => (a.minSalePrice ?? Infinity) - (b.minSalePrice ?? Infinity));
-      break;
-    case 'stockiest':
-      items.sort((a, b) => b.stock - a.stock);
-      break;
-    default: // related — باسکول‌مانند: ویژه‌ها اول، بعد امتیاز دسته
-      items.sort((a, b) => Number(b.isElevated) - Number(a.isElevated));
+    default:
+      // مرتبط‌ترین — دقیقاً مثل باسکول: آگهی‌های نردبان‌شده بالای نتایج می‌آیند
+      items.sort((a, b) => Number(b.isLadder) - Number(a.isLadder));
   }
 
   const total = items.length;
@@ -167,7 +162,7 @@ export async function requestOtp(phone: string): Promise<{ ok: true }> {
   return delay({ ok: true }, 600);
 }
 
-export async function verifyOtp(phone: string, code: string): Promise<{ ok: boolean; userName?: string }> {
+export async function verifyOtp(input: { phone: string; code: string }): Promise<{ ok: boolean; userName?: string }> {
   // هر کد ۵ رقمی در نمونه قبول است
-  return delay({ ok: /^\d{5}$/.test(code), userName: 'c34qxnsh' }, 600);
+  return delay({ ok: /^\d{5}$/.test(input.code), userName: 'c34qxnsh' }, 600);
 }

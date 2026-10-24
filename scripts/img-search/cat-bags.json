@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "query": "leather bags and shoes display",
+  "count": 3,
+  "ranked": false,
+  "captioned_count": 0,
+  "results": [
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/2b8b4b32a7b4.jpg",
+      "caption": "",
+      "source": "www.hobobags.com",
+      "original_width": "750px",
+      "original_height": "1164px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/b7092fdf173f.jpg",
+      "caption": "",
+      "source": "Amazon.com",
+      "original_width": "1849px",
+      "original_height": "1000px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/23f200be9be4.jpg",
+      "caption": "",
+      "source": "www.hobobags.com",
+      "original_width": "800px",
+      "original_height": "1060px"
+    }
+  ]
+}

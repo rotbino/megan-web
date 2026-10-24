@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "query": "iranian pistachio harvest agricultural products bulk",
+  "count": 3,
+  "ranked": false,
+  "captioned_count": 0,
+  "results": [
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/20a4afb7fe18.jpg",
+      "caption": "",
+      "source": "Farm Progress",
+      "original_width": "2700px",
+      "original_height": "1519px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/5923f1fbb84d.jpg",
+      "caption": "",
+      "source": "iranco.com",
+      "original_width": "1779px",
+      "original_height": "1186px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/cac6c3c706a7.jpg",
+      "caption": "",
+      "source": "Commodity Board",
+      "original_width": "1600px",
+      "original_height": "1000px"
+    }
+  ]
+}

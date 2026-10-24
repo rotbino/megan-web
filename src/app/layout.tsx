@@ -1,61 +1,72 @@
 import type { Metadata, Viewport } from "next";
-import { Vazirmatn } from "next/font/google";
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
-const vazir = Vazirmatn({
-  subsets: ["arabic", "latin"],
-  variable: "--font-vazir",
-  display: "swap",
-});
-
 export const metadata: Metadata = {
-  metadataBase: new URL("https://megan.example.com"),
+  metadataBase: new URL("https://imach.example.com"),
+  manifest: "/manifest.webmanifest",
   title: {
-    default: "مِگان | بازار خرید و فروش عمده محصولات بدون واسطه",
-    template: "%s | مِگان",
+    default: "ایمچ | بازار خرید و فروش عمده محصولات بدون واسطه",
+    template: "%s | ایمچ",
   },
   description:
-    "مِگان بازارگاه آنلاین خرید و فروش عمده محصولات است؛ ارتباط مستقیم خریداران و فروشندگان عمده، مشاهده قیمت روز کالاها و ثبت درخواست خرید بدون واسطه.",
+    "ایمچ بازار خرید و فروش عمده محصولات است؛ ارتباط مستقیم خریداران و فروشندگان عمده، مشاهده قیمت روز کالاها و ثبت درخواست خرید بدون واسطه.",
   keywords: [
     "خرید عمده",
     "فروش عمده",
     "قیمت روز",
-    "بازارگاه B2B",
-    "بازار عمده ایران",
-    "باسکول",
+    "بازار عمده",
     "خریدار عمده",
     "فروشنده عمده",
+    "ایمچ",
   ],
   openGraph: {
     type: "website",
     locale: "fa_IR",
-    siteName: "مِگان",
-    title: "مِگان | بازار خرید و فروش عمده محصولات بدون واسطه",
+    siteName: "ایمچ",
+    title: "ایمچ | بازار خرید و فروش عمده محصولات بدون واسطه",
     description: "ارتباط مستقیم خریداران و فروشندگان عمده در سراسر ایران",
+  },
+  icons: {
+    icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/icons/apple-touch-icon.png" }],
   },
   robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f766e",
+  themeColor: "#33415c",
   width: "device-width",
   initialScale: 1,
 };
+
+/** ثبت سرویس‌ورکر (اعلان‌ها و PWA) — فقط در پروداکشن */
+function ServiceWorkerRegister() {
+  if (process.env.NODE_ENV === "production") {
+    return (
+      <script
+        id="sw-register"
+        dangerouslySetInnerHTML={{
+          __html: `if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){})})}`,
+        }}
+      />
+    );
+  }
+  return null;
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
-      <body className={`${vazir.variable} font-sans antialiased bg-background text-foreground`}>
+      <body className="font-sans antialiased bg-background text-foreground">
         <Providers>
-          <div className="flex min-h-screen flex-col">
-            {children}
-          </div>
+          <div className="flex min-h-screen flex-col">{children}</div>
           <Toaster />
         </Providers>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

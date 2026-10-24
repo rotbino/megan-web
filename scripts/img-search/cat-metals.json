@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "query": "industrial metal steel coils factory",
+  "count": 3,
+  "ranked": false,
+  "captioned_count": 0,
+  "results": [
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/4a64362da80f.jpg",
+      "caption": "",
+      "source": "Hebei Guanhong Trading Co., Ltd.",
+      "original_width": "1500px",
+      "original_height": "1500px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/708048c2bdf2.jpg",
+      "caption": "",
+      "source": "Unsplash",
+      "original_width": "3000px",
+      "original_height": "2000px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/2e33772a4d75.jpg",
+      "caption": "",
+      "source": "Prompt Steel",
+      "original_width": "3375px",
+      "original_height": "1458px"
+    }
+  ]
+}

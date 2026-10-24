@@ -15,7 +15,7 @@ export function ProfileTabs({ user, products }: { user: User; products: Product[
   return (
     <div className="mx-auto max-w-7xl px-4 pb-10 lg:px-6">
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="h-auto w-full justify-start gap-1 rounded-xl bg-secondary/50 p-1 sm:w-auto">
+        <TabsList className="h-auto w-full justify-start gap-1 rounded-md bg-secondary/50 p-1 sm:w-auto">
           <TabsTrigger value="main" className="gap-1.5 rounded-lg px-4 py-2 text-sm">اصلی</TabsTrigger>
           <TabsTrigger value="products" className="gap-1.5 rounded-lg px-4 py-2 text-sm">
             <Package size={14} />
@@ -33,20 +33,20 @@ export function ProfileTabs({ user, products }: { user: User; products: Product[
             { label: 'موجودی عرضه', value: `${toFa(totalStock)} ${products[0]?.unit ?? 'کیلوگرم'}` },
             { label: 'امتیاز اعتماد', value: '۴.۶ از ۵' },
           ].map((s) => (
-            <div key={s.label} className="rounded-2xl border bg-card p-5 text-center">
-              <p className="text-2xl font-extrabold text-primary">{s.value}</p>
+            <div key={s.label} className="rounded-md border bg-card p-5 text-center">
+              <p className="text-2xl font-bold text-primary">{s.value}</p>
               <p className="mt-1 text-xs text-muted-foreground">{s.label}</p>
             </div>
           ))}
-          <div className="rounded-2xl border bg-card p-5 sm:col-span-3">
-            <h2 className="flex items-center gap-2 text-sm font-extrabold"><Store size={15} className="text-primary" /> درباره کسب‌وکار</h2>
+          <div className="rounded-md border bg-card p-5 sm:col-span-3">
+            <h2 className="flex items-center gap-2 text-sm font-bold"><Store size={15} className="text-primary" /> درباره کسب‌وکار</h2>
             <p className="mt-2 text-sm leading-7 text-muted-foreground">{user.businessDesc}</p>
           </div>
         </TabsContent>
 
         <TabsContent value="products" className="mt-4">
           {products.length === 0 ? (
-            <p className="rounded-2xl border bg-card p-10 text-center text-sm text-muted-foreground">
+            <p className="rounded-md border bg-card p-10 text-center text-sm text-muted-foreground">
               این فروشنده هنوز آگهی فعالی ثبت نکرده است.
             </p>
           ) : (
@@ -57,8 +57,8 @@ export function ProfileTabs({ user, products }: { user: User; products: Product[
         </TabsContent>
 
         <TabsContent value="about" className="mt-4">
-          <div className="max-w-2xl rounded-2xl border bg-card p-6">
-            <h2 className="text-sm font-extrabold">درباره کسب‌وکار</h2>
+          <div className="max-w-2xl rounded-md border bg-card p-6">
+            <h2 className="text-sm font-bold">درباره کسب‌وکار</h2>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">{user.businessDesc}</p>
             <p className="mt-4 text-xs leading-6 text-muted-foreground">
               شناسه پروفایل: <span dir="ltr" className="font-mono">{user.userName}</span> — عضویت از{' '}

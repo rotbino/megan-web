@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "query": "cosmetics skincare products bottles",
+  "count": 3,
+  "ranked": false,
+  "captioned_count": 0,
+  "results": [
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/1fd62640ca64.jpg",
+      "caption": "",
+      "source": "Alibaba",
+      "original_width": "2560px",
+      "original_height": "2560px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/80718564975d.jpg",
+      "caption": "",
+      "source": "Creatsy",
+      "original_width": "1920px",
+      "original_height": "1280px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/718c89f5c859.jpg",
+      "caption": "",
+      "source": "Supply Family",
+      "original_width": "1600px",
+      "original_height": "1070px"
+    }
+  ]
+}

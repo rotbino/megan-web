@@ -19,13 +19,12 @@ import { ProductCard } from '@/components/products/product-card';
 import { useCities, useCategoryTree, useProducts, useProvinces } from '@/lib/mock/hooks';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { SortKey } from '@/lib/types';
+import type { Category, SortKey } from '@/lib/types';
 
+/** مرتب‌سازی — دقیقاً مثل باسکول: مرتبط‌ترین / جدیدترین (نردبان‌شده‌ها همیشه بالا) */
 const SORTS: { key: SortKey; label: string }[] = [
-  { key: 'related', label: 'مرتبط‌ترین' },
+  { key: 'related', label: 'مرتبط ترین' },
   { key: 'newest', label: 'جدیدترین' },
-  { key: 'cheapest', label: 'ارزان‌ترین' },
-  { key: 'stockiest', label: 'بیشترین موجودی' },
 ];
 
 function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
@@ -76,15 +75,15 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
     <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-[260px_1fr] lg:px-6">
       {/* سایدبار فیلتر */}
       <aside className={cn('space-y-5 lg:block', mobileFilters ? 'block' : 'hidden')} aria-label="فیلترها">
-        <div className="rounded-2xl border bg-card p-4">
+        <div className="rounded-md border bg-card p-4">
           <h2 className="mb-3 flex items-center gap-1.5 text-sm font-bold">
             <Filter size={14} className="text-primary" />
-            دسته‌بندی محصولات
+            دسته بندی محصولات
           </h2>
           <CategoryFilter tree={tree} activeSlug={categorySlug} />
         </div>
 
-        <div className="space-y-3 rounded-2xl border bg-card p-4">
+        <div className="space-y-3 rounded-md border bg-card p-4">
           <h2 className="flex items-center gap-1.5 text-sm font-bold">
             <MapPin size={14} className="text-primary" />
             موقعیت جغرافیایی
@@ -94,7 +93,7 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
             value={provinceId ? String(provinceId) : undefined}
             onValueChange={(v) => { setProvinceId(Number(v)); setCityId(undefined); }}
           >
-            <SelectTrigger className="w-full rounded-xl" aria-label="استان">
+            <SelectTrigger className="w-full rounded-md" aria-label="استان">
               <SelectValue placeholder="همه استان‌ها" />
             </SelectTrigger>
             <SelectContent>
@@ -104,7 +103,7 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
             </SelectContent>
           </Select>
           <Select dir="rtl" value={cityId ? String(cityId) : undefined} onValueChange={(v) => setCityId(Number(v))} disabled={!provinceId}>
-            <SelectTrigger className="w-full rounded-xl" aria-label="شهر">
+            <SelectTrigger className="w-full rounded-md" aria-label="شهر">
               <SelectValue placeholder={provinceId ? 'همه شهرها' : 'ابتدا استان را انتخاب کنید'} />
             </SelectTrigger>
             <SelectContent>
@@ -125,7 +124,7 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
       {/* لیست */}
       <div className="space-y-4">
         {/* نوار بالا */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-card p-3">
           <div className="flex items-center gap-2 text-sm">
             {s && (
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold">
@@ -140,38 +139,39 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="rounded-lg lg:hidden" onClick={() => setMobileFilters((v) => !v)}>
+            <Button variant="outline" size="sm" className="rounded-md lg:hidden" onClick={() => setMobileFilters((v) => !v)}>
               <SlidersHorizontal size={14} />
               فیلترها
             </Button>
-            <div className="flex items-center rounded-lg border bg-secondary/40 p-0.5 text-xs" role="group" aria-label="مرتب‌سازی">
-              {SORTS.map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setSort(opt.key)}
-                  className={cn(
-                    'rounded-md px-2.5 py-1.5 font-medium transition-colors',
-                    sort === opt.key ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+        <div className="flex items-center gap-1.5 text-sm">
+          <span className="text-muted-foreground">مرتب سازی بر اساس:</span>
+          {SORTS.map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => setSort(opt.key)}
+              className={cn(
+                'rounded-sm px-2 py-1 text-xs font-semibold transition-colors',
+                sort === opt.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-primary',
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
           </div>
         </div>
 
         {/* گرید */}
         {isLoading ? (
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-80 rounded-2xl" />)}
+            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-80 rounded-md" />)}
           </div>
         ) : items.length === 0 ? (
-          <div className="rounded-2xl border bg-card p-12 text-center">
+          <div className="rounded-md border bg-card p-12 text-center">
             <p className="text-lg font-bold">آگهی‌ای با این فیلترها پیدا نشد!</p>
             <p className="mt-2 text-sm text-muted-foreground">فیلترها را تغییر دهید یا درخواست خرید ثبت کنید تا فروشندگان به شما پیشنهاد بدهند.</p>
-            <Button asChild className="mt-4 rounded-xl"><Link href="/#rfq">ثبت درخواست خرید</Link></Button>
+            <Button asChild className="mt-4 rounded-md"><Link href="/#rfq">ثبت درخواست خرید</Link></Button>
           </div>
         ) : (
           <div className={cn('grid grid-cols-2 gap-4 transition-opacity md:grid-cols-3 xl:grid-cols-4', isFetching && 'opacity-60')}>
@@ -206,7 +206,7 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
   );
 }
 
-function CategoryFilter({ tree, activeSlug }: { tree: { id: number; categoryName: string; slug: string; children?: { id: number; categoryName: string; slug: string }[] }[]; activeSlug?: string }) {
+function CategoryFilter({ tree, activeSlug }: { tree: Category[]; activeSlug?: string }) {
   return (
     <nav className="max-h-96 space-y-0.5 overflow-y-auto pe-1 text-sm">
       <Link
@@ -250,7 +250,7 @@ function CategoryFilter({ tree, activeSlug }: { tree: { id: number; categoryName
 
 export function ProductListing({ categorySlug }: { categorySlug?: string }) {
   return (
-    <Suspense fallback={<div className="mx-auto max-w-7xl px-4 py-6 lg:px-6"><Skeleton className="h-96 rounded-2xl" /></div>}>
+    <Suspense fallback={<div className="mx-auto max-w-7xl px-4 py-6 lg:px-6"><Skeleton className="h-96 rounded-md" /></div>}>
       <ProductListingInner categorySlug={categorySlug} />
     </Suspense>
   );

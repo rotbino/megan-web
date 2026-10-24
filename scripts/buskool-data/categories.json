@@ -1,0 +1,1179 @@
+{
+ "top": [
+  {
+   "id": 76,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "کشاورزی",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": null,
+   "score": 0
+  },
+  {
+   "id": 77,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "فرآورده های غذایی",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": null,
+   "score": 0
+  },
+  {
+   "id": 136,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "فلزات، مواد معدنی و شیمیایی",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": null,
+   "score": 0
+  },
+  {
+   "id": 329,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "ماشین آلات و تجهیزات صنعتی",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": null,
+   "score": 0
+  },
+  {
+   "id": 734,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "خانه و مصالح ساختمانی",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": null,
+   "score": 0
+  },
+  {
+   "id": 923,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "لوازم خانگی و الکترونیکی",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": null,
+   "score": 0
+  },
+  {
+   "id": 924,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "مد، پوشاک و پارچه",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": null,
+   "score": 0
+  },
+  {
+   "id": 996,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "کیف و کفش",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": null,
+   "score": 0
+  },
+  {
+   "id": 997,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "لوازم ورزشی، کادویی و اسباب بازی",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": null,
+   "score": 0
+  },
+  {
+   "id": 998,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "آرایشی، بهداشتی و سلامت",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": null,
+   "score": 0
+  }
+ ],
+ "agri": [
+  {
+   "id": 45,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "خشکبار",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": 76,
+   "score": 18
+  },
+  {
+   "id": 1,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "میوه",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": 76,
+   "score": 5
+  },
+  {
+   "id": 2,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "صیفی",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": 76,
+   "score": 0
+  },
+  {
+   "id": 42,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "غلات",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": 76,
+   "score": 0
+  },
+  {
+   "id": 46,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "ادویه",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": 76,
+   "score": 0
+  },
+  {
+   "id": 47,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "دامپروری",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": 76,
+   "score": 0
+  },
+  {
+   "id": 71,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "حبوبات",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": 76,
+   "score": 0
+  },
+  {
+   "id": 111,
+   "created_at": null,
+   "updated_at": null,
+   "category_name": "بذر و نهال",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": 76,
+   "score": 0
+  }
+ ],
+ "subs": {
+  "1": [
+   {
+    "id": 6,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "خرما",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "مضافتی",
+    "parent_id": 1,
+    "score": 14104
+   },
+   {
+    "id": 3,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "سیب",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "قرمز",
+    "parent_id": 1,
+    "score": 4398
+   },
+   {
+    "id": 11,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "پرتقال",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "والنسیا",
+    "parent_id": 1,
+    "score": 1907
+   },
+   {
+    "id": 7,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "انگور",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "سیاه",
+    "parent_id": 1,
+    "score": 1514
+   },
+   {
+    "id": 19,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "کیوی",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "هایوارد",
+    "parent_id": 1,
+    "score": 1407
+   },
+   {
+    "id": 4,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "انار",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "قرمز",
+    "parent_id": 1,
+    "score": 1248
+   },
+   {
+    "id": 48,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "زیتون",
+    "unit": "کیلوگرم",
+    "min": 100,
+    "example": "طارم",
+    "parent_id": 1,
+    "score": 1073
+   },
+   {
+    "id": 17,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "لیمو ترش",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "لیسبون",
+    "parent_id": 1,
+    "score": 909
+   },
+   {
+    "id": 41,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "انجیر",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "زرد",
+    "parent_id": 1,
+    "score": 767
+   },
+   {
+    "id": 49,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "موز",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "سومالی",
+    "parent_id": 1,
+    "score": 487
+   },
+   {
+    "id": 10,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "گیلاس",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "تکدانه",
+    "parent_id": 1,
+    "score": 462
+   },
+   {
+    "id": 14,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "نارنگی",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "درجه یک",
+    "parent_id": 1,
+    "score": 416
+   },
+   {
+    "id": 18,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "زردآلو",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "درجه یک",
+    "parent_id": 1,
+    "score": 371
+   },
+   {
+    "id": 21,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "شلیل",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "درجه یک",
+    "parent_id": 1,
+    "score": 351
+   },
+   {
+    "id": 15,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "هلو",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "درجه یک",
+    "parent_id": 1,
+    "score": 346
+   },
+   {
+    "id": 13,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "توت فرنگی",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "گلخانه",
+    "parent_id": 1,
+    "score": 338
+   },
+   {
+    "id": 9,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "گلابی",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "درگزی",
+    "parent_id": 1,
+    "score": 312
+   },
+   {
+    "id": 8,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "آلبالو",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "مجاری",
+    "parent_id": 1,
+    "score": 235
+   },
+   {
+    "id": 99,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "انبه",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "پاکستانی",
+    "parent_id": 1,
+    "score": 233
+   },
+   {
+    "id": 12,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "به",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "درجه یک",
+    "parent_id": 1,
+    "score": 176
+   },
+   {
+    "id": 16,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "لیمو شیرین",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "درجه یک",
+    "parent_id": 1,
+    "score": 106
+   },
+   {
+    "id": 1070,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "میوه استوایی",
+    "unit": "کیلوگرم",
+    "min": 10,
+    "example": "نارگیل",
+    "parent_id": 1,
+    "score": 94
+   },
+   {
+    "id": 20,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "گریپ فروت",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "درجه یک",
+    "parent_id": 1,
+    "score": 45
+   },
+   {
+    "id": 100,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "آناناس",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "درجه یک",
+    "parent_id": 1,
+    "score": 44
+   },
+   {
+    "id": 22,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "سایر",
+    "unit": "کیلوگرم",
+    "min": 100,
+    "example": null,
+    "parent_id": 1,
+    "score": 633
+   }
+  ],
+  "2": [
+   {
+    "id": 5,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "گوجه",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "متین",
+    "parent_id": 2,
+    "score": 2923
+   },
+   {
+    "id": 25,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "پیاز",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "قرمز",
+    "parent_id": 2,
+    "score": 2361
+   },
+   {
+    "id": 37,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "هندوانه",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "بیضی",
+    "parent_id": 2,
+    "score": 2309
+   },
+   {
+    "id": 23,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "سیب زمینی",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "آگریا",
+    "parent_id": 2,
+    "score": 2085
+   },
+   {
+    "id": 29,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "سیر",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "طارم",
+    "parent_id": 2,
+    "score": 1818
+   },
+   {
+    "id": 52,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "قارچ",
+    "unit": "کیلوگرم",
+    "min": 100,
+    "example": "دکمه ای",
+    "parent_id": 2,
+    "score": 1363
+   },
+   {
+    "id": 26,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "فلفل دلمه ای",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "رنگی",
+    "parent_id": 2,
+    "score": 1309
+   },
+   {
+    "id": 24,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "کلم",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "برگ",
+    "parent_id": 2,
+    "score": 1278
+   },
+   {
+    "id": 50,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "کاهو",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "آیسبرگ",
+    "parent_id": 2,
+    "score": 1080
+   },
+   {
+    "id": 31,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "خیار",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "ویژه",
+    "parent_id": 2,
+    "score": 988
+   },
+   {
+    "id": 51,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "بادمجان",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "درجه یک",
+    "parent_id": 2,
+    "score": 706
+   },
+   {
+    "id": 35,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "خربزه",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "مشهدی",
+    "parent_id": 2,
+    "score": 555
+   },
+   {
+    "id": 33,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "هویج",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "درجه یک",
+    "parent_id": 2,
+    "score": 547
+   },
+   {
+    "id": 36,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "کدو",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "حلوایی",
+    "parent_id": 2,
+    "score": 544
+   },
+   {
+    "id": 38,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "فلفل",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "قلمی",
+    "parent_id": 2,
+    "score": 509
+   },
+   {
+    "id": 28,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "شوید",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "درجه یک",
+    "parent_id": 2,
+    "score": 434
+   },
+   {
+    "id": 1071,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "سبزی",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "ریحان",
+    "parent_id": 2,
+    "score": 321
+   },
+   {
+    "id": 34,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "ملون",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "جانا",
+    "parent_id": 2,
+    "score": 295
+   },
+   {
+    "id": 27,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "کرفس",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "درجه یک",
+    "parent_id": 2,
+    "score": 293
+   },
+   {
+    "id": 30,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "شلغم",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "درجه یک",
+    "parent_id": 2,
+    "score": 182
+   },
+   {
+    "id": 32,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "لوبیا سبز",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "درجه یک",
+    "parent_id": 2,
+    "score": 144
+   },
+   {
+    "id": 39,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "طالبی",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "درجه یک",
+    "parent_id": 2,
+    "score": 68
+   },
+   {
+    "id": 1050,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "بامیه",
+    "unit": "کیلوگرم",
+    "min": 500,
+    "example": "درجه یک",
+    "parent_id": 2,
+    "score": 37
+   },
+   {
+    "id": 40,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "سایر",
+    "unit": "کیلوگرم",
+    "min": 100,
+    "example": null,
+    "parent_id": 2,
+    "score": 509
+   }
+  ],
+  "42": [
+   {
+    "id": 43,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "برنج",
+    "unit": "کیلوگرم",
+    "min": 500,
+    "example": "طارم",
+    "parent_id": 42,
+    "score": 17325
+   },
+   {
+    "id": 63,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "ذرت",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "شیرین",
+    "parent_id": 42,
+    "score": 1731
+   },
+   {
+    "id": 61,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "جو",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "دوسر",
+    "parent_id": 42,
+    "score": 1537
+   },
+   {
+    "id": 62,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "گندم",
+    "unit": "کیلوگرم",
+    "min": 1000,
+    "example": "دیم",
+    "parent_id": 42,
+    "score": 1456
+   },
+   {
+    "id": 70,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "کنجد",
+    "unit": "کیلوگرم",
+    "min": 500,
+    "example": "قهوه ای",
+    "parent_id": 42,
+    "score": 1047
+   }
+  ],
+  "45": [
+   {
+    "id": 57,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "میوه خشک",
+    "unit": "کیلوگرم",
+    "min": 100,
+    "example": "قیسی",
+    "parent_id": 45,
+    "score": 8272
+   },
+   {
+    "id": 44,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "پسته",
+    "unit": "کیلوگرم",
+    "min": 500,
+    "example": "فندقی",
+    "parent_id": 45,
+    "score": 5861
+   },
+   {
+    "id": 53,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "کشمش",
+    "unit": "کیلوگرم",
+    "min": 200,
+    "example": "سبز",
+    "parent_id": 45,
+    "score": 3431
+   },
+   {
+    "id": 55,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "بادام",
+    "unit": "کیلوگرم",
+    "min": 200,
+    "example": "منقا",
+    "parent_id": 45,
+    "score": 3239
+   },
+   {
+    "id": 56,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "تخمه آفتابگردان",
+    "unit": "کیلوگرم",
+    "min": 500,
+    "example": "کانادایی",
+    "parent_id": 45,
+    "score": 3136
+   },
+   {
+    "id": 54,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "گردو",
+    "unit": "کیلوگرم",
+    "min": 200,
+    "example": "تویسرکان",
+    "parent_id": 45,
+    "score": 2726
+   },
+   {
+    "id": 58,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "زرشک",
+    "unit": "کیلوگرم",
+    "min": 100,
+    "example": "زیرتالاری",
+    "parent_id": 45,
+    "score": 925
+   },
+   {
+    "id": 101,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "فندق",
+    "unit": "کیلوگرم",
+    "min": 200,
+    "example": "دوپوست",
+    "parent_id": 45,
+    "score": 593
+   },
+   {
+    "id": 1067,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "سبزی خشک",
+    "unit": "کیلوگرم",
+    "min": 100,
+    "example": "نعنا خشک",
+    "parent_id": 45,
+    "score": 471
+   }
+  ],
+  "46": [
+   {
+    "id": 59,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "زعفران",
+    "unit": "کیلوگرم",
+    "min": 1,
+    "example": "سرگل",
+    "parent_id": 46,
+    "score": 4365
+   },
+   {
+    "id": 66,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "آویشن",
+    "unit": "کیلوگرم",
+    "min": 10,
+    "example": "شیرازی",
+    "parent_id": 46,
+    "score": 982
+   },
+   {
+    "id": 1073,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "سایر ادویه",
+    "unit": "کیلوگرم",
+    "min": 10,
+    "example": "پودر انبه",
+    "parent_id": 46,
+    "score": 649
+   },
+   {
+    "id": 65,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "زردچوبه",
+    "unit": "کیلوگرم",
+    "min": 100,
+    "example": "قلم",
+    "parent_id": 46,
+    "score": 643
+   },
+   {
+    "id": 67,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "فلفل سیاه",
+    "unit": "کیلوگرم",
+    "min": 100,
+    "example": "پودری",
+    "parent_id": 46,
+    "score": 405
+   },
+   {
+    "id": 64,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "هل",
+    "unit": "کیلوگرم",
+    "min": 1,
+    "example": "اکبر بنفش",
+    "parent_id": 46,
+    "score": 385
+   },
+   {
+    "id": 68,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "پودر سیر",
+    "unit": "کیلوگرم",
+    "min": 100,
+    "example": "درجه یک",
+    "parent_id": 46,
+    "score": 236
+   },
+   {
+    "id": 102,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "دارچین",
+    "unit": "کیلوگرم",
+    "min": 100,
+    "example": "قلم",
+    "parent_id": 46,
+    "score": 175
+   },
+   {
+    "id": 69,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "زنجبیل",
+    "unit": "کیلوگرم",
+    "min": 100,
+    "example": "خشک",
+    "parent_id": 46,
+    "score": 151
+   },
+   {
+    "id": 1074,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "پودر فلفل",
+    "unit": "کیلوگرم",
+    "min": 10,
+    "example": "فلفل سفید",
+    "parent_id": 46,
+    "score": 126
+   }
+  ],
+  "47": [
+   {
+    "id": 60,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "عسل",
+    "unit": "کیلوگرم",
+    "min": 100,
+    "example": "چهل گیاه",
+    "parent_id": 47,
+    "score": 5449
+   },
+   {
+    "id": 110,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "خوراک دام",
+    "unit": "کیلوگرم",
+    "min": 5000,
+    "example": "کنجاله سویا",
+    "parent_id": 47,
+    "score": 5363
+   },
+   {
+    "id": 109,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "کاه",
+    "unit": "کیلوگرم",
+    "min": 5000,
+    "example": "نرم",
+    "parent_id": 47,
+    "score": 1677
+   },
+   {
+    "id": 108,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "یونجه",
+    "unit": "کیلوگرم",
+    "min": 5000,
+    "example": "خشک",
+    "parent_id": 47,
+    "score": 959
+   },
+   {
+    "id": 1077,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "دام و طیور زنده",
+    "unit": "عدد",
+    "min": 10,
+    "example": "جوجه یک روزه",
+    "parent_id": 47,
+    "score": 396
+   }
+  ],
+  "71": [
+   {
+    "id": 73,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "لوبیا",
+    "unit": "کیلوگرم",
+    "min": 200,
+    "example": "چیتی",
+    "parent_id": 71,
+    "score": 3137
+   },
+   {
+    "id": 74,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "نخود",
+    "unit": "کیلوگرم",
+    "min": 200,
+    "example": "دوخان",
+    "parent_id": 71,
+    "score": 1999
+   },
+   {
+    "id": 72,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "عدس",
+    "unit": "کیلوگرم",
+    "min": 200,
+    "example": "ساسکن",
+    "parent_id": 71,
+    "score": 1061
+   },
+   {
+    "id": 75,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "سویا",
+    "unit": "کیلوگرم",
+    "min": 200,
+    "example": "خوراکی",
+    "parent_id": 71,
+    "score": 643
+   },
+   {
+    "id": 103,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "لپه",
+    "unit": "کیلوگرم",
+    "min": 200,
+    "example": "آذرشهری",
+    "parent_id": 71,
+    "score": 328
+   }
+  ],
+  "111": [
+   {
+    "id": 112,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "نهال",
+    "unit": "عدد",
+    "min": 10,
+    "example": "گردو پیوندی",
+    "parent_id": 111,
+    "score": 2562
+   },
+   {
+    "id": 113,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "بذر",
+    "unit": "بسته",
+    "min": 1,
+    "example": "بذر گوجه",
+    "parent_id": 111,
+    "score": 2407
+   },
+   {
+    "id": 1072,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "گیاهان دارویی",
+    "unit": "کیلوگرم",
+    "min": 10,
+    "example": "اسطوخودوس",
+    "parent_id": 111,
+    "score": 1318
+   },
+   {
+    "id": 114,
+    "created_at": null,
+    "updated_at": null,
+    "category_name": "گل و گیاه",
+    "unit": "عدد",
+    "min": 10,
+    "example": "سانسوریا",
+    "parent_id": 111,
+    "score": 1193
+   }
+  ]
+ }
+}

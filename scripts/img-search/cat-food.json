@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "query": "iranian dates nuts dried fruits bulk",
+  "count": 3,
+  "ranked": false,
+  "captioned_count": 0,
+  "results": [
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/b5a3b14d3cd7.jpg",
+      "caption": "",
+      "source": "The Times of India",
+      "original_width": "1279px",
+      "original_height": "720px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/acdf9b263ec4.jpg",
+      "caption": "",
+      "source": "Fas Kitchen",
+      "original_width": "1000px",
+      "original_height": "1500px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/dae9d165d7fc.jpg",
+      "caption": "",
+      "source": "Nutraj Dry Fruits",
+      "original_width": "1500px",
+      "original_height": "1500px"
+    }
+  ]
+}

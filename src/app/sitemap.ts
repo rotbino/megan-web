@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { categories, products, users } from '@/lib/mock/data';
 
-const BASE = 'https://megan.example.com';
+const BASE = 'https://imach.example.com';
 
 /** در فاز اتصال، از API بک‌اند می‌آید — ساختار آماده ISR/ساعت‌انه */
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -21,7 +21,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const productPages: MetadataRoute.Sitemap = products.map((p) => ({
     url: `${BASE}/product-view/${p.slug}/${p.categoryName}/${p.id}`,
     changeFrequency: 'daily' as const,
-    priority: p.isElevated ? 0.7 : 0.5,
+    priority: p.isLadder ? 0.7 : 0.5,
   }));
 
   const profilePages: MetadataRoute.Sitemap = users.map((u) => ({

@@ -1,14 +1,15 @@
 /**
- * انواع داده مِگان — کاملاً منطبق بر ساختار باسکول (استخراج‌شده از APIهای واقعی)
- * و هم‌راستا با مدل‌های Prisma در megan-back.
+ * انواع داده ایمچ — کاملاً منطبق بر ساختار باسکول (استخراج‌شده از APIهای واقعی)
+ * و هم‌راستا با مدل‌های Prisma در بک‌اند.
  *
  * نگاشت نام‌ها (TS camelCase ↔ ستون snake_case باسکول):
  *   myuserId ↔ myuser_id | subCategoryId ↔ sub_category_id
  *   minSalePrice ↔ min_sale_price | minSaleAmount ↔ min_sale_amount
  *   isElevated ↔ is_elevated | activePakageType ↔ active_pakage_type
+ *   isLadder ↔ is_ladder (نردبان آگهی — ۱۰ هزار تومان در روز)
  */
 
-export type PackageType = 0 | 1 | 2; // 0=رایگان 1=فروشنده عادی 2=فروشنده ویژه
+export type PackageType = 0 | 1 | 2 | 3; // باسکول: ۰=رایگان ۱=عادی ۲=ویژه ۳=ویژه+ — در ایمچ فعلاً بدون کاربرد
 
 export interface User {
   id: number;
@@ -31,6 +32,7 @@ export interface Category {
   example?: string;
   parentId: number | null;
   score: number;
+  image?: string; // تصویر کارت دسته (فقط نمایش، مربوط به فرانت)
   children?: Category[];
 }
 
@@ -75,7 +77,9 @@ export interface Product {
     isVerified: boolean;
   };
 
-  isElevated: boolean;
+  /** نردبان — آگهی نردبان‌شده بالای نتایج می‌آید (۱۰ هزار تومان در روز) */
+  isLadder: boolean;
+  isElevated: boolean; // فروشنده ویژه باسکول — در ایمچ فعلاً بدون استفاده
   hasVideo: boolean;
   isOld: boolean;
   viewCount: number;
@@ -86,9 +90,9 @@ export interface Product {
 
 export interface BuyRequest {
   id: number;
-  name: string | null;
+  name: string | null; // «نوع محصول» (مثل: پاجوش پیارم)
   categoryId: number;
-  subcategoryName: string;
+  subcategoryName: string; // نام محصول (مثل: نهال)
   requirementAmount: number;
   unit: string;
   myuserId: number;
@@ -99,7 +103,8 @@ export interface BuyRequest {
   createdAt: string;
 }
 
-export type SortKey = 'related' | 'newest' | 'cheapest' | 'stockiest';
+/** مرتب‌سازی — دقیقاً مثل باسکول: مرتبط‌ترین / جدیدترین */
+export type SortKey = 'related' | 'newest';
 
 export interface ProductQuery {
   categorySlug?: string;

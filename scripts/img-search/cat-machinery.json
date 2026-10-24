@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "query": "industrial machinery factory equipment",
+  "count": 3,
+  "ranked": false,
+  "captioned_count": 0,
+  "results": [
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/8931f93634a1.jpg",
+      "caption": "",
+      "source": "TECHNI Waterjet",
+      "original_width": "2240px",
+      "original_height": "1260px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/6e7299bced76.png",
+      "caption": "",
+      "source": "Amplio",
+      "original_width": "1600px",
+      "original_height": "900px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/f87265de90c7.jpg",
+      "caption": "",
+      "source": "Dreamstime",
+      "original_width": "1600px",
+      "original_height": "1157px"
+    }
+  ]
+}
