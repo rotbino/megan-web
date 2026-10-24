@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: 'درخواست‌های خرید عمده',
   description:
     'فهرست درخواست‌های خرید عمده ثبت‌شده خریداران در ایمچ؛ با ثبت محصول، به هزاران درخواست فعال دسترسی پیدا کنید.',
+  alternates: { canonical: '/buyAd-requests' },
 };
 
 export default function BuyRequestsPage() {

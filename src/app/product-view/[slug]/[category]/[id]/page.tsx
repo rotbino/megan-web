@@ -6,6 +6,7 @@ import {
   Eye,
   MapPin,
   Package,
+  Phone,
   Share2,
   ShieldAlert,
   Store,
@@ -17,6 +18,7 @@ import { Breadcrumb } from '@/components/shared/breadcrumb';
 import { JsonLd } from '@/components/shared/json-ld';
 import { ProductImage } from '@/components/shared/product-image';
 import { PriceReveal } from '@/components/shared/price-reveal';
+import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { LadderBadge, OldAdBadge } from '@/components/shared/badges';
 import { ChatWidget } from '@/components/products/chat-widget';
 import { RelatedProducts } from '@/components/products/related-products';
@@ -169,7 +171,13 @@ export default async function ProductViewPage({ params }: Props) {
                 </div>
               </div>
               <Separator className="my-4" />
-              <Button asChild variant="outline" className="w-full rounded-md">
+              <PhoneReveal sellerName={`${product.seller.firstName} ${product.seller.lastName}`}>
+                <Button className="h-11 w-full rounded-md text-sm font-medium">
+                  <Phone size={17} />
+                  شماره تماس
+                </Button>
+              </PhoneReveal>
+              <Button asChild variant="outline" className="mt-2 w-full rounded-md">
                 <Link href={`/profile/${product.seller.userName}`}>
                   <Store size={16} />
                   مشاهده پروفایل فروشنده

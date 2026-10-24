@@ -3,32 +3,31 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  ChevronLeft,
-  ChevronDown,
-  LayoutGrid,
-  LogIn,
-  Menu,
-  Search,
-  Users,
-  Store,
-  X,
-} from 'lucide-react';
+import { ChevronDown, Search } from 'lucide-react';
 import { BrandLogo } from '@/components/shared/brand';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import {
+  ArrowLeftIcon,
+  BuyersIcon,
+  LocationIconBuskool,
+  SearchIconBuskool,
+  SellersIcon,
+} from '@/components/shared/buskool-icons';
 import { useCategoryTree, useSuggestions } from '@/lib/mock/hooks';
 import { cn } from '@/lib/utils';
 import type { Category } from '@/lib/types';
 
-/** هدر ایمچ — همان چیدمان باسکول: لوگو + جستجو + ورود/ثبت‌نام + نوار دسته‌بندی‌ها */
+/**
+ * هدر ایمچ — چیدمان دقیق باسکول:
+ * دسکتاپ: بنر ثبت‌نام + [لوگو | نوار جستجو (دسته‌بندی‌ها + فروشنده شوید!) | ورود/ثبت‌نام، خریداران، فروشندگان]
+ * موبایل: بنر ثبت‌نام + [لوگو | نوار جستجوی خاکستری (جستجوی محصول + همه ایران)]
+ * ناوبری موبایل از طریق نوار پایین (MobileBottomNav) انجام می‌شود.
+ */
 export function Header() {
   const router = useRouter();
   const [q, setQ] = useState('');
   const [focused, setFocused] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
   const [activeRoot, setActiveRoot] = useState<number | null>(null);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const searchWrap = useRef<HTMLDivElement>(null);
 
   const { data: tree = [] } = useCategoryTree();
@@ -47,36 +46,80 @@ export function Header() {
     if (!value) return;
     setFocused(false);
     setQ('');
-    setMobileOpen(false);
     router.push(`/product-list?s=${encodeURIComponent(value)}`);
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/90">
-      {/* ردیف اصلی — مثل باسکول: لوگو + جستجو + ورود */}
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 lg:px-6">
-        <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)} aria-label="باز کردن منو">
-          <Menu />
-        </Button>
+    <header className="sticky top-0 z-50 bg-card shadow-[0_3px_8px_rgba(150,150,150,0.15)]">
+      {/* بنر ثبت‌نام — عین باسکول: «شروع قیمت گیری، خرید و فروش عمده با ثبت نام رایگان» */}
+      <div className="border-b border-border/70 bg-[oklch(0.945_0.02_250)]">
+        <Link
+          href="/register"
+          className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-1 px-4 py-2.5 nav-desktop:gap-4 nav-desktop:py-4 lg:px-6"
+        >
+          <p className="text-center text-xs text-foreground/90 nav-desktop:text-sm">شروع قیمت گیری، خرید و فروش عمده با</p>
+          <span className="flex items-center gap-2 text-xs text-foreground/90 nav-desktop:text-sm">
+            <span className="border-b border-foreground/90">ثبت نام رایگان</span>
+            <ArrowLeftIcon size={16} className="nav-desktop:size-5" />
+          </span>
+        </Link>
+      </div>
 
+      {/* ─── ردیف اصلی ─────────────────────────────────────────── */}
+      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 pb-3 pt-1.5 nav-desktop:gap-4 nav-desktop:px-6 nav-desktop:pb-2.5 nav-desktop:pt-2.5 lg:gap-6">
         <Link href="/" aria-label="ایمچ — صفحه اصلی" className="shrink-0">
-          <BrandLogo />
+          <BrandLogo size="sm" className="h-7" />
         </Link>
 
-        <div ref={searchWrap} className="relative hidden flex-1 md:block">
-          <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="relative" role="search">
-            <Input
+        {/* نوار جستجوی دسکتاپ — عین باسکول: دسته‌بندی‌ها | input | فروشنده شوید! | دکمه جستجو */}
+        <div ref={searchWrap} className="relative hidden flex-1 nav-desktop:block lg:max-w-[560px]">
+          <form
+            onSubmit={(e) => { e.preventDefault(); submit(); }}
+            className="flex h-10 items-stretch overflow-visible rounded-lg border border-primary bg-card"
+            role="search"
+          >
+            <div className="relative flex items-stretch">
+              <button
+                type="button"
+                onClick={() => setMegaOpen((v) => !v)}
+                onMouseEnter={() => setMegaOpen(true)}
+                onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setMegaOpen(false); }}
+                className="flex items-center gap-1.5 whitespace-nowrap px-3 text-sm font-medium text-foreground"
+                aria-expanded={megaOpen}
+                aria-haspopup="true"
+                aria-label="باز کردن دسته‌بندی‌ها"
+              >
+                دسته‌بندی‌ها
+                <ChevronDown size={14} className={cn('transition-transform', megaOpen && 'rotate-180')} />
+              </button>
+              <span className="my-2 w-px bg-[#cbcbcb]" aria-hidden />
+            </div>
+            <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onFocus={() => setFocused(true)}
               placeholder="به دنبال چه محصولی هستید؟"
-              className="h-10 rounded-md bg-secondary/70 pe-4 ps-10 text-sm"
+              className="min-w-0 flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground"
               aria-label="جستجوی محصول"
             />
-            <Search className="pointer-events-none absolute inset-y-0 start-3 my-auto size-4 text-muted-foreground" />
+            <Link
+              href="/register"
+              className="hidden items-center whitespace-nowrap px-2 text-sm text-foreground/70 hover:text-foreground xl:flex"
+            >
+              فروشنده شوید!
+            </Link>
+            <button
+              type="submit"
+              aria-label="جستجو"
+              className="flex w-14 shrink-0 items-center justify-center bg-primary text-primary-foreground transition-colors hover:bg-primary-deep"
+            >
+              <Search size={19} strokeWidth={2.4} />
+            </button>
           </form>
 
-          {focused && (q.trim().length >= 2) && (
+          {megaOpen && <MegaMenu tree={tree} activeRoot={activeRoot} setActiveRoot={setActiveRoot} onNavigate={() => setMegaOpen(false)} />}
+
+          {focused && q.trim().length >= 2 && (
             <div className="absolute inset-x-0 top-full z-50 mt-1.5 overflow-hidden rounded-md border bg-popover shadow-lg">
               {suggestions.length > 0 ? (
                 <ul className="max-h-72 overflow-y-auto p-1 text-sm">
@@ -100,83 +143,82 @@ export function Header() {
           )}
         </div>
 
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="حساب کاربری">
-          <Link href="/buyAd-requests" className="rounded-sm px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
-            خریداران
+        {/* آیتم‌های حساب — عین باسکول: آیکون بالا + متن پایین، جداکننده عمودی */}
+        <nav className="hidden items-center nav-desktop:flex" aria-label="حساب کاربری">
+          <Link
+            href="/register"
+            className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
+          >
+            <UserPlusBadge />
+            <span className="mt-1">ورود / ثبت نام</span>
           </Link>
-          <Link href="/product-list" className="rounded-sm px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
-            فروشندگان
+          <span className="mx-1 h-9 w-px bg-[#eee]" aria-hidden />
+          <Link
+            href="/buyAd-requests"
+            className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
+          >
+            <BuyersIcon size={24} />
+            <span className="mt-1">خریداران</span>
           </Link>
-          <Button asChild size="sm" className="gap-1.5 rounded-md">
-            <Link href="/register">
-              <LogIn size={15} />
-              ورود / ثبت نام
-            </Link>
-          </Button>
+          <span className="mx-1 h-9 w-px bg-[#eee]" aria-hidden />
+          <Link
+            href="/product-list"
+            className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
+          >
+            <SellersIcon size={24} />
+            <span className="mt-1">فروشندگان</span>
+          </Link>
         </nav>
-      </div>
 
-      {/* ردیف دوم — دسته‌بندی‌ها (مگامنو سه‌سطحی مثل باسکول) */}
-      <div className="hidden border-t bg-card/60 lg:block">
-        <div className="mx-auto flex h-11 max-w-7xl items-center gap-2 px-6 text-sm">
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setMegaOpen((v) => !v)}
-              onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setMegaOpen(false); }}
-              className="flex items-center gap-1.5 rounded-sm px-3 py-1.5 font-semibold text-primary hover:bg-accent"
-              aria-expanded={megaOpen}
-              aria-haspopup="true"
-            >
-              <LayoutGrid size={15} />
-              دسته‌بندی‌ها
-              <ChevronDown size={14} className={cn('transition-transform', megaOpen && 'rotate-180')} />
-            </button>
-            {megaOpen && <MegaMenu tree={tree} activeRoot={activeRoot} setActiveRoot={setActiveRoot} onNavigate={() => setMegaOpen(false)} />}
-          </div>
-          <span className="h-4 w-px bg-border" aria-hidden />
-          <Link href="/product-list" className="rounded-sm px-2 py-1 text-muted-foreground hover:text-primary">همه محصولات</Link>
-          <Link href="/product-list/category/پسته" className="rounded-sm px-2 py-1 text-muted-foreground hover:text-primary">پسته</Link>
-          <Link href="/product-list/category/خرما" className="rounded-sm px-2 py-1 text-muted-foreground hover:text-primary">خرما</Link>
-          <Link href="/product-list/category/زعفران" className="rounded-sm px-2 py-1 text-muted-foreground hover:text-primary">زعفران</Link>
-          <Link href="/product-list/category/برنج" className="rounded-sm px-2 py-1 text-muted-foreground hover:text-primary">برنج</Link>
-          <Link href="/product-list/category/سیب" className="rounded-sm px-2 py-1 text-muted-foreground hover:text-primary">سیب</Link>
-        </div>
+        {/* نوار جستجوی موبایل — عین باسکول: خاکستری #f2f3f7 + همه ایران */}
+        <form
+          onSubmit={(e) => { e.preventDefault(); submit(); }}
+          role="search"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-lg bg-[#f2f3f7] px-2 shadow-[0_2px_10px_rgba(196,196,196,0.15)] nav-desktop:hidden"
+        >
+          <button type="submit" aria-label="جستجو" className="shrink-0 text-black/50">
+            <SearchIconBuskool size={24} />
+          </button>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="جستجوی محصول"
+            className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            aria-label="جستجوی محصول"
+          />
+          <span className="h-6 w-px shrink-0 bg-[#cbcbcb]" aria-hidden />
+          <button
+            type="button"
+            title="فیلتر مکان"
+            aria-label="فیلتر مکان: همه ایران"
+            className="flex shrink-0 items-center gap-2 text-[rgba(38,70,83,0.8)]"
+          >
+            <span className="whitespace-nowrap text-sm font-medium">همه ایران</span>
+            <LocationIconBuskool size={20} className="text-[#757575]" />
+          </button>
+        </form>
       </div>
-
-      {/* موبایل: کشوی منو */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 lg:hidden" onClick={() => setMobileOpen(false)}>
-          <div className="absolute inset-y-0 start-0 flex h-full w-[85vw] max-w-sm flex-col bg-card p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-4 flex items-center justify-between">
-              <BrandLogo size="sm" />
-              <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)} aria-label="بستن منو"><X /></Button>
-            </div>
-            <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="relative mb-4">
-              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجوی محصول" className="rounded-md pe-4 ps-10" />
-              <Search className="absolute inset-y-0 start-3 my-auto size-4 text-muted-foreground" />
-            </form>
-            <nav className="flex flex-col gap-1 text-sm font-medium">
-              <Link href="/product-list" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-sm px-3 py-2.5 hover:bg-accent"><Store size={16} className="text-muted-foreground" /> فروشندگان</Link>
-              <Link href="/buyAd-requests" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-sm px-3 py-2.5 hover:bg-accent"><Users size={16} className="text-muted-foreground" /> خریداران</Link>
-              <Link href="/register" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-sm px-3 py-2.5 hover:bg-accent"><LogIn size={16} className="text-muted-foreground" /> ورود / ثبت نام</Link>
-              <p className="mt-4 px-3 text-xs font-bold text-muted-foreground">دسته‌بندی‌های اصلی</p>
-              {tree.map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/product-list/category/${c.slug}`}
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center justify-between rounded-sm px-3 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-                >
-                  {c.categoryName}
-                  <ChevronLeft size={14} />
-                </Link>
-              ))}
-            </nav>
-          </div>
-        </div>
-      )}
     </header>
+  );
+}
+
+/** آیکون کاربر + نشان مثبت کوچک — الگوی fa-user باسکول */
+function UserPlusBadge() {
+  return (
+    <span className="relative inline-flex" aria-hidden>
+      <svg width="21" height="24" viewBox="0 0 448 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path
+          d="M224 256c70.7 0 128-57.3 128-128S294.7 0 224 0 96 57.3 96 128s57.3 128 128 128zm89.6 32h-16.7c-22.2 10.2-46.9 16-72.9 16s-50.6-5.8-72.9-16h-16.7C60.2 288 0 348.2 0 422.4V464c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48v-41.6c0-74.2-60.2-134.4-134.4-134.4z"
+          fill="currentColor"
+        />
+      </svg>
+      <svg className="absolute -top-1 -end-0.5" width="10" height="10" viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg">
+        <path
+          d="M5 0c.4 0 .7.3.7.7v3.6h3.6c.4 0 .7.3.7.7s-.3.7-.7.7H5.7v3.6c0 .4-.3.7-.7.7s-.7-.3-.7-.7V5.7H.7c-.4 0-.7-.3-.7-.7s.3-.7.7-.7h3.6V.7c0-.4.3-.7.7-.7z"
+          fill="var(--primary)"
+        />
+      </svg>
+    </span>
   );
 }
 
@@ -193,7 +235,11 @@ function MegaMenu({
 }) {
   const current = tree.find((c) => c.id === activeRoot) ?? tree[0];
   return (
-    <div className="absolute start-0 top-full z-50 mt-1 flex w-[720px] overflow-hidden rounded-md border bg-popover shadow-xl" tabIndex={-1}>
+    <div
+      className="absolute start-0 top-full z-50 mt-1 flex w-[720px] overflow-hidden rounded-lg border bg-popover shadow-xl"
+      tabIndex={-1}
+      onMouseLeave={() => setActiveRoot(null)}
+    >
       <ul className="w-52 shrink-0 border-e bg-secondary/30 p-2 text-sm">
         {tree.map((c) => (
           <li key={c.id}>
@@ -208,7 +254,6 @@ function MegaMenu({
               )}
             >
               <span className="line-clamp-1">{c.categoryName}</span>
-              <ChevronLeft size={14} className="shrink-0 opacity-50" />
             </button>
           </li>
         ))}

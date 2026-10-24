@@ -19,6 +19,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* بریک‌پوینت ناوبری باسکول: موبایل/دسکتاپ دقیقاً روی ۹۹۲px سوییچ می‌شود */
+@custom-variant nav-desktop (@media (min-width: 992px));
+@custom-variant nav-mobile (@media (max-width: 991.98px));
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -169,5 +173,19 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+}
+
+/* ─── نوار پایین موبایل (عین باسکول) ─────────────────────────── */
+/* فقط زیر ۹۹۲px نمایان است — همان بریک‌پوینت باسکول */
+@media (min-width: 992px) {
+  .mobile-bottom-nav {
+    display: none;
+  }
+}
+/* جای خالی نوار پایین در موبایل تا محتوا زیرش نماند */
+@media (max-width: 991.98px) {
+  body {
+    padding-bottom: 59px;
   }
 }

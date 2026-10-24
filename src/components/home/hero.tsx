@@ -1,30 +1,33 @@
 import Link from 'next/link';
 import { ChevronsLeft } from 'lucide-react';
 
-/** هیرو صفحه اصلی — همان متن و چیدمان باسکول (h1 + h2 + دکمه شروع معاملات) */
+/**
+ * هیرو صفحه اصلی — همان متن و چیدمان باسکول (h1 + h2 + دکمه شروع معاملات).
+ * اندازه‌فونت موبایل دقیقاً باسکول: عنوان ۱۸px/۳۱px، زیرعنوان ۱۲px، دکمه ۱۸۴×۴۰ با متن ۱۲px.
+ */
 export function Hero() {
   return (
     <section className="relative overflow-hidden bg-primary-deep text-white">
-      {/* تصویر پس‌زمینه + پوشش سرمه‌ای برای خوانایی */}
+      {/* تصویر پس‌زمینه + پوشش تیره ملایم (الگوی باسکول: تصویر دیده شود) */}
       <div
         aria-hidden
-        className="absolute inset-0 bg-[url('/images/hero.webp')] bg-cover bg-center opacity-45"
+        className="absolute inset-0 bg-[url('/images/hero.webp')] bg-cover bg-center"
       />
       <div
         aria-hidden
-        className="absolute inset-0 bg-gradient-to-b from-primary-deep/85 via-primary-deep/70 to-primary-deep/90"
+        className="absolute inset-0 bg-gradient-to-b from-primary-deep/75 via-primary-deep/55 to-primary-deep/80"
       />
 
-      <div className="relative mx-auto flex max-w-7xl flex-col items-start gap-5 px-4 py-16 sm:py-24 lg:px-6">
-        <h1 className="max-w-2xl text-2xl font-bold leading-snug sm:text-3xl lg:text-4xl">
-          ایمچ | بازار خرید و فروش عمده محصولات
+      <div className="relative mx-auto flex max-w-7xl flex-col items-start px-4 pb-8 pt-8 nav-desktop:py-16 lg:px-6">
+        <h1 className="text-[18px] font-bold leading-[31px] nav-desktop:text-4xl nav-desktop:leading-[61px]">
+          ایمچ | بازار خرید و فروش عمده
         </h1>
-        <h2 className="max-w-xl text-sm font-normal leading-6 text-white/85 sm:text-base">
+        <h2 className="mt-2 max-w-xl text-xs font-normal leading-5 text-white/85 nav-desktop:mt-4 nav-desktop:text-xl nav-desktop:leading-9">
           ارتباط مستقیم با خریداران و فروشندگان عمده
         </h2>
         <Link
           href="/product-list"
-          className="inline-flex items-center gap-1.5 rounded-md bg-white px-5 py-2.5 text-sm font-bold text-primary-deep transition-colors hover:bg-white/90"
+          className="mt-8 inline-flex h-10 w-[184px] items-center justify-center gap-1.5 rounded-lg bg-white text-xs font-medium text-primary-deep transition-colors hover:bg-white/90 nav-desktop:mt-12 nav-desktop:h-12 nav-desktop:w-[204px] nav-desktop:text-base"
         >
           شروع معاملات عمده
           <ChevronsLeft size={20} />

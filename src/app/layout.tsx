@@ -1,17 +1,19 @@
 import type { Metadata, Viewport } from "next";
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/toaster";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://imach.example.com"),
   manifest: "/manifest.webmanifest",
   title: {
-    default: "ایمچ | بازار خرید و فروش عمده محصولات بدون واسطه",
+    default: "ایمچ | بازار خرید و فروش عمده بدون واسطه",
     template: "%s | ایمچ",
   },
   description:
-    "ایمچ بازار خرید و فروش عمده محصولات است؛ ارتباط مستقیم خریداران و فروشندگان عمده، مشاهده قیمت روز کالاها و ثبت درخواست خرید بدون واسطه.",
+    "ایمچ بازار خرید و فروش عمده است؛ ارتباط مستقیم خریداران و فروشندگان عمده، مشاهده قیمت روز کالاها و ثبت درخواست خرید بدون واسطه.",
+  applicationName: "ایمچ",
   keywords: [
     "خرید عمده",
     "فروش عمده",
@@ -21,11 +23,19 @@ export const metadata: Metadata = {
     "فروشنده عمده",
     "ایمچ",
   ],
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     type: "website",
     locale: "fa_IR",
     siteName: "ایمچ",
-    title: "ایمچ | بازار خرید و فروش عمده محصولات بدون واسطه",
+    title: "ایمچ | بازار خرید و فروش عمده بدون واسطه",
+    description: "ارتباط مستقیم خریداران و فروشندگان عمده در سراسر ایران",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ایمچ | بازار خرید و فروش عمده بدون واسطه",
     description: "ارتباط مستقیم خریداران و فروشندگان عمده در سراسر ایران",
   },
   icons: {
@@ -64,6 +74,7 @@ export default function RootLayout({
       <body className="font-sans antialiased bg-background text-foreground">
         <Providers>
           <div className="flex min-h-screen flex-col">{children}</div>
+          <MobileBottomNav />
           <Toaster />
         </Providers>
         <ServiceWorkerRegister />

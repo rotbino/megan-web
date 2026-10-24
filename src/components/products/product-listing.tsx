@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -71,61 +72,91 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
 
   const hasFilters = !!provinceId || !!cityId || !!s || sort !== 'related';
 
+  const filterContent = (
+    <>
+      <div className="rounded-md border bg-card p-4">
+        <h2 className="mb-3 flex items-center gap-1.5 text-sm font-bold">
+          <Filter size={14} className="text-primary" />
+          دسته بندی محصولات
+        </h2>
+        <CategoryFilter tree={tree} activeSlug={categorySlug} />
+      </div>
+
+      <div className="space-y-3 rounded-md border bg-card p-4">
+        <h2 className="flex items-center gap-1.5 text-sm font-bold">
+          <MapPin size={14} className="text-primary" />
+          موقعیت جغرافیایی
+        </h2>
+        <Select
+          dir="rtl"
+          value={provinceId ? String(provinceId) : undefined}
+          onValueChange={(v) => { setProvinceId(Number(v)); setCityId(undefined); }}
+        >
+          <SelectTrigger className="w-full rounded-md" aria-label="استان">
+            <SelectValue placeholder="همه استان‌ها" />
+          </SelectTrigger>
+          <SelectContent>
+            {provinces.map((p) => (
+              <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select dir="rtl" value={cityId ? String(cityId) : undefined} onValueChange={(v) => setCityId(Number(v))} disabled={!provinceId}>
+          <SelectTrigger className="w-full rounded-md" aria-label="شهر">
+            <SelectValue placeholder={provinceId ? 'همه شهرها' : 'ابتدا استان را انتخاب کنید'} />
+          </SelectTrigger>
+          <SelectContent>
+            {cities.map((c) => (
+              <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={reset} className="w-full gap-1.5 text-muted-foreground">
+            <RotateCcw size={13} />
+            حذف همه فیلترها
+          </Button>
+        )}
+      </div>
+    </>
+  );
+
   return (
     <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-[260px_1fr] lg:px-6">
-      {/* سایدبار فیلتر */}
-      <aside className={cn('space-y-5 lg:block', mobileFilters ? 'block' : 'hidden')} aria-label="فیلترها">
-        <div className="rounded-md border bg-card p-4">
-          <h2 className="mb-3 flex items-center gap-1.5 text-sm font-bold">
-            <Filter size={14} className="text-primary" />
-            دسته بندی محصولات
-          </h2>
-          <CategoryFilter tree={tree} activeSlug={categorySlug} />
-        </div>
-
-        <div className="space-y-3 rounded-md border bg-card p-4">
-          <h2 className="flex items-center gap-1.5 text-sm font-bold">
-            <MapPin size={14} className="text-primary" />
-            موقعیت جغرافیایی
-          </h2>
-          <Select
-            dir="rtl"
-            value={provinceId ? String(provinceId) : undefined}
-            onValueChange={(v) => { setProvinceId(Number(v)); setCityId(undefined); }}
-          >
-            <SelectTrigger className="w-full rounded-md" aria-label="استان">
-              <SelectValue placeholder="همه استان‌ها" />
-            </SelectTrigger>
-            <SelectContent>
-              {provinces.map((p) => (
-                <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select dir="rtl" value={cityId ? String(cityId) : undefined} onValueChange={(v) => setCityId(Number(v))} disabled={!provinceId}>
-            <SelectTrigger className="w-full rounded-md" aria-label="شهر">
-              <SelectValue placeholder={provinceId ? 'همه شهرها' : 'ابتدا استان را انتخاب کنید'} />
-            </SelectTrigger>
-            <SelectContent>
-              {cities.map((c) => (
-                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {hasFilters && (
-            <Button variant="ghost" size="sm" onClick={reset} className="w-full gap-1.5 text-muted-foreground">
-              <RotateCcw size={13} />
-              حذف همه فیلترها
-            </Button>
-          )}
-        </div>
+      {/* سایدبار فیلتر — دسکتاپ */}
+      <aside className="hidden space-y-5 lg:block" aria-label="فیلترها">
+        {filterContent}
       </aside>
+
+      {/* شیت فیلتر — موبایل (الگوی مودال باسکول) */}
+      {mobileFilters && (
+        <div className="fixed inset-0 z-50 bg-black/40 lg:hidden" onClick={() => setMobileFilters(false)} role="dialog" aria-modal="true" aria-label="فیلترها">
+          <div
+            className="absolute inset-y-0 start-0 flex h-full w-[85vw] max-w-sm flex-col overflow-y-auto bg-card p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between border-b pb-3">
+              <h2 className="flex items-center gap-1.5 text-base font-bold">
+                <SlidersHorizontal size={16} className="text-primary" />
+                فیلترها
+              </h2>
+              <Button variant="ghost" size="icon" onClick={() => setMobileFilters(false)} aria-label="بستن فیلترها">
+                <X size={18} />
+              </Button>
+            </div>
+            <div className="space-y-5">{filterContent}</div>
+            <Button className="mt-5 h-10 w-full rounded-lg" onClick={() => setMobileFilters(false)}>
+              نمایش نتایج
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* لیست */}
       <div className="space-y-4">
         {/* نوار بالا */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-card p-3">
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex min-w-0 items-center gap-2 text-sm">
             {s && (
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold">
                 <Search size={12} />
@@ -133,48 +164,48 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
                 <button type="button" onClick={() => router.replace('/product-list')} aria-label="حذف جستجو" className="text-muted-foreground hover:text-destructive">×</button>
               </span>
             )}
-            <span className="text-muted-foreground">
+            <span className="truncate text-muted-foreground">
               {data ? <b className="text-foreground">{toFa(data.total)}</b> : '—'} آگهی عمده
               {activeCategory && <> در «{activeCategory.categoryName}»</>}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="rounded-md lg:hidden" onClick={() => setMobileFilters((v) => !v)}>
+            <Button variant="outline" size="sm" className="rounded-md lg:hidden" onClick={() => setMobileFilters(true)}>
               <SlidersHorizontal size={14} />
               فیلترها
             </Button>
-        <div className="flex items-center gap-1.5 text-sm">
-          <span className="text-muted-foreground">مرتب سازی بر اساس:</span>
-          {SORTS.map((opt) => (
-            <button
-              key={opt.key}
-              type="button"
-              onClick={() => setSort(opt.key)}
-              className={cn(
-                'rounded-sm px-2 py-1 text-xs font-semibold transition-colors',
-                sort === opt.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-primary',
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+            <div className="flex items-center gap-1.5 text-sm">
+              <span className="text-muted-foreground">مرتب سازی بر اساس:</span>
+              {SORTS.map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setSort(opt.key)}
+                  className={cn(
+                    'rounded-sm px-2 py-1 text-xs font-semibold transition-colors',
+                    sort === opt.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-primary',
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* گرید */}
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 md:gap-4">
             {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-80 rounded-md" />)}
           </div>
         ) : items.length === 0 ? (
-          <div className="rounded-md border bg-card p-12 text-center">
+          <div className="rounded-md border bg-card p-8 text-center md:p-12">
             <p className="text-lg font-bold">آگهی‌ای با این فیلترها پیدا نشد!</p>
             <p className="mt-2 text-sm text-muted-foreground">فیلترها را تغییر دهید یا درخواست خرید ثبت کنید تا فروشندگان به شما پیشنهاد بدهند.</p>
             <Button asChild className="mt-4 rounded-md"><Link href="/#rfq">ثبت درخواست خرید</Link></Button>
           </div>
         ) : (
-          <div className={cn('grid grid-cols-2 gap-4 transition-opacity md:grid-cols-3 xl:grid-cols-4', isFetching && 'opacity-60')}>
+          <div className={cn('grid grid-cols-2 gap-3 transition-opacity md:grid-cols-3 md:gap-4 xl:grid-cols-4', isFetching && 'opacity-60')}>
             {items.map((p) => <ProductCard key={p.id} product={p} />)}
           </div>
         )}
