@@ -47,7 +47,7 @@ export async function searchSuggestions(typedText: string): Promise<string[]> {
 
 export async function getProducts(query: ProductQuery = {}): Promise<Paged<Product>> {
   const { categorySlug, s, provinceId, cityId, sort = 'related', page = 1 } = query;
-  const PER_PAGE = 8;
+  const PER_PAGE = 16;
 
   let items = [...productsData];
 

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { BrandLogo } from '@/components/shared/brand';
 import {
   ArrowLeftIcon,
@@ -13,12 +13,12 @@ import {
   SellersIcon,
 } from '@/components/shared/buskool-icons';
 import { useCategoryTree, useSuggestions } from '@/lib/mock/hooks';
-import { cn } from '@/lib/utils';
 import type { Category } from '@/lib/types';
 
 /**
- * هدر ایمچ — چیدمان دقیق باسکول:
- * دسکتاپ: بنر ثبت‌نام + [لوگو | نوار جستجو (دسته‌بندی‌ها + فروشنده شوید!) | ورود/ثبت‌نام، خریداران، فروشندگان]
+ * هدر ایمچ:
+ * دسکتاپ: بنر ثبت‌نام + [لوگو | جستجو (flex-1) | فروشندگان، خریداران، ورود/ثبت‌نام (ته نوار)]
+ *         + نوار دسته‌بندی‌ها در ردیف جدا زیر جستجو (با «فروشنده شوید!» در انتهای نوار)
  * موبایل: بنر ثبت‌نام + [لوگو | نوار جستجوی خاکستری (جستجوی محصول + همه ایران)]
  * ناوبری موبایل از طریق نوار پایین (MobileBottomNav) انجام می‌شود.
  */
@@ -26,8 +26,7 @@ export function Header() {
   const router = useRouter();
   const [q, setQ] = useState('');
   const [focused, setFocused] = useState(false);
-  const [megaOpen, setMegaOpen] = useState(false);
-  const [activeRoot, setActiveRoot] = useState<number | null>(null);
+  const [megaRoot, setMegaRoot] = useState<Category | null>(null);
   const searchWrap = useRef<HTMLDivElement>(null);
 
   const { data: tree = [] } = useCategoryTree();
@@ -65,35 +64,19 @@ export function Header() {
         </Link>
       </div>
 
-      {/* ─── ردیف اصلی ─────────────────────────────────────────── */}
-      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 pb-3 pt-1.5 nav-desktop:gap-4 nav-desktop:px-6 nav-desktop:pb-2.5 nav-desktop:pt-2.5 lg:gap-6">
+      {/* ─── ردیف اصلی: لوگو و جستجو ابتدای نوار، لینک‌ها انتهای نوار ─────── */}
+      <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 pb-3 pt-1.5 nav-desktop:gap-5 nav-desktop:px-6 nav-desktop:pb-2.5 nav-desktop:pt-2.5 lg:gap-6">
         <Link href="/" aria-label="ایمچ — صفحه اصلی" className="shrink-0">
           <BrandLogo size="sm" className="h-7" />
         </Link>
 
-        {/* نوار جستجوی دسکتاپ — عین باسکول: دسته‌بندی‌ها | input | فروشنده شوید! | دکمه جستجو */}
-        <div ref={searchWrap} className="relative hidden flex-1 nav-desktop:block lg:max-w-[560px]">
+        {/* جستجوی دسکتاپ — flex-1: کل فضای خالی نوار را می‌گیرد */}
+        <div ref={searchWrap} className="relative hidden min-w-0 flex-1 nav-desktop:block">
           <form
             onSubmit={(e) => { e.preventDefault(); submit(); }}
-            className="flex h-10 items-stretch overflow-visible rounded-lg border border-primary bg-card"
+            className="flex h-10 items-stretch rounded-lg border border-primary bg-card"
             role="search"
           >
-            <div className="relative flex items-stretch">
-              <button
-                type="button"
-                onClick={() => setMegaOpen((v) => !v)}
-                onMouseEnter={() => setMegaOpen(true)}
-                onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setMegaOpen(false); }}
-                className="flex items-center gap-1.5 whitespace-nowrap px-3 text-sm font-medium text-foreground"
-                aria-expanded={megaOpen}
-                aria-haspopup="true"
-                aria-label="باز کردن دسته‌بندی‌ها"
-              >
-                دسته‌بندی‌ها
-                <ChevronDown size={14} className={cn('transition-transform', megaOpen && 'rotate-180')} />
-              </button>
-              <span className="my-2 w-px bg-[#cbcbcb]" aria-hidden />
-            </div>
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -102,12 +85,6 @@ export function Header() {
               className="min-w-0 flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground"
               aria-label="جستجوی محصول"
             />
-            <Link
-              href="/register"
-              className="hidden items-center whitespace-nowrap px-2 text-sm text-foreground/70 hover:text-foreground xl:flex"
-            >
-              فروشنده شوید!
-            </Link>
             <button
               type="submit"
               aria-label="جستجو"
@@ -116,8 +93,6 @@ export function Header() {
               <Search size={19} strokeWidth={2.4} />
             </button>
           </form>
-
-          {megaOpen && <MegaMenu tree={tree} activeRoot={activeRoot} setActiveRoot={setActiveRoot} onNavigate={() => setMegaOpen(false)} />}
 
           {focused && q.trim().length >= 2 && (
             <div className="absolute inset-x-0 top-full z-50 mt-1.5 overflow-hidden rounded-md border bg-popover shadow-lg">
@@ -143,14 +118,14 @@ export function Header() {
           )}
         </div>
 
-        {/* آیتم‌های حساب — عین باسکول: آیکون بالا + متن پایین، جداکننده عمودی */}
+        {/* لینک‌های انتهای نوار — فروشندگان، خریداران، ورود/ثبت‌نام (آخر) — آیکون بالای متن */}
         <nav className="hidden items-center nav-desktop:flex" aria-label="حساب کاربری">
           <Link
-            href="/register"
+            href="/product-list"
             className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
           >
-            <UserPlusBadge />
-            <span className="mt-1">ورود / ثبت نام</span>
+            <SellersIcon size={24} />
+            <span className="mt-1">فروشندگان</span>
           </Link>
           <span className="mx-1 h-9 w-px bg-[#eee]" aria-hidden />
           <Link
@@ -162,11 +137,11 @@ export function Header() {
           </Link>
           <span className="mx-1 h-9 w-px bg-[#eee]" aria-hidden />
           <Link
-            href="/product-list"
+            href="/register"
             className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
           >
-            <SellersIcon size={24} />
-            <span className="mt-1">فروشندگان</span>
+            <UserPlusBadge />
+            <span className="mt-1">ورود / ثبت نام</span>
           </Link>
         </nav>
 
@@ -198,6 +173,42 @@ export function Header() {
           </button>
         </form>
       </div>
+
+      {/* ─── نوار دسته‌بندی‌ها — ردیف جدا زیر جستجو + «فروشنده شوید!» ─────── */}
+      <nav
+        className="relative hidden border-t border-border/70 nav-desktop:block"
+        aria-label="دسته‌بندی محصولات"
+        onMouseLeave={() => setMegaRoot(null)}
+      >
+        <div className="mx-auto max-w-7xl px-4 nav-desktop:px-6">
+          <div className="flex items-center gap-2.5 py-1">
+            {/* دسته‌های اصلی — ردیف افقی اسکرولی؛ «فروشنده شوید!» همیشه ثابت در انتهای نوار */}
+            <ul className="no-scrollbar min-w-0 flex flex-1 items-center gap-0.5 overflow-x-auto">
+              {tree.map((c) => (
+                <li key={c.id} className="shrink-0" onMouseEnter={() => setMegaRoot(c.children?.length ? c : null)}>
+                  <Link
+                    href={`/product-list/category/${c.slug}`}
+                    className="block whitespace-nowrap rounded-md px-2.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    {c.categoryName}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <div className="flex shrink-0 items-center gap-2.5">
+              <span className="h-4 w-px bg-border" aria-hidden />
+              <Link
+                href="/register"
+                className="whitespace-nowrap rounded-md px-2.5 py-1.5 text-[13px] font-bold text-primary transition-colors hover:bg-accent"
+              >
+                فروشنده شوید!
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {megaRoot && <MegaPanel root={megaRoot} onNavigate={() => setMegaRoot(null)} />}
+      </nav>
     </header>
   );
 }
@@ -222,44 +233,12 @@ function UserPlusBadge() {
   );
 }
 
-function MegaMenu({
-  tree,
-  activeRoot,
-  setActiveRoot,
-  onNavigate,
-}: {
-  tree: Category[];
-  activeRoot: number | null;
-  setActiveRoot: (id: number | null) => void;
-  onNavigate: () => void;
-}) {
-  const current = tree.find((c) => c.id === activeRoot) ?? tree[0];
+/** پنل مگامنو — زیر نوار دسته‌بندی‌ها، زیرشاخه‌های دسته فعال */
+function MegaPanel({ root, onNavigate }: { root: Category; onNavigate: () => void }) {
   return (
-    <div
-      className="absolute start-0 top-full z-50 mt-1 flex w-[720px] overflow-hidden rounded-lg border bg-popover shadow-xl"
-      tabIndex={-1}
-      onMouseLeave={() => setActiveRoot(null)}
-    >
-      <ul className="w-52 shrink-0 border-e bg-secondary/30 p-2 text-sm">
-        {tree.map((c) => (
-          <li key={c.id}>
-            <button
-              type="button"
-              onMouseEnter={() => setActiveRoot(c.id)}
-              onFocus={() => setActiveRoot(c.id)}
-              onClick={() => setActiveRoot(c.id)}
-              className={cn(
-                'flex w-full items-center justify-between rounded-sm px-3 py-2 text-start hover:bg-accent',
-                current?.id === c.id && 'bg-accent font-semibold text-accent-foreground',
-              )}
-            >
-              <span className="line-clamp-1">{c.categoryName}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
-      <div className="grid max-h-96 flex-1 grid-cols-3 gap-x-4 gap-y-5 overflow-y-auto p-4">
-        {current?.children?.map((l2) => (
+    <div className="absolute inset-x-0 top-full z-50 border-b border-e border-s bg-popover shadow-xl">
+      <div className="mx-auto grid max-w-7xl grid-cols-3 gap-x-6 gap-y-5 px-4 py-4 nav-desktop:px-6 lg:grid-cols-4">
+        {root.children?.map((l2) => (
           <div key={l2.id}>
             <Link
               href={`/product-list/category/${l2.slug}`}
@@ -283,9 +262,6 @@ function MegaMenu({
             </ul>
           </div>
         ))}
-        {current && !current.children?.length && (
-          <p className="col-span-3 py-8 text-center text-sm text-muted-foreground">زیرشاخه‌ای برای این دسته ثبت نشده است.</p>
-        )}
       </div>
     </div>
   );

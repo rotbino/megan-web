@@ -30,7 +30,7 @@ export default async function CategoryPage({ params }: Props) {
     <>
       <Header />
       <main className="flex-1">
-        <div className="mx-auto max-w-7xl px-4 pt-6 lg:px-6">
+        <div className="mx-auto max-w-7xl px-4 pt-4 lg:px-6 lg:pt-6">
           <Breadcrumb
             items={[
               { label: 'خانه', href: '/' },
@@ -38,10 +38,7 @@ export default async function CategoryPage({ params }: Props) {
               { label: name },
             ]}
           />
-          <h1 className="mt-3 text-2xl font-extrabold">خرید {name} عمده</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            حداقل سفارش معمول این بازار: {cat ? `${new Intl.NumberFormat('fa-IR').format(cat.min)} ${cat.unit}` : '—'} — برای معامله با فروشندگان احرازشده، قیمت‌ها را مقایسه کنید.
-          </p>
+          <h1 className="mt-2 text-lg font-extrabold lg:mt-3 lg:text-2xl">خرید {name} عمده</h1>
         </div>
         <ProductListing categorySlug={decodeURIComponent(slug)} />
       </main>

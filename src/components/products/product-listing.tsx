@@ -4,19 +4,21 @@ import { Suspense, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
+  ArrowDownWideNarrow,
   ChevronLeft,
   ChevronRight,
   Filter,
+  List,
   MapPin,
   RotateCcw,
   Search,
-  SlidersHorizontal,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/products/product-card';
+import { BottomSheet } from '@/components/shared/bottom-sheet';
 import { useCities, useCategoryTree, useProducts, useProvinces } from '@/lib/mock/hooks';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -28,6 +30,8 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: 'newest', label: 'جدیدترین' },
 ];
 
+type SheetKind = 'categories' | 'sort' | null;
+
 function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
   const router = useRouter();
   const sp = useSearchParams();
@@ -37,7 +41,10 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
   const [page, setPage] = useState(1);
   const [provinceId, setProvinceId] = useState<number | undefined>();
   const [cityId, setCityId] = useState<number | undefined>();
-  const [mobileFilters, setMobileFilters] = useState(false);
+
+  // موبایل — مودال‌های انتخاب (بات‌شیت پایین‌رونده)
+  const [sheet, setSheet] = useState<SheetKind>(null);
+  const [catStack, setCatStack] = useState<Category[]>([]);
 
   const { data: tree = [] } = useCategoryTree();
   const { data: provinces = [] } = useProvinces();
@@ -72,6 +79,28 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
 
   const hasFilters = !!provinceId || !!cityId || !!s || sort !== 'related';
 
+  // ─── موبایل: انتخاب دسته سلسله‌مراتبی ─────────────────────────
+  const sheetLevel = catStack[catStack.length - 1];
+  const sheetItems = sheetLevel ? (sheetLevel.children ?? []) : tree;
+
+  const selectCategory = (c: Category) => {
+    if (c.children?.length) {
+      setCatStack((st) => [...st, c]);
+      return;
+    }
+    setSheet(null);
+    setCatStack([]);
+    router.push(`/product-list/category/${c.slug}`);
+  };
+
+  const closeSheets = () => {
+    setSheet(null);
+    setCatStack([]);
+  };
+
+  const clearCategory = () => router.push('/product-list');
+
+  // ─── سایدبار دسکتاپ (بدون تغییر) ──────────────────────────────
   const filterContent = (
     <>
       <div className="rounded-md border bg-card p-4">
@@ -122,40 +151,16 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
   );
 
   return (
-    <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-[260px_1fr] lg:px-6">
+    <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-4 lg:grid-cols-[260px_1fr] lg:px-6 lg:py-6">
       {/* سایدبار فیلتر — دسکتاپ */}
       <aside className="hidden space-y-5 lg:block" aria-label="فیلترها">
         {filterContent}
       </aside>
 
-      {/* شیت فیلتر — موبایل (الگوی مودال باسکول) */}
-      {mobileFilters && (
-        <div className="fixed inset-0 z-50 bg-black/40 lg:hidden" onClick={() => setMobileFilters(false)} role="dialog" aria-modal="true" aria-label="فیلترها">
-          <div
-            className="absolute inset-y-0 start-0 flex h-full w-[85vw] max-w-sm flex-col overflow-y-auto bg-card p-4 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-center justify-between border-b pb-3">
-              <h2 className="flex items-center gap-1.5 text-base font-bold">
-                <SlidersHorizontal size={16} className="text-primary" />
-                فیلترها
-              </h2>
-              <Button variant="ghost" size="icon" onClick={() => setMobileFilters(false)} aria-label="بستن فیلترها">
-                <X size={18} />
-              </Button>
-            </div>
-            <div className="space-y-5">{filterContent}</div>
-            <Button className="mt-5 h-10 w-full rounded-lg" onClick={() => setMobileFilters(false)}>
-              نمایش نتایج
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* لیست */}
-      <div className="space-y-4">
-        {/* نوار بالا */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-card p-3">
+      <div className="min-w-0 space-y-4">
+        {/* نوار بالا — دسکتاپ */}
+        <div className="hidden flex-wrap items-center justify-between gap-3 rounded-md border bg-card p-3 lg:flex">
           <div className="flex min-w-0 items-center gap-2 text-sm">
             {s && (
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold">
@@ -169,39 +174,74 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
               {activeCategory && <> در «{activeCategory.categoryName}»</>}
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="rounded-md lg:hidden" onClick={() => setMobileFilters(true)}>
-              <SlidersHorizontal size={14} />
-              فیلترها
-            </Button>
-            <div className="flex items-center gap-1.5 text-sm">
-              <span className="text-muted-foreground">مرتب سازی بر اساس:</span>
-              {SORTS.map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setSort(opt.key)}
-                  className={cn(
-                    'rounded-sm px-2 py-1 text-xs font-semibold transition-colors',
-                    sort === opt.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-primary',
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+          <div className="flex items-center gap-1.5 text-sm">
+            <span className="text-muted-foreground">مرتب سازی بر اساس:</span>
+            {SORTS.map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setSort(opt.key)}
+                className={cn(
+                  'rounded-sm px-2 py-1 text-xs font-semibold transition-colors',
+                  sort === opt.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-primary',
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
+        </div>
+
+        {/* نوار فیلتر و مرتب‌سازی — موبایل (الگوی باسکول/دیوار: دسته ها، مرتب سازی، فیلتر فعال) */}
+        <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto border-b border-border/70 px-4 pb-2.5 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setSheet('categories')}
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground/85 transition-colors hover:border-foreground/30"
+          >
+            <List size={14} className="text-muted-foreground" />
+            دسته ها
+          </button>
+          <button
+            type="button"
+            onClick={() => setSheet('sort')}
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground/85 transition-colors hover:border-foreground/30"
+          >
+            <ArrowDownWideNarrow size={14} className="text-muted-foreground" />
+            مرتب سازی
+          </button>
+          {activeCategory && (
+            <button
+              type="button"
+              onClick={clearCategory}
+              aria-label={`حذف فیلتر دسته ${activeCategory.categoryName}`}
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-primary/45 bg-primary/5 px-3 py-2 text-xs font-bold text-primary"
+            >
+              {activeCategory.categoryName}
+              <X size={13} />
+            </button>
+          )}
+          {s && (
+            <button
+              type="button"
+              onClick={() => router.replace('/product-list')}
+              aria-label="حذف جستجو"
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-primary/45 bg-primary/5 px-3 py-2 text-xs font-bold text-primary"
+            >
+              «{s}»
+              <X size={13} />
+            </button>
+          )}
         </div>
 
         {/* گرید */}
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 md:gap-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-80 rounded-md" />)}
           </div>
         ) : items.length === 0 ? (
           <div className="rounded-md border bg-card p-8 text-center md:p-12">
             <p className="text-lg font-bold">آگهی‌ای با این فیلترها پیدا نشد!</p>
-            <p className="mt-2 text-sm text-muted-foreground">فیلترها را تغییر دهید یا درخواست خرید ثبت کنید تا فروشندگان به شما پیشنهاد بدهند.</p>
             <Button asChild className="mt-4 rounded-md"><Link href="/#rfq">ثبت درخواست خرید</Link></Button>
           </div>
         ) : (
@@ -233,6 +273,52 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
           </nav>
         )}
       </div>
+
+      {/* ─── بات‌شیت انتخاب دسته — موبایل (سلسله‌مراتبی با دکمه بازگشت) ── */}
+      <BottomSheet
+        open={sheet === 'categories'}
+        onClose={closeSheets}
+        onBack={catStack.length ? () => setCatStack((st) => st.slice(0, -1)) : undefined}
+        title={sheetLevel ? sheetLevel.categoryName : 'همه دسته ها'}
+      >
+        <ul>
+          {sheetItems.map((c) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                onClick={() => selectCategory(c)}
+                className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-3 text-start text-sm font-medium transition-colors hover:bg-accent"
+              >
+                <span className="line-clamp-1">{c.categoryName}</span>
+                {c.children?.length ? (
+                  <ChevronLeft size={16} className="shrink-0 text-muted-foreground" />
+                ) : null}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </BottomSheet>
+
+      {/* ─── بات‌شیت مرتب‌سازی — موبایل ─────────────────────────── */}
+      <BottomSheet open={sheet === 'sort'} onClose={() => setSheet(null)} title="مرتب سازی بر اساس">
+        <ul>
+          {SORTS.map((opt) => (
+            <li key={opt.key}>
+              <button
+                type="button"
+                onClick={() => { setSort(opt.key); setSheet(null); }}
+                className={cn(
+                  'flex w-full items-center justify-between gap-2 rounded-lg px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
+                  sort === opt.key ? 'font-bold text-primary' : 'font-medium',
+                )}
+              >
+                <span>{opt.label}</span>
+                <ChevronLeft size={16} className={sort === opt.key ? 'text-primary' : 'text-muted-foreground/40'} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </BottomSheet>
     </div>
   );
 }
