@@ -40,7 +40,7 @@ export function PriceReveal({
   return (
     <Dialog onOpenChange={() => setContact(false)}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-md rounded-2xl" dir="rtl">
+      <DialogContent className="max-w-md rounded-md" dir="rtl">
         <DialogHeader className="text-start">
           <DialogTitle className="text-start text-lg leading-6">{product.productName}</DialogTitle>
           <DialogDescription className="text-start">
@@ -48,10 +48,10 @@ export function PriceReveal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-xl bg-secondary/60 p-4">
+        <div className="rounded-md bg-secondary/60 p-4">
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <TrendingUp size={13} />
-            کف قیمت هر {product.unit} برای خرید عمده:
+            کف قیمت هر {product.unit}:
           </p>
           <p className="mt-1 text-2xl font-extrabold text-primary">
             {product.minSalePrice ? priceFa(product.minSalePrice) : 'تماس بگیرید'}
@@ -63,11 +63,11 @@ export function PriceReveal({
 
         {!contact ? (
           <div className="grid grid-cols-2 gap-2">
-            <Button className="rounded-xl" onClick={() => setContact(true)}>
+            <Button className="rounded-md" onClick={() => setContact(true)}>
               <Phone size={16} />
               تماس با فروشنده
             </Button>
-            <Button variant="outline" className="rounded-xl" asChild>
+            <Button variant="outline" className="rounded-md" asChild>
               <Link href={`/product-view/${product.slug}/${product.categoryName}/${product.id}#chat`}>
                 <MessageSquareText size={16} />
                 چت با فروشنده
@@ -75,24 +75,22 @@ export function PriceReveal({
             </Button>
           </div>
         ) : (
-          <div className="space-y-3 rounded-xl border p-4">
+          <div className="space-y-3 rounded-md border p-4">
             <p className="flex items-center gap-2 text-sm font-bold">
               <BadgeCheck size={16} className="text-primary" />
               شماره تماس فروشنده: <span dir="ltr" className="font-mono">۰۹۱۲ ۰۰۰ ۰۰۰۰</span>
             </p>
             <p className="text-xs leading-6 text-muted-foreground">
-              شنبه تا پنجشنبه، ۹ تا ۱۸ پاسخ‌گو است. برای اطلاع از قیمت به‌روز و تخفیف پلکانی،
-              حتماً به «مِگان» اشاره کنید.
+              برای اطلاع از قیمت روز و خرید مستقیم پیام ارسال کنید.
             </p>
           </div>
         )}
 
         <Separator />
-        <div className="flex items-start gap-2 rounded-lg bg-primary/5 p-3 text-[11px] leading-5 text-muted-foreground">
+        <div className="flex items-start gap-2 rounded-md bg-primary/5 p-3 text-[11px] leading-5 text-muted-foreground">
           <ShieldCheck size={14} className="mt-0.5 shrink-0 text-primary" />
           <p>
-            پیش از هر پرداختی، از صحت کالا حضوری اطمینان حاصل کنید یا از «پرداخت امن مِگان» استفاده کنید.
-            مِگان در معاملات خارج از پرداخت امن مسئولیتی ندارد.
+            توصیه ایمچ: همواره به انجام معاملات حضوری است.
           </p>
         </div>
         <p className="text-center text-[11px] text-muted-foreground">

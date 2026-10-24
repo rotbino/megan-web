@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { SpecialSellerBadge, OldAdBadge } from '@/components/shared/badges';
+import { LadderBadge, OldAdBadge } from '@/components/shared/badges';
 import { products } from '@/lib/mock/data';
 import { stockFa, toFa } from '@/lib/format';
 
@@ -35,19 +35,19 @@ export default function PanelDashboard() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-extrabold">داشبورد فروشنده</h1>
-          <p className="mt-1 text-sm text-muted-foreground">وضعیت ویترین و آگهی‌های شما در بازار مِگان</p>
+          <p className="mt-1 text-sm text-muted-foreground">وضعیت ویترین و آگهی‌های شما در بازار ایمچ</p>
         </div>
-        <Button asChild className="rounded-xl">
+        <Button asChild className="rounded-md">
           <Link href="/panel/products/new"><PlusCircle size={16} /> ثبت محصول جدید</Link>
         </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {stats.map(({ label, value, icon: Icon, hint }) => (
-          <Card key={label} className="rounded-2xl">
+          <Card key={label} className="rounded-md">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xs font-medium text-muted-foreground">{label}</CardTitle>
-              <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary"><Icon size={15} /></span>
+              <span className="grid size-8 place-items-center rounded-sm bg-primary/10 text-primary"><Icon size={15} /></span>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-extrabold">{value}</p>
@@ -57,7 +57,7 @@ export default function PanelDashboard() {
         ))}
       </div>
 
-      <Card className="rounded-2xl">
+      <Card className="rounded-md">
         <CardHeader>
           <CardTitle className="text-base">آگهی‌های من</CardTitle>
         </CardHeader>
@@ -87,7 +87,7 @@ export default function PanelDashboard() {
                   <TableCell>{toFa(p.viewCount)}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {p.isElevated ? <SpecialSellerBadge compact /> : <Badge variant="secondary">عادی</Badge>}
+                      {p.isLadder ? <LadderBadge compact /> : <Badge variant="secondary">عادی</Badge>}
                       {p.isOld && <OldAdBadge />}
                     </div>
                   </TableCell>

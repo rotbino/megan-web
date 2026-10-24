@@ -1,0 +1,17 @@
+{
+  "name": "ایمچ — بازار خرید و فروش عمده",
+  "short_name": "ایمچ",
+  "description": "بازار خرید و فروش عمده محصولات بدون واسطه — ارتباط مستقیم خریداران و فروشندگان عمده",
+  "lang": "fa",
+  "dir": "rtl",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f8fa",
+  "theme_color": "#33415c",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

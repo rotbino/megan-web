@@ -32,10 +32,10 @@ export function ChatWidget({ sellerName, productName }: { sellerName: string; pr
   };
 
   return (
-    <section id="chat" aria-labelledby="chat-title" className="scroll-mt-24 rounded-2xl border bg-card">
+    <section id="chat" aria-labelledby="chat-title" className="scroll-mt-24 rounded-md border bg-card">
       <div className="flex items-center gap-2 border-b p-4">
         <MessageSquareText size={16} className="text-primary" />
-        <h2 id="chat-title" className="text-sm font-extrabold">گفتگو با {sellerName}</h2>
+        <h2 id="chat-title" className="text-sm font-extrabold">چت با {sellerName}</h2>
       </div>
       <div className="max-h-72 space-y-3 overflow-y-auto p-4">
         {messages.map((m, i) => (
@@ -43,8 +43,8 @@ export function ChatWidget({ sellerName, productName }: { sellerName: string; pr
             <p
               className={
                 m.from === 'me'
-                  ? 'max-w-[80%] rounded-2xl rounded-s-md bg-primary px-3.5 py-2 text-sm text-primary-foreground'
-                  : 'max-w-[80%] rounded-2xl rounded-e-md bg-secondary px-3.5 py-2 text-sm'
+                  ? 'max-w-[80%] rounded-md rounded-s-md bg-primary px-3.5 py-2 text-sm text-primary-foreground'
+                  : 'max-w-[80%] rounded-md rounded-e-md bg-secondary px-3.5 py-2 text-sm'
               }
             >
               {m.text}
@@ -53,7 +53,7 @@ export function ChatWidget({ sellerName, productName }: { sellerName: string; pr
         ))}
         {typing && (
           <div className="flex justify-end">
-            <span className="flex items-center gap-1.5 rounded-2xl bg-secondary px-3 py-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5 rounded-md bg-secondary px-3 py-2 text-xs text-muted-foreground">
               <Loader2 size={12} className="animate-spin" />
               در حال نوشتن…
             </span>
@@ -69,9 +69,9 @@ export function ChatWidget({ sellerName, productName }: { sellerName: string; pr
           onChange={(e) => setText(e.target.value)}
           placeholder="پیامی بنویسید…"
           aria-label="متن پیام"
-          className="rounded-xl"
+          className="rounded-md"
         />
-        <Button type="submit" size="icon" className="shrink-0 rounded-xl" aria-label="ارسال پیام">
+        <Button type="submit" size="icon" className="shrink-0 rounded-md" aria-label="ارسال پیام">
           <SendHorizonal size={18} />
         </Button>
       </form>

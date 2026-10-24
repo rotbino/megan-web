@@ -9,9 +9,8 @@ import {
   LayoutGrid,
   LogIn,
   Menu,
-  Package,
   Search,
-  ShoppingCart,
+  Users,
   Store,
   X,
 } from 'lucide-react';
@@ -22,6 +21,7 @@ import { useCategoryTree, useSuggestions } from '@/lib/mock/hooks';
 import { cn } from '@/lib/utils';
 import type { Category } from '@/lib/types';
 
+/** هدر ایمچ — همان چیدمان باسکول: لوگو + جستجو + ورود/ثبت‌نام + نوار دسته‌بندی‌ها */
 export function Header() {
   const router = useRouter();
   const [q, setQ] = useState('');
@@ -52,37 +52,32 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 lg:px-6">
-        {/* موبایل: منو */}
+    <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/90">
+      {/* ردیف اصلی — مثل باسکول: لوگو + جستجو + ورود */}
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 lg:px-6">
         <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)} aria-label="باز کردن منو">
           <Menu />
         </Button>
 
-        <Link href="/" aria-label="مِگان — صفحه اصلی" className="shrink-0">
+        <Link href="/" aria-label="ایمچ — صفحه اصلی" className="shrink-0">
           <BrandLogo />
         </Link>
 
-        {/* جستجو */}
         <div ref={searchWrap} className="relative hidden flex-1 md:block">
-          <form
-            onSubmit={(e) => { e.preventDefault(); submit(); }}
-            className="relative"
-            role="search"
-          >
+          <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="relative" role="search">
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onFocus={() => setFocused(true)}
-              placeholder="به دنبال چه محصول عمده‌ای هستید؟ مثلا: پسته"
-              className="h-11 rounded-xl bg-secondary/70 pe-4 ps-11 text-sm"
+              placeholder="به دنبال چه محصولی هستید؟"
+              className="h-10 rounded-md bg-secondary/70 pe-4 ps-10 text-sm"
               aria-label="جستجوی محصول"
             />
             <Search className="pointer-events-none absolute inset-y-0 start-3 my-auto size-4 text-muted-foreground" />
           </form>
 
           {focused && (q.trim().length >= 2) && (
-            <div className="absolute inset-x-0 top-full z-50 mt-2 overflow-hidden rounded-xl border bg-popover shadow-lg">
+            <div className="absolute inset-x-0 top-full z-50 mt-1.5 overflow-hidden rounded-md border bg-popover shadow-lg">
               {suggestions.length > 0 ? (
                 <ul className="max-h-72 overflow-y-auto p-1 text-sm">
                   {suggestions.map((s) => (
@@ -90,7 +85,7 @@ export function Header() {
                       <button
                         type="button"
                         onClick={() => submit(s)}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-start hover:bg-accent"
+                        className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-start hover:bg-accent"
                       >
                         <Search size={14} className="text-muted-foreground" />
                         {s}
@@ -99,35 +94,29 @@ export function Header() {
                   ))}
                 </ul>
               ) : (
-                <p className="px-4 py-3 text-sm text-muted-foreground">نتیجه‌ای یافت نشد؛ کلید واژه دیگری امتحان کنید.</p>
+                <p className="px-4 py-3 text-sm text-muted-foreground">نتیجه‌ای یافت نشد.</p>
               )}
             </div>
           )}
         </div>
 
         <nav className="hidden items-center gap-1 lg:flex" aria-label="حساب کاربری">
-          <Button asChild variant="ghost" size="sm" className="gap-2">
-            <Link href="/buyAd-requests">
-              <ShoppingCart size={16} />
-              درخواست‌های خرید
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2">
+          <Link href="/buyAd-requests" className="rounded-sm px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+            خریداران
+          </Link>
+          <Link href="/product-list" className="rounded-sm px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+            فروشندگان
+          </Link>
+          <Button asChild size="sm" className="gap-1.5 rounded-md">
             <Link href="/register">
-              <LogIn size={16} />
-              ورود / ثبت‌نام
-            </Link>
-          </Button>
-          <Button asChild size="sm" className="gap-2 rounded-xl">
-            <Link href="/panel">
-              <Store size={16} />
-              پنل فروشنده
+              <LogIn size={15} />
+              ورود / ثبت نام
             </Link>
           </Button>
         </nav>
       </div>
 
-      {/* ردیف دوم — دسته‌بندی‌ها */}
+      {/* ردیف دوم — دسته‌بندی‌ها (مگامنو سه‌سطحی مثل باسکول) */}
       <div className="hidden border-t bg-card/60 lg:block">
         <div className="mx-auto flex h-11 max-w-7xl items-center gap-2 px-6 text-sm">
           <div className="relative">
@@ -135,7 +124,7 @@ export function Header() {
               type="button"
               onClick={() => setMegaOpen((v) => !v)}
               onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setMegaOpen(false); }}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold text-primary hover:bg-accent"
+              className="flex items-center gap-1.5 rounded-sm px-3 py-1.5 font-semibold text-primary hover:bg-accent"
               aria-expanded={megaOpen}
               aria-haspopup="true"
             >
@@ -146,11 +135,12 @@ export function Header() {
             {megaOpen && <MegaMenu tree={tree} activeRoot={activeRoot} setActiveRoot={setActiveRoot} onNavigate={() => setMegaOpen(false)} />}
           </div>
           <span className="h-4 w-px bg-border" aria-hidden />
-          <Link href="/product-list" className="rounded-lg px-2 py-1 hover:text-primary">همه محصولات</Link>
-          <Link href="/product-list/category/پسته" className="rounded-lg px-2 py-1 hover:text-primary">قیمت پسته</Link>
-          <Link href="/product-list/category/خرما" className="rounded-lg px-2 py-1 hover:text-primary">خرید خرما</Link>
-          <Link href="/product-list/category/زعفران" className="rounded-lg px-2 py-1 hover:text-primary">قیمت زعفران</Link>
-          <Link href="/product-list/category/برنج" className="rounded-lg px-2 py-1 hover:text-primary">برنج عمده</Link>
+          <Link href="/product-list" className="rounded-sm px-2 py-1 text-muted-foreground hover:text-primary">همه محصولات</Link>
+          <Link href="/product-list/category/پسته" className="rounded-sm px-2 py-1 text-muted-foreground hover:text-primary">پسته</Link>
+          <Link href="/product-list/category/خرما" className="rounded-sm px-2 py-1 text-muted-foreground hover:text-primary">خرما</Link>
+          <Link href="/product-list/category/زعفران" className="rounded-sm px-2 py-1 text-muted-foreground hover:text-primary">زعفران</Link>
+          <Link href="/product-list/category/برنج" className="rounded-sm px-2 py-1 text-muted-foreground hover:text-primary">برنج</Link>
+          <Link href="/product-list/category/سیب" className="rounded-sm px-2 py-1 text-muted-foreground hover:text-primary">سیب</Link>
         </div>
       </div>
 
@@ -163,21 +153,20 @@ export function Header() {
               <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)} aria-label="بستن منو"><X /></Button>
             </div>
             <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="relative mb-4">
-              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجوی محصول عمده…" className="pe-4 ps-10" />
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجوی محصول" className="rounded-md pe-4 ps-10" />
               <Search className="absolute inset-y-0 start-3 my-auto size-4 text-muted-foreground" />
             </form>
             <nav className="flex flex-col gap-1 text-sm font-medium">
-              <Link href="/product-list" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2.5 hover:bg-accent"><Package size={16} /> همه محصولات</Link>
-              <Link href="/buyAd-requests" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2.5 hover:bg-accent"><ShoppingCart size={16} /> درخواست‌های خرید</Link>
-              <Link href="/register" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2.5 hover:bg-accent"><LogIn size={16} /> ورود / ثبت‌نام</Link>
-              <Link href="/panel" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2.5 hover:bg-accent"><Store size={16} /> پنل فروشنده</Link>
+              <Link href="/product-list" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-sm px-3 py-2.5 hover:bg-accent"><Store size={16} className="text-muted-foreground" /> فروشندگان</Link>
+              <Link href="/buyAd-requests" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-sm px-3 py-2.5 hover:bg-accent"><Users size={16} className="text-muted-foreground" /> خریداران</Link>
+              <Link href="/register" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-sm px-3 py-2.5 hover:bg-accent"><LogIn size={16} className="text-muted-foreground" /> ورود / ثبت نام</Link>
               <p className="mt-4 px-3 text-xs font-bold text-muted-foreground">دسته‌بندی‌های اصلی</p>
               {tree.map((c) => (
                 <Link
                   key={c.id}
                   href={`/product-list/category/${c.slug}`}
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center justify-between rounded-lg px-3 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className="flex items-center justify-between rounded-sm px-3 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
                 >
                   {c.categoryName}
                   <ChevronLeft size={14} />
@@ -204,8 +193,7 @@ function MegaMenu({
 }) {
   const current = tree.find((c) => c.id === activeRoot) ?? tree[0];
   return (
-    <div className="absolute start-0 top-full z-50 mt-1 flex w-[720px] overflow-hidden rounded-xl border bg-popover shadow-xl" tabIndex={-1}>
-      {/* ستون دسته‌های اصلی */}
+    <div className="absolute start-0 top-full z-50 mt-1 flex w-[720px] overflow-hidden rounded-md border bg-popover shadow-xl" tabIndex={-1}>
       <ul className="w-52 shrink-0 border-e bg-secondary/30 p-2 text-sm">
         {tree.map((c) => (
           <li key={c.id}>
@@ -215,7 +203,7 @@ function MegaMenu({
               onFocus={() => setActiveRoot(c.id)}
               onClick={() => setActiveRoot(c.id)}
               className={cn(
-                'flex w-full items-center justify-between rounded-lg px-3 py-2 text-start hover:bg-accent',
+                'flex w-full items-center justify-between rounded-sm px-3 py-2 text-start hover:bg-accent',
                 current?.id === c.id && 'bg-accent font-semibold text-accent-foreground',
               )}
             >
@@ -225,7 +213,6 @@ function MegaMenu({
           </li>
         ))}
       </ul>
-      {/* زیرشاخه‌ها */}
       <div className="grid max-h-96 flex-1 grid-cols-3 gap-x-4 gap-y-5 overflow-y-auto p-4">
         {current?.children?.map((l2) => (
           <div key={l2.id}>

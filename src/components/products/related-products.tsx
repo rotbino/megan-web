@@ -12,10 +12,10 @@ export function RelatedProducts({ product }: { product: Product }) {
 
   return (
     <section aria-labelledby="related" className="mx-auto max-w-7xl px-4 py-8 lg:px-6">
-      <h2 id="related" className="mb-5 text-xl font-extrabold">محصولات مرتبط</h2>
+      <h2 id="related" className="mb-5 text-xl font-bold">محصولات مرتبط</h2>
       {isLoading ? (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-80 rounded-2xl" />)}
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-80 rounded-md" />)}
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">

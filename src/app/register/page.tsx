@@ -33,7 +33,7 @@ export default function RegisterPage() {
       setError('شماره موبایل معتبر نیست (مثال: 09123456789)');
       return;
     }
-    otpMutation.mutate(undefined, {
+    otpMutation.mutate(phone, {
       onSuccess: () => setStep('code'),
     });
   };
@@ -58,28 +58,28 @@ export default function RegisterPage() {
     <>
       <Header />
       <main className="flex flex-1 items-center justify-center bg-gradient-to-b from-secondary/60 to-background px-4 py-12">
-        <div className="w-full max-w-sm rounded-2xl border bg-card p-6 shadow-sm">
+        <div className="w-full max-w-sm rounded-md border bg-card p-6 shadow-sm">
           {done ? (
             <div className="space-y-4 py-6 text-center">
               <span className="mx-auto grid size-16 place-items-center rounded-full bg-primary/10 text-primary">
                 <Lock size={28} />
               </span>
-              <h1 className="text-lg font-extrabold">ورود موفق!</h1>
-              <p className="text-sm text-muted-foreground">به مِگان خوش آمدید. در نسخه واقعی، توکن نشست ذخیره و به پنل منتقل می‌شوید.</p>
-              <Button asChild className="w-full rounded-xl">
+              <h1 className="text-lg font-bold">ورود موفق!</h1>
+              <p className="text-sm text-muted-foreground">به ایمچ خوش آمدید. در نسخه واقعی، توکن نشست ذخیره و به پنل منتقل می‌شوید.</p>
+              <Button asChild className="w-full rounded-md">
                 <Link href="/panel">ورود به پنل کاربری</Link>
               </Button>
             </div>
           ) : (
             <>
               <div className="mb-6 space-y-2 text-center">
-                <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
+                <span className="mx-auto grid size-12 place-items-center rounded-md bg-primary/10 text-primary">
                   <Smartphone size={22} />
                 </span>
-                <h1 className="text-lg font-extrabold">{step === 'phone' ? 'ورود / ثبت‌نام' : 'کد تأیید'}</h1>
+                <h1 className="text-lg font-bold">{step === 'phone' ? 'ورود / ثبت‌نام' : 'کد تأیید'}</h1>
                 <p className="text-xs leading-5 text-muted-foreground">
                   {step === 'phone'
-                    ? 'ورود و ثبت‌نام مِگان فقط با شماره موبایل انجام می‌شود.'
+                    ? 'ورود و ثبت‌نام ایمچ فقط با شماره موبایل انجام می‌شود.'
                     : `کد ۵ رقمی پیامک‌شده به ${phone} را وارد کنید.`}
                 </p>
               </div>
@@ -96,11 +96,11 @@ export default function RegisterPage() {
                       onChange={(e) => setPhone(e.target.value.replace(/[^\d]/g, ''))}
                       placeholder="09123456789"
                       maxLength={11}
-                      className="rounded-xl text-center font-mono tracking-widest"
+                      className="rounded-md text-center font-mono tracking-widest"
                     />
                   </div>
                   {error && <p className="text-xs text-destructive">{error}</p>}
-                  <Button type="submit" size="lg" className="w-full rounded-xl" disabled={otpMutation.isPending}>
+                  <Button type="submit" size="lg" className="w-full rounded-md" disabled={otpMutation.isPending}>
                     {otpMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : null}
                     {otpMutation.isPending ? 'در حال ارسال…' : 'دریافت کد تأیید'}
                   </Button>
@@ -135,7 +135,7 @@ export default function RegisterPage() {
               )}
 
               <p className="mt-6 text-center text-[11px] leading-5 text-muted-foreground">
-                با ورود، <Link href="#" className="text-primary hover:underline">قوانین و مقررات مِگان</Link> را می‌پذیرید.
+                با ورود، <Link href="#" className="text-primary hover:underline">قوانین و مقررات ایمچ</Link> را می‌پذیرید.
               </p>
             </>
           )}
