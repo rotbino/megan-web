@@ -3,31 +3,33 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { ChevronDown, LayoutGrid, Search } from 'lucide-react';
 import { BrandLogo } from '@/components/shared/brand';
 import {
-  ArrowLeftIcon,
   BuyersIcon,
   LocationIconBuskool,
   SearchIconBuskool,
   SellersIcon,
 } from '@/components/shared/buskool-icons';
 import { useCategoryTree, useSuggestions } from '@/lib/mock/hooks';
+import { cn } from '@/lib/utils';
 import type { Category } from '@/lib/types';
 
 /**
- * هدر ایمچ:
- * دسکتاپ: بنر ثبت‌نام + [لوگو | جستجو (flex-1) | فروشندگان، خریداران، ورود/ثبت‌نام (ته نوار)]
- *         + نوار دسته‌بندی‌ها در ردیف جدا زیر جستجو (با «فروشنده شوید!» در انتهای نوار)
- * موبایل: بنر ثبت‌نام + [لوگو | نوار جستجوی خاکستری (جستجوی محصول + همه ایران)]
+ * هدر ایمچ (v5):
+ * دسکتاپ: [لوگو | جستجو (عرض معقول) | دکمه «دسته بندی» (مگامنوی قبلی) | فروشنده شوید (نارنجی)]
+ *         ⟵space-between⟵ [فروشندگان | خریداران | ورود/ثبت‌نام]
+ * موبایل: [لوگوی کوتاه | نوار جستجوی خاکستری flex-1]
  * ناوبری موبایل از طریق نوار پایین (MobileBottomNav) انجام می‌شود.
  */
 export function Header() {
   const router = useRouter();
   const [q, setQ] = useState('');
   const [focused, setFocused] = useState(false);
-  const [megaRoot, setMegaRoot] = useState<Category | null>(null);
+  const [megaOpen, setMegaOpen] = useState(false);
+  const [activeRoot, setActiveRoot] = useState<number | null>(null);
   const searchWrap = useRef<HTMLDivElement>(null);
+  const megaWrap = useRef<HTMLDivElement>(null);
 
   const { data: tree = [] } = useCategoryTree();
   const { data: suggestions = [] } = useSuggestions(q);
@@ -35,9 +37,17 @@ export function Header() {
   useEffect(() => {
     const close = (e: MouseEvent) => {
       if (searchWrap.current && !searchWrap.current.contains(e.target as Node)) setFocused(false);
+      if (megaWrap.current && !megaWrap.current.contains(e.target as Node)) setMegaOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMegaOpen(false);
     };
     document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', esc);
+    };
   }, []);
 
   const submit = (term?: string) => {
@@ -48,77 +58,136 @@ export function Header() {
     router.push(`/product-list?s=${encodeURIComponent(value)}`);
   };
 
+  const closeMega = () => {
+    setMegaOpen(false);
+    setActiveRoot(null);
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-card shadow-[0_3px_8px_rgba(150,150,150,0.15)]">
-      {/* بنر ثبت‌نام — عین باسکول: «شروع قیمت گیری، خرید و فروش عمده با ثبت نام رایگان» */}
-      <div className="border-b border-border/70 bg-[oklch(0.945_0.02_250)]">
-        <Link
-          href="/register"
-          className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-1 px-4 py-2.5 nav-desktop:gap-4 nav-desktop:py-4 lg:px-6"
+      {/* ─── ردیف اصلی: گروه راست (جستجو و دسته‌بندی) ↔ گروه چپ (لینک‌ها) ── */}
+      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2.5 nav-desktop:justify-between nav-desktop:gap-4 nav-desktop:px-6 nav-desktop:py-3">
+        {/* گروه راست — لنگر مگامنوی دسته‌بندی */}
+        <div
+          ref={megaWrap}
+          className="relative flex min-w-0 items-center gap-3 nav-desktop:gap-4"
+          onMouseLeave={() => setMegaOpen(false)}
         >
-          <p className="text-center text-xs text-foreground/90 nav-desktop:text-sm">شروع قیمت گیری، خرید و فروش عمده با</p>
-          <span className="flex items-center gap-2 text-xs text-foreground/90 nav-desktop:text-sm">
-            <span className="border-b border-foreground/90">ثبت نام رایگان</span>
-            <ArrowLeftIcon size={16} className="nav-desktop:size-5" />
-          </span>
-        </Link>
-      </div>
+          <Link href="/" aria-label="ایمچ — صفحه اصلی" className="shrink-0">
+            <BrandLogo size="sm" className="h-7" />
+          </Link>
 
-      {/* ─── ردیف اصلی: لوگو و جستجو ابتدای نوار، لینک‌ها انتهای نوار ─────── */}
-      <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 pb-3 pt-1.5 nav-desktop:gap-5 nav-desktop:px-6 nav-desktop:pb-2.5 nav-desktop:pt-2.5 lg:gap-6">
-        <Link href="/" aria-label="ایمچ — صفحه اصلی" className="shrink-0">
-          <BrandLogo size="sm" className="h-7" />
-        </Link>
+          {/* جستجوی دسکتاپ — عرض معقول (نه flex-1)؛ لبه دکمه گرد مطابق اینپوت */}
+          <div ref={searchWrap} className="relative hidden w-[320px] shrink-0 nav-desktop:block xl:w-[400px]">
+            <form
+              onSubmit={(e) => { e.preventDefault(); submit(); }}
+              className="flex h-10 items-stretch overflow-hidden rounded-lg border border-primary bg-card"
+              role="search"
+            >
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onFocus={() => setFocused(true)}
+                placeholder="به دنبال چه محصولی هستید؟"
+                className="min-w-0 flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground"
+                aria-label="جستجوی محصول"
+              />
+              <button
+                type="submit"
+                aria-label="جستجو"
+                className="flex w-14 shrink-0 items-center justify-center bg-primary text-primary-foreground transition-colors hover:bg-primary-deep"
+              >
+                <Search size={19} strokeWidth={2.4} />
+              </button>
+            </form>
 
-        {/* جستجوی دسکتاپ — flex-1: کل فضای خالی نوار را می‌گیرد */}
-        <div ref={searchWrap} className="relative hidden min-w-0 flex-1 nav-desktop:block">
+            {focused && q.trim().length >= 2 && (
+              <div className="absolute inset-x-0 top-full z-50 mt-1.5 overflow-hidden rounded-md border bg-popover shadow-lg">
+                {suggestions.length > 0 ? (
+                  <ul className="max-h-72 overflow-y-auto p-1 text-sm">
+                    {suggestions.map((s) => (
+                      <li key={s}>
+                        <button
+                          type="button"
+                          onClick={() => submit(s)}
+                          className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-start hover:bg-accent"
+                        >
+                          <Search size={14} className="text-muted-foreground" />
+                          {s}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="px-4 py-3 text-sm text-muted-foreground">نتیجه‌ای یافت نشد.</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* دکمه دسته‌بندی — کلیک/هاور، مگامنوی مثل قبل */}
+          <button
+            type="button"
+            onClick={() => setMegaOpen((v) => !v)}
+            onMouseEnter={() => setMegaOpen(true)}
+            aria-expanded={megaOpen}
+            aria-haspopup="true"
+            aria-label="باز کردن دسته‌بندی‌ها"
+            className="hidden h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground transition-colors hover:border-foreground/30 nav-desktop:flex"
+          >
+            <LayoutGrid size={17} className="text-brand-orange" />
+            دسته بندی
+            <ChevronDown size={14} className={cn('transition-transform', megaOpen && 'rotate-180')} />
+          </button>
+
+          {/* فروشنده شوید — نارنجی برند */}
+          <Link
+            href="/register"
+            className="hidden shrink-0 whitespace-nowrap text-[15px] font-bold text-brand-orange transition-colors hover:text-[#EA580C] nav-desktop:block"
+          >
+            فروشنده شوید
+          </Link>
+
+          {/* نوار جستجوی موبایل — عین باسکول: خاکستری #f2f3f7 + همه ایران */}
           <form
             onSubmit={(e) => { e.preventDefault(); submit(); }}
-            className="flex h-10 items-stretch rounded-lg border border-primary bg-card"
             role="search"
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-lg bg-[#f2f3f7] px-2 shadow-[0_2px_10px_rgba(196,196,196,0.15)] nav-desktop:hidden"
           >
+            <button type="submit" aria-label="جستجو" className="shrink-0 text-black/50">
+              <SearchIconBuskool size={24} />
+            </button>
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              onFocus={() => setFocused(true)}
-              placeholder="به دنبال چه محصولی هستید؟"
-              className="min-w-0 flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground"
+              placeholder="جستجوی محصول"
+              className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               aria-label="جستجوی محصول"
             />
+            <span className="h-6 w-px shrink-0 bg-[#cbcbcb]" aria-hidden />
             <button
-              type="submit"
-              aria-label="جستجو"
-              className="flex w-14 shrink-0 items-center justify-center bg-primary text-primary-foreground transition-colors hover:bg-primary-deep"
+              type="button"
+              title="فیلتر مکان"
+              aria-label="فیلتر مکان: همه ایران"
+              className="flex shrink-0 items-center gap-2 text-[rgba(38,70,83,0.8)]"
             >
-              <Search size={19} strokeWidth={2.4} />
+              <span className="whitespace-nowrap text-sm font-medium">همه ایران</span>
+              <LocationIconBuskool size={20} className="text-[#757575]" />
             </button>
           </form>
 
-          {focused && q.trim().length >= 2 && (
-            <div className="absolute inset-x-0 top-full z-50 mt-1.5 overflow-hidden rounded-md border bg-popover shadow-lg">
-              {suggestions.length > 0 ? (
-                <ul className="max-h-72 overflow-y-auto p-1 text-sm">
-                  {suggestions.map((s) => (
-                    <li key={s}>
-                      <button
-                        type="button"
-                        onClick={() => submit(s)}
-                        className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-start hover:bg-accent"
-                      >
-                        <Search size={14} className="text-muted-foreground" />
-                        {s}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="px-4 py-3 text-sm text-muted-foreground">نتیجه‌ای یافت نشد.</p>
-              )}
-            </div>
+          {/* مگامنوی دسته‌بندی — دقیقاً مثل قبل: ریشه‌ها راست + زیرشاخه‌ها در گرید */}
+          {megaOpen && (
+            <MegaMenu
+              tree={tree}
+              activeRoot={activeRoot}
+              setActiveRoot={setActiveRoot}
+              onNavigate={closeMega}
+            />
           )}
         </div>
 
-        {/* لینک‌های انتهای نوار — فروشندگان، خریداران، ورود/ثبت‌نام (آخر) — آیکون بالای متن */}
+        {/* گروه چپ — فروشندگان، خریداران، ورود/ثبت‌نام (آیکون بالای متن) */}
         <nav className="hidden items-center nav-desktop:flex" aria-label="حساب کاربری">
           <Link
             href="/product-list"
@@ -144,71 +213,7 @@ export function Header() {
             <span className="mt-1">ورود / ثبت نام</span>
           </Link>
         </nav>
-
-        {/* نوار جستجوی موبایل — عین باسکول: خاکستری #f2f3f7 + همه ایران */}
-        <form
-          onSubmit={(e) => { e.preventDefault(); submit(); }}
-          role="search"
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-lg bg-[#f2f3f7] px-2 shadow-[0_2px_10px_rgba(196,196,196,0.15)] nav-desktop:hidden"
-        >
-          <button type="submit" aria-label="جستجو" className="shrink-0 text-black/50">
-            <SearchIconBuskool size={24} />
-          </button>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="جستجوی محصول"
-            className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            aria-label="جستجوی محصول"
-          />
-          <span className="h-6 w-px shrink-0 bg-[#cbcbcb]" aria-hidden />
-          <button
-            type="button"
-            title="فیلتر مکان"
-            aria-label="فیلتر مکان: همه ایران"
-            className="flex shrink-0 items-center gap-2 text-[rgba(38,70,83,0.8)]"
-          >
-            <span className="whitespace-nowrap text-sm font-medium">همه ایران</span>
-            <LocationIconBuskool size={20} className="text-[#757575]" />
-          </button>
-        </form>
       </div>
-
-      {/* ─── نوار دسته‌بندی‌ها — ردیف جدا زیر جستجو + «فروشنده شوید!» ─────── */}
-      <nav
-        className="relative hidden border-t border-border/70 nav-desktop:block"
-        aria-label="دسته‌بندی محصولات"
-        onMouseLeave={() => setMegaRoot(null)}
-      >
-        <div className="mx-auto max-w-7xl px-4 nav-desktop:px-6">
-          <div className="flex items-center gap-2.5 py-1">
-            {/* دسته‌های اصلی — ردیف افقی اسکرولی؛ «فروشنده شوید!» همیشه ثابت در انتهای نوار */}
-            <ul className="no-scrollbar min-w-0 flex flex-1 items-center gap-0.5 overflow-x-auto">
-              {tree.map((c) => (
-                <li key={c.id} className="shrink-0" onMouseEnter={() => setMegaRoot(c.children?.length ? c : null)}>
-                  <Link
-                    href={`/product-list/category/${c.slug}`}
-                    className="block whitespace-nowrap rounded-md px-2.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
-                  >
-                    {c.categoryName}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            <div className="flex shrink-0 items-center gap-2.5">
-              <span className="h-4 w-px bg-border" aria-hidden />
-              <Link
-                href="/register"
-                className="whitespace-nowrap rounded-md px-2.5 py-1.5 text-[13px] font-bold text-primary transition-colors hover:bg-accent"
-              >
-                فروشنده شوید!
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {megaRoot && <MegaPanel root={megaRoot} onNavigate={() => setMegaRoot(null)} />}
-      </nav>
     </header>
   );
 }
@@ -233,12 +238,46 @@ function UserPlusBadge() {
   );
 }
 
-/** پنل مگامنو — زیر نوار دسته‌بندی‌ها، زیرشاخه‌های دسته فعال */
-function MegaPanel({ root, onNavigate }: { root: Category; onNavigate: () => void }) {
+/** مگامنوی دسته‌بندی — مثل قبل: ستون ریشه‌ها راست + گرید زیرشاخه‌ها */
+function MegaMenu({
+  tree,
+  activeRoot,
+  setActiveRoot,
+  onNavigate,
+}: {
+  tree: Category[];
+  activeRoot: number | null;
+  setActiveRoot: (id: number | null) => void;
+  onNavigate: () => void;
+}) {
+  const current = tree.find((c) => c.id === activeRoot) ?? tree[0];
   return (
-    <div className="absolute inset-x-0 top-full z-50 border-b border-e border-s bg-popover shadow-xl">
-      <div className="mx-auto grid max-w-7xl grid-cols-3 gap-x-6 gap-y-5 px-4 py-4 nav-desktop:px-6 lg:grid-cols-4">
-        {root.children?.map((l2) => (
+    <div
+      className="absolute start-0 top-full z-50 mt-1 flex w-[720px] max-w-[calc(100vw-3rem)] overflow-hidden rounded-lg border bg-popover shadow-xl"
+      role="menu"
+      aria-label="دسته‌بندی محصولات"
+    >
+      <ul className="w-52 shrink-0 border-e bg-secondary/30 p-2 text-sm">
+        {tree.map((c) => (
+          <li key={c.id}>
+            <button
+              type="button"
+              role="menuitem"
+              onMouseEnter={() => setActiveRoot(c.id)}
+              onFocus={() => setActiveRoot(c.id)}
+              onClick={() => setActiveRoot(c.id)}
+              className={cn(
+                'flex w-full items-center justify-between rounded-sm px-3 py-2 text-start hover:bg-accent',
+                current?.id === c.id && 'bg-accent font-semibold text-accent-foreground',
+              )}
+            >
+              <span className="line-clamp-1">{c.categoryName}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="grid max-h-96 flex-1 grid-cols-3 gap-x-4 gap-y-5 overflow-y-auto p-4">
+        {current?.children?.map((l2) => (
           <div key={l2.id}>
             <Link
               href={`/product-list/category/${l2.slug}`}
@@ -262,6 +301,9 @@ function MegaPanel({ root, onNavigate }: { root: Category; onNavigate: () => voi
             </ul>
           </div>
         ))}
+        {current && !current.children?.length && (
+          <p className="col-span-3 py-8 text-center text-sm text-muted-foreground">زیرشاخه‌ای برای این دسته ثبت نشده است.</p>
+        )}
       </div>
     </div>
   );

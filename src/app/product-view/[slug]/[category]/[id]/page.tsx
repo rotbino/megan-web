@@ -14,10 +14,9 @@ import {
 } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { Breadcrumb } from '@/components/shared/breadcrumb';
 import { JsonLd } from '@/components/shared/json-ld';
 import { ProductImage } from '@/components/shared/product-image';
-import { PriceReveal } from '@/components/shared/price-reveal';
+import { ProductPrice } from '@/components/shared/product-price';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { LadderBadge, OldAdBadge } from '@/components/shared/badges';
 import { ChatWidget } from '@/components/products/chat-widget';
@@ -64,18 +63,9 @@ export default async function ProductViewPage({ params }: Props) {
     <>
       <Header />
       <main className="flex-1">
-        <div className="mx-auto max-w-7xl px-4 pt-6 lg:px-6">
-          <Breadcrumb
-            items={[
-              { label: 'خانه', href: '/' },
-              { label: product.categoryName, href: `/product-list/category/${product.categoryName}` },
-              { label: product.subCategoryName, href: `/product-list/category/${product.subCategoryName}` },
-              { label: product.productName },
-            ]}
-          />
-        </div>
-
-        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-6 lg:grid-cols-[1fr_360px] lg:px-6">
+        <div
+          className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-6 lg:grid-cols-[1fr_360px] lg:px-6"
+        >
           {/* ستون اصلی */}
           <div className="space-y-6">
             <div className="grid gap-6 sm:grid-cols-[minmax(0,420px)_1fr]">
@@ -122,11 +112,7 @@ export default async function ProductViewPage({ params }: Props) {
                   ))}
                 </ul>
 
-                <PriceReveal product={product}>
-                  <Button size="lg" className="w-full rounded-md text-base">
-                    مشاهده قیمت
-                  </Button>
-                </PriceReveal>
+                <ProductPrice product={product} variant="page" />
 
                 <p className="flex items-center justify-between text-xs text-muted-foreground">
                   <span className="inline-flex items-center gap-1"><Eye size={13} /> {toFa(product.viewCount)} بازدید</span>

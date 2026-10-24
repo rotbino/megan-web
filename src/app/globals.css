@@ -49,6 +49,7 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
   --color-primary-deep: var(--primary-deep);
+  --color-brand-orange: var(--brand-orange);
   --color-ladder: var(--ladder);
   --color-ladder-foreground: var(--ladder-foreground);
   --color-ladder-soft: var(--ladder-soft);
@@ -76,6 +77,8 @@
   --primary: oklch(0.38 0.045 252);
   --primary-deep: oklch(0.32 0.045 252);
   --primary-foreground: oklch(0.985 0.003 240);
+  /* نارنجی برند — رنگ لوگو و لینک‌های شاخص (فروشنده شوید) */
+  --brand-orange: #F97316;
   --secondary: oklch(0.945 0.006 245);
   --secondary-foreground: oklch(0.4 0.04 250);
   --muted: oklch(0.955 0.004 245);

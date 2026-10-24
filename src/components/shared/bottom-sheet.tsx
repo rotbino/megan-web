@@ -38,7 +38,7 @@ export function BottomSheet({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] lg:hidden" role="dialog" aria-modal="true" aria-label={title}>
+    <div className="fixed inset-0 z-[60] nav-desktop:hidden" role="dialog" aria-modal="true" aria-label={title}>
       <div className="animate-sheet-fade absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="animate-sheet-up absolute inset-x-0 bottom-0 flex max-h-[82vh] flex-col rounded-t-2xl bg-card shadow-2xl">
         <span className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-border" aria-hidden />

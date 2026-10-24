@@ -236,8 +236,8 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
 
         {/* گرید */}
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-80 rounded-md" />)}
+          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-4 xl:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-md md:h-80" />)}
           </div>
         ) : items.length === 0 ? (
           <div className="rounded-md border bg-card p-8 text-center md:p-12">
@@ -245,7 +245,7 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
             <Button asChild className="mt-4 rounded-md"><Link href="/#rfq">ثبت درخواست خرید</Link></Button>
           </div>
         ) : (
-          <div className={cn('grid grid-cols-2 gap-3 transition-opacity md:grid-cols-3 md:gap-4 xl:grid-cols-4', isFetching && 'opacity-60')}>
+          <div className={cn('grid grid-cols-1 gap-2.5 transition-opacity md:grid-cols-3 md:gap-4 xl:grid-cols-4', isFetching && 'opacity-60')}>
             {items.map((p) => <ProductCard key={p.id} product={p} />)}
           </div>
         )}

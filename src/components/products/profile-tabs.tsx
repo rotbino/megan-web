@@ -50,7 +50,7 @@ export function ProfileTabs({ user, products }: { user: User; products: Product[
               این فروشنده هنوز آگهی فعالی ثبت نکرده است.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-4 xl:grid-cols-4">
               {products.map((p) => <ProductCard key={p.id} product={p} />)}
             </div>
           )}

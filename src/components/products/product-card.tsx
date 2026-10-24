@@ -2,51 +2,54 @@
 
 import Link from 'next/link';
 import { MapPin, Package } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { LadderBadge, VerifiedBadge } from '@/components/shared/badges';
 import { ProductImage } from '@/components/shared/product-image';
-import { PriceReveal } from '@/components/shared/price-reveal';
+import { ProductPrice } from '@/components/shared/product-price';
 import { stockFa } from '@/lib/format';
 import type { Product } from '@/lib/types';
 
 /**
- * کارت آگهی محصول — همان اطلاعات باسکول (نام، مکان، موجودی، دکمه مشاهده قیمت)
- * قیمت عمداً مثل باسکول پشت دکمه است (مدل Lead-gen). نشان «نردبان» جای فروشنده ویژه.
+ * کارت آگهی محصول — همان اطلاعات باسکول (نام، مکان، موجودی، قیمت).
+ * موبایل: کارت افقی مثل دیوار — عکس سمت راست، مشخصات سمت چپ (خواناتر).
+ * دسکتاپ: کارت عمودی در گرید.
+ * قیمت فقط برای اعضا: لاگین‌نشده دکمه «مشاهده قیمت» (فرم ورود) می‌بیند (ProductPrice).
  */
 export function ProductCard({ product }: { product: Product }) {
+  const href = `/product-view/${product.slug}/${product.categoryName}/${product.id}`;
+
   return (
-    <article className="group flex flex-col overflow-hidden rounded-md border bg-card transition-shadow hover:shadow-md">
-      <Link
-        href={`/product-view/${product.slug}/${product.categoryName}/${product.id}`}
-        className="relative block"
-        aria-label={product.productName}
-      >
-        <ProductImage photos={product.photos} alt={product.productName} className="aspect-[4/3] w-full" iconSize={48} />
+    <article className="group flex overflow-hidden rounded-md border bg-card transition-shadow hover:shadow-md md:flex-col">
+      <Link href={href} className="relative block w-28 shrink-0 md:w-full" aria-label={product.productName}>
+        <ProductImage
+          photos={product.photos}
+          alt={product.productName}
+          className="h-full w-full object-cover md:aspect-[4/3] md:h-auto"
+          iconSize={48}
+        />
         {product.isLadder && (
-          <span className="absolute start-2 top-2">
-            <LadderBadge />
+          <span className="absolute start-1.5 top-1.5 md:start-2 md:top-2">
+            <LadderBadge compact />
           </span>
         )}
         {product.hasVideo && (
-          <span className="absolute end-2 top-2 rounded-sm bg-black/55 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur">ویدیو دارد</span>
+          <span className="absolute end-1.5 top-1.5 rounded-sm bg-black/55 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur md:end-2 md:top-2">
+            ویدیو دارد
+          </span>
         )}
       </Link>
 
-      <div className="flex flex-1 flex-col gap-2 p-3">
-        <Link
-          href={`/product-view/${product.slug}/${product.categoryName}/${product.id}`}
-          className="line-clamp-2 min-h-10 text-sm font-bold leading-5 hover:text-primary"
-        >
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-3 md:gap-2">
+        <Link href={href} className="line-clamp-2 text-sm font-bold leading-5 hover:text-primary">
           {product.productName}
         </Link>
 
         <div className="flex flex-col gap-1 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
-            <MapPin size={13} className="text-primary/70" />
-            {product.provinceName}، {product.cityName.trim()}
+            <MapPin size={13} className="shrink-0 text-primary/70" />
+            <span className="truncate">{product.provinceName}، {product.cityName.trim()}</span>
           </span>
           <span className="inline-flex items-center gap-1">
-            <Package size={13} className="text-primary/70" />
+            <Package size={13} className="shrink-0 text-primary/70" />
             {stockFa(product.stock, product.unit)}
           </span>
         </div>
@@ -58,11 +61,7 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
 
         <div className="mt-auto pt-1">
-          <PriceReveal product={product}>
-            <Button className="h-10 w-full rounded-lg bg-primary font-medium text-primary-foreground hover:bg-primary-deep">
-              مشاهده قیمت
-            </Button>
-          </PriceReveal>
+          <ProductPrice product={product} />
         </div>
       </div>
     </article>
