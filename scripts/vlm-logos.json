@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "*   **Left:** A square, black icon with rounded corners depicting a white, stylized letter \"Z\".\n*   **Middle:** A horizontal wordmark in orange text reading \"iMach\" where the dot of the \"i\" is a glowing orange orb.\n*   **Right:** A horizontal wordmark identical to the middle one but featuring a 3D, beveled effect on the orange \"iMach\" text.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1792872673,
+  "id": "20261025041111941df6d65bd848d7",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20261025041111941df6d65bd848d7",
+  "usage": {
+    "completion_tokens": 90,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 225,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 315
+  }
+}

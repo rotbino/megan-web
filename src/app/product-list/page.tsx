@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: 'لیست محصولات و قیمت عمده محصولات',
   description:
     'مشاهده لیست کامل آگهی‌های فروش عمده در ایمچ؛ فیلتر بر اساس دسته‌بندی، استان و شهر و مقایسه قیمت روز بازار.',
+  alternates: { canonical: '/product-list' },
 };
 
 export default function ProductListPage() {

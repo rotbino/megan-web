@@ -32,7 +32,7 @@ export function ProductCard({ product }: { product: Product }) {
         )}
       </Link>
 
-      <div className="flex flex-1 flex-col gap-2 p-3.5">
+      <div className="flex flex-1 flex-col gap-2 p-3">
         <Link
           href={`/product-view/${product.slug}/${product.categoryName}/${product.id}`}
           className="line-clamp-2 min-h-10 text-sm font-bold leading-5 hover:text-primary"
@@ -59,7 +59,7 @@ export function ProductCard({ product }: { product: Product }) {
 
         <div className="mt-auto pt-1">
           <PriceReveal product={product}>
-            <Button variant="outline" className="w-full rounded-md border-primary/50 font-bold text-primary hover:bg-primary hover:text-primary-foreground">
+            <Button className="h-10 w-full rounded-lg bg-primary font-medium text-primary-foreground hover:bg-primary-deep">
               مشاهده قیمت
             </Button>
           </PriceReveal>

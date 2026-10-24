@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Here are the precise differences between the Buskool (Left) and Aimach (Right) mobile headers:\n\n1.  **Top Thin Banner:**\n    *   **Buskool:** Has a dedicated, full-width pink background banner with centered text and a link.\n    *   **Aimach:** Lacks a separate colored banner; instead, it has a simple text line with a back arrow (`←`) at the top.\n\n2.  **Logo Size/Position:**\n    *   **Buskool:** The logo (\"buskool!\") is small, positioned at the bottom-right corner of the search bar area.\n    *   **Aimach:** The logo (\"iMach\") is significantly larger, positioned to the right of the search bar (outside of it), aligned with the center vertically.\n\n3.  **Search Bar:**\n    *   **Shape & Color:** Buskool has a standard white rounded rectangle. Aimach has a taller search container with a distinct light gray background.\n    *   **Contents - Location Filter:** Buskool does not have a location filter visible in the header. Aimach includes a specific location filter button/pill labeled \"همه ایران\" (All Iran) with a map pin icon inside the search area on the left.\n    *   **Contents - Text:** Both have \"جستجو در بازارچه\" (Search in market), but Aimach's text appears slightly bolder or larger relative to the bar height.\n\n4.  **Overall Height/Spacing:**\n    *   **Buskool:** Compact height. The banner, search bar, and logo are tightly packed with minimal vertical padding.\n    *   **Aimach:** Significantly taller overall. It features more vertical padding around the top text row and a much taller search input area, creating a more spacious layout.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1792873183,
+  "id": "20261025041936937308b4d5664d78",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20261025041936937308b4d5664d78",
+  "usage": {
+    "completion_tokens": 378,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 281,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 659
+  }
+}

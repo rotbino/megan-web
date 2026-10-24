@@ -14,11 +14,14 @@ export function LatestProducts() {
 
   return (
     <section aria-labelledby="latest-products" className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 id="latest-products" className="text-base font-bold sm:text-lg">جدیدترین محصولات</h2>
-        <Link href="/product-list" className="inline-flex items-center gap-0.5 text-sm font-semibold text-primary hover:underline">
+      <div className="mb-3 flex h-10 items-center justify-between nav-desktop:mb-4">
+        <h2 id="latest-products" className="text-base font-medium leading-7 nav-desktop:text-xl">جدیدترین محصولات</h2>
+        <Link
+          href="/product-list"
+          className="inline-flex h-10 items-center gap-2 rounded-lg px-2 text-sm font-medium text-primary transition-colors hover:bg-secondary"
+        >
           مشاهده همه
-          <ChevronLeft size={16} />
+          <ChevronLeft size={24} />
         </Link>
       </div>
 
@@ -32,12 +35,12 @@ export function LatestProducts() {
             <Link
               key={p.id}
               href={`/product-view/${p.slug}/${p.categoryName}/${p.id}`}
-              className="w-36 shrink-0 overflow-hidden rounded-md border bg-card transition-shadow hover:shadow-md sm:w-44"
+              className="w-[124px] shrink-0 overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md nav-desktop:w-44"
             >
               <ProductImage photos={p.photos} alt={p.productName} className="aspect-square w-full" iconSize={32} />
               <div className="p-2">
-                <h3 className="line-clamp-1 text-xs font-bold leading-5 sm:text-[13px]">{p.productName}</h3>
-                <h4 className="mt-0.5 text-[11px] font-normal text-muted-foreground">{stockFa(p.stock, p.unit)}</h4>
+                <h3 className="line-clamp-1 text-xs font-bold leading-5 nav-desktop:text-[13px]">{p.productName}</h3>
+                <h4 className="mt-0.5 line-clamp-1 text-[11px] font-normal text-muted-foreground">{stockFa(p.stock, p.unit)}</h4>
               </div>
             </Link>
           ))}

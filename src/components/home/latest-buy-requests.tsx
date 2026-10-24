@@ -16,11 +16,14 @@ export function LatestBuyRequests() {
 
   return (
     <section aria-labelledby="latest-buyads" className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 id="latest-buyads" className="text-base font-bold sm:text-lg">جدیدترین درخواست های خرید</h2>
-        <Link href="/buyAd-requests" className="inline-flex items-center gap-0.5 text-sm font-semibold text-primary hover:underline">
+      <div className="mb-3 flex h-10 items-center justify-between nav-desktop:mb-4">
+        <h2 id="latest-buyads" className="text-base font-medium leading-7 nav-desktop:text-xl">جدیدترین درخواست های خرید</h2>
+        <Link
+          href="/buyAd-requests"
+          className="inline-flex h-10 items-center gap-2 rounded-lg px-2 text-sm font-medium text-primary transition-colors hover:bg-secondary"
+        >
           مشاهده همه
-          <ChevronLeft size={16} />
+          <ChevronLeft size={24} />
         </Link>
       </div>
 

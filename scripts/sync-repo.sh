@@ -12,6 +12,9 @@ rsync -a --delete \
 mkdir -p "$DST/src/fonts"
 cp -f "$SRC"/src/fonts/*.woff "$SRC"/src/fonts/*.woff2 "$DST/src/fonts/" 2>/dev/null || true
 
+# db.ts مخصوص سندباکس است (پریسما در بک‌اند) — در ریپوی فرانت حذف شود
+rm -f "$DST/src/lib/db.ts"
+
 # ۲) public (بدون حذف: icons/, logo*.svg, sw.js, push-icon.png — فایل‌های کاربر)
 mkdir -p "$DST/public/images/categories"
 cp -f "$SRC"/public/images/hero.webp "$DST/public/images/" 2>/dev/null || true

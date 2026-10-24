@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "1. **Layout:** Yes, it is a two-panel layout. The **category roots** (e.g., \"کشاورزی\", \"غذا و خوراک\") are listed in the **RIGHT** panel, and the **subcategory grid** (e.g., \"موبایل\", \"گوشی\", \"لپ‌تاپ\") is displayed on the **LEFT**.\n2. **Positioning:** Yes, the mega-menu dropdown is positioned directly underneath the search bar and category selector (\"دسته‌بندی ها\").\n3. **Text/Alignment/Overflow:** The text alignment is correct for Persian (RTL), with no visible overflow issues or truncation within the menu panels.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1792873769,
+  "id": "202610250429265cae9edfd38d42ae",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202610250429265cae9edfd38d42ae",
+  "usage": {
+    "completion_tokens": 144,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1746,
+    "prompt_tokens_details": {
+      "cached_tokens": 2
+    },
+    "total_tokens": 1890
+  }
+}

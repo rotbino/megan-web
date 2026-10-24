@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Here are the meaningful structural differences between the two headers:\n\n**1. Top Banner Bar**\n*   **Buskool:** Static text-only announcement (no icon, no link).\n*   **Aimch:** Interactive link with a left-pointing arrow icon (`←`) and underlined text (\"شبیه‌سازی خرید\").\n\n**2. Logo Position & Alignment**\n*   **Buskool:** Logo is on the **far right**, aligned with the search bar.\n*   **Aimch:** Logo is on the **far right**, but visually separated from the search bar by the auth links group.\n\n**3. Search Bar Structure (Major Difference)**\n*   **Buskool:**\n    *   Simple input field with placeholder text only.\n    *   Search button is a **separate block** positioned to the **left of the input field**.\n    *   No category dropdown inside the bar.\n    *   \"Become a seller\" link is **absent** from this area.\n*   **Aimch:**\n    *   Complex composite input.\n    *   Contains an internal **Category Dropdown trigger** (`دسته‌بندی ها ▼`) on the **right side** of the input field.\n    *   Search button is **embedded inside** the input container on the **far left**.\n    *   Includes a **\"Become a Seller\"** (`فروشنده شوید?`) text link inside the input field (between dropdown and placeholder).\n\n**4. Auth Links (Left Side)**\n*   **Buskool:** Three distinct items (**Sellers**, **Buyers**, **Login/Register**) arranged horizontally. Icons are **above** the text labels.\n*   **Aimch:** Same three items, but **Login/Register** is placed as the **first item** (furthest right in the group). The visual hierarchy or spacing differs slightly.\n\n**5. Vertical Separators**\n*   **Buskool:** Uses visible vertical pipe separators (`|`) between the main nav menu and the auth links area.\n*   **Aimch:** Uses vertical separators (`|`) **between each individual auth link** (Sellers | Buyers | Login), creating a more segmented look for that specific group.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1792873280,
+  "id": "20261025042113bfba3c0ce2bb4401",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20261025042113bfba3c0ce2bb4401",
+  "usage": {
+    "completion_tokens": 460,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 744,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1204
+  }
+}
