@@ -1,0 +1,113 @@
+import Link from 'next/link';
+import { Headphones, LineChart, Link2, Mail, Phone, ShieldCheck } from 'lucide-react';
+import { BrandLogo } from '@/components/shared/brand';
+
+const footerCols = [
+  {
+    title: 'درباره مِگان',
+    links: [
+      { label: 'درباره باسکول مِگان', href: '#' },
+      { label: 'مِگان چگونه کار می‌کند؟', href: '#' },
+      { label: 'تماس با ما و پشتیبانی', href: '#' },
+      { label: 'قوانین و مقررات', href: '#' },
+    ],
+  },
+  {
+    title: 'فروشندگان',
+    links: [
+      { label: 'نحوه ثبت محصول', href: '/panel/products/new' },
+      { label: 'انواع عضویت فروشندگان', href: '#' },
+      { label: 'احراز هویت حقیقی و حقوقی', href: '#' },
+      { label: 'چگونه بفروشیم؟', href: '#' },
+    ],
+  },
+  {
+    title: 'خریداران',
+    links: [
+      { label: 'نحوه ثبت درخواست خرید', href: '/#rfq' },
+      { label: 'چگونه بخریم؟', href: '#' },
+      { label: 'نمایش درخواست‌های خرید', href: '/buyAd-requests' },
+      { label: 'پرداخت امن مِگان', href: '#' },
+    ],
+  },
+];
+
+const seoLinks = ['خرید پسته', 'قیمت زعفران', 'خرید خرما', 'کشمش عمده', 'برنج عمده', 'گردو عمده', 'قیمت برنج', 'میوه خشک', 'زرشک عمده', 'بادام عمده'];
+
+export function Footer() {
+  return (
+    <footer className="mt-auto border-t bg-card">
+      {/* نوار خدمات */}
+      <div className="border-b bg-secondary/40">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 py-6 text-sm sm:grid-cols-3 lg:px-6">
+          {[
+            [ShieldCheck, 'معامله مطمئن', 'احراز هویت فروشندگان و پرداخت امن'],
+            [Headphones, 'پشتیبانی آنلاین', 'پاسخ‌گویی ۷ روز هفته به تجار'],
+            [LineChart, 'قیمت روز بازار', 'به‌روزرسانی لحظه‌ای قیمت عمده'],
+          ].map(([Icon, title, desc]) => {
+            const I = Icon as typeof ShieldCheck;
+            return (
+              <div key={title as string} className="flex items-center gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <I size={20} />
+                </span>
+                <div>
+                  <p className="font-bold">{title as string}</p>
+                  <p className="text-xs text-muted-foreground">{desc as string}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-4 lg:px-6">
+        <div className="space-y-4">
+          <BrandLogo />
+          <p className="max-w-xs text-sm leading-6 text-muted-foreground">
+            مِگان بازارگاه آنلاین خرید و فروش عمده است؛ بستر ارتباط مستقیم تولیدکنندگان، عرضه‌کنندگان و صادرکنندگان با خریداران عمده سراسر ایران.
+          </p>
+          <div className="space-y-1.5 text-sm text-muted-foreground">
+            <p className="flex items-center gap-2"><Phone size={14} className="text-primary" /> ۰۲۱-۹۱۰۹۱۴۱۹</p>
+            <p className="flex items-center gap-2"><Mail size={14} className="text-primary" /> support@megan.example</p>
+          </div>
+        </div>
+        {footerCols.map((col) => (
+          <nav key={col.title} aria-label={col.title}>
+            <h3 className="mb-3 text-sm font-bold">{col.title}</h3>
+            <ul className="space-y-2 text-sm">
+              {col.links.map((l) => (
+                <li key={l.label}>
+                  <Link href={l.href} className="text-muted-foreground transition-colors hover:text-primary">{l.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ))}
+      </div>
+
+      {/* لینک‌های سئویی مثل باسکول */}
+      <div className="border-t">
+        <div className="mx-auto max-w-7xl px-4 py-5 lg:px-6">
+          <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
+            <Link2 size={12} /> پربازدیدترین بازارهای عمده
+          </p>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+            {seoLinks.map((s) => (
+              <li key={s}>
+                <Link href="/product-list" className="hover:text-primary">{s}</Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="border-t bg-secondary/40">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-muted-foreground sm:flex-row lg:px-6">
+          <p>© ۱۴۰۵ مِگان — تمامی حقوق محفوظ است.</p>
+          <p>ساخته‌شده با Next.js + NestJS</p>
+        </div>
+      </div>
+    </footer>
+  );
+}

@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Based on the provided screenshot of **buskool.com** (درخواست‌های خرید - B2B Purchase Requests), here is a detailed description of the UI components:\n\n### 1. Top Filter Bar\nLocated immediately below the main page header, this bar provides search and sorting capabilities:\n*   **Search Input:** A wide text field on the right (or center) with a placeholder reading \"برای جستجو درخواست مورد نظر خود را وارد کنید\" (Enter the desired request to search). It features an orange search icon button on its left edge.\n*   **Filter Controls (Left/Right aligned):**\n    *   **Categories Dropdown:** Labeled \"دسته‌بندی\" (Category), allowing users to filter by product type.\n    *   **Sort/Status:** A button labeled \"جدیدترین‌ها\" (Newest) with a dropdown arrow, likely for sorting by date or status.\n    *   **Location Filter:** A button with a location pin icon and text \"همه شهرها\" (All Cities).\n*   **Style:** Clean white background with light gray borders, using a mix of text and icon buttons.\n\n### 2. Buy Request Card Layout\nEach purchase request is displayed as a distinct horizontal card with a white background, subtle border/shadow, and rounded corners. The layout is structured as follows:\n*   **Header Row:**\n    *   **Right Side:** A generic user avatar (gray silhouette) followed by the **Buyer's Name** (e.g., \"مسعود صمدی\").\n    *   **Left Side:** A bookmark/save icon (outline style).\n*   **Main Content (Center):**\n    *   **Product Title:** Bold, black text describing the item (e.g., \"خرید ۵۰۰ عدد شیرآلات ساختمانی ارزان قیمت با برندهای معتبر\").\n    *   **Metadata Line:** Located below the title, showing:\n        *   **Location:** City name preceded by a map pin icon (e.g., \"تهران\").\n        *   **Date:** Date of posting (e.g., \"۱۱ آبان ۱۴۰۲\") preceded by a calendar icon.\n*   **Action Area (Bottom Left):** Contains two prominent buttons (described below).\n\n### 3. Action Buttons Design\nEach card features two side-by-side call-to-action buttons with an orange color scheme:\n*   **Primary Button (Solid Orange):** Labeled **\"تماس با خریدار\"** (Contact Buyer). It has a solid orange background (`#FF9800` approx.), white text, and a phone handset icon on the left.\n*   **Secondary Button (Outlined Orange):** Labeled **\"چت با خریدار\"** (Chat with Buyer). It has a transparent background with an orange border, orange text, and a chat bubble/comment icon on the left.\n*   **Styling:** Both buttons have rounded corners (pill-shaped or slightly rounded rectangle), equal height, and are grouped together.\n\n### 4. Middle CTA Card (Promotional Banner)\nInserted within the list of requests (after several cards) is a full-width promotional banner:\n*   **Background:** Deep teal/green gradient (`#00695C` to `#004D40`).\n*   **Content:**\n    *   **Headline:** White bold text: \"فروش محصول خود را در بوسکول ثبت کنید!\" (Register your product sale on Buskool!).\n    *   **Subtext:** Smaller white text explaining the benefit: \"با ثبت محصول و عضویت در بوسکول فروشندگی خود را شروع کنید...\" (Start your sales by registering...).\n    *   **Button:** A white rectangular button with teal text: \"ثبت محصول و یافتن خریدار\" (Register Product & Find Buyer).\n*   **Purpose:** This breaks up the list to encourage sellers (the users viewing these buy requests) to also list their own products.\n\n### 5. Overall Layout and Colors\n*   **Layout:** Single-column, vertical list format (feed-style). The content is centered with generous whitespace on desktop views. The header is sticky or fixed at the top.\n*   **Color Palette:**\n    *   **Primary Brand Color:** **Orange** (`#FF9800` / `#F57C00`) used for search buttons, primary action buttons, and quantity highlights.\n    *   **Secondary/Accent:** **Teal/Green** (`#00796B`) used for the CTA banner and some text links.\n    *   **Text:** Dark gray/Black (`#333`) for titles, lighter gray (`#777`) for metadata.\n    *   **Background:** Very light gray/off-white (`#F5F5F5`) for the page body, pure white (`#FFF`) for the cards.\n*   **Typography:** Persian/Arabic script (RTL direction). Sans-serif font (likely IRANSans or similar). Clear hierarchy with bold titles and smaller metadata.\n*   **RTL Direction:** The entire interface is Right-to-Left, with navigation and text alignment suited for Persian language speakers.\n\n**Note on Overlays:** The screenshot also shows a modal/popup (white box with a loading spinner) and a bottom-right floating action button (orange circle with a play/icon), indicating interactive elements for additional features like chat or tutorials.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1792845631,
+  "id": "20261024204013d2ca91a575f24aae",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20261024204013d2ca91a575f24aae",
+  "usage": {
+    "completion_tokens": 1122,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 5731,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 6853
+  }
+}
