@@ -45,7 +45,10 @@ export function AuthModal({
       setError('شماره موبایل معتبر نیست (مثال: 09123456789)');
       return;
     }
-    otpMutation.mutate(phone, { onSuccess: () => setStep('code') });
+    otpMutation.mutate(phone, {
+      onSuccess: () => setStep('code'),
+      onError: (err) => setError(err instanceof Error ? err.message : 'ارسال کد ناموفق بود.'),
+    });
   };
 
   const verify = (value: string) => {
@@ -63,9 +66,10 @@ export function AuthModal({
               setPhone('');
               setCode('');
             } else {
-              setError('کد وارد شده صحیح نیست. (در نمونه: هر کد ۵ رقمی)');
+              setError('کد وارد شده صحیح نیست.');
             }
           },
+          onError: (err) => setError(err instanceof Error ? err.message : 'تایید کد ناموفق بود.'),
         },
       );
     }

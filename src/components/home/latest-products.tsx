@@ -31,13 +31,15 @@ export function LatestProducts() {
         </div>
       ) : (
         <div className="scroll-row">
-          {items.map((p) => (
+          {items.map((p, i) => (
             <Link
               key={p.id}
               href={`/product-view/${p.slug}/${p.categoryName}/${p.id}`}
               className="w-[124px] shrink-0 overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md nav-desktop:w-44"
             >
-              <ProductImage photos={p.photos} alt={p.productName} className="aspect-square w-full" iconSize={32} />
+              <div className="relative aspect-square">
+                <ProductImage photos={p.photos} thumbs={p.photoThumbs} alt={p.productName} className="object-cover" iconSize={32} priority={i === 0} />
+              </div>
               <div className="p-2">
                 <h3 className="line-clamp-1 text-xs font-bold leading-5 nav-desktop:text-[13px]">{p.productName}</h3>
                 <h4 className="mt-0.5 line-clamp-1 text-[11px] font-normal text-muted-foreground">{stockFa(p.stock, p.unit)}</h4>

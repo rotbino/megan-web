@@ -1,25 +1,19 @@
 /**
- * لایه API ماک — شبیه‌سازی تماس‌های شبکه با تأخیر.
- * در فاز اتصال به بک‌اند، همین اینترفیس‌ها به fetch واقعی
- * (بک‌اند ایمچ: /api/v1/...) تغییر می‌کنند و هوک‌های React Query دست‌نخورده می‌مانند.
+ * لایه API ایمچ — F1: اتصال واقعی به بک‌اند مگان (NestJS :4000/api/v1).
+ *
+ * همه توابع خروجی هم‌شکل ماک قبلی دارند تا هوک‌ها و کامپوننت‌ها دست‌نخورده
+ * بمانند. اندپوینت‌هایی که هنوز در بک پیاده نشده‌اند (درخواست‌های خرید،
+ * CRM نشان‌شده‌ها، کیف پول، …) موقتاً ماک می‌مانند تا فاز B6..B9 آزاد شوند.
  */
 
+import { apiFetch, setTokens, clearTokens, getTokens } from '@/lib/api/client';
+import type { BuyRequest, Category, City, PackageType, Product, ProductQuery, Province } from '@/lib/types';
 import {
   buyRequests as buyRequestsData,
   categories as categoriesData,
-  categories,
-  categoryTree,
   cities as citiesData,
-  products as productsData,
   provinces,
-  users,
 } from './data';
-import type { BuyRequest, Category, City, Product, ProductQuery, SortKey } from '@/lib/types';
-
-const LATENCY = 350;
-
-const delay = <T>(value: T, ms = LATENCY): Promise<T> =>
-  new Promise((resolve) => setTimeout(() => resolve(value), ms));
 
 export interface Paged<T> {
   items: T[];
@@ -28,106 +22,184 @@ export interface Paged<T> {
   pageCount: number;
 }
 
-// ─── جستجو و پیشنهادها ────────────────────────────────────────────────
+// ─── شکل پاسخ خام بک‌اند ───────────────────────────────────────────────────
 
-export async function searchSuggestions(typedText: string): Promise<string[]> {
-  const q = typedText.trim();
-  if (!q) return [];
-  const pool = new Set<string>();
-  categories.forEach((c) => {
-    if (c.categoryName.includes(q)) pool.add(c.categoryName);
-  });
-  productsData.forEach((p) => {
-    if (p.productName.includes(q)) pool.add(`قیمت ${p.productName}`);
-  });
-  return delay([...pool].slice(0, 6), 150);
+/** CategoryNode بک‌اند (snake_case) */
+interface RawCategoryNode {
+  id: number;
+  category_name: string;
+  slug: string;
+  kind: string;
+  unit: string;
+  min: number;
+  example: string | null;
+  parent_id: number | null;
+  score: number;
+  children?: RawCategoryNode[];
 }
 
-// ─── محصولات ──────────────────────────────────────────────────────────
+/** ProductDto بک‌اند — camelCase منطبق تایپ فرانت با دو استثنا */
+interface RawProduct {
+  id: number;
+  productName: string;
+  slug: string;
+  description: string;
+  stock: number;
+  minSalePrice: number;
+  minSaleAmount: number;
+  unit: string;
+  categoryId: number;
+  categoryName: string;
+  subCategoryId: number;
+  subCategoryName: string;
+  provinceId: number;
+  provinceName: string;
+  cityId: number;
+  cityName: string;
+  myuserId: string;
+  seller: {
+    id: string;
+    userName: string;
+    firstName: string;
+    lastName: string;
+    activePakageType: number;
+    isVerified: boolean;
+  };
+  isLadder: boolean;
+  isElevated: boolean;
+  hasVideo: boolean;
+  isOld: boolean;
+  viewCount: number;
+  createdAt: string;
+  updatedAt: string;
+  photos: string[];
+  photoThumbs?: string[];
+  status?: string;
+  features?: Array<{ key: string; value: string }>;
+  rejectionReasons?: string[];
+}
+
+const toProduct = (p: RawProduct): Product => {
+  const { status, ...rest } = p;
+  return {
+    ...rest,
+    minSalePrice: p.minSalePrice ?? null,
+    photoThumbs: p.photoThumbs ?? p.photos,
+    seller: {
+      ...p.seller,
+      activePakageType: (p.seller.activePakageType ?? 0) as PackageType,
+    },
+    ...(status ? { status: status as Product['status'] } : {}),
+  };
+};
+
+/** تصویر کارت دسته‌های ریشه — دارایی ثابت فرانت (webp بهینه) */
+const ROOT_IMAGES: Record<number, string> = {
+  76: '/images/categories/agriculture.webp',
+  734: '/images/categories/building.webp',
+  136: '/images/categories/metals.webp',
+  924: '/images/categories/fashion.webp',
+  996: '/images/categories/bags.webp',
+  329: '/images/categories/machinery.webp',
+  77: '/images/categories/food.webp',
+  998: '/images/categories/cosmetics.webp',
+  923: '/images/categories/electronics.webp',
+  997: '/images/categories/sports.webp',
+};
+
+const toCategory = (c: RawCategoryNode): Category => ({
+  id: c.id,
+  categoryName: c.category_name,
+  slug: c.slug,
+  unit: c.unit,
+  min: c.min,
+  example: c.example ?? undefined,
+  parentId: c.parent_id,
+  score: c.score,
+  image: ROOT_IMAGES[c.id],
+  children: (c.children ?? []).map(toCategory),
+});
+
+// ─── جستجو و پیشنهادها ────────────────────────────────────────────────────
+
+export async function searchSuggestions(typedText: string): Promise<string[]> {
+  try {
+    return await apiFetch<string[]>('/products/searchSuggestions', { typedText }, { auth: false });
+  } catch {
+    return []; // جستجوی زنده هرگز نباید UX را بشکند
+  }
+}
+
+// ─── محصولات ───────────────────────────────────────────────────────────────
 
 export async function getProducts(query: ProductQuery = {}): Promise<Paged<Product>> {
-  const { categorySlug, s, provinceId, cityId, sort = 'related', page = 1 } = query;
-  const PER_PAGE = 16;
-
-  let items = [...productsData];
-
-  if (categorySlug) {
-    const cat = categoriesData.find((c) => c.slug === categorySlug || c.categoryName === categorySlug);
-    if (cat) {
-      // خود دسته + تمام فرزندان (درخت سه‌سطحی)
-      const ids = new Set<number>([cat.id]);
-      categoriesData.filter((c) => c.parentId === cat.id).forEach((c) => ids.add(c.id));
-      categoriesData
-        .filter((c) => c.parentId !== null && ids.has(c.parentId))
-        .forEach((c) => ids.add(c.id));
-      items = items.filter(
-        (p) => ids.has(p.subCategoryId) || ids.has(p.categoryId),
-      );
-    }
-  }
-
-  if (s?.trim()) {
-    const q = s.trim();
-    items = items.filter(
-      (p) =>
-        p.productName.includes(q) ||
-        p.subCategoryName.includes(q) ||
-        p.categoryName.includes(q) ||
-        p.description.includes(q),
-    );
-  }
-
-  if (provinceId) items = items.filter((p) => p.provinceId === provinceId);
-  if (cityId) items = items.filter((p) => p.cityId === cityId);
-
-  switch (sort) {
-    case 'newest':
-      items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-      break;
-    default:
-      // مرتبط‌ترین — دقیقاً مثل باسکول: آگهی‌های نردبان‌شده بالای نتایج می‌آیند
-      items.sort((a, b) => Number(b.isLadder) - Number(a.isLadder));
-  }
-
-  const total = items.length;
-  const pageCount = Math.max(1, Math.ceil(total / PER_PAGE));
-  const safePage = Math.min(page, pageCount);
-  return delay({
-    items: items.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE),
-    total,
-    page: safePage,
-    pageCount,
-  });
+  const raw = await apiFetch<{ items: RawProduct[]; total: number; page: number; pageCount: number }>(
+    '/products/getProductList',
+    {
+      categorySlug: query.categorySlug,
+      s: query.s,
+      provinceId: query.provinceId,
+      cityId: query.cityId,
+      sort: query.sort,
+      page: query.page,
+    },
+    { auth: false },
+  );
+  return { ...raw, items: raw.items.map(toProduct) };
 }
 
 export async function getProduct(id: number): Promise<Product | null> {
-  return delay(productsData.find((p) => p.id === id) ?? null);
+  try {
+    const raw = await apiFetch<RawProduct>('/products/getProductById', { id }, { auth: false });
+    return toProduct(raw);
+  } catch {
+    return null; // 404 → صفحه not-found فرانت
+  }
 }
 
 export async function getRelatedProducts(product: Product, limit = 6): Promise<Product[]> {
-  const related = productsData
-    .filter((p) => p.id !== product.id && p.subCategoryId === product.subCategoryId)
-    .slice(0, limit);
-  return delay(related);
+  try {
+    const raw = await apiFetch<RawProduct[]>(
+      '/products/getRelatedProducts',
+      { subCategoryId: product.subCategoryId, excludeId: product.id, limit },
+      { auth: false },
+    );
+    return raw.map(toProduct);
+  } catch {
+    return [];
+  }
 }
 
-// ─── دسته‌بندی‌ها و مکان‌ها ────────────────────────────────────────────
+// ─── دسته‌بندی‌ها و مکان‌ها ────────────────────────────────────────────────
 
 export async function getCategoryTree(): Promise<Category[]> {
-  return delay(categoryTree());
+  const raw = await apiFetch<RawCategoryNode[]>('/categories/getAllCategories', {}, { auth: false });
+  return raw.map(toCategory);
 }
 
-export async function getProvinces(): Promise<{ id: number; name: string }[]> {
-  return delay(provinces);
+export async function getProvinces(): Promise<Province[]> {
+  const raw = await apiFetch<Array<{ id: number; province_name: string }>>(
+    '/locations/getAllProvinces',
+    {},
+    { auth: false },
+  );
+  return raw.map((p) => ({ id: p.id, name: p.province_name }));
 }
 
 export async function getCities(provinceId: number): Promise<City[]> {
-  return delay(citiesData.filter((c) => c.provinceId === provinceId), 120);
+  const raw = await apiFetch<Array<{ id: number; province_id: number; city_name: string }>>(
+    '/locations/getCitiesByProvince',
+    { province_id: provinceId },
+    { auth: false },
+  );
+  return raw.map((c) => ({ id: c.id, name: c.city_name, provinceId: c.province_id }));
 }
 
-// ─── درخواست‌های خرید ─────────────────────────────────────────────────
+// ─── درخواست‌های خرید (ماک تا فاز B7) ─────────────────────────────────────
 
 export async function getBuyRequests(opts: { s?: string; provinceName?: string } = {}): Promise<BuyRequest[]> {
+  const LATENCY = 450;
+  await new Promise((r) => setTimeout(r, LATENCY));
   let items = [...buyRequestsData];
   if (opts.s?.trim()) {
     const q = opts.s.trim();
@@ -135,49 +207,111 @@ export async function getBuyRequests(opts: { s?: string; provinceName?: string }
       (r) => (r.name ?? '').includes(q) || r.subcategoryName.includes(q),
     );
   }
-  if (opts.provinceName) items = items.filter((r) => citiesData.find((c) => c.name === r.city)?.provinceId === provinces.find((p) => p.name === opts.provinceName)?.id);
-  return delay(items, 450);
+  if (opts.provinceName) {
+    items = items.filter(
+      (r) =>
+        citiesData.find((c) => c.name === r.city)?.provinceId ===
+        provinces.find((p) => p.name === opts.provinceName)?.id,
+    );
+  }
+  return items;
 }
 
-// ─── فروشنده‌ها ───────────────────────────────────────────────────────
+// ─── فروشنده‌ها ────────────────────────────────────────────────────────────
 
 export async function getSeller(userName: string) {
-  const user = users.find((u) => u.userName === userName) ?? null;
-  if (!user) return delay(null, 200);
-  const sellerProducts = productsData.filter((p) => p.myuserId === user.id);
-  return delay({ user, products: sellerProducts });
+  const raw = await apiFetch<{
+    user: {
+      id: string;
+      userName: string;
+      firstName: string;
+      lastName: string;
+      activePakageType: number;
+      isVerified: boolean;
+      businessDesc: string | null;
+      avatarUrl: string | null;
+      createdAt: string;
+    };
+    products: RawProduct[];
+  }>('/products/getSeller', { userName }, { auth: false });
+
+  return {
+    user: {
+      ...raw.user,
+      daysInImach: Math.max(
+        1,
+        Math.round((Date.now() - new Date(raw.user.createdAt || Date.now()).getTime()) / 86_400_000),
+      ),
+    },
+    products: raw.products.map(toProduct),
+  };
 }
 
-// ─── فرم‌ها (mutationهای ماک) ──────────────────────────────────────────
+// ─── فرم‌ها ────────────────────────────────────────────────────────────────
 
 export async function submitBuyRequest(input: {
   productName: string;
   productType?: string;
   amount: number;
 }): Promise<{ ok: true; id: number }> {
-  return delay({ ok: true, id: Date.now() }, 700);
+  await new Promise((r) => setTimeout(r, 700));
+  return { ok: true, id: Date.now() };
 }
 
+/** ارسال کد OTP واقعی — خطا با پیام فارسی بک‌اند */
 export async function requestOtp(phone: string): Promise<{ ok: true }> {
-  return delay({ ok: true }, 600);
+  await apiFetch<{ devCode?: string }>('/auth/sendOtp', { phone }, { auth: false, retryOn401: false });
+  return { ok: true };
 }
 
-export async function verifyOtp(input: { phone: string; code: string }): Promise<{ ok: boolean; userName?: string }> {
-  // هر کد ۵ رقمی در نمونه قبول است
-  return delay({ ok: /^\d{5}$/.test(input.code), userName: 'c34qxnsh' }, 600);
+/** تایید کد + ورود — توکن‌ها را ذخیره می‌کند و userName می‌گیرد */
+export async function verifyOtp(input: {
+  phone: string;
+  code: string;
+}): Promise<{ ok: boolean; userName?: string; isNewUser?: boolean }> {
+  const data = await apiFetch<{
+    isNewUser: boolean;
+    accessToken: string;
+    refreshToken: string;
+  }>('/auth/verifyOtp', input, { auth: false, retryOn401: false });
+
+  setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+
+  // نام کاربری عمومی برای نشست فرانت
+  let userName = '';
+  try {
+    const profile = await apiFetch<{ user: { user_name: string | null } }>('/users/getProfile', {});
+    userName = profile.user.user_name ?? '';
+  } catch {
+    /* پروفایل اختیاری است — ورود موفق بوده */
+  }
+
+  return { ok: true, userName, isNewUser: data.isNewUser };
 }
 
-// ─── پنل فروشنده ──────────────────────────────────────────────────────
+/** خروج — ابطال رفرش‌توکن + پاک‌سازی نشست */
+export async function logoutRemote(): Promise<void> {
+  const tokens = getTokens();
+  if (tokens?.refreshToken) {
+    try {
+      await apiFetch('/auth/logout', { refreshToken: tokens.refreshToken }, { auth: true, retryOn401: false });
+    } catch {
+      /* خروج با توکن نامعتبر هم موفق است */
+    }
+  }
+  clearTokens();
+}
+
+// ─── پنل فروشنده ──────────────────────────────────────────────────────────
 
 import {
-  PANEL_USER_ID,
-  PRODUCT_CAPACITY,
-  myProducts,
   panelProfile,
   savedLists as savedListsData,
   savedUsers as savedUsersData,
   buyRequests as buyRequestsForPanel,
+  PRODUCT_CAPACITY,
 } from './data';
+import { uploadImage } from '@/lib/api/client';
 import type {
   PanelProfile,
   ProductStatus,
@@ -186,67 +320,106 @@ import type {
   SuggestedBuyer,
 } from '@/lib/types';
 
-/** پروفایل کاربر جاری پنل — ساختار عین user/get_profile باسکول + ویرایش‌های ذخیره‌شده */
-const PROFILE_EDIT_KEY = 'imach:profile-edits';
-
-function readProfileEdits(): Partial<PanelProfile['profile']> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = window.localStorage.getItem(PROFILE_EDIT_KEY);
-    return raw ? (JSON.parse(raw) as Partial<PanelProfile['profile']>) : {};
-  } catch {
-    return {};
-  }
-}
-
+/** پروفایل پنل — واقعی از بک‌اند */
 export async function getPanelProfile(): Promise<PanelProfile> {
-  return delay({ profile: { ...panelProfile.profile, ...readProfileEdits() }, userInfo: panelProfile.userInfo }, 200);
+  interface RawProfile {
+    user: {
+      id: string;
+      phone: string;
+      user_name: string | null;
+      first_name: string;
+      last_name: string;
+      sex: string | null;
+      role: string;
+      is_verified: boolean;
+      is_buyer: boolean;
+      is_seller: boolean;
+      wallet_balance: number;
+      avatar_url: string | null;
+      business_desc: string | null;
+      product_count: number;
+      created_at: string;
+    };
+    profile: Record<string, unknown>;
+  }
+  const raw = await apiFetch<RawProfile>('/users/getProfile', {});
+  const p = raw.profile as Partial<PanelProfile['profile']>;
+
+  return {
+    profile: {
+      description: (p.description as string) ?? raw.user.business_desc ?? null,
+      activityDomain: (p.activityDomain as string) ?? null,
+      humanResourceCount: (p.humanResourceCount as number) ?? null,
+      profilePhoto: raw.user.avatar_url ?? (p.profilePhoto as string) ?? null,
+      publicPhone: (p.publicPhone as string) ?? null,
+      address: (p.address as string) ?? null,
+      isCompany: (p.isCompany as boolean) ?? false,
+      companyName: (p.companyName as string) ?? '',
+      confirmed: raw.user.is_verified,
+    },
+    userInfo: {
+      id: raw.user.id,
+      userName: raw.user.user_name ?? '',
+      firstName: raw.user.first_name,
+      lastName: raw.user.last_name,
+      sex: raw.user.sex,
+      province: (p.province as string) ?? '',
+      city: (p.city as string) ?? '',
+      isVerified: raw.user.is_verified,
+      isBuyer: raw.user.is_buyer,
+      isSeller: raw.user.is_seller,
+      walletBalance: raw.user.wallet_balance,
+      productCount: raw.user.product_count,
+      createdAt: (raw.user.created_at ?? '').slice(0, 10),
+    },
+  };
 }
 
-/** ذخیره فرم «ویرایش پروفایل» — ماندگار در حافظه مرورگر (فاز ماک) */
+/** ذخیره فرم «ویرایش پروفایل» — واقعی */
 export async function updatePanelProfile(input: Partial<PanelProfile['profile']>): Promise<{ ok: true }> {
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(PROFILE_EDIT_KEY, JSON.stringify({ ...readProfileEdits(), ...input }));
-  }
-  return delay({ ok: true }, 600);
+  const body: Record<string, unknown> = {};
+  if (input.description !== undefined) body.business_desc = input.description;
+  await apiFetch('/users/updateProfile', {
+    ...body,
+    profile: {
+      ...(input.activityDomain !== undefined ? { activityDomain: input.activityDomain } : {}),
+      ...(input.humanResourceCount !== undefined ? { humanResourceCount: input.humanResourceCount } : {}),
+      ...(input.publicPhone !== undefined ? { publicPhone: input.publicPhone } : {}),
+      ...(input.address !== undefined ? { address: input.address } : {}),
+      ...(input.isCompany !== undefined ? { isCompany: input.isCompany } : {}),
+      ...(input.companyName !== undefined ? { companyName: input.companyName } : {}),
+      ...(input.province !== undefined ? { province: input.province } : {}),
+      ...(input.city !== undefined ? { city: input.city } : {}),
+    },
+  });
+  return { ok: true };
 }
 
-/** آگهی‌های ثبت‌شده از ویزارد — ماندگار در حافظه مرورگر (فاز ماک) */
-const EXTRA_KEY = 'imach:my-extra-products';
-
-function readExtras(): Product[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = window.localStorage.getItem(EXTRA_KEY);
-    return raw ? (JSON.parse(raw) as Product[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeExtras(items: Product[]) {
-  try {
-    window.localStorage.setItem(EXTRA_KEY, JSON.stringify(items));
-  } catch {
-    /* حافظه پر است — فقط درstate جاری */
-  }
-}
-
-/** آگهی‌های «محصولات من» + شمارنده تب‌ها */
+/** آگهی‌های «محصولات من» — واقعی */
 export async function getMyProducts(): Promise<{
   items: Product[];
   counts: Record<ProductStatus, number>;
   capacity: number;
 }> {
-  const counts: Record<ProductStatus, number> = { confirmed: 0, pending: 0, rejected: 0, deleted: 0 };
-  const all = [...myProducts, ...readExtras()];
-  all.forEach((p) => {
-    counts[p.status ?? 'confirmed'] += 1;
-  });
-  return delay({ items: all, counts, capacity: PRODUCT_CAPACITY }, 250);
+  const raw = await apiFetch<{
+    items: RawProduct[];
+    counts: Record<string, number>;
+    capacity: number;
+  }>('/products/getMyProducts', {});
+  const counts: Record<ProductStatus, number> = {
+    confirmed: raw.counts.confirmed ?? 0,
+    pending: raw.counts.pending ?? 0,
+    rejected: raw.counts.rejected ?? 0,
+    deleted: raw.counts.deleted ?? 0,
+  };
+  return { items: raw.items.map(toProduct), counts, capacity: raw.capacity ?? PRODUCT_CAPACITY };
 }
 
-/** ثبت محصول جدید از ویزارد — نتیجه: «در انتظار تایید» */
+/**
+ * ثبت محصول جدید از ویزارد — واقعی:
+ * ۱) createProduct → id عددی؛ ۲) آپلود هر عکس به گالری همان آگهی
+ * (دکترین فایل: آپلود فقط بعد از وجود مدل — عین imach-back)
+ */
 export async function submitProduct(input: {
   productName: string;
   subCategoryId: number;
@@ -257,75 +430,56 @@ export async function submitProduct(input: {
   minSalePrice: number;
   description: string;
   features: { key: string; value: string }[];
-  photosCount: number;
+  photos?: File[];
 }): Promise<{ ok: true; id: number; status: 'pending' }> {
-  // ثبت در «در انتظار تایید» — ماندگار در حافظه مرورگر (فاز ماک)
-  const id = Date.now();
-  const sub = categoriesData.find((c) => c.id === input.subCategoryId);
-  const prov = provinces.find((p) => p.id === input.provinceId);
-  const city = citiesData.find((c) => c.id === input.cityId);
-  if (sub && prov && city && typeof window !== 'undefined') {
-    const fresh: Product = {
-      id,
-      productName: input.productName,
-      slug: `خرید-عمده-${input.productName}-${id}`,
-      description: input.description,
-      stock: input.stock,
-      minSalePrice: input.minSalePrice,
-      minSaleAmount: input.minSaleAmount,
-      unit: sub.unit,
-      categoryId: sub.parentId ?? sub.id,
-      categoryName: categoriesData.find((c) => c.id === sub.parentId)?.categoryName ?? sub.categoryName,
-      subCategoryId: sub.id,
-      subCategoryName: sub.categoryName,
-      provinceId: prov.id,
-      provinceName: prov.name,
-      cityId: city.id,
-      cityName: city.name,
-      myuserId: PANEL_USER_ID,
-      seller: {
-        id: PANEL_USER_ID,
-        userName: panelProfile.userInfo.userName,
-        firstName: panelProfile.userInfo.firstName,
-        lastName: panelProfile.userInfo.lastName,
-        activePakageType: 0,
-        isVerified: false,
-      },
-      isLadder: false,
-      isElevated: false,
-      hasVideo: false,
-      isOld: false,
-      viewCount: 0,
-      status: 'pending',
-      features: input.features,
-      createdAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
-      updatedAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
-      photos: [],
-    };
-    writeExtras([...readExtras(), fresh]);
+  const created = await apiFetch<{ id: number; status: string }>('/products/createProduct', {
+    productName: input.productName,
+    subCategoryId: input.subCategoryId,
+    provinceId: input.provinceId,
+    cityId: input.cityId,
+    stock: input.stock,
+    minSaleAmount: input.minSaleAmount,
+    minSalePrice: input.minSalePrice,
+    description: input.description,
+    features: input.features,
+  });
+
+  // آپلود عکس‌ها به گالری همین آگهی — با خطا راه می‌افتیم ولی ثبت لغو نمی‌شود
+  const files = input.photos ?? [];
+  for (const file of files.slice(0, 4)) {
+    try {
+      await uploadImage(file, { model: 'Product', modelId: created.id, key: 'gallery', replace: false });
+    } catch (err) {
+      console.warn('آپلود عکس آگهی ناموفق بود:', err instanceof Error ? err.message : err);
+    }
   }
-  return delay({ ok: true, id, status: 'pending' }, 900);
+
+  return { ok: true, id: created.id, status: 'pending' };
 }
 
-/** نشان شده ها — لیست‌ها */
+/** حذف نرم آگهی — واقعی */
+export async function deleteMyProduct(id: number): Promise<{ ok: true }> {
+  await apiFetch('/products/deleteMyProduct', { id });
+  return { ok: true };
+}
+
+// ─── نشان شده ها (ماک تا فاز B7) ──────────────────────────────────────────
+
 export async function getSavedLists(): Promise<SavedList[]> {
-  return delay(savedListsData.map((l) => ({ ...l })), 200);
+  await new Promise((r) => setTimeout(r, 200));
+  return savedListsData.map((l) => ({ ...l }));
 }
 
-/** موارد یک لیست نشان‌شده (خریداران) */
 export async function getSavedListUsers(listId: number): Promise<SavedUserItem[] | null> {
   const list = savedListsData.find((l) => l.id === listId);
-  if (!list) return delay(null, 150);
-  return delay(savedUsersData.map((u) => ({ ...u, notes: u.notes.map((n) => ({ ...n })) })), 250);
+  await new Promise((r) => setTimeout(r, 150));
+  if (!list) return null;
+  return savedUsersData.map((u) => ({ ...u, notes: u.notes.map((n) => ({ ...n })) }));
 }
 
-/**
- * خریداران پیشنهادی — سرویس relatedByAdd باسکول:
- * تطبیق با دسته و نوع کالای آگهی‌های فروشنده + حجم خرید/فروش؛ سورت با امتیاز تطابق.
- * ماک: آگهی رد شده «پسته اکبری» ملاک است —
- *   exact: نوع کالا اکبری / same-product: پسته / near-category: خشکبار و کشاورزی
- */
+/** خریداران پیشنهادی (ماک تا فاز B7) */
 export async function getSuggestedBuyers(): Promise<SuggestedBuyer[]> {
+  await new Promise((r) => setTimeout(r, 300));
   const AGHIL_PRODUCTS = ['پسته'];
   const nearNames = ['بادام', 'گردو', 'کشمش', 'میوه خشک', 'تخمه آفتابگردان', 'خرما', 'سیب', 'زعفران', 'برنج'];
   const out: SuggestedBuyer[] = [];
@@ -336,7 +490,6 @@ export async function getSuggestedBuyers(): Promise<SuggestedBuyer[]> {
     else if (r.subcategoryName === 'پسته') tier = 'same-product';
     else if (AGHIL_PRODUCTS.includes(r.subcategoryName) || nearNames.includes(r.subcategoryName)) tier = 'near-category';
     if (!tier) return;
-    // حجم خرید نزدیک حجم فروش آگهی (۵۰۰ کیلوگرم) امتیاز بیشتری می‌گیرد
     const volumeScore = Math.max(0, 30 - Math.min(30, Math.abs(r.requirementAmount - 500) / 100));
     const base = tier === 'exact' ? 70 : tier === 'same-product' ? 50 : 25;
     out.push({
@@ -347,10 +500,10 @@ export async function getSuggestedBuyers(): Promise<SuggestedBuyer[]> {
     });
   });
   out.sort((a, b) => b.matchScore - a.matchScore);
-  return delay(out.slice(0, 24), 300);
+  return out.slice(0, 24);
 }
 
-// ─── پنل خریدار ──────────────────────────────────────────────────────
+// ─── پنل خریدار (ماک تا فازهای بعدی) ──────────────────────────────────────
 
 import {
   myBuyRequests,
@@ -358,41 +511,18 @@ import {
 } from './data';
 import type { BuyRequestStatus, MyBuyRequest, SuggestedSellerGroup } from '@/lib/types';
 
-/** درخواست‌های ثبت‌شده از ویزارد خرید — ماندگار در حافظه مرورگر (فاز ماک) */
-const BUY_EXTRA_KEY = 'imach:my-extra-buy-requests';
-
-function readBuyExtras(): MyBuyRequest[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = window.localStorage.getItem(BUY_EXTRA_KEY);
-    return raw ? (JSON.parse(raw) as MyBuyRequest[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeBuyExtras(items: MyBuyRequest[]) {
-  try {
-    window.localStorage.setItem(BUY_EXTRA_KEY, JSON.stringify(items));
-  } catch {
-    /* حافظه پر است — فقط در state جاری */
-  }
-}
-
-/** درخواستهای من — آیتم‌ها + شمارنده تب‌ها (تایید شده/در انتظار تایید/رد شده) */
 export async function getMyBuyRequests(): Promise<{
   items: MyBuyRequest[];
   counts: Record<BuyRequestStatus, number>;
 }> {
+  await new Promise((r) => setTimeout(r, 250));
   const counts: Record<BuyRequestStatus, number> = { confirmed: 0, pending: 0, rejected: 0 };
-  const all = [...myBuyRequests, ...readBuyExtras()];
-  all.forEach((r) => {
+  myBuyRequests.forEach((r) => {
     counts[r.status] += 1;
   });
-  return delay({ items: all, counts }, 250);
+  return { items: myBuyRequests, counts };
 }
 
-/** ثبت درخواست خرید از ویزارد — نتیجه: «در انتظار تایید» */
 export async function submitPanelBuyRequest(input: {
   subcategoryName: string;
   productType: string;
@@ -401,30 +531,16 @@ export async function submitPanelBuyRequest(input: {
   goal: 'price_and_buy' | 'price_only';
   hasHistory: boolean;
 }): Promise<{ ok: true; id: number; status: 'pending' }> {
-  const id = Date.now();
-  if (typeof window !== 'undefined') {
-    const fresh: MyBuyRequest = {
-      id,
-      subcategoryName: input.subcategoryName,
-      productType: input.productType,
-      requirementAmount: input.requirementAmount,
-      unit: input.unit,
-      status: 'pending',
-      goal: input.goal,
-      hasHistory: input.hasHistory,
-      createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
-    };
-    writeBuyExtras([...readBuyExtras(), fresh]);
-  }
-  return delay({ ok: true, id, status: 'pending' }, 900);
+  await new Promise((r) => setTimeout(r, 900));
+  return { ok: true, id: Date.now(), status: 'pending' };
 }
 
-/** گروه‌های فروشندگان پیشنهادی — بر اساس دسته درخواست‌های تاییدشده */
 export async function getSuggestedSellerGroups(): Promise<SuggestedSellerGroup[]> {
-  return delay(suggestedSellerGroups.map((g) => ({ ...g })), 450);
+  await new Promise((r) => setTimeout(r, 450));
+  return suggestedSellerGroups.map((g) => ({ ...g }));
 }
 
-// ─── کیف پول — شارژ کارت به کارت (تایید ادمین) ────────────────────────
+// ─── کیف پول (ماک تا فاز B9) ──────────────────────────────────────────────
 
 import {
   AIMCH_CARD_NUMBER,
@@ -434,46 +550,17 @@ import {
 } from './data';
 import type { ChargePackage, WalletTransaction } from '@/lib/types';
 
-const CHARGE_KEY = 'imach:charge-orders';
-
-/** شارژ کارت به کارت — ثبت فیش برای تایید ادمین (تراکنش در انتظار) */
 export async function submitChargeRequest(input: {
   packageKey: ChargePackage['key'];
   receiptDataUrl: string;
 }): Promise<{ ok: true; transactionId: number }> {
-  const pkg = CHARGE_PACKAGES.find((p) => p.key === input.packageKey)!;
-  const tx: WalletTransaction = {
-    id: Date.now(),
-    title: `شارژ کیف پول — کارت به کارت (${pkg.amount.toLocaleString('en-US')} + ${pkg.bonusPercent}%)`,
-    amount: pkg.charge,
-    incoming: true,
-    at: new Date().toISOString().slice(0, 19).replace('T', ' '),
-    pendingAdmin: true,
-  };
-  if (typeof window !== 'undefined') {
-    try {
-      const raw = window.localStorage.getItem(CHARGE_KEY);
-      const existing: WalletTransaction[] = raw ? JSON.parse(raw) : [];
-      window.localStorage.setItem(CHARGE_KEY, JSON.stringify([...existing, tx]));
-    } catch {
-      /* حافظه پر است — فقط در state جاری */
-    }
-  }
-  return delay({ ok: true, transactionId: tx.id }, 900);
+  await new Promise((r) => setTimeout(r, 900));
+  return { ok: true, transactionId: Date.now() };
 }
 
-/** تاریخچه تراکنش‌ها — ثابت + شارژهای کارت به کارت در انتظار تایید */
 export async function getWalletTransactions(): Promise<WalletTransaction[]> {
-  const extras: WalletTransaction[] = [];
-  if (typeof window !== 'undefined') {
-    try {
-      const raw = window.localStorage.getItem(CHARGE_KEY);
-      if (raw) extras.push(...(JSON.parse(raw) as WalletTransaction[]));
-    } catch {
-      /* noop */
-    }
-  }
-  return delay([...extras, ...walletTransactionsData], 250);
+  await new Promise((r) => setTimeout(r, 250));
+  return walletTransactionsData;
 }
 
 export { AIMCH_CARD_NUMBER, AIMCH_CARD_OWNER, CHARGE_PACKAGES };

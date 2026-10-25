@@ -25,13 +25,44 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { products } from '@/lib/mock/data';
 import { stockFa, toFa } from '@/lib/format';
+import { apiBase } from '@/lib/api/client';
+import type { Product } from '@/lib/types';
 
 interface Props {
   params: Promise<{ slug: string; category: string; id: string }>;
 }
 
-async function getProduct(id: number) {
-  return products.find((p) => p.id === id) ?? null;
+/** SSR — دیتای زنده از بک‌اند مگان (عمومی، بدون توکن) + فالبک ماک dev */
+async function getProduct(id: number): Promise<Product | null> {
+  try {
+    const res = await fetch(`${apiBase()}/products/getProductById`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+      // ISR سبک: صفحه هر ۶۰ ثانیه بازتولید می‌شود (سرعت + تازگی)
+      next: { revalidate: 60 },
+    });
+    const json = (await res.json()) as { status: boolean; data: Record<string, unknown> };
+    if (!json?.status || !json.data) return null;
+    const p = json.data as unknown as {
+      id: number; productName: string; slug: string; description: string;
+      stock: number; minSalePrice: number; minSaleAmount: number; unit: string;
+      categoryId: number; categoryName: string; subCategoryId: number; subCategoryName: string;
+      provinceId: number; provinceName: string; cityId: number; cityName: string;
+      myuserId: string; seller: { id: string; userName: string; firstName: string; lastName: string; activePakageType: number; isVerified: boolean };
+      isLadder: boolean; hasVideo: boolean; isOld: boolean; viewCount: number;
+      createdAt: string; updatedAt: string; photos: string[]; photoThumbs?: string[];
+    };
+    return {
+      ...p,
+      isElevated: false,
+      photoThumbs: p.photoThumbs ?? p.photos,
+      seller: { ...p.seller, activePakageType: 0 },
+    } as Product;
+  } catch {
+    // بک‌اند در دسترس نیست (dev آفلاین) → ماک
+    return products.find((x) => x.id === id) ?? null;
+  }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -70,22 +101,28 @@ export default async function ProductViewPage({ params }: Props) {
           <div className="space-y-6">
             <div className="grid gap-6 sm:grid-cols-[minmax(0,420px)_1fr]">
               <div className="space-y-3">
+              <div className="relative aspect-square w-full max-w-[420px] overflow-hidden rounded-md border">
                 <ProductImage
                   photos={product.photos}
                   alt={product.productName}
-                  className="aspect-square w-full rounded-md border"
+                  className="object-cover"
                   iconSize={96}
+                  priority
+                  sizes="(max-width: 640px) 100vw, 420px"
                 />
+              </div>
                 {product.photos.length > 1 && (
                   <div className="grid grid-cols-4 gap-2">
                     {product.photos.slice(0, 4).map((ph, i) => (
-                      <ProductImage
-                        key={i}
-                        photos={[ph]}
-                        alt={`${product.productName} — عکس ${toFa(i + 1)}`}
-                        className="aspect-square w-full rounded-md border"
-                        iconSize={20}
-                      />
+                      <div key={i} className="relative aspect-square overflow-hidden rounded-md border">
+                        <ProductImage
+                          photos={[ph]}
+                          thumbs={product.photoThumbs ? [product.photoThumbs[i] ?? ph] : undefined}
+                          alt={`${product.productName} — عکس ${toFa(i + 1)}`}
+                          className="object-cover"
+                          iconSize={20}
+                        />
+                      </div>
                     ))}
                   </div>
                 )}

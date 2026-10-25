@@ -49,7 +49,7 @@ interface Draft {
   stock: string;
   minSaleAmount: string;
   minSalePrice: string;
-  photos: { id: number; url: string }[];
+  photos: { id: number; url: string; file: File }[];
   description: string;
   features: ProductFeature[];
 }
@@ -148,11 +148,11 @@ export default function RegisterProductPage() {
         minSalePrice: num(draft.minSalePrice),
         description: draft.description,
         features: draft.features.filter((f) => f.key && f.value.trim()),
-        photosCount: draft.photos.length,
+        photos: draft.photos.map((p) => p.file),
       });
       setDone(true);
-    } catch {
-      toast({ description: 'خطا در ثبت محصول — دوباره تلاش کنید.' });
+    } catch (err) {
+      toast({ description: err instanceof Error && err.message ? err.message : 'خطا در ثبت محصول — دوباره تلاش کنید.' });
     }
   };
 
@@ -160,7 +160,7 @@ export default function RegisterProductPage() {
   const addFiles = (files: FileList | null) => {
     if (!files) return;
     let rejected = '';
-    const readers: Promise<{ id: number; url: string }>[] = [];
+    const readers: Promise<{ id: number; url: string; file: File }>[] = [];
     const slots = 4 - draft.photos.length;
     Array.from(files)
       .slice(0, Math.max(0, slots))
@@ -180,7 +180,8 @@ export default function RegisterProductPage() {
         readers.push(
           new Promise((resolve) => {
             const reader = new FileReader();
-            reader.onload = () => resolve({ id: Date.now() + Math.random(), url: String(reader.result) });
+            reader.onload = () =>
+              resolve({ id: Date.now() + Math.random(), url: String(reader.result), file });
             reader.readAsDataURL(file);
           }),
         );

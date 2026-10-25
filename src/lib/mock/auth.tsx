@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * وضعیت ورود ماک — در فاز اتصال به بک‌اند با توکن واقعی (OTP بک‌اند ایمچ) جایگزین می‌شود.
+ * وضعیت ورود — F1: توکن واقعی بک‌اند (OTP) در lib/api/client مدیریت می‌شود؛
+ * این کانتکست فقط هویت نمایشی (phone/userName/role) را نگه می‌دارد.
  * کاربر لاگین‌نشده قیمت‌ها را نمی‌بیند (دکمه «مشاهده قیمت» فرم ورود را باز می‌کند).
  */
 
@@ -14,6 +15,8 @@ import {
   useState,
 } from 'react';
 import { AuthModal } from '@/components/shared/auth-modal';
+import { clearTokens, getTokens } from '@/lib/api/client';
+import { logoutRemote } from '@/lib/mock/api';
 
 export interface MockUser {
   phone: string;
@@ -41,11 +44,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
 
   // بازیابی نشست پس از هیدریشن (بدون ناسازگاری SSR)
+  // — توکن واقعی در localStorage کلاینت است؛ نشست نمایشی جدا است
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- خواندن حافظه مرورگر فقط بعد از مونت ممکن است (الگوی استاندارد هیدریشن)
-      if (raw) setUser(JSON.parse(raw) as MockUser);
+      if (getTokens()?.accessToken) {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- خواندن حافظه مرورگر فقط بعد از مونت ممکن است (الگوی استاندارد هیدریشن)
+        if (raw) setUser(JSON.parse(raw) as MockUser);
+      }
     } catch {
       /* نشست خراب — نادیده بگیر */
     }
@@ -67,6 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       /* noop */
     }
+    // خروج واقعی — ابطال رفرش‌توکن در بک‌اند + پاک‌سازی توکن‌ها
+    void logoutRemote();
   }, []);
 
   const setRole = useCallback((role: 'seller' | 'buyer') => {

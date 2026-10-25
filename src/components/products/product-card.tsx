@@ -19,9 +19,10 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <article className="group flex overflow-hidden rounded-md border bg-card transition-shadow hover:shadow-md md:flex-col">
-      <Link href={href} className="relative block w-28 shrink-0 md:w-full" aria-label={product.productName}>
+      <Link href={href} className="relative block h-28 w-28 shrink-0 md:h-auto md:w-full md:aspect-[4/3]" aria-label={product.productName}>
         <ProductImage
           photos={product.photos}
+          thumbs={product.photoThumbs}
           alt={product.productName}
           className="h-full w-full object-cover md:aspect-[4/3] md:h-auto"
           iconSize={48}

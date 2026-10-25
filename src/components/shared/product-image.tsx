@@ -1,34 +1,45 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
- * تصویر محصول — عکس واقعی (photos[] از API باسکول/آبجکت‌استوریج)
- * با فالبک آیکون دسته وقتی عکس نبود.
+ * تصویر محصول — next/image (الزام پروژه: بهینه‌سازی + lazy + preload هوشمند).
+ * کارت‌ها تامبنیل ۴۰۰px را می‌کشند (سرعت)؛ صفحه جزئیات تصویر اصلی ۱۶۰۰px.
+ * فالبک آیکون دسته وقتی عکس نبود.
  */
 export function ProductImage({
   photos,
+  thumbs,
   alt,
   className,
   iconSize = 40,
+  priority = false,
+  sizes = '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 260px',
 }: {
   photos?: string[];
+  /** تامبنیل‌های ۴۰۰px هم‌ترتیب با photos — اولویت دارد (کارت‌ها) */
+  thumbs?: string[];
   alt: string;
   className?: string;
   iconSize?: number;
+  /** فقط برای تصویر LCP اول صفحه */
+  priority?: boolean;
+  sizes?: string;
 }) {
   const [failed, setFailed] = useState(false);
-  const src = photos && photos.length > 0 ? photos[0] : null;
+  const src = (thumbs && thumbs.length > 0 ? thumbs[0] : null) ?? (photos && photos.length > 0 ? photos[0] : null);
 
   if (src && !failed) {
     return (
-       
-      <img
+      <Image
         src={src}
         alt={alt}
-        loading="lazy"
+        fill
+        sizes={sizes}
+        priority={priority}
         onError={() => setFailed(true)}
         className={cn('bg-muted object-cover', className)}
       />

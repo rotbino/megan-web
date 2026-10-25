@@ -9,29 +9,88 @@ import { ShareBox } from '@/components/shared/share-box';
 import { Button } from '@/components/ui/button';
 import { users, products } from '@/lib/mock/data';
 import { toFa } from '@/lib/format';
+import { apiBase } from '@/lib/api/client';
+import type { Product } from '@/lib/types';
 
 interface Props {
   params: Promise<{ username: string }>;
 }
 
+interface SellerData {
+  user: {
+    id: string;
+    userName: string;
+    firstName: string;
+    lastName: string;
+    activePakageType: number;
+    isVerified: boolean;
+    businessDesc: string | null;
+    avatarUrl: string | null;
+    createdAt: string;
+    daysInImach?: number;
+    phone?: string;
+  };
+  products: Product[];
+}
+
+/** SSR — فروشنده زنده از بک‌اند + فالبک ماک dev */
+async function getSeller(userName: string): Promise<SellerData | null> {
+  try {
+    const res = await fetch(`${apiBase()}/products/getSeller`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userName }),
+      next: { revalidate: 120 },
+    });
+    const json = (await res.json()) as { status: boolean; data: SellerData };
+    if (!json?.status || !json.data) return null;
+    // شکل هم‌نما با User فرانت برای کامپوننت‌های موجود
+    const u = json.data.user;
+    return {
+      user: {
+        ...u,
+        activePakageType: 0,
+        daysInImach: Math.max(
+          1,
+          Math.round((Date.now() - new Date(u.createdAt || Date.now()).getTime()) / 86_400_000),
+        ),
+      },
+      products: json.data.products.map((p) => ({
+        ...p,
+        isElevated: false,
+        photoThumbs: p.photoThumbs ?? p.photos,
+      })) as Product[],
+    };
+  } catch {
+    // بک‌اند در دسترس نیست (dev آفلاین) → ماک
+    const user = users.find((u) => u.userName === userName);
+    if (!user) return null;
+    return {
+      user: user as unknown as SellerData['user'],
+      products: products.filter((p) => p.myuserId === String(user.id)),
+    };
+  }
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
-  const user = users.find((u) => u.userName === decodeURIComponent(username));
-  if (!user) return { title: 'پروفایل یافت نشد' };
-  const name = `${user.firstName} ${user.lastName}`;
+  const seller = await getSeller(decodeURIComponent(username));
+  if (!seller) return { title: 'پروفایل یافت نشد' };
+  const name = `${seller.user.firstName} ${seller.user.lastName}`;
   return {
     title: `فروشگاه ${name} | پروفایل فروشنده ایمچ`,
-    description: `${name} — ${user.businessDesc?.slice(0, 120)}`,
-    alternates: { canonical: `/profile/${user.userName}` },
+    description: `${name} — ${(seller.user.businessDesc ?? '').slice(0, 120)}`,
+    alternates: { canonical: `/profile/${seller.user.userName}` },
   };
 }
 
 export default async function ProfilePage({ params }: Props) {
   const { username } = await params;
-  const user = users.find((u) => u.userName === decodeURIComponent(username));
-  if (!user) notFound();
+  const seller = await getSeller(decodeURIComponent(username));
+  if (!seller) notFound();
+  const user = seller.user;
 
-  const sellerProducts = products.filter((p) => p.myuserId === user.id);
+  const sellerProducts = seller.products;
   const name = `${user.firstName} ${user.lastName}`;
 
   return (
@@ -68,7 +127,7 @@ export default async function ProfilePage({ params }: Props) {
         </div>
 
         <ProfileTabs
-          user={user}
+          user={user as unknown as Parameters<typeof ProfileTabs>[0]['user']}
           products={sellerProducts}
         />
       </main>

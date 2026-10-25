@@ -69,9 +69,10 @@ export interface Product {
   cityId: number;
   cityName: string;
 
-  myuserId: number;
+  /** ObjectId کاربر در بک‌اند مگان (رشته) — در دیتای ماک قدیمی عدد بود */
+  myuserId: string;
   seller: {
-    id: number;
+    id: string;
     userName: string;
     firstName: string;
     lastName: string;
@@ -79,19 +80,23 @@ export interface Product {
     isVerified: boolean;
   };
 
-  /** نردبان — آگهی نردبان‌شده بالای نتایج می‌آید (۱۰ هزار تومان در روز) */
+  /** نردبان — آگهی نردبان‌شده بالای نتایج می‌آید (۱۰۰ هزار تومان در ماه) */
   isLadder: boolean;
-  isElevated: boolean; // فروشنده ویژه باسکول — در ایمچ فعلاً بدون استفاده
+  isElevated: boolean; // فروشنده ویژه باسکول — در ایمچ بدون استفاده
   hasVideo: boolean;
   isOld: boolean;
   viewCount: number;
   createdAt: string;
   updatedAt: string;
   photos: string[];
+  /** تامبنیل‌های ۴۰۰px هم‌ترتیب با photos — برای کارت‌های لیست (سرعت) */
+  photoThumbs?: string[];
 
   /** فقط پنل — وضعیت بررسی آگهی (عمومی: همه تایید شده فرض می‌شوند) */
   status?: ProductStatus;
   features?: ProductFeature[];
+  /** دلایل رد — فقط آگهی‌های رد شده پنل */
+  rejectionReasons?: string[];
 }
 
 export interface BuyRequest {
@@ -151,9 +156,12 @@ export interface PanelProfile {
     isCompany: boolean;
     companyName: string;
     confirmed: boolean;
+    /** استان/شهر — فیلدهای اضافی فرم ویرایش پروفایل */
+    province?: string;
+    city?: string;
   };
   userInfo: {
-    id: number;
+    id: string;
     userName: string; // wbrstu2g1
     firstName: string;
     lastName: string;
