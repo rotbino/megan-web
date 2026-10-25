@@ -11,10 +11,10 @@ import {
   BadgeCheck,
   Bookmark,
   Coins,
-  Medal,
   Package,
   ShieldCheck,
   Smartphone,
+  TrendingUp,
   Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -79,15 +79,15 @@ export function PanelEmptyState({
   );
 }
 
-/** ردیف کارت‌های ارتقا — بالای صفحات پنل (الگوی باسکول) */
+/** ردیف کارت‌های ارتقا — بالای صفحات پنل (الگوی باسکول) — بدون پلن VIP: نردبان / احراز هویت / شارژ */
 export function PanelPromoCards({ variant = 'full' }: { variant?: 'full' | 'compact' }) {
   if (variant === 'compact') {
     return (
       <div className="flex gap-3 overflow-x-auto pb-1 lg:hidden" aria-label="پیشنهادهای پنل">
         <PromoCard
-          icon={Medal}
-          title="ارتقا عضویت"
-          hint="فروش سریع‌تر و آسان‌تر"
+          icon={TrendingUp}
+          title="بسته شارژ تبلیغاتی"
+          hint="نردبان یک‌ماهه، دیده‌شدن در صدر"
           href="/panel/pricing"
           tone="amber"
           compact
@@ -103,8 +103,8 @@ export function PanelPromoCards({ variant = 'full' }: { variant?: 'full' | 'comp
         <PromoCard
           icon={Coins}
           title="شارژ کیف پول"
-          hint="ارسال خودکار شماره به خریداران"
-          href="/panel/pricing"
+          hint="پکیج‌های شارژ با جایزه"
+          href="/panel/wallet"
           tone="emerald"
           compact
         />
@@ -114,12 +114,12 @@ export function PanelPromoCards({ variant = 'full' }: { variant?: 'full' | 'comp
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       <PromoCard
-        icon={Medal}
-        title="حساب کاربری خود را ارتقا دهید"
-        hint="فروش سریع تر و آسان تر — برای دسترسی به تمام امکانات ویژه ایمچ، حساب کاربری خود را ارتقا دهید."
+        icon={TrendingUp}
+        title="محصول خود را با نردبان در صدر لیست ببینید."
+        hint="نردبان هر محصول برای یک ماه ۱۰۰ هزار تومان است و از شارژ کیف پول کسر می‌شود — بدون اشتراک و عضویت ویژه."
         href="/panel/pricing"
         tone="amber"
-        action="ارتقا عضویت"
+        action="بسته شارژ تبلیغاتی"
       />
       <PromoCard
         icon={BadgeCheck}
@@ -131,9 +131,9 @@ export function PanelPromoCards({ variant = 'full' }: { variant?: 'full' | 'comp
       />
       <PromoCard
         icon={Coins}
-        title="قابلیت ارسال خودکار شماره تماس به خریداران برای شما غیر فعال است."
-        hint="هزینه ارسال شماره به هر خریدار ۵۰۰ تومان می‌باشد."
-        href="/panel/pricing"
+        title="شارژ کیف پول خود را افزایش دهید."
+        hint="پکیج‌های شارژ کارت به کارت با تا ۲۰٪ جایزه؛ هزینه نردبان از همین کیف پول کسر می‌شود."
+        href="/panel/wallet"
         tone="emerald"
         action="شارژ کیف پول"
       />

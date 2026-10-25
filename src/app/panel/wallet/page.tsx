@@ -83,7 +83,7 @@ export default function WalletPage() {
           <div>
             <p className="text-xs text-muted-foreground">موجودی کیف پول</p>
             <p className="mt-0.5 text-lg font-extrabold">
-              {priceFa(balance)} <span className="text-xs font-normal text-muted-foreground">تومان</span>
+              {priceFa(balance)}
             </p>
           </div>
         </div>

@@ -205,7 +205,7 @@ export default function MyProductsPage() {
             <div className="rounded-md bg-secondary/70 p-3">
               <p className="text-xs text-muted-foreground">هزینه نردبان این محصول</p>
               <p className="mt-1 text-base font-extrabold">
-                {priceFa(LADDER_MONTHLY_PRICE)} <span className="text-xs font-normal text-muted-foreground">تومان</span>
+                {priceFa(LADDER_MONTHLY_PRICE)}
               </p>
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {ladderProduct?.productName} — {LADDER_LABEL} (۳۰ روز)
@@ -222,7 +222,7 @@ export default function MyProductsPage() {
                 <Wallet size={14} /> موجودی کیف پول
               </span>
               <span className="text-sm font-extrabold">
-                {priceFa(balance)} <span className="text-xs font-normal text-muted-foreground">تومان</span>
+                {priceFa(balance)}
               </span>
             </div>
 

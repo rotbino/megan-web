@@ -13,28 +13,28 @@ const footerCols = [
   {
     title: 'درباره ما',
     links: [
-      { label: 'درباره ایمچ', href: '/help' },
+      { label: 'درباره ایمچ', href: '/help/about' },
       { label: 'ایمچ چگونه کار می کند؟', href: '/help' },
       { label: 'تماس با ما و پشتیبانی', href: '/panel/support' },
-      { label: 'قوانین و مقررات', href: '/help' },
+      { label: 'قوانین و مقررات', href: '/help/rules' },
       { label: 'پرداخت امن ایمچ', href: '/help/secure-payment' },
     ],
   },
   {
     title: 'فروشندگان',
     links: [
-      { label: 'نحوه ثبت محصول', href: '/panel/products/new' },
-      { label: 'انواع عضویت فروشندگان', href: '/panel/pricing' },
-      { label: 'احراز هویت حقیقی و حقوقی', href: '/panel/verification' },
-      { label: 'چگونه بفروشیم', href: '/help' },
+      { label: 'نحوه ثبت محصول', href: '/help/post-product' },
+      { label: 'خرید بسته شارژ تبلیغاتی', href: '/help/charge-package' },
+      { label: 'احراز هویت حقیقی و حقوقی', href: '/help/verify-account' },
+      { label: 'چگونه بفروشیم', href: '/help/become-seller' },
     ],
   },
   {
     title: 'خریداران',
     links: [
-      { label: 'نحوه احراز هویت', href: '/panel/verification' },
-      { label: 'نحوه ثبت درخواست', href: '/panel/buy-requests/new' },
-      { label: 'چگونه بخریم', href: '/help' },
+      { label: 'نحوه احراز هویت', href: '/help/verify-account' },
+      { label: 'نحوه ثبت درخواست', href: '/help/post-rfq' },
+      { label: 'چگونه بخریم', href: '/help/become-buyer' },
       { label: 'نمایش درخواست‌های خرید', href: '/buyAd-requests' },
     ],
   },

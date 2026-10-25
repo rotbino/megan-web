@@ -25,7 +25,7 @@ import {
   ShoppingCart,
   Smartphone,
   Sparkles,
-  Star,
+  TrendingUp,
 } from 'lucide-react';
 import { usePanelProfile, useSavedLists, useMyProducts, useMyBuyRequests } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
@@ -59,7 +59,7 @@ const SELLER_ACCOUNT_MENU = [
   { href: '/panel/wallet', label: 'تاریخچه تراکنش‌ها', icon: History },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
-  { href: '/panel/pricing', label: 'ارتقا عضویت', icon: Star },
+  { href: '/panel/pricing', label: 'بسته شارژ تبلیغاتی', icon: TrendingUp },
   { href: '/panel/products', label: 'محصولات من', icon: Package },
   { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
 ] as const;

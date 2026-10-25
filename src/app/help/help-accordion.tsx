@@ -8,10 +8,12 @@ export function HelpAccordion({
   title,
   subtitle,
   body,
+  href,
 }: {
   title: string;
   subtitle?: string;
   body: string;
+  href?: string;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -38,7 +40,16 @@ export function HelpAccordion({
           </svg>
         </span>
       </button>
-      {open && <p className="px-4 pb-4 text-[11px] leading-6 text-muted-foreground">{body}</p>}
+      {open && (
+        <div className="px-4 pb-4">
+          <p className="text-[11px] leading-6 text-muted-foreground">{body}</p>
+          {href && (
+            <a href={href} className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline">
+              مشاهده راهنمای کامل ↖
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }
