@@ -51,7 +51,12 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-/** ثبت سرویس‌ورکر (اعلان‌ها و PWA) — فقط در پروداکشن */
+/**
+ * سرویس‌ورکر (اعلان‌ها و PWA) — فقط در پروداکشن ثبت می‌شود.
+ * در dev: خودترمیمی — SWهای به‌جامانده از اجرای قبلیِ پروداکشن (next start)
+ * و همه‌ی کش‌هایشان را پاک می‌کند؛ وگرنه SW قدیمی چیپ‌های کهنه سرو می‌کند و
+ * خطای «module factory is not available» می‌گیرد.
+ */
 function ServiceWorkerRegister() {
   if (process.env.NODE_ENV === "production") {
     return (
@@ -63,7 +68,14 @@ function ServiceWorkerRegister() {
       />
     );
   }
-  return null;
+  return (
+    <script
+      id="sw-unregister"
+      dangerouslySetInnerHTML={{
+        __html: `(function(){function clean(){try{if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){for(var i=0;i<rs.length;i++)rs[i].unregister()})}if(window.caches&&caches.keys){caches.keys().then(function(ks){for(var i=0;i<ks.length;i++)caches.delete(ks[i])})}}catch(e){}}if(document.readyState==='complete')clean();else window.addEventListener('load',clean)})()`,
+      }}
+    />
+  );
 }
 
 export default function RootLayout({

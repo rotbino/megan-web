@@ -5,8 +5,8 @@
  *    داده‌ی زنده (/api/*) هرگز کش نمی‌شود.
  */
 
-const STATIC_CACHE = "imach-static-v2";
-const SHELL_CACHE = "imach-shell-v2";
+const STATIC_CACHE = "imach-static-v3";
+const SHELL_CACHE = "imach-shell-v3";
 
 const OFFLINE_HTML = `<!doctype html>
 <html lang="fa" dir="rtl"><head><meta charset="utf-8">
@@ -61,13 +61,20 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return; // تایل‌های نقشه و …
   if (url.pathname.startsWith("/api/")) return; // داده‌ی زنده — همیشه شبکه
 
-  // استاتیک‌های هش‌دار و آیکون‌ها: stale-while-revalidate — فوراً از کش، هم‌زمان
-  // به‌روزرسانی در پس‌زمینه (درس تلخ «بیلد کهنه»: cache-firstِ محض، در dev که
-  // نام چیپ‌ها هش پایدار ندارد و بعد از هر deploy ای که نام فایل عوض نشود،
-  // کدِ کهنه را تا ابد سرو می‌کرد — کشِ مرورگر که پاک می‌شد، کشِ SW پاک نمی‌شد).
+  // چیپ‌های Next.js: همیشه شبکه اول؛ فقط اگر شبکه در دسترس نبود از کش.
+  // هیچ‌وقت نسخه‌ی کهنه را «فوری» سرو نکن — در dev آدرس چیپ‌ها هش پایدار
+  // ندارد و کشِ فوری یعنی سرو کردن کدِ دوران قبل؛ همین باعث خطای
+  // «module factory is not available» می‌شد. (پروداکشن هم بی‌ضرر است:
+  // URLهای هش‌دار را کش HTTP خود مرورگر جواب می‌دهد و به SW نمی‌رسد.)
+  if (url.pathname.startsWith("/_next/static/")) {
+    event.respondWith(networkFallbackToCache(req));
+    return;
+  }
+
+  // آیکون‌ها و تصاویر عمومی — محتوای تغییرناپذیر در همین URL: کش فوری امن است.
   if (
-    url.pathname.startsWith("/_next/static/") ||
     url.pathname.startsWith("/icons/") ||
+    url.pathname.startsWith("/images/") ||
     url.pathname === "/logo.svg" ||
     url.pathname === "/push-icon.png"
   ) {
@@ -82,7 +89,7 @@ self.addEventListener("fetch", (event) => {
   // بقیه درخواست‌ها دست‌نخورده به مرورگر سپرده می‌شود.
 });
 
-/** stale-while-revalidate: کش فوری + به‌روزرسانی پس‌زمینه — هرگز کهنه نمی‌ماند. */
+/** stale-while-revalidate: فقط برای فایل‌های تغییرناپذیر (آیکون/تصویر). */
 async function staleWhileRevalidate(req) {
   const cache = await caches.open(STATIC_CACHE);
   const hit = await cache.match(req);
@@ -93,6 +100,19 @@ async function staleWhileRevalidate(req) {
     })
     .catch(() => null);
   return hit ?? (await refresh) ?? Response.error();
+}
+
+/** شبکه اول، در آفلاین از کش — نسخه‌ی کهنه هرگز به‌عنوان پاسخ فوری سرو نمی‌شود. */
+async function networkFallbackToCache(req) {
+  const cache = await caches.open(STATIC_CACHE);
+  try {
+    const res = await fetch(req);
+    if (res.ok) cache.put(req, res.clone());
+    return res;
+  } catch {
+    const hit = await cache.match(req);
+    return hit ?? Response.error();
+  }
 }
 
 async function networkFirst(req) {
