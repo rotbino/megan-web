@@ -2,18 +2,18 @@
 
 /**
  * محصولات من — تب‌های وضعیت (تایید شده/در انتظار تایید/حذف شده/رد شده) عین باسکول.
- * ردیف آگهی + دکمه نردبان (مودال پرداخت: آنلاین/کیف پول) + دلایل رد شدن + حالت خالی.
+ * ردیف آگهی + دکمه نردبان (یک‌ماهه ۱۰۰ هزار تومان — کسر از کیف پول) + دلایل رد شدن + حالت خالی.
  */
 
 import { useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, Eye, ImageIcon, Pencil, Trash2, TrendingUp, Wallet } from 'lucide-react';
-import { useMyProducts } from '@/lib/mock/hooks';
+import { useMyProducts, usePanelProfile } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
-import { REJECTION_REASONS } from '@/lib/mock/data';
+import { LADDER_MONTHLY_PRICE, MIN_CHARGE, REJECTION_REASONS } from '@/lib/mock/data';
 import { priceFa, stockFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { Product, ProductStatus } from '@/lib/types';
@@ -39,15 +39,14 @@ const STATUS_LABEL: Record<ProductStatus, string> = {
   deleted: 'حذف شده',
 };
 
-const LADDER_DAILY_PRICE = 10_000;
+const LADDER_LABEL = 'یک ماه';
 
 export default function MyProductsPage() {
   const { data, isLoading } = useMyProducts();
+  const { data: profile } = usePanelProfile();
   const { toast } = useToast();
   const [tab, setTab] = useState<ProductStatus>('confirmed');
   const [ladderProduct, setLadderProduct] = useState<Product | null>(null);
-  const [ladderDays, setLadderDays] = useState(3);
-  const [payMethod, setPayMethod] = useState<'online' | 'wallet'>('online');
   const [removed, setRemoved] = useState<Set<number>>(new Set());
 
   if (isLoading || !data) {
@@ -55,7 +54,8 @@ export default function MyProductsPage() {
   }
 
   const items = data.items.filter((p) => p.status === tab && !removed.has(p.id));
-  const ladderTotal = ladderDays * LADDER_DAILY_PRICE;
+  const balance = profile?.userInfo.walletBalance ?? 0;
+  const canPayLadder = balance >= LADDER_MONTHLY_PRICE;
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
@@ -162,10 +162,7 @@ export default function MyProductsPage() {
                   size="sm"
                   className="rounded-md text-xs"
                   disabled={p.status !== 'confirmed'}
-                  onClick={() => {
-                    setLadderProduct(p);
-                    setLadderDays(3);
-                  }}
+                  onClick={() => setLadderProduct(p)}
                 >
                   <TrendingUp size={14} /> نردبان
                 </Button>
@@ -197,7 +194,7 @@ export default function MyProductsPage() {
         </Button>
       </PanelCard>
 
-      {/* مودال پرداخت نردبان — عین باسکول */}
+      {/* مودال نردبان — یک‌ماهه، پرداخت از کیف پول (کارت به کارتی) */}
       <Dialog open={Boolean(ladderProduct)} onOpenChange={(o) => !o && setLadderProduct(null)}>
         <DialogContent className="rounded-lg sm:max-w-md">
           <DialogHeader>
@@ -208,78 +205,49 @@ export default function MyProductsPage() {
             <div className="rounded-md bg-secondary/70 p-3">
               <p className="text-xs text-muted-foreground">هزینه نردبان این محصول</p>
               <p className="mt-1 text-base font-extrabold">
-                {priceFa(ladderTotal)} <span className="text-xs font-normal text-muted-foreground">تومان</span>
+                {priceFa(LADDER_MONTHLY_PRICE)} <span className="text-xs font-normal text-muted-foreground">تومان</span>
               </p>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                {ladderProduct?.productName} — {toFa(ladderDays)} روز × {priceFa(LADDER_DAILY_PRICE)} تومان
+                {ladderProduct?.productName} — {LADDER_LABEL} (۳۰ روز)
               </p>
             </div>
 
-            <div>
-              <p className="mb-2 text-xs font-bold">مدت نردبان</p>
-              <div className="flex gap-2">
-                {[1, 3, 7].map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setLadderDays(d)}
-                    className={cn(
-                      'flex-1 rounded-md border py-2 text-xs font-bold transition-colors',
-                      ladderDays === d ? 'border-primary bg-primary text-primary-foreground' : 'bg-card hover:border-primary/40',
-                    )}
-                  >
-                    {toFa(d)} روز
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="mb-2 text-xs font-bold">روش های پرداخت</p>
-              <div className="space-y-2">
-                {(
-                  [
-                    { key: 'online', label: 'پرداخت آنلاین', icon: TrendingUp },
-                    { key: 'wallet', label: 'کیف پول (موجودی: ۰ تومان)', icon: Wallet },
-                  ] as const
-                ).map(({ key, label, icon: Icon }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setPayMethod(key)}
-                    className={cn(
-                      'flex w-full items-center gap-2 rounded-md border px-3 py-2.5 text-xs font-bold transition-colors',
-                      payMethod === key ? 'border-primary bg-primary/5 text-primary' : 'hover:border-primary/40',
-                    )}
-                  >
-                    <Icon size={15} />
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <p className="rounded-md bg-primary/5 p-3 text-[11px] leading-5 text-primary">
+              نردبان هر محصول برای یک ماه {priceFa(LADDER_MONTHLY_PRICE)} است و هزینه آن از شارژ کیف پول شما کسر می‌شود؛
+              بنابراین حداقل شارژ کیف پول {priceFa(MIN_CHARGE)} می‌باشد.
+            </p>
 
             <div className="flex items-center justify-between rounded-md border p-3">
-              <span className="text-xs text-muted-foreground">هزینه قابل پرداخت</span>
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Wallet size={14} /> موجودی کیف پول
+              </span>
               <span className="text-sm font-extrabold">
-                {priceFa(ladderTotal)} <span className="text-xs font-normal text-muted-foreground">تومان</span>
+                {priceFa(balance)} <span className="text-xs font-normal text-muted-foreground">تومان</span>
               </span>
             </div>
 
-            <Button
-              className="w-full rounded-md"
-              onClick={() => {
-                setLadderProduct(null);
-                toast({
-                  description:
-                    payMethod === 'online'
-                      ? 'در حال انتقال به درگاه پرداخت… (نمونه)'
-                      : 'موجودی کیف پول کافی نیست — شارژ کنید. (نمونه)',
-                });
-              }}
-            >
-              {payMethod === 'online' ? 'پرداخت آنلاین' : 'پرداخت از کیف پول'}
-            </Button>
+            {canPayLadder ? (
+              <Button
+                className="w-full rounded-md"
+                onClick={() => {
+                  setLadderProduct(null);
+                  toast({
+                    description: `نردبان «${ladderProduct?.productName}» برای یک ماه فعال شد — ${priceFa(LADDER_MONTHLY_PRICE)} از کیف پول کسر شد.`,
+                  });
+                }}
+              >
+                پرداخت از کیف پول
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <p className="rounded-md bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-700">
+                  موجودی کیف پول برای نردبان کافی نیست — حداقل {priceFa(MIN_CHARGE)} شارژ کنید.
+                </p>
+                <Button asChild className="w-full rounded-md">
+                  <Link href="/panel/wallet">شارژ کیف پول (کارت به کارت)</Link>
+                </Button>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

@@ -253,3 +253,26 @@ export interface SuggestedSellerGroup {
 
 /** گزینه نظرسنجی */
 export type SurveyScore = 'excellent' | 'good' | 'average' | 'bad' | 'very_bad';
+
+// ─────────────────────────────────────────────────────────────
+// کیف پول — پرداخت کارت به کارت (جایگزین درگاه پرداخت)
+// ─────────────────────────────────────────────────────────────
+
+/** پکیج شارژ کیف پول — سه پکیج کارت به کارت */
+export interface ChargePackage {
+  key: 'p100' | 'p200' | 'p400';
+  amount: number; // مبلغ واریزی (تومان)
+  bonusPercent: number; // ۰ / ۱۰ / ۲۰ درصد شارژ اضافه
+  charge: number; // شارژ اعمالی نهایی = amount × (۱ + درصد)
+}
+
+/** تراکنش کیف پول */
+export interface WalletTransaction {
+  id: number;
+  title: string;
+  amount: number;
+  incoming: boolean; // واریز / کسر
+  at: string;
+  /** کارت به کارت: تا تایید ادمین «در انتظار تایید» است */
+  pendingAdmin?: boolean;
+}

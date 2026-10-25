@@ -148,3 +148,30 @@ export function useSubmitPanelBuyRequest() {
     },
   });
 }
+
+// ─── پروفایل + کیف پول کارت به کارت ───────────────────────────────────
+
+export function useUpdatePanelProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.updatePanelProfile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-profile'] });
+    },
+  });
+}
+
+export function useWalletTransactions() {
+  return useQuery({ queryKey: ['panel-wallet-transactions'], queryFn: api.getWalletTransactions, staleTime: 30_000 });
+}
+
+export function useSubmitChargeRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.submitChargeRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-wallet-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['panel-profile'] });
+    },
+  });
+}

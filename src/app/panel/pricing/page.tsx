@@ -2,14 +2,15 @@
 
 /**
  * ارتقا عضویت — پلن‌های باسکول‌گونه (رایگان/عادی/ویژه)
- * + نردبان ۱۰ هزار تومان در روز به‌عنوان قابلیت تبلیغاتی ایمچ v1.
+ * + نردبان یک‌ماهه (۱۰۰ هزار تومان، کسر از کیف پول) به‌عنوان قابلیت تبلیغاتی ایمچ v1.
  */
 
 import Link from 'next/link';
 import { Check, Crown, Medal, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PanelCard } from '@/components/panel/panel-parts';
-import { priceFa, toFa } from '@/lib/format';
+import { LADDER_MONTHLY_PRICE, MIN_CHARGE } from '@/lib/mock/data';
+import { priceFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 interface Plan {
@@ -115,12 +116,17 @@ export default function PricingPage() {
 
       <PanelCard className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs leading-6 text-muted-foreground">
-          با استفاده از نردبان، محصول شما در صدر لیست محصولات قرار می‌گیرد — {toFa(10)} هزار تومان برای هر آگهی در روز،
-          بدون نیاز به ارتقا.
+          نردبان هر محصول برای یک ماه {priceFa(LADDER_MONTHLY_PRICE)} است و هزینه آن از شارژ کیف پول کسر می‌شود —
+          بدون نیاز به ارتقا. بنابراین حداقل شارژ کیف پول {priceFa(MIN_CHARGE)} می‌باشد.
         </p>
-        <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
-          <Link href="/panel/products">نردبان آگهی از محصولات من</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
+            <Link href="/panel/wallet">شارژ کیف پول (کارت به کارت)</Link>
+          </Button>
+          <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
+            <Link href="/panel/products">نردبان آگهی از محصولات من</Link>
+          </Button>
+        </div>
       </PanelCard>
     </div>
   );

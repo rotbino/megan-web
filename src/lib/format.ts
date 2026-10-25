@@ -18,7 +18,8 @@ export function stockFa(amount: number, unit = 'کیلوگرم'): string {
   if (unit === 'کیلوگرم' && amount >= 1000) {
     const tons = amount / 1000;
     const t = Number.isInteger(tons) ? tons.toString() : tons.toFixed(1);
-    return `${toFa(t.replace('.', '٫'))} تن`;
+    // اعشار فارسی + ارقام فارسی (toFa روی رشته، آن را دست‌نخورده برمی‌گرداند)
+    return `${faNumber.format(Number(t)).replace('.', '٫')} تن`;
   }
   return `${toFa(amount)} ${unit}`;
 }

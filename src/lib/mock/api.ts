@@ -186,9 +186,29 @@ import type {
   SuggestedBuyer,
 } from '@/lib/types';
 
-/** پروفایل کاربر جاری پنل — ساختار عین user/get_profile باسکول */
+/** پروفایل کاربر جاری پنل — ساختار عین user/get_profile باسکول + ویرایش‌های ذخیره‌شده */
+const PROFILE_EDIT_KEY = 'imach:profile-edits';
+
+function readProfileEdits(): Partial<PanelProfile['profile']> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(PROFILE_EDIT_KEY);
+    return raw ? (JSON.parse(raw) as Partial<PanelProfile['profile']>) : {};
+  } catch {
+    return {};
+  }
+}
+
 export async function getPanelProfile(): Promise<PanelProfile> {
-  return delay(panelProfile, 200);
+  return delay({ profile: { ...panelProfile.profile, ...readProfileEdits() }, userInfo: panelProfile.userInfo }, 200);
+}
+
+/** ذخیره فرم «ویرایش پروفایل» — ماندگار در حافظه مرورگر (فاز ماک) */
+export async function updatePanelProfile(input: Partial<PanelProfile['profile']>): Promise<{ ok: true }> {
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(PROFILE_EDIT_KEY, JSON.stringify({ ...readProfileEdits(), ...input }));
+  }
+  return delay({ ok: true }, 600);
 }
 
 /** آگهی‌های ثبت‌شده از ویزارد — ماندگار در حافظه مرورگر (فاز ماک) */
@@ -403,3 +423,57 @@ export async function submitPanelBuyRequest(input: {
 export async function getSuggestedSellerGroups(): Promise<SuggestedSellerGroup[]> {
   return delay(suggestedSellerGroups.map((g) => ({ ...g })), 450);
 }
+
+// ─── کیف پول — شارژ کارت به کارت (تایید ادمین) ────────────────────────
+
+import {
+  AIMCH_CARD_NUMBER,
+  AIMCH_CARD_OWNER,
+  CHARGE_PACKAGES,
+  walletTransactions as walletTransactionsData,
+} from './data';
+import type { ChargePackage, WalletTransaction } from '@/lib/types';
+
+const CHARGE_KEY = 'imach:charge-orders';
+
+/** شارژ کارت به کارت — ثبت فیش برای تایید ادمین (تراکنش در انتظار) */
+export async function submitChargeRequest(input: {
+  packageKey: ChargePackage['key'];
+  receiptDataUrl: string;
+}): Promise<{ ok: true; transactionId: number }> {
+  const pkg = CHARGE_PACKAGES.find((p) => p.key === input.packageKey)!;
+  const tx: WalletTransaction = {
+    id: Date.now(),
+    title: `شارژ کیف پول — کارت به کارت (${pkg.amount.toLocaleString('en-US')} + ${pkg.bonusPercent}%)`,
+    amount: pkg.charge,
+    incoming: true,
+    at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    pendingAdmin: true,
+  };
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = window.localStorage.getItem(CHARGE_KEY);
+      const existing: WalletTransaction[] = raw ? JSON.parse(raw) : [];
+      window.localStorage.setItem(CHARGE_KEY, JSON.stringify([...existing, tx]));
+    } catch {
+      /* حافظه پر است — فقط در state جاری */
+    }
+  }
+  return delay({ ok: true, transactionId: tx.id }, 900);
+}
+
+/** تاریخچه تراکنش‌ها — ثابت + شارژهای کارت به کارت در انتظار تایید */
+export async function getWalletTransactions(): Promise<WalletTransaction[]> {
+  const extras: WalletTransaction[] = [];
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = window.localStorage.getItem(CHARGE_KEY);
+      if (raw) extras.push(...(JSON.parse(raw) as WalletTransaction[]));
+    } catch {
+      /* noop */
+    }
+  }
+  return delay([...extras, ...walletTransactionsData], 250);
+}
+
+export { AIMCH_CARD_NUMBER, AIMCH_CARD_OWNER, CHARGE_PACKAGES };

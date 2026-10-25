@@ -34,6 +34,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { PanelCard, QuickStat } from '@/components/panel/panel-parts';
+import { AccountLinks } from '@/components/panel/account-links';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { PanelProfile } from '@/lib/types';
@@ -101,14 +102,21 @@ export default function PanelDashboard() {
   return (
     <div className="mx-auto max-w-4xl space-y-4">
       {/* خوش‌آمد + تکمیل پروفایل */}
+        {/* خوش‌آمد + تکمیل پروفایل — نام و آواتار به صفحه پروفایل */}
       <PanelCard>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-primary/10 text-base font-extrabold text-primary">
+          <Link
+            href="/panel/profile"
+            className="grid size-12 shrink-0 place-items-center rounded-full bg-primary/10 text-base font-extrabold text-primary transition-colors hover:bg-primary/20"
+            aria-label="مشاهده صفحه پروفایل"
+          >
             {u.firstName.charAt(0)}
-          </span>
+          </Link>
           <div className="min-w-0 flex-1">
             <p className="flex flex-wrap items-center gap-2 text-base font-extrabold">
-              {u.firstName} {u.lastName}
+              <Link href="/panel/profile" className="transition-colors hover:text-primary">
+                {u.firstName} {u.lastName}
+              </Link>
               <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-600">
                 {isBuyer ? 'خریدار' : 'فروشنده'}
               </span>
@@ -229,29 +237,8 @@ export default function PanelDashboard() {
         </PanelCard>
       </div>
 
-      {/* منوی حساب کاربری — موبایل (دسکتاپ: سایدبار) */}
-      <PanelCard className="lg:hidden">
-        <p className="mb-2 text-sm font-bold">حساب کاربری</p>
-        <nav className="divide-y divide-border/70">
-          {ACCOUNT_MENU.map(({ href, label, icon: Icon }) => (
-            <Link key={href} href={href} className="flex items-center gap-3 py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-              <Icon size={17} className="text-muted-foreground/70" />
-              {label}
-            </Link>
-          ))}
-          <button
-            type="button"
-            onClick={() => {
-              logout();
-              toast({ description: 'از حساب کاربری خود خارج شدید.' });
-            }}
-            className="flex w-full items-center gap-3 py-2.5 text-sm text-red-500"
-          >
-            <LogOut size={17} />
-            خروج از حساب کاربری
-          </button>
-        </nav>
-      </PanelCard>
+      {/* لینک‌های حساب کاربری — عین menu-list باسکول (موبایل‌پسند، همه‌جا نمایش) */}
+      <AccountLinks />
 
       {/* مودال درباره شما */}
       <Dialog open={aboutOpen} onOpenChange={setAboutOpen}>

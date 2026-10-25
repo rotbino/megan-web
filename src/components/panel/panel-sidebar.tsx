@@ -54,10 +54,11 @@ export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
   { href: '/panel/secure-deals', label: 'معاملات پرداخت امن', icon: Handshake },
-  { href: '/panel/profile', label: 'ویرایش پروفایل', icon: Pencil },
+  { href: '/panel/profile', label: 'پروفایل', icon: UserRound },
+  { href: '/panel/profile/edit', label: 'ویرایش پروفایل', icon: Pencil },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
   { href: '/panel/pricing', label: 'ارتقا عضویت', icon: Medal },
-  { href: '/panel/guide', label: 'راهنما', icon: HelpCircle },
+  { href: '/help', label: 'راهنما', icon: HelpCircle },
   { href: '/panel/support', label: 'پشتیبانی', icon: LifeBuoy },
   { href: '/panel/survey', label: 'نظرسنجی', icon: ScrollText },
 ];
@@ -71,9 +72,10 @@ export const BUYER_NAV: PanelNavItem[] = [
   { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
   { href: '/panel/secure-deals', label: 'معاملات پرداخت امن', icon: Handshake },
-  { href: '/panel/profile', label: 'ویرایش پروفایل', icon: Pencil },
+  { href: '/panel/profile', label: 'پروفایل', icon: UserRound },
+  { href: '/panel/profile/edit', label: 'ویرایش پروفایل', icon: Pencil },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
-  { href: '/panel/guide', label: 'راهنما', icon: HelpCircle },
+  { href: '/help', label: 'راهنما', icon: HelpCircle },
   { href: '/panel/support', label: 'پشتیبانی', icon: LifeBuoy },
   { href: '/panel/survey', label: 'نظرسنجی', icon: ScrollText },
 ];
@@ -121,10 +123,11 @@ export function PanelSidebar({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-4">
-        {/* پروفایل */}
+        {/* پروفایل → صفحه اختصاصی پروفایل */}
         <Link
-          href="/panel"
+          href="/panel/profile"
           onClick={onNavigate}
+          title="پروفایل"
           className={cn(
             'flex items-center gap-3 border-b border-white/10 px-4 py-4 transition-colors hover:bg-white/5',
             collapsed && 'justify-center px-0',

@@ -1365,3 +1365,38 @@ export const suggestedSellerGroups: SuggestedSellerGroup[] = [
   { id: 1, categoryName: 'سیب زمینی', sellerCount: 56, href: '/product-list/category/سیب-زمینی' },
   { id: 2, categoryName: 'لیمو عمانی', sellerCount: 22, href: '/product-list/category/لیمو-عمانی' },
 ];
+
+// ─────────────────────────────────────────────────────────────
+// کیف پول — کارت به کارت (خواسته کاربر: بدون درگاه؛ فیش → تایید ادمین)
+// ─────────────────────────────────────────────────────────────
+
+import type { ChargePackage, WalletTransaction } from '@/lib/types';
+
+/** پکیج‌های شارژ: ۱۰۰ هزار / ۲۰۰ هزار (+۱۰٪) / ۴۰۰ هزار (+۲۰٪) */
+export const CHARGE_PACKAGES: ChargePackage[] = [
+  { key: 'p100', amount: 100_000, bonusPercent: 0, charge: 100_000 },
+  { key: 'p200', amount: 200_000, bonusPercent: 10, charge: 220_000 },
+  { key: 'p400', amount: 400_000, bonusPercent: 20, charge: 480_000 },
+];
+
+/** حداقل شارژ کیف پول — برابر هزینه نردبان یک‌ماهه */
+export const MIN_CHARGE = 100_000;
+
+/** نردبان هر محصول برای یک ماه — از کیف پول کسر می‌شود */
+export const LADDER_MONTHLY_PRICE = 100_000;
+
+/** شماره کارت ایمچ برای واریز کارت به کارت (ماک) */
+export const AIMCH_CARD_NUMBER = '6037-9975-1234-5678';
+export const AIMCH_CARD_OWNER = 'شرکت بازارگاه ایمچ';
+
+/** تاریخچه تراکنش‌ها — کارت به کارت در انتظار تایید ادمین */
+export const walletTransactions: WalletTransaction[] = [
+  {
+    id: 1,
+    title: 'شارژ کیف پول — کارت به کارت',
+    amount: 100_000,
+    incoming: true,
+    at: '2026-10-20 12:04',
+    pendingAdmin: true,
+  },
+];
