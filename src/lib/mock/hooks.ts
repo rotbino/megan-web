@@ -128,3 +128,23 @@ export function useSubmitProduct() {
     },
   });
 }
+
+// ─── پنل خریدار ──────────────────────────────────────────────────────
+
+export function useMyBuyRequests() {
+  return useQuery({ queryKey: ['panel-my-buy-requests'], queryFn: api.getMyBuyRequests, staleTime: 30_000 });
+}
+
+export function useSuggestedSellerGroups() {
+  return useQuery({ queryKey: ['panel-suggested-sellers'], queryFn: api.getSuggestedSellerGroups, staleTime: 60_000 });
+}
+
+export function useSubmitPanelBuyRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.submitPanelBuyRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-my-buy-requests'] });
+    },
+  });
+}

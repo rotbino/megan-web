@@ -5,6 +5,7 @@ import { CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CategoryPicker } from '@/components/shared/category-picker';
+import { UnitInput } from '@/components/shared/unit-input';
 import { useSubmitBuyRequest } from '@/lib/mock/hooks';
 import { toFa } from '@/lib/format';
 import type { Category } from '@/lib/types';
@@ -107,17 +108,14 @@ export function RfqForm() {
                   disabled={!category}
                   aria-label="نوع کالا"
                 />
-                <div className="relative">
-                  <Input
-                    inputMode="numeric"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ''))}
-                    placeholder="میزان نیازمندی محصول را وارد کنید."
-                    className="rounded-md pe-16"
-                    required
-                  />
-                  <span className="absolute inset-y-0 end-3 my-auto h-fit text-xs text-muted-foreground">{unit}</span>
-                </div>
+                <UnitInput
+                  kind="weight"
+                  unit={unit}
+                  value={amount}
+                  onValueChange={setAmount}
+                  placeholder="میزان نیازمندی محصول را وارد کنید."
+                  ariaLabel="میزان نیازمندی محصول"
+                />
                 <Button type="submit" size="lg" className="w-full rounded-md" disabled={mutation.isPending || !category || !amount}>
                   {mutation.isPending && <Loader2 className="animate-spin" size={18} />}
                   {mutation.isPending ? 'در حال ثبت…' : 'ثبت درخواست خرید'}

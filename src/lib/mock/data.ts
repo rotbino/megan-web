@@ -7,7 +7,7 @@
  * نردبان: در ایمچ فروشنده ویژه نداریم؛ آگهی نردبان‌شده (۱۰٬۰۰۰ تومان در روز) بالای نتایج می‌آید.
  */
 
-import type { BuyRequest, Category, City, PanelProfile, Product, Province, SavedList, SavedUserItem, SavedUserStatusKey, User } from '@/lib/types';
+import type { BuyRequest, Category, City, MyBuyRequest, PanelProfile, Product, Province, SavedList, SavedUserItem, SavedUserStatusKey, SuggestedSellerGroup, User } from '@/lib/types';
 
 // ─── دسته‌بندی‌ها (شناسه‌ها/واحدها/حداقل‌ها/امتیازها: داده واقعی باسکول) ──
 
@@ -32,6 +32,7 @@ export const categories: Category[] = [
   { id: 58, categoryName: 'زرشک', slug: 'زرشک', unit: 'کیلوگرم', min: 100, example: 'زیرتالاری', parentId: 45, score: 925 },
   { id: 101, categoryName: 'فندق', slug: 'فندق', unit: 'کیلوگرم', min: 200, example: 'دوپوست', parentId: 45, score: 593 },
   { id: 1067, categoryName: 'سبزی خشک', slug: 'سبزی-خشک', unit: 'کیلوگرم', min: 100, example: 'نعنا خشک', parentId: 45, score: 471 },
+  { id: 96, categoryName: 'لیمو عمانی', slug: 'لیمو-عمانی', unit: 'کیلوگرم', min: 500, example: 'درجه یک', parentId: 45, score: 640 },
   { id: 1, categoryName: 'میوه', slug: 'میوه', unit: 'کیلوگرم', min: 100, parentId: 76, score: 5 },
   { id: 6, categoryName: 'خرما', slug: 'خرما', unit: 'کیلوگرم', min: 1000, example: 'مضافتی', parentId: 1, score: 14104 },
   { id: 3, categoryName: 'سیب', slug: 'سیب', unit: 'کیلوگرم', min: 1000, example: 'قرمز', parentId: 1, score: 4398 },
@@ -1211,6 +1212,7 @@ users.push({
   firstName: 'سامی', lastName: 'جابر',
   activePakageType: 0, isVerified: false,
   businessDesc: 'سامی جابر هستم از شهر تهران در حال خرید و فروش عمده در بازار بزرگ ایمچ.',
+  daysInImach: 1,
   createdAt: '2026-10-24 13:13:08',
 });
 
@@ -1311,3 +1313,55 @@ export const SAVED_USER_STATUS_LABELS: Record<SavedUserStatusKey, string> = {
   priority_medium: 'اولویت متوسط',
   priority_low: 'اولویت کم',
 };
+
+// ─── پنل خریدار — منطبق بر MHTMLهای «درخواستهای من» و «فروشندگان پیشنهادی» ──
+
+/** دلایل رد شدن درخواست های خرید — عین جعبه باسکول */
+export const BUY_REQUEST_REJECTION_REASONS = [
+  'ثبت درخواست خرید تکراری پشت سرهم',
+  'وارد کردن میزان نامناسب مقدار مورد نیاز محصول (مقیاس های خرده قابل قبول نیستند.)',
+];
+
+/** درخواست های خرید کاربر جاری — دو تای اول تایید شده‌اند (ملاک گروه‌های پیشنهادی) */
+export const myBuyRequests: MyBuyRequest[] = [
+  {
+    id: 9001,
+    subcategoryName: 'سیب زمینی',
+    productType: '',
+    requirementAmount: 5000,
+    unit: 'کیلوگرم',
+    status: 'confirmed',
+    goal: 'price_and_buy',
+    hasHistory: true,
+    createdAt: '2026-10-20 11:30',
+  },
+  {
+    id: 9002,
+    subcategoryName: 'لیمو عمانی',
+    productType: '',
+    requirementAmount: 2000,
+    unit: 'کیلوگرم',
+    status: 'confirmed',
+    goal: 'price_only',
+    hasHistory: false,
+    createdAt: '2026-10-22 09:15',
+  },
+  {
+    id: 9003,
+    subcategoryName: 'میوه خشک',
+    productType: 'قیسی',
+    requirementAmount: 300,
+    unit: 'کیلوگرم',
+    status: 'rejected',
+    goal: 'price_and_buy',
+    hasHistory: false,
+    createdAt: '2026-10-18 16:45',
+    rejectionReasons: [BUY_REQUEST_REJECTION_REASONS[1]],
+  },
+];
+
+/** گروه‌های فروشندگان پیشنهادی — از دسته درخواست‌های تاییدشده (MHTML واقعی: ۵۶ و ۲۲ فروشنده) */
+export const suggestedSellerGroups: SuggestedSellerGroup[] = [
+  { id: 1, categoryName: 'سیب زمینی', sellerCount: 56, href: '/product-list/category/سیب-زمینی' },
+  { id: 2, categoryName: 'لیمو عمانی', sellerCount: 22, href: '/product-list/category/لیمو-عمانی' },
+];

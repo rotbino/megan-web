@@ -18,6 +18,8 @@ import { AuthModal } from '@/components/shared/auth-modal';
 export interface MockUser {
   phone: string;
   userName: string;
+  /** نقش فعلی پنل — منو، داشبورد و نوار پایین موبایل بر اساس آن عوض می‌شود */
+  role?: 'seller' | 'buyer';
 }
 
 const STORAGE_KEY = 'imach:mock-user';
@@ -28,6 +30,8 @@ interface AuthContextValue {
   requireAuth: () => boolean;
   login: (user: MockUser) => void;
   logout: () => void;
+  /** تغییر نقش فروشنده/خریدار — ماندگار در نشست */
+  setRole: (role: 'seller' | 'buyer') => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -65,6 +69,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const setRole = useCallback((role: 'seller' | 'buyer') => {
+    setUser((u) => {
+      if (!u) return u;
+      const next = { ...u, role };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* حافظه پر است — فقط در state */
+      }
+      return next;
+    });
+  }, []);
+
   const requireAuth = useCallback(() => {
     if (user) return true;
     setOpen(true);
@@ -72,8 +89,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const value = useMemo(
-    () => ({ user, requireAuth, login, logout }),
-    [user, requireAuth, login, logout],
+    () => ({ user, requireAuth, login, logout, setRole }),
+    [user, requireAuth, login, logout, setRole],
   );
 
   return (

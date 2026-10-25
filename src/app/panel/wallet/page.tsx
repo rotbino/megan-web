@@ -42,7 +42,7 @@ export default function WalletPage() {
       <PanelCard>
         <h1 className="mb-3 text-sm font-extrabold">تاریخچه تراکنش‌ها</h1>
         {TRANSACTIONS.length === 0 ? (
-          <PanelEmptyState icon={Coins} title="تراکنشی ثبت نشده است." hint="شارژ و خرج کیف پول اینجا نمایش داده می‌شود." />
+          <PanelEmptyState icon={Coins} title="هیچ تراکنشی انجام نداده‌اید." hint="شارژ و خرج کیف پول اینجا نمایش داده می‌شود." />
         ) : (
           <ul className="divide-y divide-border/70">
             {TRANSACTIONS.map((t) => (

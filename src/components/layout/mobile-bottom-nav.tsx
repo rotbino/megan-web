@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/mock/auth';
 import {
   AddProductIcon,
   BuyersIcon,
@@ -16,18 +17,30 @@ import {
  * ارتفاع ۵۹px، پس‌زمینه سفید، خط بالا #cbcbcb، سایه رو به بالا،
  * پنج آیتم هم‌عرض (آیکون ۲۴px + برچسب ۱۲px).
  * آیتم فعال: رنگ سرمه‌ای + وزن بولد.
- * ترتیب از راست به چپ: ایمچ من، پیام‌ها، ثبت محصول، خریداران، فروشندگان.
+ * ترتیب از راست به چپ — فروشنده: ایمچ من، پیام‌ها، ثبت محصول، خریداران، فروشندگان
+ * خریدار (عین MHTML باسکول): ایمچ من، پیام‌ها، ثبت درخواست، پیشنهادی، فروشندگان
  */
-const items = [
-  { href: '/panel', label: 'ایمچ من', Icon: MyAccountIcon, match: (p: string) => p === '/panel' || p.startsWith('/panel/') },
-  { href: '/register', label: 'پیام ها', Icon: MessagesIcon, match: () => false },
+
+const sellerItems = [
+  { href: '/panel', label: 'ایمچ من', Icon: MyAccountIcon, match: (p: string) => p === '/panel' || (p.startsWith('/panel/') && !p.startsWith('/panel/buy-requests') && !p.startsWith('/panel/my-requests') && !p.startsWith('/panel/suggested-sellers')) },
+  { href: '/panel/messages', label: 'پیام ها', Icon: MessagesIcon, match: (p: string) => p === '/panel/messages' },
   { href: '/panel/products/new', label: 'ثبت محصول', Icon: AddProductIcon, match: (p: string) => p === '/panel/products/new' },
   { href: '/buyAd-requests', label: 'خریداران', Icon: BuyersIcon, match: (p: string) => p === '/buyAd-requests' },
   { href: '/product-list', label: 'فروشندگان', Icon: SellersIcon, match: (p: string) => p === '/product-list' || p.startsWith('/product-list/') },
 ];
 
+const buyerItems = [
+  { href: '/panel', label: 'ایمچ من', Icon: MyAccountIcon, match: (p: string) => p === '/panel' || (p.startsWith('/panel/') && !p.startsWith('/panel/buy-requests') && !p.startsWith('/panel/my-requests') && !p.startsWith('/panel/suggested-sellers')) },
+  { href: '/panel/messages', label: 'پیام ها', Icon: MessagesIcon, match: (p: string) => p === '/panel/messages' },
+  { href: '/panel/buy-requests/new', label: 'ثبت درخواست', Icon: AddProductIcon, match: (p: string) => p === '/panel/buy-requests/new' },
+  { href: '/panel/suggested-sellers', label: 'پیشنهادی', Icon: BuyersIcon, match: (p: string) => p === '/panel/suggested-sellers' || p === '/panel/my-requests' },
+  { href: '/product-list', label: 'فروشندگان', Icon: SellersIcon, match: (p: string) => p === '/product-list' || p.startsWith('/product-list/') },
+];
+
 export function MobileBottomNav() {
   const pathname = usePathname() ?? '/';
+  const { user } = useAuth();
+  const items = user?.role === 'buyer' ? buyerItems : sellerItems;
   return (
     <nav
       aria-label="ناوبری موبایل ایمچ"

@@ -19,19 +19,24 @@ export const PRODUCT_STEPS = [
   'جزئیات نهایی',
 ] as const;
 
+/** استپر — الگوی breadcrumb باسکول؛ مراحل قابل پاس از بیرون (مثل ویزارد درخواست خرید) */
 export function ProductStepper({
   current,
   maxReached,
   onJump,
+  steps = PRODUCT_STEPS,
+  ariaLabel = 'مراحل ثبت محصول',
 }: {
   current: number; // ۰ مبنا
   maxReached: number;
   onJump: (step: number) => void;
+  steps?: readonly string[];
+  ariaLabel?: string;
 }) {
   return (
-    <nav aria-label="مراحل ثبت محصول">
+    <nav aria-label={ariaLabel}>
       <ol className="flex items-center gap-1 overflow-x-auto rounded-lg border bg-card p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        {PRODUCT_STEPS.map((label, i) => {
+        {steps.map((label, i) => {
           const done = i < current;
           const active = i === current;
           const reachable = i <= maxReached;
@@ -64,7 +69,7 @@ export function ProductStepper({
                 </span>
                 {label}
               </button>
-              {i < PRODUCT_STEPS.length - 1 && (
+              {i < steps.length - 1 && (
                 <span className={cn('mx-1 h-px w-3 shrink-0 sm:w-5', i < current ? 'bg-primary/60' : 'bg-border')} aria-hidden />
               )}
             </li>

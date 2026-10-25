@@ -30,51 +30,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ProductStepper } from '@/components/panel/product-form/stepper';
 import { CategoryCascade } from '@/components/panel/product-form/category-cascade';
 import { PanelCard } from '@/components/panel/panel-parts';
+import { UnitInput } from '@/components/shared/unit-input';
 import { PRODUCT_FEATURE_KEYS } from '@/lib/mock/data';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { Category, ProductFeature } from '@/lib/types';
 
-// ─── ورودی عددی با جداکننده هزارگان (فونت FaNum ارقام را فارسی نشان می‌دهد) ──
-
-function NumericInput({
-  value,
-  onChange,
-  placeholder,
-  suffix,
-  id,
-  invalid,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  suffix?: string;
-  id?: string;
-  invalid?: boolean;
-}) {
-  return (
-    <div className="relative">
-      <Input
-        id={id}
-        dir="ltr"
-        inputMode="numeric"
-        autoComplete="off"
-        className={cn('text-start pe-14', invalid && 'border-red-400 focus-visible:ring-red-300')}
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => {
-          const digits = e.target.value.replace(/[^\d]/g, '').slice(0, 12);
-          onChange(digits ? Number(digits).toLocaleString('en-US') : '');
-        }}
-      />
-      {suffix && (
-        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[11px] text-muted-foreground">
-          {suffix}
-        </span>
-      )}
-    </div>
-  );
-}
+// ─── ورودی عددی — از این پس همه‌جا UnitInput (وسط‌چین + بادکنک تبدیل واحد) ──
 
 const num = (v: string) => Number(v.replace(/[^\d]/g, '')) || 0;
 
@@ -370,12 +332,13 @@ export default function RegisterProductPage() {
               میزان موجودی محصول <span className="text-muted-foreground">({leaf?.unit ?? 'کیلوگرم'})</span>{' '}
               <span className="text-red-500">*</span>
             </Label>
-            <NumericInput
+            <UnitInput
               id="stock"
+              kind="weight"
               value={draft.stock}
-              onChange={(v) => patch({ stock: v })}
+              onValueChange={(v) => patch({ stock: v })}
               placeholder="مثلا: 50,000"
-              suffix={leaf?.unit ?? 'کیلوگرم'}
+              unit={leaf?.unit ?? 'کیلوگرم'}
             />
             <p className="text-[11px] text-muted-foreground">مقیاس عمده — مقیاس‌های خرده‌فروشی قابل قبول نیستند.</p>
           </div>
@@ -384,24 +347,26 @@ export default function RegisterProductPage() {
               حداقل میزان فروش <span className="text-muted-foreground">({leaf?.unit ?? 'کیلوگرم'})</span>{' '}
               <span className="text-red-500">*</span>
             </Label>
-            <NumericInput
+            <UnitInput
               id="min-amount"
+              kind="weight"
               value={draft.minSaleAmount}
-              onChange={(v) => patch({ minSaleAmount: v })}
+              onValueChange={(v) => patch({ minSaleAmount: v })}
               placeholder="مثلا: 25,000"
-              suffix={leaf?.unit ?? 'کیلوگرم'}
+              unit={leaf?.unit ?? 'کیلوگرم'}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="price">
               حداقل قیمت محصول <span className="text-muted-foreground">(تومان)</span> <span className="text-red-500">*</span>
             </Label>
-            <NumericInput
+            <UnitInput
               id="price"
+              kind="price"
               value={draft.minSalePrice}
-              onChange={(v) => patch({ minSalePrice: v })}
+              onValueChange={(v) => patch({ minSalePrice: v })}
               placeholder="مثلا: 15,000"
-              suffix={`هر ${leaf?.unit ?? 'کیلوگرم'}`}
+              unit={`هر ${leaf?.unit ?? 'کیلوگرم'}`}
               invalid={Boolean(draft.minSalePrice) && num(draft.minSalePrice) < 1000}
             />
             {Boolean(draft.minSalePrice) && num(draft.minSalePrice) < 1000 && (

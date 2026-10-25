@@ -20,6 +20,8 @@ export interface User {
   activePakageType: PackageType;
   isVerified: boolean;
   businessDesc?: string;
+  /** «۱ روز در ایمچ» — کارت هویت پروفایل عمومی */
+  daysInImach?: number;
   createdAt: string;
 }
 
@@ -207,5 +209,47 @@ export interface SuggestedBuyer {
   buyRequest: BuyRequest;
   matchScore: number; // ۰..۱۰۰
   tier: 'exact' | 'same-product' | 'near-category'; // نوع کالا / همان محصول / دسته نزدیک
-  relatedProduct: string; // محصول فروشنده که این خریدار به آن مرتبط است
+  relatedProduct: string; // آگهی ملاک تطبیق
 }
+
+// ─────────────────────────────────────────────────────────────
+// پنل خریدار — منطبق بر MHTMLهای ارسالی (درخواستهای من،
+// فروشندگان پیشنهادی، نظرسنجی، معاملات پرداخت امن)
+// ─────────────────────────────────────────────────────────────
+
+/** وضعیت درخواست خرید — تب‌های «درخواستهای من» */
+export type BuyRequestStatus = 'confirmed' | 'pending' | 'rejected';
+
+/** درخواست خرید کاربر جاری — ردیف «درخواستهای من» */
+export interface MyBuyRequest {
+  id: number;
+  /** نام دسته انتخابی — مثل «میوه خشک» */
+  subcategoryName: string;
+  /** نوع کالای واردشده — مثل «قیسی» (خالی = خود دسته) */
+  productType: string;
+  /** میزان نیازمندی — کیلوگرم */
+  requirementAmount: number;
+  unit: string;
+  status: BuyRequestStatus;
+  /** هدف ثبت درخواست: قیمت + خرید سریع / فقط اطلاع از قیمت */
+  goal: 'price_and_buy' | 'price_only';
+  /** سابقه خرید عمده این کالا */
+  hasHistory: boolean;
+  createdAt: string;
+  /** دلایل رد — فقط رد شده */
+  rejectionReasons?: string[];
+}
+
+/** گروه فروشندگان پیشنهادی — کارت دسته در صفحه «پیشنهادی» خریدار */
+export interface SuggestedSellerGroup {
+  id: number;
+  /** نام دسته/کالا — مثل «سیب زمینی» */
+  categoryName: string;
+  /** تعداد فروشندگان هم‌کالا */
+  sellerCount: number;
+  /** مقصد کارت: لیست محصولات همان دسته */
+  href: string;
+}
+
+/** گزینه نظرسنجی */
+export type SurveyScore = 'excellent' | 'good' | 'average' | 'bad' | 'very_bad';

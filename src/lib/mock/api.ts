@@ -329,3 +329,77 @@ export async function getSuggestedBuyers(): Promise<SuggestedBuyer[]> {
   out.sort((a, b) => b.matchScore - a.matchScore);
   return delay(out.slice(0, 24), 300);
 }
+
+// ─── پنل خریدار ──────────────────────────────────────────────────────
+
+import {
+  myBuyRequests,
+  suggestedSellerGroups,
+} from './data';
+import type { BuyRequestStatus, MyBuyRequest, SuggestedSellerGroup } from '@/lib/types';
+
+/** درخواست‌های ثبت‌شده از ویزارد خرید — ماندگار در حافظه مرورگر (فاز ماک) */
+const BUY_EXTRA_KEY = 'imach:my-extra-buy-requests';
+
+function readBuyExtras(): MyBuyRequest[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(BUY_EXTRA_KEY);
+    return raw ? (JSON.parse(raw) as MyBuyRequest[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeBuyExtras(items: MyBuyRequest[]) {
+  try {
+    window.localStorage.setItem(BUY_EXTRA_KEY, JSON.stringify(items));
+  } catch {
+    /* حافظه پر است — فقط در state جاری */
+  }
+}
+
+/** درخواستهای من — آیتم‌ها + شمارنده تب‌ها (تایید شده/در انتظار تایید/رد شده) */
+export async function getMyBuyRequests(): Promise<{
+  items: MyBuyRequest[];
+  counts: Record<BuyRequestStatus, number>;
+}> {
+  const counts: Record<BuyRequestStatus, number> = { confirmed: 0, pending: 0, rejected: 0 };
+  const all = [...myBuyRequests, ...readBuyExtras()];
+  all.forEach((r) => {
+    counts[r.status] += 1;
+  });
+  return delay({ items: all, counts }, 250);
+}
+
+/** ثبت درخواست خرید از ویزارد — نتیجه: «در انتظار تایید» */
+export async function submitPanelBuyRequest(input: {
+  subcategoryName: string;
+  productType: string;
+  requirementAmount: number;
+  unit: string;
+  goal: 'price_and_buy' | 'price_only';
+  hasHistory: boolean;
+}): Promise<{ ok: true; id: number; status: 'pending' }> {
+  const id = Date.now();
+  if (typeof window !== 'undefined') {
+    const fresh: MyBuyRequest = {
+      id,
+      subcategoryName: input.subcategoryName,
+      productType: input.productType,
+      requirementAmount: input.requirementAmount,
+      unit: input.unit,
+      status: 'pending',
+      goal: input.goal,
+      hasHistory: input.hasHistory,
+      createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+    };
+    writeBuyExtras([...readBuyExtras(), fresh]);
+  }
+  return delay({ ok: true, id, status: 'pending' }, 900);
+}
+
+/** گروه‌های فروشندگان پیشنهادی — بر اساس دسته درخواست‌های تاییدشده */
+export async function getSuggestedSellerGroups(): Promise<SuggestedSellerGroup[]> {
+  return delay(suggestedSellerGroups.map((g) => ({ ...g })), 450);
+}
