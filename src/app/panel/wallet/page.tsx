@@ -166,7 +166,7 @@ export default function WalletPage() {
               </ol>
               <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border bg-card p-3">
                 <span dir="ltr" className="flex-1 text-center text-base font-extrabold tracking-widest">
-                  {toFa(AIMCH_CARD_NUMBER)}
+                  {AIMCH_CARD_NUMBER.split('-').map((seg) => toFa(Number(seg))).join('-')}
                 </span>
                 <Button size="sm" variant="outline" className="rounded-md" onClick={() => void copyCard()}>
                   <Copy size={14} /> کپی شماره کارت
