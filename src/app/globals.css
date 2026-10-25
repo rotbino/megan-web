@@ -49,6 +49,7 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
   --color-primary-deep: var(--primary-deep);
+  --color-brand-orange: var(--brand-orange);
   --color-ladder: var(--ladder);
   --color-ladder-foreground: var(--ladder-foreground);
   --color-ladder-soft: var(--ladder-soft);
@@ -76,6 +77,8 @@
   --primary: oklch(0.38 0.045 252);
   --primary-deep: oklch(0.32 0.045 252);
   --primary-foreground: oklch(0.985 0.003 240);
+  /* نارنجی برند — رنگ لوگو و لینک‌های شاخص (فروشنده شوید) */
+  --brand-orange: #F97316;
   --secondary: oklch(0.945 0.006 245);
   --secondary-foreground: oklch(0.4 0.04 250);
   --muted: oklch(0.955 0.004 245);
@@ -188,4 +191,28 @@
   body {
     padding-bottom: 59px;
   }
+}
+
+/* ─── بات‌شیت موبایل: مودال‌های انتخاب از پایین باز می‌شوند ────── */
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes sheet-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-sheet-up {
+  animation: sheet-up 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.animate-sheet-fade {
+  animation: sheet-fade 0.2s ease-out;
 }

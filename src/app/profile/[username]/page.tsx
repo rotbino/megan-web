@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 import { BadgeCheck, MapPin, MessagesSquare, Phone, Star } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { Breadcrumb } from '@/components/shared/breadcrumb';
 import { VerifiedBadge } from '@/components/shared/badges';
 import { ProfileTabs } from '@/components/products/profile-tabs';
 import { Button } from '@/components/ui/button';
@@ -38,10 +37,6 @@ export default async function ProfilePage({ params }: Props) {
     <>
       <Header />
       <main className="flex-1">
-        <div className="mx-auto max-w-7xl px-4 pt-6 lg:px-6">
-          <Breadcrumb items={[{ label: 'خانه', href: '/' }, { label: 'فروشندگان', href: '/product-list' }, { label: name }]} />
-        </div>
-
         {/* کارت هویت فروشنده */}
         <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
           <div className="flex flex-col gap-5 rounded-md border bg-card p-6 sm:flex-row sm:items-center">

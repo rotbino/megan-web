@@ -14,9 +14,11 @@ import {
   InputOTPSlot,
 } from '@/components/ui/input-otp';
 import { useRequestOtp, useVerifyOtp } from '@/lib/mock/hooks';
+import { useAuth } from '@/lib/mock/auth';
 
 /** ورود/ثبت‌نام فقط با موبایل + کد یک‌بارمصرف — همان الگوی باسکول */
 export default function RegisterPage() {
+  const { login } = useAuth();
   const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -46,8 +48,12 @@ export default function RegisterPage() {
         { phone, code: value },
         {
           onSuccess: (res) => {
-            if (res.ok) setDone(true);
-            else setError('کد وارد شده صحیح نیست. (در نمونه: هر کد ۵ رقمی)');
+            if (res.ok) {
+              login({ phone, userName: res.userName ?? '' });
+              setDone(true);
+            } else {
+              setError('کد وارد شده صحیح نیست. (در نمونه: هر کد ۵ رقمی)');
+            }
           },
         },
       );

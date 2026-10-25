@@ -2,7 +2,7 @@
 
 /** هوک‌های React Query — یک نقطه تعریف برای همه دیتای سرور فرانت */
 
-import { useMutation, useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import * as api from './api';
 import type { Product, ProductQuery } from '@/lib/types';
 
@@ -91,4 +91,40 @@ export function useRequestOtp() {
 
 export function useVerifyOtp() {
   return useMutation({ mutationFn: api.verifyOtp });
+}
+
+// ─── پنل فروشنده ──────────────────────────────────────────────────────
+
+export function usePanelProfile() {
+  return useQuery({ queryKey: ['panel-profile'], queryFn: api.getPanelProfile, staleTime: 60_000 });
+}
+
+export function useMyProducts() {
+  return useQuery({ queryKey: ['panel-my-products'], queryFn: api.getMyProducts, staleTime: 30_000 });
+}
+
+export function useSavedLists() {
+  return useQuery({ queryKey: ['panel-saved-lists'], queryFn: api.getSavedLists, staleTime: 30_000 });
+}
+
+export function useSavedListUsers(listId: number) {
+  return useQuery({
+    queryKey: ['panel-saved-users', listId],
+    queryFn: () => api.getSavedListUsers(listId),
+    staleTime: 30_000,
+  });
+}
+
+export function useSuggestedBuyers() {
+  return useQuery({ queryKey: ['panel-suggested-buyers'], queryFn: api.getSuggestedBuyers, staleTime: 60_000 });
+}
+
+export function useSubmitProduct() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.submitProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-my-products'] });
+    },
+  });
 }

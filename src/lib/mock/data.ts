@@ -7,7 +7,7 @@
  * نردبان: در ایمچ فروشنده ویژه نداریم؛ آگهی نردبان‌شده (۱۰٬۰۰۰ تومان در روز) بالای نتایج می‌آید.
  */
 
-import type { BuyRequest, Category, City, Product, Province, User } from '@/lib/types';
+import type { BuyRequest, Category, City, PanelProfile, Product, Province, SavedList, SavedUserItem, SavedUserStatusKey, User } from '@/lib/types';
 
 // ─── دسته‌بندی‌ها (شناسه‌ها/واحدها/حداقل‌ها/امتیازها: داده واقعی باسکول) ──
 
@@ -1197,3 +1197,117 @@ export function categoryTree(): Category[] {
       .map((c) => ({ ...c, children: withChildren(c.id) }));
   return categories.filter((c) => c.parentId === null).map((r) => ({ ...r, children: withChildren(r.id) }));
 }
+
+// ─────────────────────────────────────────────────────────────
+// پنل فروشنده — عین دیتای واقعی حساب کاربری فرستاده‌شده
+// (سامی جابر / wbrstu2g1 / تهران / 0 تومان / product_count=0)
+// ─────────────────────────────────────────────────────────────
+
+/** کاربر جاری پنل — هم در لیست کاربران عمومی (پروفایل عمومی دارد) */
+export const PANEL_USER_ID = 1959629;
+
+users.push({
+  id: PANEL_USER_ID, phone: '09962253970', userName: 'wbrstu2g1',
+  firstName: 'سامی', lastName: 'جابر',
+  activePakageType: 0, isVerified: false,
+  businessDesc: 'سامی جابر هستم از شهر تهران در حال خرید و فروش عمده در بازار بزرگ ایمچ.',
+  createdAt: '2026-10-24 13:13:08',
+});
+
+/** پاسخ سرویس پروفایل — ساختار عین user/get_profile باسکول */
+export const panelProfile: PanelProfile = {
+  profile: {
+    description:
+      'سامی جابر هستم از شهر تهران در حال خرید و فروش عمده در بازار بزرگ ایمچ.\r\nبرای ارتباط با من روی دکمه ی ارسال پیام بزنید. خوشحال می شوم پروفایل من را با همکارانتان به اشتراک بگذارید.',
+    activityDomain: null,
+    humanResourceCount: null,
+    profilePhoto: null,
+    publicPhone: '09962253970',
+    address: 'تهران - تهران',
+    isCompany: false,
+    companyName: '',
+    confirmed: true,
+  },
+  userInfo: {
+    id: PANEL_USER_ID,
+    userName: 'wbrstu2g1',
+    firstName: 'سامی',
+    lastName: 'جابر',
+    sex: 'آقا',
+    province: 'تهران',
+    city: 'تهران',
+    isVerified: false,
+    isBuyer: false,
+    isSeller: true,
+    walletBalance: 0,
+    productCount: 0,
+    createdAt: '2026-10-24 13:13:08',
+  },
+};
+
+/** ظرفیت ثبت محصول حساب رایگان — مودال «افزایش ظرفیت» */
+export const PRODUCT_CAPACITY = 5;
+
+/** آگهی‌های «محصولات من» — وضعیت واقعی حساب: ۰ تایید، ۰ در انتظار، ۰ حذف، ۱ رد شده */
+export const myProducts: Product[] = [
+  {
+    id: 483012, productName: 'پسته اکبری', slug: 'خرید-عمده-پسته-اکبری-483012',
+    description: 'فروش عمده پسته اکبری درجه یک تهران. برای اطلاع از قیمت روز و خرید مستقیم پیام ارسال کنید.',
+    stock: 500, minSalePrice: 3600000, minSaleAmount: 500, unit: 'کیلوگرم',
+    categoryId: 45, categoryName: 'خشکبار', subCategoryId: 44, subCategoryName: 'پسته',
+    provinceId: 8, provinceName: 'تهران', cityId: 9, cityName: 'تهران',
+    myuserId: PANEL_USER_ID, seller: {
+      id: PANEL_USER_ID, userName: 'wbrstu2g1', firstName: 'سامی', lastName: 'جابر',
+      activePakageType: 0, isVerified: false,
+    },
+    isLadder: false, isElevated: false, hasVideo: false, isOld: false,
+    viewCount: 0,
+    status: 'rejected',
+    createdAt: '2026-10-24 15:02:11', updatedAt: '2026-10-24 18:40:02',
+    photos: [],
+  },
+];
+
+/** دلایل رد شدن — عین باسکول */
+export const REJECTION_REASONS = [
+  'تصاویر بی کیفیت و نامناسب (تصاویری نامرتبط با محصول، تصاویر شخصی و ...)',
+  'درج شماره تماس یا لوگوی برند روی تصاویر محصول',
+  'وارد کردن میزان موجودی نامناسب محصول (مقیاس های خرده فروشی قابل قبول نیستند.)',
+];
+
+/** گزینه‌های «جزئیات نهایی» — عین باسکول */
+export const PRODUCT_FEATURE_KEYS = [
+  'بسته بندی',
+  'کیفیت',
+  'رنگ',
+  'اندازه یا ابعاد',
+  'گواهی کیفی، سلامت',
+  'تازگی',
+  'نوع فروش',
+  'روش نگهداری یا ماندگاری',
+  'مزایا نسبت به محصولات مشابه',
+];
+
+/** نشان شده ها — عین پاسخ سرویس: lists:[{id:48288,name:'سیب زمینی',cnt:1,saved:false}] */
+export const savedLists: SavedList[] = [
+  { id: 48288, name: 'سیب زمینی', cnt: 1 },
+];
+
+/** موارد نشان‌شده هر لیست — CRM کوچک با وضعیت و یادداشت */
+export const savedUsers: SavedUserItem[] = [
+  {
+    id: 1, name: 'مریم صابری', status: 'following',
+    notes: [{ id: 1, text: 'یادم باشه زنگ بزنم', createdAt: '2026-10-25 09:52' }],
+  },
+];
+
+/** برچسب وضعیت‌های CRM — عین چیپ‌های باسکول */
+export const SAVED_USER_STATUS_LABELS: Record<SavedUserStatusKey, string> = {
+  following: 'در حال پیگیری',
+  not_needed: 'فعلا نیاز نداشت',
+  unresponsive: 'پاسخگو نبود',
+  out_of_stock: 'موجودی نداشت',
+  priority_high: 'اولویت زیاد',
+  priority_medium: 'اولویت متوسط',
+  priority_low: 'اولویت کم',
+};

@@ -4,27 +4,47 @@ import { useState } from 'react';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CategoryPicker } from '@/components/shared/category-picker';
 import { useSubmitBuyRequest } from '@/lib/mock/hooks';
 import { toFa } from '@/lib/format';
+import type { Category } from '@/lib/types';
 
 /**
- * فرم ثبت درخواست خرید — عین باسکول: سه فیلد ساده + دکمه ثبت.
- * متن و جای‌نگاری‌ها کلمه‌به‌کلمه از باسکول برداشته شده است.
+ * فرم ثبت درخواست خرید:
+ * ۱) باکس «دسته‌بندی محصول» مودال انتخاب دسته را باز می‌کند (موبایل: بات‌شیت از پایین)
+ *    و کاربر تا آخرین نودِ دسته کالا پایین می‌رود.
+ * ۲) باکس «نوع کالا» — نمونه هر دسته در پلیس‌هولدر زده می‌شود (مثل: پسته ← «مثلاً فندقی»).
+ *    نوع‌هایی که کاربران وارد می‌کنند بعداً به‌عنوان «نوع کالا» زیر برگ همان دسته در
+ *    دیتابیس ذخیره می‌شوند (مدل نوع کالا در بک‌اند) تا درخواست خرید به فروشندگان
+ *    همان کالا در پنل کاربری برسد.
  */
 export function RfqForm() {
-  const [productName, setProductName] = useState('');
+  const [category, setCategory] = useState<Category | null>(null);
   const [productType, setProductType] = useState('');
   const [amount, setAmount] = useState('');
   const [done, setDone] = useState(false);
   const mutation = useSubmitBuyRequest();
 
+  const unit = category?.unit ?? 'کیلوگرم';
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productName.trim() || !amount) return;
+    if (!category || !amount) return;
     mutation.mutate(
-      { productName: productName.trim(), productType: productType.trim(), amount: Number(amount) },
+      {
+        productName: category.categoryName,
+        productType: productType.trim(),
+        amount: Number(amount),
+      },
       { onSuccess: () => setDone(true) },
     );
+  };
+
+  const reset = () => {
+    setDone(false);
+    setCategory(null);
+    setProductType('');
+    setAmount('');
   };
 
   return (
@@ -52,7 +72,7 @@ export function RfqForm() {
             </div>
           </div>
 
-          {/* فرم — سه فیلد باسکول */}
+          {/* فرم — دسته‌بندی + نوع کالا + میزان نیازمندی */}
           <div className="rounded-md border bg-card p-4 shadow-sm sm:p-5">
             {done ? (
               <div className="flex flex-col items-center gap-3 py-8 text-center">
@@ -60,24 +80,32 @@ export function RfqForm() {
                   <CheckCircle2 size={24} />
                 </span>
                 <p className="text-sm font-bold">درخواست خرید شما ثبت شد.</p>
-                <Button variant="outline" size="sm" className="rounded-md" onClick={() => { setDone(false); setProductName(''); setProductType(''); setAmount(''); }}>
+                <Button variant="outline" size="sm" className="rounded-md" onClick={reset}>
                   ثبت درخواست دیگر
                 </Button>
               </div>
             ) : (
               <form onSubmit={submit} className="space-y-3">
-                <Input
-                  value={productName}
-                  onChange={(e) => setProductName(e.target.value)}
-                  placeholder="نام محصول مورد نیاز خود را وارد کنید."
-                  className="rounded-md"
-                  required
+                <CategoryPicker
+                  value={category}
+                  onChange={(c) => {
+                    setCategory(c);
+                    setProductType('');
+                  }}
                 />
                 <Input
                   value={productType}
                   onChange={(e) => setProductType(e.target.value)}
-                  placeholder="نوع محصول مورد نیاز خود را وارد کنید."
+                  placeholder={
+                    category
+                      ? category.example
+                        ? `مثلاً ${category.example}`
+                        : 'نوع کالا مورد نیاز خود را وارد کنید.'
+                      : 'ابتدا دسته‌بندی را انتخاب کنید.'
+                  }
                   className="rounded-md"
+                  disabled={!category}
+                  aria-label="نوع کالا"
                 />
                 <div className="relative">
                   <Input
@@ -88,9 +116,9 @@ export function RfqForm() {
                     className="rounded-md pe-16"
                     required
                   />
-                  <span className="absolute inset-y-0 end-3 my-auto h-fit text-xs text-muted-foreground">کیلوگرم</span>
+                  <span className="absolute inset-y-0 end-3 my-auto h-fit text-xs text-muted-foreground">{unit}</span>
                 </div>
-                <Button type="submit" size="lg" className="w-full rounded-md" disabled={mutation.isPending}>
+                <Button type="submit" size="lg" className="w-full rounded-md" disabled={mutation.isPending || !category || !amount}>
                   {mutation.isPending && <Loader2 className="animate-spin" size={18} />}
                   {mutation.isPending ? 'در حال ثبت…' : 'ثبت درخواست خرید'}
                 </Button>

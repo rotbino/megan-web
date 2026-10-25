@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "نمره: ۶.۵ از ۱۰\n\n۱. فاصله‌گذاری (Spacing) بین کارت‌ها و المان‌های داخلی ناهماهنگ است و باعث شلوغی بصری شده است.\n۲. استفاده از رنگ‌های پس‌زمینه خاکستری برای بخش‌های مختلف (مانند توضیحات وضعیت) کنتراست پایینی دارد و خوانایی را کاهش می‌دهد.\n۳. آیکون‌های سمت راست در کارت‌های آماری هم‌رنگ با متن هستند و به دلیل کم‌بودن وزن بصری، تعادل چیدمان را برهم زده‌اند.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1792914495,
+  "id": "20261025154812ad7331cfb1e74dcc",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20261025154812ad7331cfb1e74dcc",
+  "usage": {
+    "completion_tokens": 151,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 447,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 598
+  }
+}

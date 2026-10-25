@@ -47,7 +47,7 @@ export async function searchSuggestions(typedText: string): Promise<string[]> {
 
 export async function getProducts(query: ProductQuery = {}): Promise<Paged<Product>> {
   const { categorySlug, s, provinceId, cityId, sort = 'related', page = 1 } = query;
-  const PER_PAGE = 8;
+  const PER_PAGE = 16;
 
   let items = [...productsData];
 
@@ -165,4 +165,167 @@ export async function requestOtp(phone: string): Promise<{ ok: true }> {
 export async function verifyOtp(input: { phone: string; code: string }): Promise<{ ok: boolean; userName?: string }> {
   // هر کد ۵ رقمی در نمونه قبول است
   return delay({ ok: /^\d{5}$/.test(input.code), userName: 'c34qxnsh' }, 600);
+}
+
+// ─── پنل فروشنده ──────────────────────────────────────────────────────
+
+import {
+  PANEL_USER_ID,
+  PRODUCT_CAPACITY,
+  myProducts,
+  panelProfile,
+  savedLists as savedListsData,
+  savedUsers as savedUsersData,
+  buyRequests as buyRequestsForPanel,
+} from './data';
+import type {
+  PanelProfile,
+  ProductStatus,
+  SavedList,
+  SavedUserItem,
+  SuggestedBuyer,
+} from '@/lib/types';
+
+/** پروفایل کاربر جاری پنل — ساختار عین user/get_profile باسکول */
+export async function getPanelProfile(): Promise<PanelProfile> {
+  return delay(panelProfile, 200);
+}
+
+/** آگهی‌های ثبت‌شده از ویزارد — ماندگار در حافظه مرورگر (فاز ماک) */
+const EXTRA_KEY = 'imach:my-extra-products';
+
+function readExtras(): Product[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(EXTRA_KEY);
+    return raw ? (JSON.parse(raw) as Product[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeExtras(items: Product[]) {
+  try {
+    window.localStorage.setItem(EXTRA_KEY, JSON.stringify(items));
+  } catch {
+    /* حافظه پر است — فقط درstate جاری */
+  }
+}
+
+/** آگهی‌های «محصولات من» + شمارنده تب‌ها */
+export async function getMyProducts(): Promise<{
+  items: Product[];
+  counts: Record<ProductStatus, number>;
+  capacity: number;
+}> {
+  const counts: Record<ProductStatus, number> = { confirmed: 0, pending: 0, rejected: 0, deleted: 0 };
+  const all = [...myProducts, ...readExtras()];
+  all.forEach((p) => {
+    counts[p.status ?? 'confirmed'] += 1;
+  });
+  return delay({ items: all, counts, capacity: PRODUCT_CAPACITY }, 250);
+}
+
+/** ثبت محصول جدید از ویزارد — نتیجه: «در انتظار تایید» */
+export async function submitProduct(input: {
+  productName: string;
+  subCategoryId: number;
+  provinceId: number;
+  cityId: number;
+  stock: number;
+  minSaleAmount: number;
+  minSalePrice: number;
+  description: string;
+  features: { key: string; value: string }[];
+  photosCount: number;
+}): Promise<{ ok: true; id: number; status: 'pending' }> {
+  // ثبت در «در انتظار تایید» — ماندگار در حافظه مرورگر (فاز ماک)
+  const id = Date.now();
+  const sub = categoriesData.find((c) => c.id === input.subCategoryId);
+  const prov = provinces.find((p) => p.id === input.provinceId);
+  const city = citiesData.find((c) => c.id === input.cityId);
+  if (sub && prov && city && typeof window !== 'undefined') {
+    const fresh: Product = {
+      id,
+      productName: input.productName,
+      slug: `خرید-عمده-${input.productName}-${id}`,
+      description: input.description,
+      stock: input.stock,
+      minSalePrice: input.minSalePrice,
+      minSaleAmount: input.minSaleAmount,
+      unit: sub.unit,
+      categoryId: sub.parentId ?? sub.id,
+      categoryName: categoriesData.find((c) => c.id === sub.parentId)?.categoryName ?? sub.categoryName,
+      subCategoryId: sub.id,
+      subCategoryName: sub.categoryName,
+      provinceId: prov.id,
+      provinceName: prov.name,
+      cityId: city.id,
+      cityName: city.name,
+      myuserId: PANEL_USER_ID,
+      seller: {
+        id: PANEL_USER_ID,
+        userName: panelProfile.userInfo.userName,
+        firstName: panelProfile.userInfo.firstName,
+        lastName: panelProfile.userInfo.lastName,
+        activePakageType: 0,
+        isVerified: false,
+      },
+      isLadder: false,
+      isElevated: false,
+      hasVideo: false,
+      isOld: false,
+      viewCount: 0,
+      status: 'pending',
+      features: input.features,
+      createdAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      updatedAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      photos: [],
+    };
+    writeExtras([...readExtras(), fresh]);
+  }
+  return delay({ ok: true, id, status: 'pending' }, 900);
+}
+
+/** نشان شده ها — لیست‌ها */
+export async function getSavedLists(): Promise<SavedList[]> {
+  return delay(savedListsData.map((l) => ({ ...l })), 200);
+}
+
+/** موارد یک لیست نشان‌شده (خریداران) */
+export async function getSavedListUsers(listId: number): Promise<SavedUserItem[] | null> {
+  const list = savedListsData.find((l) => l.id === listId);
+  if (!list) return delay(null, 150);
+  return delay(savedUsersData.map((u) => ({ ...u, notes: u.notes.map((n) => ({ ...n })) })), 250);
+}
+
+/**
+ * خریداران پیشنهادی — سرویس relatedByAdd باسکول:
+ * تطبیق با دسته و نوع کالای آگهی‌های فروشنده + حجم خرید/فروش؛ سورت با امتیاز تطابق.
+ * ماک: آگهی رد شده «پسته اکبری» ملاک است —
+ *   exact: نوع کالا اکبری / same-product: پسته / near-category: خشکبار و کشاورزی
+ */
+export async function getSuggestedBuyers(): Promise<SuggestedBuyer[]> {
+  const AGHIL_PRODUCTS = ['پسته'];
+  const nearNames = ['بادام', 'گردو', 'کشمش', 'میوه خشک', 'تخمه آفتابگردان', 'خرما', 'سیب', 'زعفران', 'برنج'];
+  const out: SuggestedBuyer[] = [];
+  buyRequestsForPanel.forEach((r) => {
+    const type = (r.name ?? '').replace(/\s+/g, ' ').trim();
+    let tier: SuggestedBuyer['tier'] | null = null;
+    if (r.subcategoryName === 'پسته' && type.includes('اکبری')) tier = 'exact';
+    else if (r.subcategoryName === 'پسته') tier = 'same-product';
+    else if (AGHIL_PRODUCTS.includes(r.subcategoryName) || nearNames.includes(r.subcategoryName)) tier = 'near-category';
+    if (!tier) return;
+    // حجم خرید نزدیک حجم فروش آگهی (۵۰۰ کیلوگرم) امتیاز بیشتری می‌گیرد
+    const volumeScore = Math.max(0, 30 - Math.min(30, Math.abs(r.requirementAmount - 500) / 100));
+    const base = tier === 'exact' ? 70 : tier === 'same-product' ? 50 : 25;
+    out.push({
+      buyRequest: r,
+      matchScore: Math.min(99, Math.round(base + volumeScore)),
+      tier,
+      relatedProduct: 'پسته اکبری',
+    });
+  });
+  out.sort((a, b) => b.matchScore - a.matchScore);
+  return delay(out.slice(0, 24), 300);
 }
