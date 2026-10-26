@@ -1,14 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   reactStrictMode: false,
   // ── پروکسی API — بدون CORS، هم‌مبدأ ─────────────────────────────────────
   // درخواست‌های /api/** فرانت به بک‌اند مگان (NestJS :4000/api/v1) می‌روند.
-  // در استقرار پروداکشن فقط BACKEND_ORIGIN عوض می‌شود.
+  // در استقرار پروداکشن فقط BACKEND_ORIGIN در .env عوض می‌شود.
   async rewrites() {
     const backend = process.env.BACKEND_ORIGIN ?? "http://localhost:4000";
     return [
