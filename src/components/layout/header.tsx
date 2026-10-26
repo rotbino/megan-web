@@ -74,7 +74,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-card">
+    <header className="sticky top-0 z-50 border-b border-border bg-card shadow-[0_2px_12px_rgba(35,38,43,0.08)]">
       {/* ─── ردیف ۱ — هدر اصلی: لوگو | جستجو | دکمه‌های انتها ── */}
       <div className="flex items-center justify-between gap-3 px-3 py-2.5 nav-desktop:gap-4 nav-desktop:px-4 nav-desktop:py-3">
         <Link href="/" aria-label="ایمچ — صفحه اصلی" className="shrink-0">
