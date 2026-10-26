@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -24,7 +24,6 @@ import type { Paged } from '@/lib/mock/api';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { Category, Product, SortKey } from '@/lib/types';
-
 /** مرتب‌سازی — دقیقاً مثل باسکول: مرتبط‌ترین / جدیدترین (نردبان‌شده‌ها همیشه بالا) */
 const SORTS: { key: SortKey; label: string }[] = [
   { key: 'related', label: 'مرتبط ترین' },
@@ -33,16 +32,35 @@ const SORTS: { key: SortKey; label: string }[] = [
 
 type SheetKind = 'categories' | 'sort' | null;
 
-interface ProductListingInnerProps {
-  categorySlug?: string;
-  /** دیتای اولیه SSR (صفحه ۱، مرتبط‌ترین، بدون فیلتر مکان) — فقط برای همان کوئری seed می‌شود */
-  initialData?: Paged<Product>;
-}
-
-function ProductListingInner({ categorySlug, initialData }: ProductListingInnerProps) {
-  const router = useRouter();
+/**
+ * پل پارامتر جستجو (F5) — useSearchParams در رندر ایستا باعث CSR-bailout کل
+ * Suspense می‌شود و کارت‌ها از HTML می‌روند (ضد-سئو). این برگه‌ی null-رندر
+ * داخل Suspense خودش می‌نشیند: bailout فقط همین برگه‌ی نامرئی را می‌گیرد و
+ * گرید کارت‌ها کامل در HTML ایستا می‌ماند؛ بعد از هیدریشن `s` را به لیست
+ * می‌رساند (واکنشی به router.push با ?s= — عین رفتار قبلی).
+ */
+function SearchBridge({ onS }: { onS: (v: string) => void }) {
   const sp = useSearchParams();
   const s = sp.get('s') ?? '';
+  useEffect(() => {
+    onS(s);
+  }, [s, onS]);
+  return null;
+}
+
+interface ProductListingInnerProps {
+  categorySlug?: string;
+  /** نام دسته فعال — از صفحه سروری می‌آید (بدون نیاز به درخت کلاینت) */
+  categoryName?: string;
+  /** دیتای اولیه SSR (صفحه ۱، مرتبط‌ترین، بدون فیلتر مکان) — فقط برای همان کوئری seed می‌شود */
+  initialData?: Paged<Product>;
+  /** سایدبار سرور-رندر (CategoryFilter) — از مرز کلاینت خارج است (F5) */
+  sidebar?: ReactNode;
+}
+
+function ProductListingInner({ categorySlug, categoryName, initialData, sidebar }: ProductListingInnerProps) {
+  const router = useRouter();
+  const [s, setS] = useState('');
 
   const [sort, setSort] = useState<SortKey>('related');
   const [page, setPage] = useState(1);
@@ -53,7 +71,7 @@ function ProductListingInner({ categorySlug, initialData }: ProductListingInnerP
   const [sheet, setSheet] = useState<SheetKind>(null);
   const [catStack, setCatStack] = useState<Category[]>([]);
 
-  const { data: tree = [] } = useCategoryTree();
+  const { data: tree = [] } = useCategoryTree(); // فقط برای بات‌شیت موبایل — seed سرور
   const { data: provinces = [] } = useProvinces();
   const { data: cities = [] } = useCities(provinceId);
 
@@ -75,11 +93,6 @@ function ProductListingInner({ categorySlug, initialData }: ProductListingInnerP
     page === 1 && sort === 'related' && !provinceId && !cityId && (!s || s === '');
   const { data, isFetching, isLoading } = useProducts(query, isDefaultQuery ? initialData : undefined);
   const items = data?.items ?? [];
-
-  const activeCategory = useMemo(() => {
-    const flat = tree.flatMap((r) => [r, ...(r.children ?? [])]).flatMap((c) => [c, ...(c.children ?? [])]);
-    return flat.find((c) => c.slug === categorySlug || c.categoryName === categorySlug);
-  }, [tree, categorySlug]);
 
   const reset = () => {
     setProvinceId(undefined);
@@ -112,6 +125,7 @@ function ProductListingInner({ categorySlug, initialData }: ProductListingInnerP
   const clearCategory = () => router.push('/product-list');
 
   // ─── سایدبار دسکتاپ (بدون تغییر) ──────────────────────────────
+  // سایدبار فیلتر — دسکتاپ؛ بخش دسته‌ها سرور-رندر (prop)، مکان کلاینت
   const filterContent = (
     <>
       <div className="rounded-md border bg-card p-4">
@@ -119,7 +133,7 @@ function ProductListingInner({ categorySlug, initialData }: ProductListingInnerP
           <Filter size={14} className="text-primary" />
           دسته بندی محصولات
         </h2>
-        <CategoryFilter tree={tree} activeSlug={categorySlug} />
+        {sidebar}
       </div>
 
       <div className="space-y-3 rounded-md border bg-card p-4">
@@ -163,6 +177,10 @@ function ProductListingInner({ categorySlug, initialData }: ProductListingInnerP
 
   return (
     <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-4 lg:grid-cols-[260px_1fr] lg:px-6 lg:py-6">
+      {/* پل جستجو — فقط همین ناحیه در رندر ایستا به CSR می‌افتد (نامرئی) */}
+      <Suspense>
+        <SearchBridge onS={setS} />
+      </Suspense>
       {/* سایدبار فیلتر — دسکتاپ */}
       <aside className="hidden space-y-5 lg:block" aria-label="فیلترها">
         {filterContent}
@@ -182,7 +200,7 @@ function ProductListingInner({ categorySlug, initialData }: ProductListingInnerP
             )}
             <span className="truncate text-muted-foreground">
               {data ? <b className="text-foreground">{toFa(data.total)}</b> : '—'} آگهی عمده
-              {activeCategory && <> در «{activeCategory.categoryName}»</>}
+              {categoryName && <> در «{categoryName}»</>}
             </span>
           </div>
           <div className="flex items-center gap-1.5 text-sm">
@@ -221,14 +239,14 @@ function ProductListingInner({ categorySlug, initialData }: ProductListingInnerP
             <ArrowDownWideNarrow size={14} className="text-muted-foreground" />
             مرتب سازی
           </button>
-          {activeCategory && (
+          {categoryName && (
             <button
               type="button"
               onClick={clearCategory}
-              aria-label={`حذف فیلتر دسته ${activeCategory.categoryName}`}
+              aria-label={`حذف فیلتر دسته ${categoryName}`}
               className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-primary/45 bg-primary/5 px-3 py-2 text-xs font-bold text-primary"
             >
-              {activeCategory.categoryName}
+              {categoryName}
               <X size={13} />
             </button>
           )}
@@ -337,58 +355,25 @@ function ProductListingInner({ categorySlug, initialData }: ProductListingInnerP
   );
 }
 
-function CategoryFilter({ tree, activeSlug }: { tree: Category[]; activeSlug?: string }) {
-  return (
-    <nav className="max-h-96 space-y-0.5 overflow-y-auto pe-1 text-sm">
-      <Link
-        href="/product-list"
-        className={cn('block rounded-lg px-2.5 py-1.5', !activeSlug ? 'bg-accent font-bold text-accent-foreground' : 'text-muted-foreground hover:bg-secondary')}
-      >
-        همه دسته‌ها
-      </Link>
-      {tree.map((root) => (
-        <div key={root.id}>
-          <Link
-            href={`/product-list/category/${root.slug}`}
-            className={cn('block rounded-lg px-2.5 py-1.5', activeSlug === root.slug ? 'bg-accent font-bold text-accent-foreground' : 'font-medium hover:bg-secondary')}
-          >
-            {root.categoryName}
-          </Link>
-          {(root.children ?? []).map((l2) => (
-            <div key={l2.id}>
-              <Link
-                href={`/product-list/category/${l2.slug}`}
-                className={cn('block rounded-lg ps-5 pe-2.5 py-1.5 text-[13px]', activeSlug === l2.slug ? 'bg-accent font-bold text-accent-foreground' : 'text-muted-foreground hover:bg-secondary')}
-              >
-                {l2.categoryName}
-              </Link>
-              {(l2.children ?? []).map((l3) => (
-                <Link
-                  key={l3.id}
-                  href={`/product-list/category/${l3.slug}`}
-                  className={cn('block rounded-lg ps-8 pe-2.5 py-1.5 text-xs', activeSlug === l3.slug ? 'bg-accent font-bold text-accent-foreground' : 'text-muted-foreground/80 hover:bg-secondary')}
-                >
-                  {l3.categoryName}
-                </Link>
-              ))}
-            </div>
-          ))}
-        </div>
-      ))}
-    </nav>
-  );
-}
-
 export function ProductListing({
   categorySlug,
+  categoryName,
   initialData,
+  sidebar,
 }: {
   categorySlug?: string;
+  categoryName?: string;
   initialData?: Paged<Product>;
+  sidebar?: ReactNode;
 }) {
+  // بدون Suspense بیرونی (F5): useSearchParams فقط داخل SearchBridge است؛
+  // رندر ایستا کامل (کارت‌ها در HTML) و هیدریشن بدون fallback-swap.
   return (
-    <Suspense fallback={<div className="mx-auto max-w-7xl px-4 py-6 lg:px-6"><Skeleton className="h-96 rounded-md" /></div>}>
-      <ProductListingInner categorySlug={categorySlug} initialData={initialData} />
-    </Suspense>
+    <ProductListingInner
+      categorySlug={categorySlug}
+      categoryName={categoryName}
+      initialData={initialData}
+      sidebar={sidebar}
+    />
   );
 }

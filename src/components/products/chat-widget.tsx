@@ -5,7 +5,7 @@ import { Loader2, LogIn, MessageSquareText, SendHorizonal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AuthModal } from '@/components/shared/auth-modal';
+import { LazyAuthModal } from '@/components/shared/lazy-auth-modal';
 import { getTokens } from '@/lib/api/client';
 import {
   useChatSocketEvents,
@@ -81,7 +81,7 @@ export function ChatWidget({
             <LogIn size={15} /> ورود / ثبت‌نام
           </Button>
         </div>
-        <AuthModal open={loginOpen} onClose={() => setLoginOpen(false)} onLoggedIn={() => setLoginOpen(false)} />
+        {loginOpen && <LazyAuthModal open={loginOpen} onClose={() => setLoginOpen(false)} onLoggedIn={() => setLoginOpen(false)} />}
       </section>
     );
   }

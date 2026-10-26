@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { useLatestBuyRequests } from '@/lib/mock/hooks';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toFa, timeAgoFa } from '@/lib/format';
+import { toFa } from '@/lib/format';
+import { RelativeTime } from '@/components/shared/relative-time';
 
 /**
  * «جدیدترین درخواست های خرید» — ردیف افقی مثل باسکول.
@@ -46,7 +47,7 @@ export function LatestBuyRequests() {
                   </span>
                   <span className="text-xs font-bold">{r.firstName} {r.lastName}</span>
                 </div>
-                <span className="text-[11px] text-muted-foreground">{timeAgoFa(r.createdAt)}</span>
+                <span className="text-[11px] text-muted-foreground"><RelativeTime date={r.createdAt} /></span>
               </div>
               <p className="text-xs leading-6 text-muted-foreground">
                 خریدار <span className="font-bold text-foreground">{toFa(r.requirementAmount)} {r.unit}</span>{' '}

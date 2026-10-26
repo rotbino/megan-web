@@ -10,7 +10,8 @@ import { useState } from 'react';
 import { BadgeCheck, CalendarDays, Loader2, MapPin, MessageSquare, Phone, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useBuyRequestContact } from '@/lib/mock/hooks';
-import { toFa, timeAgoFa } from '@/lib/format';
+import { toFa } from '@/lib/format';
+import { RelativeTime } from '@/components/shared/relative-time';
 import { cn } from '@/lib/utils';
 import type { BuyRequest } from '@/lib/types';
 
@@ -86,7 +87,7 @@ export function BuyerCard({
 
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1">
-          <CalendarDays size={13} /> {timeAgoFa(request.createdAt)}
+          <CalendarDays size={13} /> <RelativeTime date={request.createdAt} />
         </span>
         <span className="flex items-center gap-1">
           <MapPin size={13} /> {request.city}

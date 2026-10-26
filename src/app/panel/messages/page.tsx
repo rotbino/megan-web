@@ -23,7 +23,8 @@ import {
   useSendChatMessage,
 } from '@/lib/mock/hooks';
 import type { ChatThreadInfo } from '@/lib/mock/api';
-import { timeAgoFa, toFa } from '@/lib/format';
+import { toFa } from '@/lib/format';
+import { RelativeTime } from '@/components/shared/relative-time';
 import { cn } from '@/lib/utils';
 
 const SHARE_LINK = 'https://imach.ir';
@@ -120,7 +121,7 @@ export default function PanelMessagesPage() {
                       <span className="flex items-center justify-between gap-2">
                         <span className="truncate text-sm font-bold">{nameOf(t)}</span>
                         <span className="shrink-0 text-[10px] text-muted-foreground">
-                          {timeAgoFa(t.lastMessage?.at ?? t.updatedAt)}
+                          <RelativeTime date={t.lastMessage?.at ?? t.updatedAt} />
                         </span>
                       </span>
                       <span className="mt-0.5 flex items-center justify-between gap-2">

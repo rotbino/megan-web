@@ -232,6 +232,20 @@ export async function getCategoryTreeSSR(revalidate = 600): Promise<Category[] |
   }
 }
 
+/** استان‌ها سمت سرور — داده پایه؛ در root layout به کلاینت seed می‌شود */
+export async function getProvincesSSR(revalidate = 3600): Promise<Province[] | null> {
+  try {
+    const raw = await serverPost<Array<{ id: number; province_name: string }>>(
+      '/locations/getAllProvinces',
+      {},
+      revalidate,
+    );
+    return raw.map((p) => ({ id: p.id, name: p.province_name }));
+  } catch {
+    return null;
+  }
+}
+
 export async function getProvinces(): Promise<Province[]> {
   const raw = await apiFetch<Array<{ id: number; province_name: string }>>(
     '/locations/getAllProvinces',

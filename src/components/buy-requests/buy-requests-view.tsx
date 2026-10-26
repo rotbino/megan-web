@@ -9,10 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBuyRequestContact, useBuyRequests, useProvinces } from '@/lib/mock/hooks';
 import type { Paged } from '@/lib/mock/api';
-import { AuthModal } from '@/components/shared/auth-modal';
-import { getTokens } from '@/lib/api/client';
-import { ApiError } from '@/lib/api/client';
-import { toFa, timeAgoFa } from '@/lib/format';
+import { LazyAuthModal } from '@/components/shared/lazy-auth-modal';
+import { RelativeTime } from '@/components/shared/relative-time';
+import { getTokens, ApiError } from '@/lib/api/client';
+import { toFa } from '@/lib/format';
 import type { BuyRequest } from '@/lib/types';
 
 /**
@@ -183,7 +183,7 @@ function RequestCard({ request }: { request: BuyRequest }) {
             {request.firstName} {request.lastName}
           </span>
         </div>
-        <span className="text-xs text-muted-foreground">{timeAgoFa(request.createdAt)}</span>
+        <span className="text-xs text-muted-foreground"><RelativeTime date={request.createdAt} /></span>
       </div>
 
       {/* جمله عین باسکول */}
@@ -216,16 +216,18 @@ function RequestCard({ request }: { request: BuyRequest }) {
         توصیه ایمچ: همواره به انجام معاملات حضوری است.
       </p>
 
-      {/* ورود برای دیدن شماره — Lead-gen */}
-      <AuthModal
-        open={loginOpen}
-        onClose={() => setLoginOpen(false)}
-        onLoggedIn={() => {
-          setLoginOpen(false);
-          setNeedLogin(false);
-          void reveal();
-        }}
-      />
+      {/* ورود برای دیدن شماره — Lead-gen (چانک مودال فقط وقت نیاز) */}
+      {loginOpen && (
+        <LazyAuthModal
+          open={loginOpen}
+          onClose={() => setLoginOpen(false)}
+          onLoggedIn={() => {
+            setLoginOpen(false);
+            setNeedLogin(false);
+            void reveal();
+          }}
+        />
+      )}
       {needLogin && !loginOpen && (
         <p className="mt-2 flex items-center gap-1.5 text-[11px] text-amber-600">
           <LogIn size={12} /> برای مشاهده شماره تماس خریدار، وارد حساب خود شوید.

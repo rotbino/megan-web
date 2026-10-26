@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { ProductListing } from '@/components/products/product-listing';
+import { CategoryFilter } from '@/components/products/category-filter';
 import { JsonLd } from '@/components/shared/json-ld';
 import { getCategoryTreeSSR, getProductsSSR } from '@/lib/mock/api';
 import { findCategoryPath } from '@/lib/categories';
@@ -11,24 +12,23 @@ import { categories as mockTree } from '@/lib/mock/data';
 import { SITE_URL } from '@/lib/site';
 import type { Category } from '@/lib/types';
 
-// داینامیک SSR (مثل product-view): useSearchParams داخل کامپوننت کلاینت در
-// پیش‌رندر استاتیک به CSR می‌افتد؛ رندر پویا کارت‌ها را در HTML می‌گذارد (سئو)
-// و کش داده ۶۰ثانیه‌ای سرعت را تامین می‌کند.
-export const dynamic = 'force-dynamic';
+// ISR (F5): مثل لیست محصولات — کش با بازتولید پس‌زمینه ۵ دقیقه‌ای؛ TTFB داغ.
+// دسته‌های ناشناخته notFound می‌شوند (404 کش می‌شود تا بازتولید بعدی).
+export const revalidate = 300;
 
 interface Props {
   params: Promise<{ slug: string }>;
 }
 
 /** مسیر دسته: از درخت زنده بک‌اند؛ در dev آفلاین از ماک seed باسکول */
-async function resolveCategory(slug: string): Promise<Category[] | null> {
-  const tree = (await getCategoryTreeSSR(600)) ?? mockTree;
-  return findCategoryPath(tree, slug);
+async function resolveCategory(slug: string): Promise<{ tree: Category[]; path: Category[] | null }> {
+  const tree = (await getCategoryTreeSSR(3600)) ?? mockTree;
+  return { tree, path: findCategoryPath(tree, slug) };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const path = await resolveCategory(decodeURIComponent(slug));
+  const { path } = await resolveCategory(decodeURIComponent(slug));
   const name = path?.at(-1)?.categoryName ?? 'دسته‌بندی';
   const title = `${name} - خرید و قیمت ${name} عمده | ارزان‌ترین قیمت`;
   return {
@@ -42,20 +42,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CategoryPage({ params }: Props) {
   const { slug } = await params;
   const decoded = decodeURIComponent(slug);
-  const path = await resolveCategory(decoded);
+  const { tree, path } = await resolveCategory(decoded);
   if (!path) notFound();
 
   const cat = path.at(-1)!;
 
   // کوئری پیش‌فرض اولیه — عین ساختار کلاینت تا queryKey یکی باشد و initialData بخورد
-  const initial = await getProductsSSR({
-    categorySlug: decoded,
-    s: '',
-    provinceId: undefined,
-    cityId: undefined,
-    sort: 'related',
-    page: 1,
-  });
+  const initial = await getProductsSSR(
+    {
+      categorySlug: decoded,
+      s: '',
+      provinceId: undefined,
+      cityId: undefined,
+      sort: 'related',
+      page: 1,
+    },
+    300,
+  );
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',
@@ -93,7 +96,12 @@ export default async function CategoryPage({ params }: Props) {
             ))}
           </nav>
         </div>
-        <ProductListing categorySlug={decoded} initialData={initial ?? undefined} />
+        <ProductListing
+          categorySlug={decoded}
+          categoryName={cat.categoryName}
+          initialData={initial ?? undefined}
+          sidebar={<CategoryFilter tree={tree} activeSlug={decoded} />}
+        />
       </main>
       <Footer />
       <JsonLd data={breadcrumbLd} />

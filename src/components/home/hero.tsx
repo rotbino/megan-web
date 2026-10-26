@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { ChevronsLeft } from 'lucide-react';
 
 /**
@@ -8,10 +9,17 @@ import { ChevronsLeft } from 'lucide-react';
 export function Hero() {
   return (
     <section className="relative overflow-hidden bg-primary-deep text-white">
-      {/* تصویر پس‌زمینه + پوشش تیره ملایم (الگوی باسکول: تصویر دیده شود) */}
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-[url('/images/hero.webp')] bg-cover bg-center"
+      {/* تصویر پس‌زمینه (LCP صفحه اول) — next/image با priority تا در head preload
+          شود؛ CSS background دیر کشف می‌شود و LCP را عقب می‌اندازد (F5) */}
+      <Image
+        src="/images/hero.webp"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        // فایل محلی از قبل بهینه (۲۷KB webp) — پاس مستقیم بدون hop بهینه‌ساز
+        unoptimized
+        className="object-cover"
       />
       <div
         aria-hidden

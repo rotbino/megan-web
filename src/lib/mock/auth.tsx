@@ -14,9 +14,9 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { AuthModal } from '@/components/shared/auth-modal';
 import { clearTokens, getTokens } from '@/lib/api/client';
 import { logoutRemote } from '@/lib/mock/api';
+import { LazyAuthModal } from '@/components/shared/lazy-auth-modal';
 
 export interface MockUser {
   phone: string;
@@ -104,7 +104,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={value}>
       {children}
-      <AuthModal open={open} onClose={() => setOpen(false)} onLoggedIn={() => setOpen(false)} />
+      {/* چانک مودال فقط لحظه‌ی باز شدن fetch می‌شود (F5) */}
+      {open && <LazyAuthModal open={open} onClose={() => setOpen(false)} onLoggedIn={() => setOpen(false)} />}
     </AuthContext.Provider>
   );
 }

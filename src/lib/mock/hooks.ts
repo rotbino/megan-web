@@ -5,6 +5,7 @@
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { ensureChatSocket, onChatEvent } from '@/lib/api/socket';
+import { useBaseData } from '@/lib/base-data';
 import * as api from './api';
 import type { Paged } from './api';
 import type { BuyRequest, Product, ProductQuery, SavedUserItem } from '@/lib/types';
@@ -50,12 +51,26 @@ export function useRelatedProducts(product: Product | null | undefined) {
   });
 }
 
+/** درخت دسته‌ها — initialData از seed سرور (root layout) → هیدریشن همیشه یکسان */
 export function useCategoryTree() {
-  return useQuery({ queryKey: qk.categoryTree, queryFn: api.getCategoryTree, staleTime: 600_000 });
+  const { categoryTree } = useBaseData();
+  return useQuery({
+    queryKey: qk.categoryTree,
+    queryFn: api.getCategoryTree,
+    staleTime: 600_000,
+    ...(categoryTree ? { initialData: categoryTree } : {}),
+  });
 }
 
+/** استان‌ها — initialData از seed سرور (root layout) */
 export function useProvinces() {
-  return useQuery({ queryKey: qk.provinces, queryFn: api.getProvinces, staleTime: Infinity });
+  const { provinces } = useBaseData();
+  return useQuery({
+    queryKey: qk.provinces,
+    queryFn: api.getProvinces,
+    staleTime: Infinity,
+    ...(provinces ? { initialData: provinces } : {}),
+  });
 }
 
 export function useCities(provinceId?: number) {

@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/toaster";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
+import { BaseDataProvider } from "@/lib/base-data";
+import { getCategoryTreeSSR, getProvincesSSR } from "@/lib/mock/api";
 import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
@@ -79,16 +81,24 @@ function ServiceWorkerRegister() {
   );
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // داده‌های پایه (درخت دسته + استان‌ها) — یک fetch سرورِ کش‌شده برای کل اپ.
+  // به کلاینت seed می‌شوند تا هیدریشن با HTML سرور یکسان باشد (رفع React #418
+  // و CLS ۰.۴ ناشی از بازتولید کل درخت) و مگامنو/سایدبار از اول پُر رندر شوند.
+  // در صفحات ایستا با revalidate صفحه در build پخته می‌شود؛ در خطا undefined → fetch کلاینت.
+  const [tree, provinces] = await Promise.all([getCategoryTreeSSR(3600), getProvincesSSR(3600)]);
+
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
       <body className="font-sans antialiased bg-background text-foreground">
         <Providers>
-          <div className="flex min-h-screen flex-col">{children}</div>
-          <MobileBottomNav />
-          <Toaster />
+          <BaseDataProvider tree={tree ?? undefined} provinces={provinces ?? undefined}>
+            <div className="flex min-h-screen flex-col">{children}</div>
+            <MobileBottomNav />
+            <Toaster />
+          </BaseDataProvider>
         </Providers>
         <ServiceWorkerRegister />
       </body>

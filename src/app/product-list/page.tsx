@@ -2,14 +2,16 @@ import type { Metadata } from 'next';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { ProductListing } from '@/components/products/product-listing';
+import { CategoryFilter } from '@/components/products/category-filter';
 import { JsonLd } from '@/components/shared/json-ld';
-import { getProductsSSR } from '@/lib/mock/api';
+import { getCategoryTreeSSR, getProductsSSR } from '@/lib/mock/api';
 import { SITE_URL } from '@/lib/site';
 
-// داینامیک SSR (مثل product-view): useSearchParams داخل کامپوننت کلاینت در
-// پیش‌رندر استاتیک به CSR می‌افتد و کارت‌ها از HTML می‌روند؛ رندر پویا کارت‌ها
-// را در HTML می‌گذارد (سئو) و کش داده ۶۰ثانیه‌ای سرعت را تامین می‌کند.
-export const dynamic = 'force-dynamic';
+// ISR (F5): صفحه بعد از اولین رندر کش می‌شود و در پس‌زمینه هر ۵ دقیقه
+// بازتولید می‌شود — TTFB همیشه چند میلی‌ثانیه (به‌جای ~۶۰۰ms سردِ force-dynamic).
+// useSearchParams داخل Suspense موجود است → با ISR سازگار؛ کوئری‌های فیلتر/جستجو
+// مثل قبل فقط سمت کلاینت اجرا می‌شوند (SSR از اول فقط کوئری پیش‌فرض را می‌پخت).
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: 'لیست محصولات و قیمت عمده محصولات',
@@ -34,7 +36,9 @@ const INITIAL_QUERY = {
 } as const;
 
 export default async function ProductListPage() {
-  const initial = await getProductsSSR({ ...INITIAL_QUERY });
+  // درخت دسته‌ها برای سایدبار سرور-رندر (F5) — همان کش داده‌ی layout، بدون fetch اضافه
+  const tree = (await getCategoryTreeSSR(3600)) ?? [];
+  const initial = await getProductsSSR({ ...INITIAL_QUERY }, 300);
 
   return (
     <>
@@ -43,7 +47,7 @@ export default async function ProductListPage() {
         <div className="mx-auto max-w-7xl px-4 pt-6 lg:px-6">
           <h1 className="text-2xl font-bold">خرید عمده محصولات</h1>
         </div>
-        <ProductListing initialData={initial ?? undefined} />
+        <ProductListing initialData={initial ?? undefined} sidebar={<CategoryFilter tree={tree} />} />
       </main>
       <Footer />
       {initial && initial.items.length > 0 && (

@@ -30,7 +30,8 @@ export function ProductImage({
   sizes?: string;
 }) {
   const [failed, setFailed] = useState(false);
-  const src = (thumbs && thumbs.length > 0 ? thumbs[0] : null) ?? (photos && photos.length > 0 ? photos[0] : null);
+  const hasThumb = !!(thumbs && thumbs.length > 0);
+  const src = (hasThumb ? thumbs[0] : null) ?? (photos && photos.length > 0 ? photos[0] : null);
 
   if (src && !failed) {
     return (
@@ -41,6 +42,10 @@ export function ProductImage({
         sizes={sizes}
         priority={priority}
         onError={() => setFailed(true)}
+        // F5: تامبنیل ۴۰۰px از قبل با sharp بهینه شده و با Cache-Control:
+        // immutable از CDN آروان سرو می‌شود — پاس مستقیم به‌جای hop بهینه‌ساز
+        // (ـ300-500ms سرد به‌ازای هر تصویر) = LCP سریع‌تر در لیست‌ها.
+        unoptimized={hasThumb}
         className={cn('bg-muted object-cover', className)}
       />
     );
