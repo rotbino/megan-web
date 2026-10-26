@@ -1,37 +1,52 @@
 'use client';
 
 /**
- * نشان شده ها — لیست‌های نام‌دار خریداران (پاسخ سرویس: {lists:[{id,name,cnt}]}).
+ * نشان شده ها — لیست‌های نام‌دار خریداران (CRM — B7 واقعی).
  * دکمه «لیست جدید» + کارت هر لیست با تعداد نشان‌شده → صفحه جزئیات (CRM).
  */
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Bookmark, FolderPlus, Trash2 } from 'lucide-react';
-import { useSavedLists } from '@/lib/mock/hooks';
+import { Bookmark, FolderPlus, Loader2, Trash2 } from 'lucide-react';
+import { useCreateSavedList, useDeleteSavedList, useSavedLists } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
 import { toFa } from '@/lib/format';
+import type { SavedList } from '@/lib/types';
 
 export default function SavedListsPage() {
   const { data: lists, isLoading } = useSavedLists();
+  const createList = useCreateSavedList();
+  const deleteList = useDeleteSavedList();
   const { toast } = useToast();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
-  const [extra, setExtra] = useState<{ id: number; name: string; cnt: number }[]>([]);
-  const [removed, setRemoved] = useState<Set<number>>(new Set());
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  const all = [...(lists ?? []), ...extra].filter((l) => !removed.has(l.id));
+  const all: SavedList[] = lists ?? [];
 
-  const createList = () => {
+  const submitList = () => {
     const name = newName.trim();
-    if (!name) return;
-    setExtra((e) => [...e, { id: Date.now(), name, cnt: 0 }]);
-    setNewName('');
-    setCreating(false);
-    toast({ description: `لیست «${name}» ساخته شد.` });
+    if (!name || createList.isPending) return;
+    createList.mutate(name, {
+      onSuccess: () => {
+        setNewName('');
+        setCreating(false);
+        toast({ description: `لیست «${name}» ساخته شد.` });
+      },
+      onError: (err) => toast({ description: err instanceof Error ? err.message : 'ساخت لیست ناموفق بود.' }),
+    });
+  };
+
+  const removeList = (list: SavedList) => {
+    setBusyId(list.id);
+    deleteList.mutate(list.id, {
+      onSuccess: () => toast({ description: `لیست «${list.name}» حذف شد.` }),
+      onError: (err) => toast({ description: err instanceof Error ? err.message : 'حذف ناموفق بود.' }),
+      onSettled: () => setBusyId(null),
+    });
   };
 
   if (isLoading) {
@@ -54,11 +69,12 @@ export default function SavedListsPage() {
               autoFocus
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && createList()}
+              onKeyDown={(e) => e.key === 'Enter' && submitList()}
               placeholder="نام لیست (مثلاً: سیب زمینی)"
               className="rounded-md"
             />
-            <Button className="rounded-md" onClick={createList}>
+            <Button className="rounded-md" onClick={submitList} disabled={createList.isPending}>
+              {createList.isPending && <Loader2 size={14} className="ml-1 animate-spin" />}
               ساختن
             </Button>
           </div>
@@ -91,13 +107,11 @@ export default function SavedListsPage() {
               <button
                 type="button"
                 aria-label="حذف لیست"
-                onClick={() => {
-                  setRemoved((prev) => new Set(prev).add(l.id));
-                  toast({ description: `لیست «${l.name}» حذف شد.` });
-                }}
+                disabled={busyId === l.id}
+                onClick={() => removeList(l)}
                 className="absolute left-3 top-3 hidden text-muted-foreground transition-colors hover:text-red-500 group-hover:block"
               >
-                <Trash2 size={15} />
+                {busyId === l.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
               </button>
             </div>
           ))}

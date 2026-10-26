@@ -4,7 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import * as api from './api';
-import type { Product, ProductQuery } from '@/lib/types';
+import type { Product, ProductQuery, SavedUserItem } from '@/lib/types';
 
 const qk = {
   products: (q: ProductQuery) => ['products', q] as const,
@@ -13,7 +13,7 @@ const qk = {
   categoryTree: ['category-tree'] as const,
   provinces: ['provinces'] as const,
   cities: (pid: number) => ['cities', pid] as const,
-  buyRequests: (o: { s?: string; provinceName?: string }) => ['buy-requests', o] as const,
+  buyRequests: (o: { s?: string; provinceId?: number; page?: number; perPage?: number }) => ['buy-requests', o] as const,
   seller: (u: string) => ['seller', u] as const,
   suggestions: (q: string) => ['suggestions', q] as const,
 };
@@ -62,8 +62,25 @@ export function useCities(provinceId?: number) {
   });
 }
 
-export function useBuyRequests(opts: { s?: string; provinceName?: string } = {}) {
-  return useQuery({ queryKey: qk.buyRequests(opts), queryFn: () => api.getBuyRequests(opts), staleTime: 30_000 });
+export function useBuyRequests(
+  opts: { s?: string; provinceId?: number; page?: number; perPage?: number } = {},
+) {
+  return useQuery({
+    queryKey: qk.buyRequests(opts),
+    queryFn: () => api.getBuyRequests(opts),
+    placeholderData: keepPreviousData, // صفحه‌بندی نرم
+    staleTime: 30_000,
+  });
+}
+
+/** جدیدترین درخواست‌های خرید — سکشن صفحه اول */
+export function useLatestBuyRequests() {
+  return useQuery({ queryKey: ['latest-buy-requests'], queryFn: api.getLatestBuyRequests, staleTime: 120_000 });
+}
+
+/** شماره تماس خریدار (Lead-gen) */
+export function useBuyRequestContact() {
+  return useMutation({ mutationFn: api.getBuyRequestContact });
 }
 
 export function useSeller(userName: string) {
@@ -107,7 +124,7 @@ export function useSavedLists() {
   return useQuery({ queryKey: ['panel-saved-lists'], queryFn: api.getSavedLists, staleTime: 30_000 });
 }
 
-export function useSavedListUsers(listId: number) {
+export function useSavedListUsers(listId: string) {
   return useQuery({
     queryKey: ['panel-saved-users', listId],
     queryFn: () => api.getSavedListUsers(listId),
@@ -129,6 +146,84 @@ export function useSubmitProduct() {
   });
 }
 
+// ─── CRM نشان شده ها (B7) ─────────────────────────────────────────────
+
+export function useCreateSavedList() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.createSavedList,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['panel-saved-lists'] }),
+  });
+}
+
+export function useUpdateSavedList() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { listId: string; name: string }) => api.updateSavedList(input.listId, input.name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-saved-lists'] });
+      queryClient.invalidateQueries({ queryKey: ['panel-saved-users'] });
+    },
+  });
+}
+
+export function useDeleteSavedList() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.deleteSavedList,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['panel-saved-lists'] }),
+  });
+}
+
+export function useSaveBuyer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.saveBuyerToList,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['panel-saved-lists'] }),
+  });
+}
+
+export function useSetSavedUserStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { savedUserId: string; status: SavedUserItem['status'] }) =>
+      api.setSavedUserStatus(input.savedUserId, input.status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['panel-saved-users'] }),
+  });
+}
+
+export function useAddSavedUserNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { savedUserId: string; text: string }) =>
+      api.addSavedUserNote(input.savedUserId, input.text),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['panel-saved-users'] }),
+  });
+}
+
+export function useMoveSavedUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { savedUserId: string; toListId: string }) =>
+      api.moveSavedUser(input.savedUserId, input.toListId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-saved-users'] });
+      queryClient.invalidateQueries({ queryKey: ['panel-saved-lists'] });
+    },
+  });
+}
+
+export function useRemoveSavedUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.removeSavedUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-saved-users'] });
+      queryClient.invalidateQueries({ queryKey: ['panel-saved-lists'] });
+    },
+  });
+}
+
 // ─── پنل خریدار ──────────────────────────────────────────────────────
 
 export function useMyBuyRequests() {
@@ -143,6 +238,16 @@ export function useSubmitPanelBuyRequest() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: api.submitPanelBuyRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-my-buy-requests'] });
+    },
+  });
+}
+
+export function useDeleteMyBuyRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.deleteMyBuyRequest,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['panel-my-buy-requests'] });
     },

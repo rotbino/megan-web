@@ -5,7 +5,7 @@
  * مرحله ۱: انتخاب دسته بندی (کاسکید مشترک با ثبت محصول) + چیپ مسیر + «انتخاب و ادامه» / «پاک کردن»
  * مرحله ۲: نوع کالا (مثال هر دسته) + میزان نیازمندی (بادکنک تبدیل به تن!) +
  *           سابقه خرید عمده (بله/خیر) + هدف (قیمت و خرید سریع / فقط اطلاع از قیمت) + «ثبت درخواست» / «مرحله قبل»
- * نتیجه: «در انتظار تایید» — ماندگار در حافظه مرورگر و قابل مشاهده در «درخواست های من».
+ * نتیجه: «در انتظار تایید» — ذخیره در بک‌اند و قابل مشاهده در «درخواست های من».
  */
 
 import { useState } from 'react';
@@ -88,10 +88,9 @@ export default function RegisterBuyRequestPage() {
     if (step === 1) {
       submit.mutate(
         {
-          subcategoryName: draft.leaf!.categoryName,
+          subCategoryId: draft.leaf!.id,
           productType: draft.productType.trim(),
           requirementAmount: num(draft.amount),
-          unit: draft.leaf!.unit ?? 'کیلوگرم',
           goal: draft.goal!,
           hasHistory: draft.hasHistory === 'yes',
         },

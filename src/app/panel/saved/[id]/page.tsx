@@ -8,17 +8,26 @@
 
 import { use, useState } from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { ArrowRight, NotebookPen, Settings2, StickyNote } from 'lucide-react';
-import { useSavedListUsers, useSavedLists } from '@/lib/mock/hooks';
+import { notFound, useRouter } from 'next/navigation';
+import { ArrowRight, Loader2, NotebookPen, Settings2, StickyNote } from 'lucide-react';
+import {
+  useAddSavedUserNote,
+  useMoveSavedUser,
+  useSavedListUsers,
+  useSavedLists,
+  useSetSavedUserStatus,
+  useUpdateSavedList,
+  useDeleteSavedList,
+} from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { PanelCard } from '@/components/panel/panel-parts';
 import { SAVED_USER_STATUS_LABELS } from '@/lib/mock/data';
-import { dateFa } from '@/lib/format';
+import { dateFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { SavedUserItem, SavedUserStatusKey } from '@/lib/types';
 
@@ -36,45 +45,53 @@ const STATUS_TONE: Record<SavedUserStatusKey, string> = {
 
 export default function SavedListDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const listId = Number(id);
+  const listId = id; // ObjectId رشته‌ای
+  const router = useRouter();
+  const routerPush = router.push.bind(router);
   const { data: lists } = useSavedLists();
   const { data: initialUsers, isLoading } = useSavedListUsers(listId);
+  const setStatusMutation = useSetSavedUserStatus();
+  const addNoteMutation = useAddSavedUserNote();
+  const moveMutation = useMoveSavedUser();
+  const updateListMutation = useUpdateSavedList();
+  const deleteListMutation = useDeleteSavedList();
   const { toast } = useToast();
 
-  const [users, setUsers] = useState<SavedUserItem[] | null>(null);
   const [filter, setFilter] = useState<SavedUserStatusKey | 'all'>('all');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [noteFor, setNoteFor] = useState<number | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [noteFor, setNoteFor] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
+  const [moveFor, setMoveFor] = useState<SavedUserItem | null>(null);
 
   const list = lists?.find((l) => l.id === listId);
-  const current = users ?? initialUsers ?? [];
+  const current: SavedUserItem[] = initialUsers ?? [];
 
   const shown = filter === 'all' ? current : current.filter((u) => u.status === filter);
 
-  const setStatus = (userId: number, status: SavedUserStatusKey) => {
-    setUsers(
-      current.map((u) =>
-        u.id === userId
-          ? { ...u, status, notes: u.notes }
-          : u,
-      ),
+  const setStatus = (userId: string, status: SavedUserStatusKey) => {
+    setStatusMutation.mutate(
+      { savedUserId: userId, status },
+      {
+        onSuccess: () => toast({ description: 'وضعیت کاربر به‌روزرسانی شد.' }),
+        onError: (err) => toast({ description: err instanceof Error ? err.message : 'به‌روزرسانی ناموفق بود.' }),
+      },
     );
-    toast({ description: 'وضعیت کاربر به‌روزرسانی شد.' });
   };
 
   const addNote = () => {
-    if (!noteText.trim() || noteFor === null) return;
-    setUsers(
-      current.map((u) =>
-        u.id === noteFor
-          ? { ...u, notes: [...u.notes, { id: Date.now(), text: noteText.trim(), createdAt: new Date().toISOString() }] }
-          : u,
-      ),
+    if (!noteText.trim() || noteFor === null || addNoteMutation.isPending) return;
+    addNoteMutation.mutate(
+      { savedUserId: noteFor, text: noteText.trim() },
+      {
+        onSuccess: () => {
+          setNoteText('');
+          setNoteFor(null);
+          toast({ description: 'یادداشت ثبت شد.' });
+        },
+        onError: (err) => toast({ description: err instanceof Error ? err.message : 'ثبت یادداشت ناموفق بود.' }),
+      },
     );
-    setNoteText('');
-    setNoteFor(null);
-    toast({ description: 'یادداشت ثبت شد.' });
   };
 
   if (isLoading) {
@@ -191,7 +208,7 @@ export default function SavedListDetailPage({ params }: { params: Promise<{ id: 
                   size="sm"
                   variant="ghost"
                   className="rounded-md text-xs text-primary hover:bg-primary/5"
-                  onClick={() => toast({ description: 'به لیست دیگری اضافه شد. (نمونه)' })}
+                  onClick={() => setMoveFor(u)}
                 >
                   افزودن به لیست دیگر
                 </Button>
@@ -227,28 +244,103 @@ export default function SavedListDetailPage({ params }: { params: Promise<{ id: 
         </DialogContent>
       </Dialog>
 
-      {/* مودال تنظیمات لیست */}
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+      {/* مودال تنظیمات لیست — واقعی: تغییر نام / حذف */}
+      <Dialog open={settingsOpen} onOpenChange={(o) => { setSettingsOpen(o); if (o) setRenameValue(list?.name ?? ''); }}>
         <DialogContent className="rounded-lg sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-start">تنظیمات لیست</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2 text-sm">
+          <div className="space-y-3 text-sm">
             <p className="text-xs text-muted-foreground">«{list?.name}» — {current.length} نشان شده</p>
-            <Button
-              variant="outline"
-              className="w-full justify-start rounded-md text-xs"
-              onClick={() => toast({ description: 'تغییر نام لیست در نسخه بعدی فعال می‌شود. (نمونه)' })}
-            >
-              تغییر نام لیست
-            </Button>
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-bold text-muted-foreground">تغییر نام لیست</p>
+              <div className="flex gap-2">
+                <Input
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  className="rounded-md text-xs"
+                  placeholder="نام جدید"
+                />
+                <Button
+                  size="sm"
+                  className="rounded-md"
+                  disabled={!renameValue.trim() || renameValue.trim() === list?.name || updateListMutation.isPending}
+                  onClick={() =>
+                    updateListMutation.mutate(
+                      { listId, name: renameValue.trim() },
+                      {
+                        onSuccess: () => {
+                          setSettingsOpen(false);
+                          toast({ description: 'نام لیست تغییر کرد.' });
+                        },
+                        onError: (err) => toast({ description: err instanceof Error ? err.message : 'تغییر نام ناموفق بود.' }),
+                      },
+                    )
+                  }
+                >
+                  {updateListMutation.isPending && <Loader2 size={13} className="ml-1 animate-spin" />}
+                  ذخیره
+                </Button>
+              </div>
+            </div>
             <Button
               variant="ghost"
               className="w-full justify-start rounded-md text-xs text-red-500 hover:bg-red-50"
-              onClick={() => toast({ description: 'حذف لیست در نسخه بعدی فعال می‌شود. (نمونه)' })}
+              disabled={deleteListMutation.isPending}
+              onClick={() =>
+                deleteListMutation.mutate(listId, {
+                  onSuccess: () => routerPush('/panel/saved'),
+                  onError: (err) => toast({ description: err instanceof Error ? err.message : 'حذف ناموفق بود.' }),
+                })
+              }
             >
+              {deleteListMutation.isPending && <Loader2 size={13} className="ml-1 animate-spin" />}
               حذف لیست
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* مودال افزودن به لیست دیگر — واقعی */}
+      <Dialog open={!!moveFor} onOpenChange={(o) => !o && setMoveFor(null)}>
+        <DialogContent className="rounded-lg sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-start">افزودن به لیست دیگر</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground">{moveFor?.name} به کدام لیست اضافه شود؟</p>
+            {(lists ?? []).filter((l) => l.id !== listId).length === 0 ? (
+              <p className="rounded-md bg-secondary/60 px-3 py-2 text-xs text-muted-foreground">
+                لیست دیگری ندارید — از صفحه «نشان شده ها» لیست جدید بسازید.
+              </p>
+            ) : (
+              (lists ?? [])
+                .filter((l) => l.id !== listId)
+                .map((l) => (
+                  <Button
+                    key={l.id}
+                    variant="outline"
+                    className="w-full justify-between rounded-md text-xs"
+                    disabled={moveMutation.isPending}
+                    onClick={() =>
+                      moveFor &&
+                      moveMutation.mutate(
+                        { savedUserId: moveFor.id, toListId: l.id },
+                        {
+                          onSuccess: () => {
+                            setMoveFor(null);
+                            toast({ description: `به لیست «${l.name}» منتقل شد.` });
+                          },
+                          onError: (err) => toast({ description: err instanceof Error ? err.message : 'انتقال ناموفق بود.' }),
+                        },
+                      )
+                    }
+                  >
+                    {l.name}
+                    <span className="text-[10px] text-muted-foreground">{toFa(l.cnt)} نفر</span>
+                  </Button>
+                ))
+            )}
           </div>
         </DialogContent>
       </Dialog>

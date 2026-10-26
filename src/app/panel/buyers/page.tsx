@@ -8,18 +8,21 @@
 
 import { useMemo, useState } from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
-import { useBuyRequests, useCategoryTree } from '@/lib/mock/hooks';
+import { useBuyRequests, useCategoryTree, useSaveBuyer } from '@/lib/mock/hooks';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PanelCard, PanelPromoCards } from '@/components/panel/panel-parts';
 import { BuyerCard, BulkSmsBanner } from '@/components/panel/buyer-card';
+import { useToast } from '@/hooks/use-toast';
 import { toFa } from '@/lib/format';
 
 const PER_BATCH = 10;
 
 export default function PanelBuyersPage() {
-  const { data: requests, isLoading } = useBuyRequests({});
+  const { data: paged, isLoading } = useBuyRequests({ perPage: 50 });
   const { data: tree } = useCategoryTree();
+  const saveBuyer = useSaveBuyer();
+  const { toast } = useToast();
   const [q, setQ] = useState('');
   const [rootCat, setRootCat] = useState('all');
   const [batch, setBatch] = useState(1);
@@ -28,7 +31,7 @@ export default function PanelBuyersPage() {
   const roots = useMemo(() => tree ?? [], [tree]);
 
   const filtered = useMemo(() => {
-    let items = requests ?? [];
+    let items = paged?.items ?? [];
     if (rootCat !== 'all') {
       const root = roots.find((r) => String(r.id) === rootCat);
       if (root) {
@@ -51,17 +54,22 @@ export default function PanelBuyersPage() {
       );
     }
     return items;
-  }, [requests, q, rootCat, roots]);
+  }, [paged, q, rootCat, roots]);
 
   const visible = filtered.slice(0, batch * PER_BATCH);
 
-  const toggleSave = (id: number) => {
-    setSavedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const toggleSave = async (r: (typeof filtered)[number]) => {
+    if (savedIds.has(r.id)) return; // حذف از لیست از خود CRM انجام می‌شود
+    try {
+      await saveBuyer.mutateAsync({
+        targetUserId: r.myuserId,
+        listName: r.subcategoryName, // لیست به نام دسته کالا — الگوی باسکول («سیب زمینی»)
+      });
+      setSavedIds((prev) => new Set(prev).add(r.id));
+      toast({ description: 'خریدار به لیست نشان شده ها اضافه شد.' });
+    } catch (err) {
+      toast({ description: err instanceof Error ? err.message : 'نشان کردن ناموفق بود.' });
+    }
   };
 
   return (
@@ -127,7 +135,7 @@ export default function PanelBuyersPage() {
         <div className="space-y-3">
           {visible.map((r, i) => (
             <div key={r.id} className="contents">
-              <BuyerCard request={r} saved={savedIds.has(r.id)} onToggleSave={() => toggleSave(r.id)} />
+              <BuyerCard request={r} saved={savedIds.has(r.id)} onToggleSave={() => void toggleSave(r)} />
               {(i + 1) % 5 === 0 && i + 1 < visible.length && <BulkSmsBanner />}
             </div>
           ))}

@@ -9,7 +9,6 @@
 import { apiFetch, setTokens, clearTokens, getTokens, ApiError } from '@/lib/api/client';
 import type { BuyRequest, Category, City, PackageType, Product, ProductQuery, Province } from '@/lib/types';
 import {
-  buyRequests as buyRequestsData,
   categories as categoriesData,
   cities as citiesData,
   provinces,
@@ -195,26 +194,70 @@ export async function getCities(provinceId: number): Promise<City[]> {
   return raw.map((c) => ({ id: c.id, name: c.city_name, provinceId: c.province_id }));
 }
 
-// ─── درخواست‌های خرید (ماک تا فاز B7) ─────────────────────────────────────
+// ─── درخواست‌های خرید (B7 — واقعی) ─────────────────────────────────────────
 
-export async function getBuyRequests(opts: { s?: string; provinceName?: string } = {}): Promise<BuyRequest[]> {
-  const LATENCY = 450;
-  await new Promise((r) => setTimeout(r, LATENCY));
-  let items = [...buyRequestsData];
-  if (opts.s?.trim()) {
-    const q = opts.s.trim();
-    items = items.filter(
-      (r) => (r.name ?? '').includes(q) || r.subcategoryName.includes(q),
-    );
-  }
-  if (opts.provinceName) {
-    items = items.filter(
-      (r) =>
-        citiesData.find((c) => c.name === r.city)?.provinceId ===
-        provinces.find((p) => p.name === opts.provinceName)?.id,
-    );
-  }
-  return items;
+/** RawBuyRequest بک‌اند — هم‌شکل تایپ فرانت با استثنای myuserId (رشته ObjectId) */
+interface RawBuyRequest {
+  id: number;
+  name: string | null;
+  categoryId: number;
+  subcategoryName: string;
+  requirementAmount: number;
+  unit: string;
+  myuserId: string;
+  firstName: string;
+  lastName: string;
+  city: string;
+  isVerified: boolean;
+  createdAt: string;
+}
+
+const toBuyRequest = (r: RawBuyRequest): BuyRequest => ({
+  id: r.id,
+  name: r.name,
+  categoryId: r.categoryId,
+  subcategoryName: r.subcategoryName,
+  requirementAmount: r.requirementAmount,
+  unit: r.unit,
+  myuserId: r.myuserId,
+  firstName: r.firstName,
+  lastName: r.lastName,
+  city: r.city,
+  isVerified: r.isVerified,
+  createdAt: r.createdAt,
+});
+
+export async function getBuyRequests(
+  opts: { s?: string; provinceId?: number; page?: number; perPage?: number } = {},
+): Promise<Paged<BuyRequest>> {
+  const raw = await apiFetch<{ items: RawBuyRequest[]; total: number; page: number; pageCount: number }>(
+    '/buy-requests/getBuyRequestList',
+    {
+      s: opts.s,
+      provinceId: opts.provinceId,
+      page: opts.page,
+      perPage: opts.perPage,
+    },
+    { auth: false },
+  );
+  return { ...raw, items: raw.items.map(toBuyRequest) };
+}
+
+/** جدیدترین درخواست‌ها — سکشن صفحه اول (۴ تایی عین باسکول) */
+export async function getLatestBuyRequests(): Promise<BuyRequest[]> {
+  const raw = await apiFetch<RawBuyRequest[]>('/buy-requests/getLatestBuyRequests', {}, { auth: false });
+  return raw.map(toBuyRequest);
+}
+
+/** شماره تماس خریدار — نیازمند ورود (مدل Lead-gen باسکول) */
+export async function getBuyRequestContact(id: number): Promise<{
+  phone: string;
+  firstName: string;
+  lastName: string;
+  isVerified: boolean;
+  isSelf: boolean;
+}> {
+  return apiFetch(`/buy-requests/getBuyRequestContact`, { id });
 }
 
 // ─── فروشنده‌ها ────────────────────────────────────────────────────────────
@@ -250,12 +293,16 @@ export async function getSeller(userName: string) {
 // ─── فرم‌ها ────────────────────────────────────────────────────────────────
 
 export async function submitBuyRequest(input: {
-  productName: string;
+  subCategoryId: number;
   productType?: string;
   amount: number;
 }): Promise<{ ok: true; id: number }> {
-  await new Promise((r) => setTimeout(r, 700));
-  return { ok: true, id: Date.now() };
+  await apiFetch('/buy-requests/createBuyRequest', {
+    subCategoryId: input.subCategoryId,
+    name: input.productType || undefined,
+    requirementAmount: input.amount,
+  });
+  return { ok: true, id: 0 };
 }
 
 /** ارسال کد OTP واقعی — خطا با پیام فارسی بک‌اند؛ devCode فقط در محیط توسعه برمی‌گردد */
@@ -304,19 +351,14 @@ export async function logoutRemote(): Promise<void> {
 
 // ─── پنل فروشنده ──────────────────────────────────────────────────────────
 
-import {
-  panelProfile,
-  savedLists as savedListsData,
-  savedUsers as savedUsersData,
-  buyRequests as buyRequestsForPanel,
-  PRODUCT_CAPACITY,
-} from './data';
+import { PRODUCT_CAPACITY } from './data';
 import { uploadImage } from '@/lib/api/client';
 import type {
   PanelProfile,
   ProductStatus,
   SavedList,
   SavedUserItem,
+  SavedUserNote,
   SuggestedBuyer,
 } from '@/lib/types';
 
@@ -463,44 +505,79 @@ export async function deleteMyProduct(id: number): Promise<{ ok: true }> {
   return { ok: true };
 }
 
-// ─── نشان شده ها (ماک تا فاز B7) ──────────────────────────────────────────
+// ─── نشان شده ها (B7 — واقعی) ──────────────────────────────────────────────
 
 export async function getSavedLists(): Promise<SavedList[]> {
-  await new Promise((r) => setTimeout(r, 200));
-  return savedListsData.map((l) => ({ ...l }));
+  return apiFetch<SavedList[]>('/saved/getSavedLists', {});
 }
 
-export async function getSavedListUsers(listId: number): Promise<SavedUserItem[] | null> {
-  const list = savedListsData.find((l) => l.id === listId);
-  await new Promise((r) => setTimeout(r, 150));
-  if (!list) return null;
-  return savedUsersData.map((u) => ({ ...u, notes: u.notes.map((n) => ({ ...n })) }));
+export async function getSavedListUsers(listId: string): Promise<SavedUserItem[] | null> {
+  try {
+    return await apiFetch<SavedUserItem[] | null>('/saved/getSavedListUsers', { listId });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
 }
 
-/** خریداران پیشنهادی (ماک تا فاز B7) */
+export async function createSavedList(name: string): Promise<SavedList> {
+  return apiFetch<SavedList>('/saved/createSavedList', { name });
+}
+
+export async function updateSavedList(listId: string, name: string): Promise<SavedList> {
+  return apiFetch<SavedList>('/saved/updateSavedList', { listId, name });
+}
+
+export async function deleteSavedList(listId: string): Promise<{ ok: true }> {
+  await apiFetch('/saved/deleteSavedList', { listId });
+  return { ok: true };
+}
+
+/** «نشان کردن» خریدار — لیست مقصد یا نام لیست جدید (عین مودال باسکول) */
+export async function saveBuyerToList(input: {
+  targetUserId: string;
+  listId?: string;
+  listName?: string;
+}): Promise<{ savedUserId: string; listId: string }> {
+  return apiFetch('/saved/saveBuyerToList', input);
+}
+
+export async function removeSavedUser(savedUserId: string): Promise<{ ok: true }> {
+  await apiFetch('/saved/removeSavedUser', { savedUserId });
+  return { ok: true };
+}
+
+export async function setSavedUserStatus(
+  savedUserId: string,
+  status: SavedUserItem['status'],
+): Promise<{ ok: true }> {
+  await apiFetch('/saved/setSavedUserStatus', { savedUserId, status });
+  return { ok: true };
+}
+
+export async function addSavedUserNote(
+  savedUserId: string,
+  text: string,
+): Promise<SavedUserNote> {
+  return apiFetch<SavedUserNote>('/saved/addSavedUserNote', { savedUserId, text });
+}
+
+export async function moveSavedUser(savedUserId: string, toListId: string): Promise<{ ok: true }> {
+  await apiFetch('/saved/moveSavedUser', { savedUserId, toListId });
+  return { ok: true };
+}
+
+/** خریداران پیشنهادی — تطبیق درخواست‌ها با آگهی‌های من (B7 — واقعی) */
 export async function getSuggestedBuyers(): Promise<SuggestedBuyer[]> {
-  await new Promise((r) => setTimeout(r, 300));
-  const AGHIL_PRODUCTS = ['پسته'];
-  const nearNames = ['بادام', 'گردو', 'کشمش', 'میوه خشک', 'تخمه آفتابگردان', 'خرما', 'سیب', 'زعفران', 'برنج'];
-  const out: SuggestedBuyer[] = [];
-  buyRequestsForPanel.forEach((r) => {
-    const type = (r.name ?? '').replace(/\s+/g, ' ').trim();
-    let tier: SuggestedBuyer['tier'] | null = null;
-    if (r.subcategoryName === 'پسته' && type.includes('اکبری')) tier = 'exact';
-    else if (r.subcategoryName === 'پسته') tier = 'same-product';
-    else if (AGHIL_PRODUCTS.includes(r.subcategoryName) || nearNames.includes(r.subcategoryName)) tier = 'near-category';
-    if (!tier) return;
-    const volumeScore = Math.max(0, 30 - Math.min(30, Math.abs(r.requirementAmount - 500) / 100));
-    const base = tier === 'exact' ? 70 : tier === 'same-product' ? 50 : 25;
-    out.push({
-      buyRequest: r,
-      matchScore: Math.min(99, Math.round(base + volumeScore)),
-      tier,
-      relatedProduct: 'پسته اکبری',
-    });
-  });
-  out.sort((a, b) => b.matchScore - a.matchScore);
-  return out.slice(0, 24);
+  const raw = await apiFetch<
+    Array<{
+      buyRequest: RawBuyRequest;
+      matchScore: number;
+      tier: SuggestedBuyer['tier'];
+      relatedProduct: string;
+    }>
+  >('/buy-requests/getSuggestedBuyers', {});
+  return raw.map((s) => ({ ...s, buyRequest: toBuyRequest(s.buyRequest) }));
 }
 
 // ─── احراز هویت اسناد (B6 — واقعی) ────────────────────────────────────────
@@ -560,34 +637,45 @@ export async function submitVerification(input: {
 
 // ─── پنل خریدار (ماک تا فازهای بعدی) ──────────────────────────────────────
 
-import {
-  myBuyRequests,
-  suggestedSellerGroups,
-} from './data';
+import { suggestedSellerGroups } from './data';
 import type { BuyRequestStatus, MyBuyRequest, SuggestedSellerGroup } from '@/lib/types';
 
 export async function getMyBuyRequests(): Promise<{
   items: MyBuyRequest[];
   counts: Record<BuyRequestStatus, number>;
 }> {
-  await new Promise((r) => setTimeout(r, 250));
-  const counts: Record<BuyRequestStatus, number> = { confirmed: 0, pending: 0, rejected: 0 };
-  myBuyRequests.forEach((r) => {
-    counts[r.status] += 1;
-  });
-  return { items: myBuyRequests, counts };
+  const raw = await apiFetch<{
+    items: MyBuyRequest[];
+    counts: Record<string, number>;
+  }>('/buy-requests/getMyBuyRequests', {});
+  const counts: Record<BuyRequestStatus, number> = {
+    confirmed: raw.counts.confirmed ?? 0,
+    pending: raw.counts.pending ?? 0,
+    rejected: raw.counts.rejected ?? 0,
+  };
+  return { items: raw.items, counts };
 }
 
 export async function submitPanelBuyRequest(input: {
-  subcategoryName: string;
+  subCategoryId: number;
   productType: string;
   requirementAmount: number;
-  unit: string;
   goal: 'price_and_buy' | 'price_only';
   hasHistory: boolean;
 }): Promise<{ ok: true; id: number; status: 'pending' }> {
-  await new Promise((r) => setTimeout(r, 900));
-  return { ok: true, id: Date.now(), status: 'pending' };
+  const data = await apiFetch<{ id: number; status: string }>('/buy-requests/createBuyRequest', {
+    subCategoryId: input.subCategoryId,
+    name: input.productType || undefined,
+    requirementAmount: input.requirementAmount,
+    goal: input.goal,
+    hasHistory: input.hasHistory,
+  });
+  return { ok: true, id: data.id, status: 'pending' };
+}
+
+export async function deleteMyBuyRequest(id: number): Promise<{ ok: true }> {
+  await apiFetch('/buy-requests/deleteMyBuyRequest', { id });
+  return { ok: true };
 }
 
 export async function getSuggestedSellerGroups(): Promise<SuggestedSellerGroup[]> {

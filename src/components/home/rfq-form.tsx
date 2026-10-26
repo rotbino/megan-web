@@ -33,7 +33,7 @@ export function RfqForm() {
     if (!category || !amount) return;
     mutation.mutate(
       {
-        productName: category.categoryName,
+        subCategoryId: category.id,
         productType: productType.trim(),
         amount: Number(amount),
       },

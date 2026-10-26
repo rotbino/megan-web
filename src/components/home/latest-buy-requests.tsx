@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
-import { useBuyRequests } from '@/lib/mock/hooks';
+import { useLatestBuyRequests } from '@/lib/mock/hooks';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toFa, timeAgoFa } from '@/lib/format';
 
@@ -11,7 +11,7 @@ import { toFa, timeAgoFa } from '@/lib/format';
  * جمله کارت عین باسکول: «خریدار {مقدار} {واحد} {محصول} از نوع {نوع} هستم»
  */
 export function LatestBuyRequests() {
-  const { data, isLoading } = useBuyRequests();
+  const { data, isLoading } = useLatestBuyRequests();
   const items = (data ?? []).slice(0, 12);
 
   return (

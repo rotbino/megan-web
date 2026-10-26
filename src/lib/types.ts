@@ -106,7 +106,8 @@ export interface BuyRequest {
   subcategoryName: string; // نام محصول (مثل: نهال)
   requirementAmount: number;
   unit: string;
-  myuserId: number;
+  /** ObjectId مگان — در باسکول عدد بود؛ فقط کلید/ارجاع فرانت */
+  myuserId: string;
   firstName: string;
   lastName: string;
   city: string;
@@ -179,7 +180,7 @@ export interface PanelProfile {
 
 /** لیست نشان‌شده — پاسخ سرویس: { lists: [{ id, name, cnt, saved }] } */
 export interface SavedList {
-  id: number; // 48288
+  id: string; // ObjectId
   name: string; // «سیب زمینی»
   cnt: number; // تعداد نشان‌شده‌ها
 }
@@ -195,14 +196,14 @@ export type SavedUserStatusKey =
   | 'priority_low'; // اولویت کم
 
 export interface SavedUserNote {
-  id: number;
+  id: string;
   text: string; // «یادم باشه زنگ بزنم»
   createdAt: string; // «۳ آبان ۱۴۰۵ , ۹:۵۲»
 }
 
 /** کاربر نشان‌شده در یک لیست (خریدار) */
 export interface SavedUserItem {
-  id: number;
+  id: string;
   name: string; // «مریم صابری»
   status: SavedUserStatusKey;
   notes: SavedUserNote[];
