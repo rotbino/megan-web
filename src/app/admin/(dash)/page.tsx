@@ -178,14 +178,17 @@ export default function AdminDashboardPage() {
                 <span className="flex items-center gap-2 text-[13px] text-rose-900">
                   <Boxes size={16} /> آگهی‌های در انتظار تأیید
                 </span>
-                <span className="text-lg font-extrabold tabular-nums text-rose-700">
+                <Link
+                  href="/admin/products?status=pending"
+                  className="text-lg font-extrabold tabular-nums text-rose-700 hover:underline"
+                >
                   {toFa(data.products.pending)}
-                </span>
+                </Link>
               </div>
             </div>
             <p className="mt-3 text-[11px] leading-5 text-muted-foreground">
-              بازبینی این صف‌ها در فازهای A3 (کاربران) و A4 (آگهی‌ها) فعال می‌شود —
-              مدیریت کامل از منوی کنار.
+              بازبینی آگهی‌ها و درخواست‌های خرید از فاز A4 فعال است — صف احراز و
+              شارژ در جزئیات هر کاربر (فاز A3).
             </p>
           </div>
 
@@ -207,8 +210,8 @@ export default function AdminDashboardPage() {
                 مدیریت کاربران — جستجو، غیرفعال‌سازی، احراز، کیف پول
               </p>
               <p>
-                <span className="ms-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-foreground/70">A4</span>{' '}
-                مدیریت آگهی‌ها و درخواست‌ها — تأیید، رد، نردبان
+                <span className="ms-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">A4 ✓</span>{' '}
+                مدیریت آگهی‌ها و درخواست‌ها — تأیید، رد، نردبان (فعال)
               </p>
               <p>
                 <span className="ms-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-foreground/70">A5</span>{' '}

@@ -363,6 +363,18 @@ export default function AdminUserDetailPage() {
             >
               <Wallet size={14} /> اصلاح کیف پول
             </Button>
+            <Link
+              href={`/admin/products?sellerId=${u.id}`}
+              className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-input bg-card px-3 text-[12px] font-bold text-secondary-foreground transition-colors hover:border-primary-line hover:bg-primary-soft hover:text-primary"
+            >
+              <Boxes size={14} /> آگهی‌های این کاربر
+            </Link>
+            <Link
+              href={`/admin/buy-requests?userId=${u.id}`}
+              className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-input bg-card px-3 text-[12px] font-bold text-secondary-foreground transition-colors hover:border-primary-line hover:bg-primary-soft hover:text-primary"
+            >
+              درخواست‌های خرید این کاربر
+            </Link>
             <Button
               size="sm"
               variant={u.is_active ? 'outline' : 'default'}
@@ -631,7 +643,7 @@ export default function AdminUserDetailPage() {
                           ) : null}
                         </div>
                         {doc ? (
-                          // eslint-disable-next-line @next/next/no-img-element
+                           
                           <img
                             src={doc.thumbUrl ?? doc.url}
                             alt={label}

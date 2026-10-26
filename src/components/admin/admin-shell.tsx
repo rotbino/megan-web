@@ -46,8 +46,8 @@ import { cn } from '@/lib/utils';
 const NAV = [
   { href: '/admin', label: 'داشبورد', Icon: LayoutDashboard, phase: null },
   { href: '/admin/users', label: 'کاربران', Icon: Users, phase: null },
-  { href: '/admin/products', label: 'آگهی‌ها', Icon: Boxes, phase: 'A4' },
-  { href: '/admin/buy-requests', label: 'درخواست‌های خرید', Icon: ClipboardList, phase: 'A4' },
+  { href: '/admin/products', label: 'آگهی‌ها', Icon: Boxes, phase: null },
+  { href: '/admin/buy-requests', label: 'درخواست‌های خرید', Icon: ClipboardList, phase: null },
   { href: '/admin/categories', label: 'دسته‌بندی‌ها', Icon: Network, phase: null },
   { href: '/admin/locations', label: 'مکان‌ها', Icon: MapPin, phase: null },
   { href: '/admin/logs', label: 'لاگ عملیات', Icon: ScrollText, phase: 'A5' },

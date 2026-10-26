@@ -103,8 +103,6 @@ export default function AdminUsersPage() {
     return () => clearTimeout(t);
   }, [search]);
 
-  useEffect(() => setPage(1), [filter]);
-
   const queryKey = useMemo(
     () => ['admin-users', debounced, filter, page] as const,
     [debounced, filter, page],
@@ -173,7 +171,7 @@ export default function AdminUsersPage() {
             <button
               key={f.key}
               type="button"
-              onClick={() => setFilter(f.key)}
+              onClick={() => { setFilter(f.key); setPage(1); }}
               className={cn(
                 'h-8 rounded-[10px] border px-3 text-[11.5px] font-bold transition-colors',
                 filter === f.key

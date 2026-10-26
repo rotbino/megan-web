@@ -382,3 +382,176 @@ export async function reviewAdminVerification(orderId: string, approve: boolean,
     ...(approve ? {} : { rejectionReason }),
   });
 }
+
+// ─── فاز A4 — مدیریت آگهی‌ها و درخواست‌های خرید ───────────────────────────────
+
+/** وضعیت آگهی/درخواست — تب‌های ادمین (عین پنل کاربر) */
+export type AdminItemStatus = 'pending' | 'confirmed' | 'rejected' | 'deleted';
+
+/** ردیف جدول آگهی‌ها (ادمین) — عین AdminProductRow بک‌اند */
+export interface AdminProductRow {
+  id: number;
+  product_name: string;
+  status: AdminItemStatus;
+  category_name: string;
+  sub_category_name: string;
+  province_name: string;
+  city_name: string;
+  seller: { id: string; user_name: string; phone: string; is_verified: boolean };
+  stock: number;
+  min_sale_amount: number;
+  min_sale_price: number;
+  unit: string;
+  is_ladder: boolean;
+  ladder_expires_at: string | null;
+  view_count: number;
+  photo: string | null;
+  rejection_reasons: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminProductList {
+  total: number;
+  page: number;
+  perPage: number;
+  pageCount: number;
+  counts: Record<'pending' | 'confirmed' | 'rejected' | 'deleted' | 'all', number>;
+  items: AdminProductRow[];
+}
+
+export interface AdminProductListFilters {
+  search?: string;
+  status?: AdminItemStatus;
+  categoryId?: number;
+  provinceId?: number;
+  cityId?: number;
+  sellerId?: string;
+  ladder?: boolean;
+  page?: number;
+  perPage?: number;
+}
+
+/** سفارش نردبان در جزئیات آگهی — فقط خواندنی */
+export interface AdminLadderOrder {
+  id: string;
+  amount: number;
+  starts_at: string;
+  expires_at: string;
+  created_at: string;
+  by_admin_gift: boolean;
+}
+
+/** فروشنده در جزئیات آگهی — کامل‌تر از ردیف لیست */
+export interface AdminProductSellerDetail {
+  id: string;
+  user_name: string;
+  phone: string;
+  is_verified: boolean;
+  first_name: string;
+  last_name: string;
+  is_active: boolean;
+  wallet_balance: number;
+}
+
+export interface AdminProductDetail extends Omit<AdminProductRow, 'seller'> {
+  description: string;
+  features: Array<{ key: string; value: string }>;
+  photos: string[];
+  seller: AdminProductSellerDetail | null;
+  ladder_orders: AdminLadderOrder[];
+}
+
+/** لیست آگهی‌ها — جستجو/فیلتر/صفحه‌بندی + شمارنده تب‌ها */
+export async function fetchAdminProducts(filters: AdminProductListFilters = {}): Promise<AdminProductList> {
+  return adminFetch<AdminProductList>('/admin/products/getProductList', filters as unknown as Record<string, unknown>);
+}
+
+/** جزئیات کامل آگهی — گالری + فروشنده + سفارش‌های نردبان (فقط خواندنی) */
+export async function fetchAdminProductDetail(id: number): Promise<AdminProductDetail> {
+  return adminFetch<AdminProductDetail>('/admin/products/getProductDetail', { id });
+}
+
+/** بازبینی آگهی در انتظار — تأیید یا رد با دلایل (عین جعبه باسکول) */
+export async function reviewAdminProduct(id: number, approve: boolean, rejectionReasons?: string[]): Promise<{ id: number; status: string }> {
+  return adminFetch('/admin/products/reviewProduct', {
+    id,
+    approve,
+    ...(approve ? {} : { rejectionReasons }),
+  });
+}
+
+/** تغییر مستقیم وضعیت — تأیید/رد/حذف نرم (حذف فایل‌ها را هم پاک می‌کند) */
+export async function setAdminProductStatus(id: number, status: AdminItemStatus, rejectionReasons?: string[]): Promise<{ id: number; status: string; files_removed: number }> {
+  return adminFetch('/admin/products/setProductStatus', {
+    id,
+    status,
+    ...(status === 'rejected' ? { rejectionReasons } : {}),
+  });
+}
+
+/** حذف نرم آگهی + پاک‌سازی فایل‌های گالری */
+export async function deleteAdminProduct(id: number): Promise<{ id: number; status: string; files_removed: number }> {
+  return adminFetch('/admin/products/deleteProduct', { id });
+}
+
+/** نردبان روشن (هدیه ۳۰ روزه با سفارش مبلغ صفر) / خاموش (برچیدن) */
+export async function setAdminLadder(id: number, active: boolean): Promise<{ id: number; is_ladder: boolean; ladder_expires_at: string | null }> {
+  return adminFetch('/admin/products/setLadder', { id, active });
+}
+
+/** ردیف جدول درخواست‌های خرید (ادمین) — عین AdminBuyRequestRow بک‌اند */
+export interface AdminBuyRequestRow {
+  id: number;
+  name: string;
+  description: string | null;
+  status: AdminItemStatus;
+  category_name: string;
+  province_name: string | null;
+  city_name: string | null;
+  buyer: { id: string; user_name: string; phone: string; is_verified: boolean };
+  requirement_amount: number;
+  unit: string;
+  goal: string;
+  has_history: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminBuyRequestList {
+  total: number;
+  page: number;
+  perPage: number;
+  pageCount: number;
+  counts: Record<'pending' | 'confirmed' | 'rejected' | 'deleted' | 'all', number>;
+  items: AdminBuyRequestRow[];
+}
+
+export interface AdminBuyRequestListFilters {
+  search?: string;
+  status?: AdminItemStatus;
+  categoryId?: number;
+  provinceId?: number;
+  userId?: string;
+  page?: number;
+  perPage?: number;
+}
+
+/** لیست درخواست‌های خرید — جستجو/فیلتر + شمارنده تب‌ها */
+export async function fetchAdminBuyRequests(filters: AdminBuyRequestListFilters = {}): Promise<AdminBuyRequestList> {
+  return adminFetch<AdminBuyRequestList>('/admin/buy-requests/getBuyRequestList', filters as unknown as Record<string, unknown>);
+}
+
+/** بازبینی درخواست در انتظار — تأیید یا رد با دلیل */
+export async function reviewAdminBuyRequest(id: number, approve: boolean, rejectionReason?: string): Promise<{ id: number; status: string }> {
+  return adminFetch('/admin/buy-requests/reviewBuyRequest', {
+    id,
+    approve,
+    ...(approve ? {} : { rejectionReason }),
+  });
+}
+
+/** حذف نرم درخواست خرید */
+export async function deleteAdminBuyRequest(id: number): Promise<{ id: number; status: string }> {
+  return adminFetch('/admin/buy-requests/deleteBuyRequest', { id });
+}
