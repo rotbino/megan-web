@@ -2,7 +2,9 @@
 
 /** هوک‌های React Query — یک نقطه تعریف برای همه دیتای سرور فرانت */
 
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { ensureChatSocket, onChatEvent } from '@/lib/api/socket';
 import * as api from './api';
 import type { Product, ProductQuery, SavedUserItem } from '@/lib/types';
 
@@ -144,6 +146,61 @@ export function useSubmitProduct() {
       queryClient.invalidateQueries({ queryKey: ['panel-my-products'] });
     },
   });
+}
+
+
+// ─── چت و پیام‌ها (B8) ────────────────────────────────────────────────
+
+/** رویدادهای WS چت — با invalidation خودکار React Query */
+export function useChatSocketEvents(opts: { onNewMessage?: (p: unknown) => void; onRead?: (p: unknown) => void } = {}) {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const offNew = onChatEvent('newMessage', (p) => {
+      opts.onNewMessage?.(p);
+      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['chat-thread-messages'] });
+    });
+    const offRead = onChatEvent('read', (p) => {
+      opts.onRead?.(p);
+      queryClient.invalidateQueries({ queryKey: ['chat-thread-messages'] });
+    });
+    // کاربر ممکن است بعد از mount لاگین کند — تلاش دوره‌ای اتصال با توکن تازه
+    const timer = setInterval(() => ensureChatSocket(), 5_000);
+    return () => {
+      clearInterval(timer);
+      offNew();
+      offRead();
+    };
+  }, []);
+}
+
+export function useStartChatThread() {
+  return useMutation({ mutationFn: api.startChatThread });
+}
+
+export function useSendChatMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { threadId: string; text: string }) => api.sendChatMessage(input.threadId, input.text),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['chat-thread-messages'] });
+    },
+  });
+}
+
+export function useChatThreadMessages(threadId: string | null) {
+  return useQuery({
+    queryKey: ['chat-thread-messages', threadId],
+    queryFn: () => api.getChatThreadMessages(threadId!),
+    enabled: !!threadId,
+    staleTime: 15_000,
+    refetchInterval: 30_000, // شبکه ایمنی — WS قطع شد، از REST تازه می‌شود
+  });
+}
+
+export function useConversations() {
+  return useQuery({ queryKey: ['chat-conversations'], queryFn: api.getConversations, staleTime: 15_000 });
 }
 
 // ─── CRM نشان شده ها (B7) ─────────────────────────────────────────────

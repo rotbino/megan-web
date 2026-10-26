@@ -580,6 +580,55 @@ export async function getSuggestedBuyers(): Promise<SuggestedBuyer[]> {
   return raw.map((s) => ({ ...s, buyRequest: toBuyRequest(s.buyRequest) }));
 }
 
+
+// ─── چت و پیام‌ها (B8 — واقعی) ─────────────────────────────────────────────
+
+export interface ChatMessage {
+  id: string;
+  threadId: string;
+  senderId: string;
+  text: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface ChatThreadInfo {
+  id: string;
+  productId: number;
+  productName: string;
+  myId: string;
+  myRole: 'buyer' | 'seller';
+  counterpart: { id: string; firstName: string; lastName: string; userName: string };
+  lastMessage: { text: string; at: string; senderId: string } | null;
+  unreadCount: number;
+  updatedAt: string;
+}
+
+/** شروع/یافتن مکالمه روی یک آگهی */
+export async function startChatThread(productId: number): Promise<ChatThreadInfo> {
+  return apiFetch<ChatThreadInfo>('/chat/startThread', { productId });
+}
+
+/** ارسال پیام — بک‌اند push لحظه‌ای WS هم می‌فرستد */
+export async function sendChatMessage(threadId: string, text: string): Promise<ChatMessage> {
+  return apiFetch<ChatMessage>('/chat/sendMessage', { threadId, text });
+}
+
+/** پیام‌های مکالمه — باز کردن یعنی خواندن */
+export async function getChatThreadMessages(threadId: string): Promise<ChatMessage[]> {
+  return apiFetch<ChatMessage[]>('/chat/getThreadMessages', { threadId });
+}
+
+/** لیست مکالمات من + خوانده‌نشده */
+export async function getConversations(): Promise<ChatThreadInfo[]> {
+  return apiFetch<ChatThreadInfo[]>('/chat/getConversations', {});
+}
+
+/** علامت خوانده‌شدن بدون واکشی */
+export async function markChatThreadRead(threadId: string): Promise<{ read: number }> {
+  return apiFetch<{ read: number }>('/chat/markThreadRead', { threadId });
+}
+
 // ─── احراز هویت اسناد (B6 — واقعی) ────────────────────────────────────────
 
 export interface VerificationDoc {

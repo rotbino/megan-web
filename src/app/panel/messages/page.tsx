@@ -1,13 +1,12 @@
 'use client';
 
 /**
- * پیام ها — پیام‌رسان پنل (منطق MHTML باسکول):
- * لیست مخاطبان با جستجو + نمای چت با جعبه «برای شروع مکالمه پیامی بنویسید» +
- * «ویرایش قیمت» در سرگفتگو (قیمت هر کیلو به تومان — با بادکنک تبدیل) +
- * «گزارش تخلف کاربر» + جعبه «ارسال برای دوستان» (تلگرام/واتس‌اپ/ایمیل + کپی لینک).
+ * پیام ها — پیام‌رسان پنل (B8 — واقعی، منطق MHTML باسکول):
+ * لیست مکالمات با جستجو + نمای چت زنده (WS + REST) + «ویرایش قیمت»
+ * (ارسال پیام قالب‌دار قیمت) + «گزارش تخلف کاربر» + جعبه «ارسال برای دوستان».
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Copy, Flag, Mail, MessageSquare, Pencil, Search, Send, Share2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -17,34 +16,68 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
 import { UnitInput } from '@/components/shared/unit-input';
 import { useToast } from '@/hooks/use-toast';
+import {
+  useChatSocketEvents,
+  useChatThreadMessages,
+  useConversations,
+  useSendChatMessage,
+} from '@/lib/mock/hooks';
+import type { ChatThreadInfo } from '@/lib/mock/api';
 import { timeAgoFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-const THREADS = [
-  { id: 1, name: 'مریم صابری', last: 'سلام، پسته اکبری ۵۰۰ کیلو می‌خوام.', at: '2026-10-25 09:30', unread: 2 },
-  { id: 2, name: 'علی افتخار', last: 'قیمت هر کیلو چند می‌شه؟', at: '2026-10-24 18:12', unread: 0 },
-  { id: 3, name: 'مجتبی عالی پور', last: 'امکان ارسال به تبریز دارید؟', at: '2026-10-23 11:45', unread: 0 },
-];
-
-const SHARE_LINK = 'https://imach.example.com/buyer/messenger/contacts';
+const SHARE_LINK = 'https://imach.ir';
 
 export default function PanelMessagesPage() {
   const { toast } = useToast();
-  const [active, setActive] = useState(1);
+  const { data: conversations, isLoading } = useConversations();
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [draft, setDraft] = useState('');
-  const [sent, setSent] = useState<{ id: number; text: string }[]>([]);
+  const listRef = useRef<HTMLDivElement>(null);
 
-  // ویرایش قیمت — عین دیالوگ باسکول
+  const send = useSendChatMessage();
+
+  // رویدادهای زنده — لیست و پیام‌ها خودشان تازه می‌شوند
+  useChatSocketEvents();
+
+  const threads: ChatThreadInfo[] = conversations ?? [];
+  const active = threads.find((t) => t.id === activeId) ?? threads[0] ?? null;
+  const { data: messages } = useChatThreadMessages(active?.id ?? null);
+  const myId = active?.myId ?? null;
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages?.length, active?.id]);
+
+  const visible = threads.filter((t) => {
+    const name = `${t.counterpart.firstName} ${t.counterpart.lastName}`.trim();
+    return !q.trim() || name.includes(q.trim()) || t.productName.includes(q.trim());
+  });
+
+  const sendMsg = (text: string) => {
+    const t = text.trim();
+    if (!t || !active || send.isPending) return;
+    send.mutate(
+      { threadId: active.id, text: t },
+      {
+        onError: (err) =>
+          toast({ description: err instanceof Error ? err.message : 'ارسال پیام ناموفق بود.' }),
+      },
+    );
+  };
+
+  const nameOf = (t: ChatThreadInfo) =>
+    `${t.counterpart.firstName} ${t.counterpart.lastName}`.trim() || 'کاربر ایمچ';
+
+  // ویرایش قیمت — عین دیالوگ باسکول (ارسال پیام قالب‌دار)
   const [priceOpen, setPriceOpen] = useState(false);
   const [price, setPrice] = useState('');
 
   // گزارش تخلف — عین دیالوگ باسکول
   const [reportOpen, setReportOpen] = useState(false);
   const [reportText, setReportText] = useState('');
-
-  const thread = THREADS.find((t) => t.id === active);
-  const threads = THREADS.filter((t) => !q.trim() || t.name.includes(q.trim()));
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -53,45 +86,59 @@ export default function PanelMessagesPage() {
         <PanelCard className="order-2 lg:order-1">
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold">
-              مخاطب <span className="text-muted-foreground">({toFa(THREADS.length)})</span>
+              مخاطب <span className="text-muted-foreground">({toFa(threads.length)})</span>
             </p>
           </div>
           <div className="relative mt-3">
             <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجوی مکالمه…" className="rounded-md pe-9" />
           </div>
-          <ul className="mt-3 divide-y divide-border/70">
-            {threads.map((t) => (
-              <li key={t.id}>
-                <button
-                  type="button"
-                  onClick={() => setActive(t.id)}
-                  className={cn(
-                    'flex w-full items-center gap-3 rounded-md px-2 py-3 text-start transition-colors',
-                    active === t.id ? 'bg-primary/10' : 'hover:bg-secondary/70',
-                  )}
-                >
-                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-xs font-extrabold">
-                    {t.name.charAt(0)}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm font-bold">{t.name}</span>
-                      <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgoFa(t.at)}</span>
+          {isLoading ? (
+            <div className="mt-3 space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-14 animate-pulse rounded-md bg-secondary/60" />)}
+            </div>
+          ) : visible.length === 0 ? (
+            <p className="mt-6 rounded-md bg-secondary/50 px-3 py-4 text-center text-xs leading-6 text-muted-foreground">
+              مکالمه‌ای یافت نشد. گفتگو از صفحه هر آگهی («چت با فروشنده») شروع می‌شود.
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y divide-border/70">
+              {visible.map((t) => (
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveId(t.id)}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-md px-2 py-3 text-start transition-colors',
+                      active?.id === t.id ? 'bg-primary/10' : 'hover:bg-secondary/70',
+                    )}
+                  >
+                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-xs font-extrabold">
+                      {nameOf(t).charAt(0)}
                     </span>
-                    <span className="mt-0.5 flex items-center justify-between gap-2">
-                      <span className="truncate text-xs text-muted-foreground">{t.last}</span>
-                      {t.unread > 0 && (
-                        <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                          {t.unread.toLocaleString('fa-IR')}
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="truncate text-sm font-bold">{nameOf(t)}</span>
+                        <span className="shrink-0 text-[10px] text-muted-foreground">
+                          {timeAgoFa(t.lastMessage?.at ?? t.updatedAt)}
                         </span>
-                      )}
+                      </span>
+                      <span className="mt-0.5 flex items-center justify-between gap-2">
+                        <span className="truncate text-xs text-muted-foreground">
+                          {t.lastMessage?.text ?? 'بدون پیام'}
+                        </span>
+                        {t.unreadCount > 0 && (
+                          <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                            {toFa(t.unreadCount)}
+                          </span>
+                        )}
+                      </span>
                     </span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
 
           {/* ارسال برای دوستان — عین باسکول */}
           <div className="mt-4 rounded-md border bg-secondary/30 p-3">
@@ -146,18 +193,26 @@ export default function PanelMessagesPage() {
 
         {/* نمای چت */}
         <PanelCard className="order-1 flex min-h-[420px] flex-col lg:order-2">
-          {thread ? (
+          {active ? (
             <>
               <div className="flex items-center gap-3 border-b border-border/70 pb-3">
                 <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-xs font-extrabold text-primary">
-                  {thread.name.charAt(0)}
+                  {nameOf(active).charAt(0)}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold">{thread.name}</p>
-                  <p className="text-[11px] text-emerald-600">آنلاین</p>
+                  <p className="truncate text-sm font-bold">{nameOf(active)}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">مکالمه روی: {active.productName}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                  <Button size="sm" variant="outline" className="rounded-md text-[11px]" onClick={() => setPriceOpen(true)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-md text-[11px]"
+                    onClick={() => {
+                      setPrice('');
+                      setPriceOpen(true);
+                    }}
+                  >
                     <Pencil size={13} /> ویرایش قیمت
                   </Button>
                   <button
@@ -172,26 +227,37 @@ export default function PanelMessagesPage() {
                 </div>
               </div>
 
-              <div className="flex-1 space-y-2 py-4">
-                <p className="w-fit max-w-[80%] rounded-lg rounded-tr-sm bg-secondary px-3.5 py-2.5 text-xs leading-6">
-                  {thread.last}
-                </p>
-                {sent.map((m) => (
-                  <p
-                    key={m.id}
-                    className="ms-auto w-fit max-w-[80%] rounded-lg rounded-tl-sm bg-primary px-3.5 py-2.5 text-xs leading-6 text-primary-foreground"
-                  >
-                    {m.text}
+              <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto py-4">
+                {!messages || messages.length === 0 ? (
+                  <p className="py-8 text-center text-xs leading-6 text-muted-foreground">
+                    برای شروع مکالمه پیامی بنویسید
                   </p>
-                ))}
+                ) : (
+                  messages.map((m) => (
+                    <p
+                      key={m.id}
+                      dir="auto"
+                      className={cn(
+                        'w-fit max-w-[80%] rounded-lg px-3.5 py-2.5 text-xs leading-6',
+                        m.senderId === myId
+                          ? 'ms-auto rounded-tl-sm bg-primary text-primary-foreground'
+                          : 'rounded-tr-sm bg-secondary',
+                      )}
+                    >
+                      {m.text}
+                      {m.senderId === myId && m.readAt && (
+                        <span className="ms-2 align-middle text-[9px] text-primary-foreground/70">✓✓</span>
+                      )}
+                    </p>
+                  ))
+                )}
               </div>
 
               <form
                 className="flex gap-2 border-t border-border/70 pt-3"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (!draft.trim()) return;
-                  setSent((s) => [...s, { id: Date.now(), text: draft.trim() }]);
+                  sendMsg(draft);
                   setDraft('');
                 }}
               >
@@ -200,23 +266,28 @@ export default function PanelMessagesPage() {
                   onChange={(e) => setDraft(e.target.value)}
                   placeholder="برای شروع مکالمه پیامی بنویسید"
                   className="rounded-md"
+                  maxLength={2000}
                 />
-                <Button type="submit" size="icon" aria-label="ارسال پیام" className="rounded-md">
+                <Button type="submit" size="icon" aria-label="ارسال پیام" className="rounded-md" disabled={send.isPending || !draft.trim()}>
                   <Send size={15} />
                 </Button>
               </form>
             </>
+          ) : isLoading ? (
+            <div className="grid flex-1 place-items-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
           ) : (
             <PanelEmptyState
               icon={MessageSquare}
               title="هیچ پیام جدیدی ندارید!"
-              hint="برای شروع گفتگو با خریداران و فروشندگان ایمچ، پیام ارسال کنید."
+              hint="برای شروع گفتگو با خریداران و فروشندگان ایمچ، از صفحه هر آگهی پیام ارسال کنید."
             />
           )}
         </PanelCard>
       </div>
 
-      {/* دیالوگ ویرایش قیمت — عین باسکول */}
+      {/* دیالوگ ویرایش قیمت — عین باسکول؛ ارسال پیام قالب‌دار در همان مکالمه */}
       <Dialog open={priceOpen} onOpenChange={setPriceOpen}>
         <DialogContent className="rounded-lg sm:max-w-sm">
           <DialogHeader>
@@ -234,13 +305,19 @@ export default function PanelMessagesPage() {
               onValueChange={setPrice}
               placeholder="مثلا: 15,000"
             />
+            <p className="text-[11px] leading-5 text-muted-foreground">
+              قیمت جدید به‌صورت پیام در همین مکالمه ({active?.productName ?? ''}) ارسال می‌شود.
+            </p>
           </div>
           <Button
             className="w-full rounded-md"
-            disabled={!price}
+            disabled={!price || send.isPending}
             onClick={() => {
+              const num = Number(price.replace(/[^\d]/g, ''));
+              if (!num || !active) return;
+              sendMsg(`قیمت هر کیلو: ${num.toLocaleString('fa-IR')} تومان`);
               setPriceOpen(false);
-              toast({ description: 'قیمت جدید ویرایش شد.' });
+              setPrice('');
             }}
           >
             ویرایش

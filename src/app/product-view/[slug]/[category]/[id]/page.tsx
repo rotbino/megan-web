@@ -168,6 +168,7 @@ export default async function ProductViewPage({ params }: Props) {
 
             {/* چت با فروشنده */}
             <ChatWidget
+              productId={product.id}
               sellerName={`${product.seller.firstName} ${product.seller.lastName}`}
               productName={product.productName}
             />
