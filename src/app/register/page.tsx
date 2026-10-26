@@ -15,10 +15,12 @@ import {
 } from '@/components/ui/input-otp';
 import { useRequestOtp, useVerifyOtp } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
+import { useToast } from '@/hooks/use-toast';
 
 /** ورود/ثبت‌نام فقط با موبایل + کد یک‌بارمصرف — همان الگوی باسکول */
 export default function RegisterPage() {
   const { login } = useAuth();
+  const { toast } = useToast();
   const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -36,7 +38,14 @@ export default function RegisterPage() {
       return;
     }
     otpMutation.mutate(phone, {
-      onSuccess: () => setStep('code'),
+      onSuccess: (res) => {
+        setStep('code');
+        // devCode فقط وقتی بک‌اند در محیط توسعه اجرا می‌شود برمی‌گردد —
+        // نمایشش برای تست بدون پنل پیامک است؛ در پروداکشن هرگز وجود ندارد.
+        if (res.devCode) {
+          toast({ description: `کد توسعه (فقط محیط توسعه): ${res.devCode}` });
+        }
+      },
     });
   };
 
@@ -52,9 +61,10 @@ export default function RegisterPage() {
               login({ phone, userName: res.userName ?? '' });
               setDone(true);
             } else {
-              setError('کد وارد شده صحیح نیست. (در نمونه: هر کد ۵ رقمی)');
+              setError('کد وارد شده صحیح نیست.');
             }
           },
+          onError: (err) => setError(err instanceof Error ? err.message : 'کد وارد شده صحیح نیست.'),
         },
       );
     }
@@ -71,7 +81,7 @@ export default function RegisterPage() {
                 <Lock size={28} />
               </span>
               <h1 className="text-lg font-bold">ورود موفق!</h1>
-              <p className="text-sm text-muted-foreground">به ایمچ خوش آمدید. در نسخه واقعی، توکن نشست ذخیره و به پنل منتقل می‌شوید.</p>
+              <p className="text-sm text-muted-foreground">به ایمچ خوش آمدید. اکنون به پنل کاربری منتقل می‌شوید.</p>
               <Button asChild className="w-full rounded-md">
                 <Link href="/panel">ورود به پنل کاربری</Link>
               </Button>

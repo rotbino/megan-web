@@ -14,6 +14,7 @@ import {
 import { BottomSheet } from '@/components/shared/bottom-sheet';
 import { useAuth } from '@/lib/mock/auth';
 import { useRequestOtp, useVerifyOtp } from '@/lib/mock/hooks';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * مودال ورود/ثبت‌نام — فقط با شماره موبایل + کد یک‌بارمصرف (الگوی باسکول).
@@ -30,6 +31,7 @@ export function AuthModal({
   onLoggedIn: () => void;
 }) {
   const { login } = useAuth();
+  const { toast } = useToast();
   const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -46,7 +48,13 @@ export function AuthModal({
       return;
     }
     otpMutation.mutate(phone, {
-      onSuccess: () => setStep('code'),
+      onSuccess: (res) => {
+        setStep('code');
+        // devCode فقط در محیط توسعه از بک‌اند می‌آید — نمایش برای تست بدون پنل پیامک
+        if (res.devCode) {
+          toast({ description: `کد توسعه (فقط محیط توسعه): ${res.devCode}` });
+        }
+      },
       onError: (err) => setError(err instanceof Error ? err.message : 'ارسال کد ناموفق بود.'),
     });
   };

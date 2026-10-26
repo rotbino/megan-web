@@ -175,3 +175,20 @@ export function useSubmitChargeRequest() {
     },
   });
 }
+
+// ─── احراز هویت اسناد (B6) ────────────────────────────────────────────
+
+export function useMyVerification() {
+  return useQuery({ queryKey: ['panel-verification'], queryFn: api.getMyVerification, staleTime: 60_000 });
+}
+
+export function useSubmitVerification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.submitVerification,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-verification'] });
+      queryClient.invalidateQueries({ queryKey: ['panel-profile'] }); // is_verified ممکن است تغییر کند
+    },
+  });
+}

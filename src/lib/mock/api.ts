@@ -6,7 +6,7 @@
  * CRM نشان‌شده‌ها، کیف پول، …) موقتاً ماک می‌مانند تا فاز B6..B9 آزاد شوند.
  */
 
-import { apiFetch, setTokens, clearTokens, getTokens } from '@/lib/api/client';
+import { apiFetch, setTokens, clearTokens, getTokens, ApiError } from '@/lib/api/client';
 import type { BuyRequest, Category, City, PackageType, Product, ProductQuery, Province } from '@/lib/types';
 import {
   buyRequests as buyRequestsData,
@@ -258,10 +258,10 @@ export async function submitBuyRequest(input: {
   return { ok: true, id: Date.now() };
 }
 
-/** ارسال کد OTP واقعی — خطا با پیام فارسی بک‌اند */
-export async function requestOtp(phone: string): Promise<{ ok: true }> {
-  await apiFetch<{ devCode?: string }>('/auth/sendOtp', { phone }, { auth: false, retryOn401: false });
-  return { ok: true };
+/** ارسال کد OTP واقعی — خطا با پیام فارسی بک‌اند؛ devCode فقط در محیط توسعه برمی‌گردد */
+export async function requestOtp(phone: string): Promise<{ ok: true; devCode?: string }> {
+  const data = await apiFetch<{ devCode?: string }>('/auth/sendOtp', { phone }, { auth: false, retryOn401: false });
+  return { ok: true, devCode: data.devCode };
 }
 
 /** تایید کد + ورود — توکن‌ها را ذخیره می‌کند و userName می‌گیرد */
@@ -501,6 +501,61 @@ export async function getSuggestedBuyers(): Promise<SuggestedBuyer[]> {
   });
   out.sort((a, b) => b.matchScore - a.matchScore);
   return out.slice(0, 24);
+}
+
+// ─── احراز هویت اسناد (B6 — واقعی) ────────────────────────────────────────
+
+export interface VerificationDoc {
+  id: string;
+  fieldKey: string;
+  url: string;
+  thumbUrl: string | null;
+  createdAt: string;
+}
+
+export interface MyVerification {
+  /** none | pending | approved | rejected */
+  status: 'none' | 'pending' | 'approved' | 'rejected';
+  submittedAt?: string;
+  reviewedAt?: string | null;
+  rejectionReason?: string | null;
+  docs: Partial<Record<'nationalCard' | 'selfie', VerificationDoc | null>>;
+}
+
+/** وضعیت احراز هویت کاربر جاری + مدارک ارسالی */
+export async function getMyVerification(): Promise<MyVerification> {
+  return apiFetch<MyVerification>('/verification/getMyVerification', {});
+}
+
+/**
+ * ارسال مدارک — یک درخواست multipart با کارت ملی + سلفی (عین باسکول).
+ * بک‌اند سفارش را اتمیک می‌سازد؛ در خطا هیچ فایلی جامانده نمی‌ماند.
+ */
+export async function submitVerification(input: {
+  nationalCard: File;
+  selfie: File;
+}): Promise<MyVerification> {
+  const tokens = getTokens();
+  if (!tokens?.accessToken) {
+    throw new ApiError('برای ارسال مدارک ابتدا وارد حساب خود شوید.', 401, 'AUTH_REQUIRED');
+  }
+
+  const form = new FormData();
+  form.append('nationalCard', input.nationalCard);
+  form.append('selfie', input.selfie);
+
+  const res = await fetch('/api/verification/submitVerification', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    body: form,
+  });
+  const json = (await res.json().catch(() => null)) as
+    | { status: true; data: MyVerification; message?: string }
+    | { status: false; message: string; code?: string }
+    | null;
+  if (!json) throw new ApiError('ارسال مدارک ناموفق بود.', res.status, 'NETWORK');
+  if (json.status === false) throw new ApiError(json.message, res.status, json.code);
+  return json.data;
 }
 
 // ─── پنل خریدار (ماک تا فازهای بعدی) ──────────────────────────────────────
