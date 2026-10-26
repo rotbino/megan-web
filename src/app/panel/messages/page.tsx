@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
+import { PushEnableBanner } from '@/components/shared/push-enable';
 import { UnitInput } from '@/components/shared/unit-input';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -81,7 +82,9 @@ export default function PanelMessagesPage() {
   const [reportText, setReportText] = useState('');
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl space-y-4">
+      {/* وب‌پوش (B10) — اعلان پیام‌های جدید وقتی سایت باز نیست */}
+      <PushEnableBanner />
       <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
         {/* لیست مخاطبان */}
         <PanelCard className="order-2 lg:order-1">

@@ -23,6 +23,7 @@ import {
 } from 'react';
 import { getTokens } from '@/lib/api/client';
 import { fetchAuthUser, logoutRemote, updateUserRoleRemote } from '@/lib/mock/api';
+import { silentResubscribeIfGranted } from '@/lib/push';
 import { LazyAuthModal } from '@/components/shared/lazy-auth-modal';
 import type { SessionUser } from '@/lib/types';
 
@@ -87,6 +88,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (fresh) {
               setUser(fresh);
               persist(fresh);
+              // وب‌پوش (B10): نشست برگشته — اگر اجازهٔ اعلان دارد بی‌صدا تمدید کن
+              void silentResubscribeIfGranted();
             } else {
               setUser(null);
               persist(null);
@@ -107,6 +110,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (u: SessionUser) => {
       setUser(u);
       persist(u);
+      // وب‌پوش (B10): بعد از ورود، اگر اجازهٔ اعلان دارد بی‌صدا سابسکرایب کن
+      void silentResubscribeIfGranted();
     },
     [persist],
   );
