@@ -55,6 +55,7 @@ function normalizeCachedUser(raw: unknown): SessionUser | null {
     lastName: typeof u.lastName === 'string' ? u.lastName : '',
     avatarUrl: u.avatarUrl ?? null,
     role: u.role === 'seller' ? 'seller' : 'buyer',
+    hasPassword: u.hasPassword === true,
   };
 }
 

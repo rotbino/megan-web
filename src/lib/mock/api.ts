@@ -375,7 +375,8 @@ export async function submitBuyRequest(input: {
   return { ok: true, id: 0 };
 }
 
-/** ارسال کد OTP واقعی — خطا با پیام فارسی بک‌اند؛ devCode فقط در محیط توسعه برمی‌گردد */
+/** ارسال کد OTP واقعی — خطا با پیام فارسی بک‌اند؛ devCode فقط در محیط توسعه برمی‌گردد
+ *  (فعلاً بدون پنل پیامک — ساختار برای آینده نگه داشته شده) */
 export async function requestOtp(phone: string): Promise<{ ok: true; devCode?: string }> {
   const data = await apiFetch<{ devCode?: string }>('/auth/sendOtp', { phone }, { auth: false, retryOn401: false });
   return { ok: true, devCode: data.devCode };
@@ -390,6 +391,7 @@ interface RawProfileUser {
   last_name: string;
   sex: string | null;
   role: string;
+  has_password: boolean;
   is_verified: boolean;
   is_buyer: boolean;
   is_seller: boolean;
@@ -405,7 +407,8 @@ interface RawProfileUser {
   updated_at: string;
 }
 
-/** تایید کد + ورود — توکن‌ها را ذخیره و کاربر نشست را برمی‌گرداند */
+/** تایید کد + ورود — توکن‌ها را ذخیره و کاربر نشست را برمی‌گرداند
+ *  (ساختار برای پنل پیامک آینده — فعلاً فرانت از loginWithSession استفاده می‌کند) */
 export async function verifyOtp(input: {
   phone: string;
   code: string;
@@ -426,6 +429,7 @@ export async function verifyOtp(input: {
     lastName: '',
     avatarUrl: null,
     role: 'buyer',
+    hasPassword: false,
   };
   try {
     const profile = await apiFetch<{ user: RawProfileUser }>('/users/getProfile', {});
@@ -437,6 +441,62 @@ export async function verifyOtp(input: {
   return { ok: true, isNewUser: data.isNewUser, user };
 }
 
+/**
+ * ورود روش سشن — فقط با شماره موبایل (بدون پیامک، تا آمدن پنل پیامک).
+ * • کاربر بدون رمز → مستقیم وارد می‌شود (مثل دفعه اول).
+ * • کاربر رمزدار → بک‌اند PASSWORD_REQUIRED می‌دهد؛ requiresPassword=true
+ *   برمی‌گردد تا UI فیلد رمز را نشان دهد.
+ * کاربر جدید → isNewUser برای هدایت به /register?step=info.
+ */
+export async function loginWithSession(input: {
+  phone: string;
+  password?: string;
+}): Promise<{
+  ok: boolean;
+  requiresPassword?: boolean;
+  isNewUser?: boolean;
+  user?: SessionUser;
+}> {
+  let data: { isNewUser: boolean; hasPassword: boolean; accessToken: string; refreshToken: string };
+  try {
+    data = await apiFetch('/auth/login', input, { auth: false, retryOn401: false });
+  } catch (err) {
+    if (err instanceof ApiError && err.code === 'PASSWORD_REQUIRED') {
+      return { ok: false, requiresPassword: true };
+    }
+    throw err;
+  }
+
+  setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+
+  // کاربر نشست — از پروفایل واقعی؛ اگر موقتاً نرسید، حداقلِ قابل‌نمایش
+  let user: SessionUser = {
+    phone: input.phone,
+    userName: '',
+    firstName: '',
+    lastName: '',
+    avatarUrl: null,
+    role: 'buyer',
+    hasPassword: data.hasPassword,
+  };
+  try {
+    const profile = await apiFetch<{ user: RawProfileUser }>('/users/getProfile', {});
+    user = mapSessionUser(profile.user);
+  } catch {
+    /* پروفایل اختیاری است — ورود موفق بوده */
+  }
+
+  return { ok: true, isNewUser: data.isNewUser, user };
+}
+
+/** تعیین رمز پنل — از بنر قرمز پنل؛ تغییرهای بعدی currentPassword می‌خواهد */
+export async function setPasswordRemote(input: {
+  password: string;
+  currentPassword?: string;
+}): Promise<void> {
+  await apiFetch('/auth/setPassword', input, { auth: true });
+}
+
 /** نگاشت user بک‌اند → کاربر نشست فرانت */
 export function mapSessionUser(u: RawProfileUser): SessionUser {
   return {
@@ -446,6 +506,7 @@ export function mapSessionUser(u: RawProfileUser): SessionUser {
     lastName: u.last_name ?? '',
     avatarUrl: u.avatar_url ?? null,
     role: u.is_seller ? 'seller' : 'buyer',
+    hasPassword: Boolean(u.has_password),
   };
 }
 

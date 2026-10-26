@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Loader2, Lock, MapPin, Smartphone, UserRound } from 'lucide-react';
+import { ArrowRight, KeyRound, Loader2, Lock, MapPin, Smartphone, UserRound } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,30 +14,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from '@/components/ui/input-otp';
-import { useRequestOtp, useVerifyOtp, useProvinces, useCities, useUpdatePanelProfile } from '@/lib/mock/hooks';
+import { useLoginSession, useProvinces, useCities, useUpdatePanelProfile } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
 import { getTokens } from '@/lib/api/client';
-import { useToast } from '@/hooks/use-toast';
 
 /**
- * ورود/ثبت‌نام سه‌مرحله‌ای (خواسته مالک):
- * ۱) شماره موبایل ۲) کد تأیید ۴ رقمی (بدون جداکننده — عین متن پیامک)
- * ۳) فقط کاربر جدید: نام و نام خانوادگی + استان و شهر — مکان پیش‌فرض
+ * ورود/ثبت‌نام (روش سشن — بدون پیامک، تا آمدن پنل پیامک):
+ * ۱) شماره موبایل → ورود مستقیم (کاربر رمزدار → مرحله رمز عبور)
+ * ۲) فقط کاربر جدید: نام و نام خانوادگی + استان و شهر — مکان پیش‌فرض
  * کاربر ذخیره می‌شود تا در فرم‌های ثبت آگهی/درخواست خودکار انتخاب شده باشد.
  *
  * پشتیبانی از /register?step=info — ریدایرکت کاربر تازه‌ثبت‌نام‌شده از مودال ورود.
  */
 export default function RegisterPage() {
   const { user, login, refreshUser } = useAuth();
-  const { toast } = useToast();
-  const [step, setStep] = useState<'phone' | 'code' | 'info'>('phone');
+  const [step, setStep] = useState<'phone' | 'password' | 'info'>('phone');
   const [phone, setPhone] = useState('');
-  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
 
@@ -47,8 +40,7 @@ export default function RegisterPage() {
   const [provinceId, setProvinceId] = useState('');
   const [cityId, setCityId] = useState('');
 
-  const otpMutation = useRequestOtp();
-  const verifyMutation = useVerifyOtp();
+  const loginMutation = useLoginSession();
   const profileMutation = useUpdatePanelProfile();
   const { data: provinces } = useProvinces();
   const { data: cities } = useCities(Number(provinceId) || undefined);
@@ -68,47 +60,44 @@ export default function RegisterPage() {
     }
   }, [user?.phone]);
 
-  const sendCode = (e: React.FormEvent) => {
+  const handleLogin = (withPassword: boolean) => {
+    setError('');
+    loginMutation.mutate(
+      withPassword ? { phone, password } : { phone },
+      {
+        onSuccess: (res) => {
+          if (res.ok && res.user) {
+            login(res.user);
+            // کاربر جدید → مرحله اطلاعات؛ کاربر قبلی → مستقیم وارد شد
+            setStep(res.isNewUser ? 'info' : 'phone');
+            setDone(!res.isNewUser);
+          } else if (res.requiresPassword) {
+            setStep('password'); // کاربر رمز تعیین کرده است
+          }
+        },
+        onError: (err) => setError(err instanceof Error ? err.message : 'ورود ناموفق بود.'),
+      },
+    );
+  };
+
+  const sendPhone = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!/^09\d{9}$/.test(phone)) {
       setError('شماره موبایل معتبر نیست (مثال: 09123456789)');
       return;
     }
-    otpMutation.mutate(phone, {
-      onSuccess: (res) => {
-        setStep('code');
-        // devCode فقط وقتی بک‌اند در محیط توسعه اجرا می‌شود برمی‌گردد —
-        // نمایشش برای تست بدون پنل پیامک است؛ در پروداکشن هرگز وجود ندارد.
-        if (res.devCode) {
-          toast({ description: `کد توسعه (فقط محیط توسعه): ${res.devCode}` });
-        }
-      },
-    });
+    handleLogin(false);
   };
 
-  const verify = (value: string) => {
-    setCode(value);
+  const sendPassword = (e: React.FormEvent) => {
+    e.preventDefault();
     setError('');
-    if (value.length === 4) {
-      verifyMutation.mutate(
-        { phone, code: value },
-        {
-          onSuccess: (res) => {
-            if (res.ok) {
-              if (res.user) login(res.user);
-              // کاربر جدید → مرحله اطلاعات؛ کاربر قبلی → مستقیم وارد شد
-              setStep(res.isNewUser ? 'info' : 'phone');
-              setDone(!res.isNewUser);
-              if (!res.isNewUser) setCode('');
-            } else {
-              setError('کد وارد شده صحیح نیست.');
-            }
-          },
-          onError: (err) => setError(err instanceof Error ? err.message : 'کد وارد شده صحیح نیست.'),
-        },
-      );
+    if (password.length < 6) {
+      setError('رمز عبور حداقل ۶ نویسه است.');
+      return;
     }
+    handleLogin(true);
   };
 
   const submitInfo = async (e: React.FormEvent) => {
@@ -146,12 +135,12 @@ export default function RegisterPage() {
   };
 
   const stepTitle =
-    step === 'phone' ? 'ورود / ثبت‌نام' : step === 'code' ? 'کد تأیید' : 'تکمیل اطلاعات';
+    step === 'phone' ? 'ورود / ثبت‌نام' : step === 'password' ? 'رمز عبور' : 'تکمیل اطلاعات';
   const stepSubtitle =
     step === 'phone'
       ? 'ورود و ثبت‌نام ایمچ فقط با شماره موبایل انجام می‌شود.'
-      : step === 'code'
-        ? `کد ۴ رقمی پیامک‌شده به ${phone} را وارد کنید.`
+      : step === 'password'
+        ? `رمز عبور پنل خود را برای ${phone} وارد کنید.`
         : 'نام و شهر شما در ایمچ ذخیره می‌شود تا ثبت آگهی‌ها سریع‌تر باشد.';
 
   return (
@@ -174,14 +163,14 @@ export default function RegisterPage() {
             <>
               <div className="mb-6 space-y-2 text-center">
                 <span className="mx-auto grid size-12 place-items-center rounded-md bg-primary/10 text-primary">
-                  {step === 'info' ? <UserRound size={22} /> : <Smartphone size={22} />}
+                  {step === 'info' ? <UserRound size={22} /> : step === 'password' ? <KeyRound size={22} /> : <Smartphone size={22} />}
                 </span>
                 <h1 className="text-lg font-bold">{stepTitle}</h1>
                 <p className="text-xs leading-5 text-muted-foreground">{stepSubtitle}</p>
               </div>
 
               {step === 'phone' ? (
-                <form onSubmit={sendCode} className="space-y-4">
+                <form onSubmit={sendPhone} className="space-y-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="phone">شماره موبایل</Label>
                     <Input
@@ -196,35 +185,42 @@ export default function RegisterPage() {
                     />
                   </div>
                   {error && <p className="text-xs text-destructive">{error}</p>}
-                  <Button type="submit" size="lg" className="w-full rounded-md" disabled={otpMutation.isPending}>
-                    {otpMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : null}
-                    {otpMutation.isPending ? 'در حال ارسال…' : 'دریافت کد تأیید'}
+                  <Button type="submit" size="lg" className="w-full rounded-md" disabled={loginMutation.isPending}>
+                    {loginMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : null}
+                    {loginMutation.isPending ? 'در حال ورود…' : 'ورود به ایمچ'}
                   </Button>
                 </form>
-              ) : step === 'code' ? (
-                <div className="space-y-4">
-                  <div className="flex justify-center" dir="ltr">
-                    {/* کد پیامکی ۴ رقم ساده است — بدون جداکننده، عین متن پیامک */}
-                    <InputOTP maxLength={4} value={code} onChange={verify} disabled={verifyMutation.isPending}>
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} />
-                        <InputOTPSlot index={1} />
-                        <InputOTPSlot index={2} />
-                        <InputOTPSlot index={3} />
-                      </InputOTPGroup>
-                    </InputOTP>
+              ) : step === 'password' ? (
+                <form onSubmit={sendPassword} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="reg-password">رمز عبور</Label>
+                    <Input
+                      id="reg-password"
+                      type="password"
+                      dir="ltr"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••"
+                      maxLength={72}
+                      className="rounded-md text-center"
+                      autoFocus
+                    />
                   </div>
-                  {verifyMutation.isPending && (
+                  {loginMutation.isPending && (
                     <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-                      <Loader2 size={12} className="animate-spin" /> در حال بررسی کد…
+                      <Loader2 size={12} className="animate-spin" /> در حال بررسی…
                     </p>
                   )}
                   {error && <p className="text-center text-xs text-destructive">{error}</p>}
-                  <Button variant="ghost" size="sm" className="w-full gap-1 text-muted-foreground" onClick={() => { setStep('phone'); setCode(''); setError(''); }}>
+                  <Button type="submit" size="lg" className="w-full rounded-md" disabled={loginMutation.isPending}>
+                    {loginMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : null}
+                    {loginMutation.isPending ? 'در حال بررسی…' : 'ورود'}
+                  </Button>
+                  <Button variant="ghost" size="sm" className="w-full gap-1 text-muted-foreground" onClick={() => { setStep('phone'); setPassword(''); setError(''); }}>
                     <ArrowRight size={14} />
                     تغییر شماره موبایل
                   </Button>
-                </div>
+                </form>
               ) : (
                 <form onSubmit={submitInfo} className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">

@@ -231,3 +231,23 @@
 .animate-badge-in {
   animation: badge-in 0.22s ease-out both;
 }
+
+/* ─── بنر قرمز «رمز عبور تعیین کنید» — سوسوی ملایم (نه چشم‌آزار) ── */
+@keyframes soft-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+.animate-soft-blink {
+  animation: soft-blink 2.4s ease-in-out infinite;
+}
+/* کاهش حرکت — کاربران حساس به انیمیشن */
+@media (prefers-reduced-motion: reduce) {
+  .animate-soft-blink {
+    animation: none;
+  }
+}

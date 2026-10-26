@@ -132,6 +132,16 @@ export function useVerifyOtp() {
   return useMutation({ mutationFn: api.verifyOtp });
 }
 
+/** ورود روش سشن — فقط شماره موبایل (فعلاً بدون پیامک) */
+export function useLoginSession() {
+  return useMutation({ mutationFn: api.loginWithSession });
+}
+
+/** تعیین رمز پنل — از بنر قرمز پنل */
+export function useSetPassword() {
+  return useMutation({ mutationFn: api.setPasswordRemote });
+}
+
 // ─── پنل فروشنده ──────────────────────────────────────────────────────
 
 export function usePanelProfile() {

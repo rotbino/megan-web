@@ -158,6 +158,8 @@ export interface SessionUser {
   lastName: string;
   avatarUrl: string | null;
   role: 'seller' | 'buyer';
+  /** رمز پنل تعیین شده؟ false → بنر قرمز «رمز عبور تعیین کنید» فعال می‌ماند */
+  hasPassword: boolean;
 }
 
 export interface PanelProfile {
