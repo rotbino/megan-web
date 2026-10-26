@@ -93,7 +93,7 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="ناوبری موبایل ایمچ"
-      className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-50 border-t border-[#cbcbcb] bg-white shadow-[0_-4px_8px_rgba(115,115,115,0.1)]"
+      className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card"
     >
       <div className="flex h-[58px] pe-2">
         {items.map(({ href, label, Icon, match }) => {
@@ -105,7 +105,7 @@ export function MobileBottomNav() {
               aria-current={active ? 'page' : undefined}
               className={cn(
                 'flex h-[58px] flex-1 flex-col items-center justify-center gap-0 px-0 pb-1 pt-[2px]',
-                active ? 'font-bold text-primary' : 'font-normal text-[#757575]',
+                active ? 'font-bold text-primary' : 'font-normal text-muted-foreground',
               )}
             >
               <Icon size={24} className="shrink-0" />

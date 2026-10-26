@@ -146,7 +146,7 @@ export function PanelSidebar({
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2">
                 <span className="truncate text-sm font-bold">{fullName}</span>
-                <span className="shrink-0 rounded-full bg-emerald-400/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">
+                <span className="shrink-0 rounded-full bg-verified/10 px-1.5 py-0.5 text-[10px] font-bold text-verified">
                   {role === 'buyer' ? 'خریدار' : 'فروشنده'}
                 </span>
               </span>

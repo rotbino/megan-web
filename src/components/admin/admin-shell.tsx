@@ -45,7 +45,7 @@ import { cn } from '@/lib/utils';
 /** منوی پنل — فازهای بعد غیرفعال با چیپ فاز (نقشه: docs/ADMIN-IMPLEMENTATION.md) */
 const NAV = [
   { href: '/admin', label: 'داشبورد', Icon: LayoutDashboard, phase: null },
-  { href: '/admin/users', label: 'کاربران', Icon: Users, phase: 'A3' },
+  { href: '/admin/users', label: 'کاربران', Icon: Users, phase: null },
   { href: '/admin/products', label: 'آگهی‌ها', Icon: Boxes, phase: 'A4' },
   { href: '/admin/buy-requests', label: 'درخواست‌های خرید', Icon: ClipboardList, phase: 'A4' },
   { href: '/admin/categories', label: 'دسته‌بندی‌ها', Icon: Network, phase: null },

@@ -75,7 +75,7 @@ export default function AdminLoginPage() {
 
         <form
           onSubmit={submit}
-          className="space-y-4 rounded-xl border bg-card p-6 shadow-sm"
+          className="space-y-4 rounded-xl border bg-card p-6"
         >
           <div className="space-y-1.5">
             <Label htmlFor="admin-username">

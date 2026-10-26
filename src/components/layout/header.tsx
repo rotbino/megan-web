@@ -74,7 +74,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-card shadow-[0_3px_8px_rgba(150,150,150,0.15)]">
+    <header className="sticky top-0 z-50 border-b border-border bg-card">
       {/* ─── ردیف ۱ — هدر اصلی: لوگو | جستجو | دکمه‌های انتها ── */}
       <div className="flex items-center justify-between gap-3 px-3 py-2.5 nav-desktop:gap-4 nav-desktop:px-4 nav-desktop:py-3">
         <Link href="/" aria-label="ایمچ — صفحه اصلی" className="shrink-0">
@@ -85,7 +85,7 @@ export function Header() {
         <div ref={searchWrap} className="relative hidden min-w-0 max-w-[680px] flex-1 nav-desktop:block">
           <form
             onSubmit={(e) => { e.preventDefault(); submit(); }}
-            className="flex h-10 items-stretch overflow-hidden rounded-lg border border-primary bg-card"
+            className="flex h-10 items-stretch overflow-hidden rounded-[10px] bg-secondary transition-colors focus-within:ring-2 focus-within:ring-ring/30"
             role="search"
           >
             <input
@@ -99,9 +99,9 @@ export function Header() {
             <button
               type="submit"
               aria-label="جستجو"
-              className="flex w-14 shrink-0 items-center justify-center bg-primary text-primary-foreground transition-colors hover:bg-primary-deep"
+              className="my-1 me-1 flex w-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary-deep"
             >
-              <Search size={19} strokeWidth={2.4} />
+              <Search size={18} strokeWidth={2.4} />
             </button>
           </form>
 
@@ -129,13 +129,13 @@ export function Header() {
           )}
         </div>
 
-        {/* نوار جستجوی موبایل — عین باسکول: خاکستری #f2f3f7 + همه ایران */}
+        {/* نوار جستجوی موبایل — چیپ خاکستری ملایم + همه ایران */}
         <form
           onSubmit={(e) => { e.preventDefault(); submit(); }}
           role="search"
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-lg bg-[#f2f3f7] px-2 shadow-[0_2px_10px_rgba(196,196,196,0.15)] nav-desktop:hidden"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-[10px] bg-secondary px-2 nav-desktop:hidden"
         >
-          <button type="submit" aria-label="جستجو" className="shrink-0 text-black/50">
+          <button type="submit" aria-label="جستجو" className="shrink-0 text-muted-foreground">
             <SearchIconBuskool size={24} />
           </button>
           <input
@@ -145,15 +145,15 @@ export function Header() {
             className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             aria-label="جستجوی محصول"
           />
-          <span className="h-6 w-px shrink-0 bg-[#cbcbcb]" aria-hidden />
+          <span className="h-6 w-px shrink-0 bg-border" aria-hidden />
           <button
             type="button"
             title="فیلتر مکان"
             aria-label="فیلتر مکان: همه ایران"
-            className="flex shrink-0 items-center gap-2 text-[rgba(38,70,83,0.8)]"
+            className="flex shrink-0 items-center gap-2 text-[#4a505b]"
           >
             <span className="whitespace-nowrap text-sm font-medium">همه ایران</span>
-            <LocationIconBuskool size={20} className="text-[#757575]" />
+            <LocationIconBuskool size={20} className="text-muted-foreground" />
           </button>
         </form>
 
@@ -164,23 +164,23 @@ export function Header() {
               {/* فروشنده → خریداران (بازار درخواست‌های خرید) / خریدار → فروشندگان پیشنهادی */}
               <Link
                 href={isSeller ? '/buyAd-requests' : '/panel/suggested-sellers'}
-                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
+                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
               >
                 {isSeller ? <BuyersIcon size={24} /> : <SellersIcon size={24} />}
                 <span className="mt-1">{isSeller ? 'خریداران' : 'فروشندگان'}</span>
               </Link>
-              <span className="mx-1 h-9 w-px bg-[#eee]" aria-hidden />
+              <span className="mx-1 h-9 w-px bg-border" aria-hidden />
               {/* آیکون پیام‌ها — فقط برای کاربر واردشده */}
               <Link
                 href="/panel/messages"
                 aria-label="پیام‌ها"
                 title="پیام‌ها"
-                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
+                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
               >
                 <MessagesIcon size={24} />
                 <span className="mt-1">پیام ها</span>
               </Link>
-              <span className="mx-1 h-9 w-px bg-[#eee]" aria-hidden />
+              <span className="mx-1 h-9 w-px bg-border" aria-hidden />
               {/* آواتار + نام + آیکون دراپ‌داون → منوی کانتکست نقش‌محور */}
               <HeaderUserMenu variant="desktop" />
             </>
@@ -188,23 +188,23 @@ export function Header() {
             <>
               <Link
                 href="/product-list"
-                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
+                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
               >
                 <SellersIcon size={24} />
                 <span className="mt-1">فروشندگان</span>
               </Link>
-              <span className="mx-1 h-9 w-px bg-[#eee]" aria-hidden />
+              <span className="mx-1 h-9 w-px bg-border" aria-hidden />
               <Link
                 href="/buyAd-requests"
-                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
+                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
               >
                 <BuyersIcon size={24} />
                 <span className="mt-1">خریداران</span>
               </Link>
-              <span className="mx-1 h-9 w-px bg-[#eee]" aria-hidden />
+              <span className="mx-1 h-9 w-px bg-border" aria-hidden />
               <Link
                 href="/register"
-                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
+                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
               >
                 <UserPlusBadge />
                 <span className="mt-1">ورود / ثبت نام</span>
@@ -232,7 +232,7 @@ export function Header() {
           aria-label="باز کردن دسته‌بندی‌ها"
           className="flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
         >
-          <LayoutGrid size={17} className="text-brand-orange" />
+          <LayoutGrid size={17} className="text-primary" />
           دسته بندی
           <ChevronDown size={14} className={cn('transition-transform', megaOpen && 'rotate-180')} />
         </button>
@@ -241,7 +241,7 @@ export function Header() {
 
         <Link
           href={user ? '/panel/products/new' : '/register'}
-          className="flex h-9 shrink-0 items-center whitespace-nowrap rounded-lg px-2.5 text-sm font-bold text-brand-orange transition-colors hover:bg-brand-orange/10 hover:text-[#EA580C]"
+          className="flex h-9 shrink-0 items-center whitespace-nowrap rounded-[10px] px-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary-soft hover:text-primary-deep"
         >
           فروشنده شوید
         </Link>
