@@ -5,31 +5,41 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, LayoutGrid, Search } from 'lucide-react';
 import { BrandLogo } from '@/components/shared/brand';
+import { HeaderUserMenu } from '@/components/layout/header-user-menu';
 import {
   BuyersIcon,
   LocationIconBuskool,
+  MessagesIcon,
   SearchIconBuskool,
   SellersIcon,
 } from '@/components/shared/buskool-icons';
+import { useAuth } from '@/lib/mock/auth';
 import { useCategoryTree, useSuggestions } from '@/lib/mock/hooks';
 import { cn } from '@/lib/utils';
 import type { Category } from '@/lib/types';
 
 /**
- * هدر ایمچ (v6):
- * ردیف ۱ (هدر اصلی): [لوگو | جستجو (flex) | فروشندگان | خریداران | ورود/ثبت‌نام]
- * ردیف ۲ (نوار زیر هدر — فقط دسکتاپ): [دسته بندی (مگامنو) | فروشنده شوید (نارنجی)]
- * پدینگ افقی کم (px-3/px-4) و بدون max-w — لوگو ابتدای هدر، دکمه‌ها انتها.
- * موبایل: [لوگوی کوتاه | نوار جستجوی خاکستری flex-1]؛ ناوبری از طریق نوار پایین.
+ * هدر ایمچ (v7):
+ * ردیف ۱ (هدر اصلی): [لوگو | جستجو (flex) | لینک‌های نقش‌محور + پیام‌ها + منوی کاربر]
+ * ردیف ۲ (نوار زیر هدر — فقط دسکتاپ): [دسته بندی (مگامنو) | فروشنده شوید]
+ *
+ * بعد از ورود (خواسته مالک): لینک ورود/ثبت‌نام حذف و به جایش آواتار + نام و
+ * نام خانوادگی + آیکون دراپ‌داون می‌آید (منوی کانتکست نقش‌محور).
+ * سیستم با نقش کاربر تطبیق می‌یابد: فروشنده → لینک «خریداران»، خریدار → لینک
+ * «فروشندگان» (پیشنهادی)؛ هر دو + بدون آیکون پیام‌ها وقتی لاگین نیست.
+ * موبایل: [لوگو | جستجو | آواتار] — ناوبری اصلی از نوار پایین.
  */
 export function Header() {
   const router = useRouter();
+  const { user } = useAuth();
   const [q, setQ] = useState('');
   const [focused, setFocused] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
   const [activeRoot, setActiveRoot] = useState<number | null>(null);
   const searchWrap = useRef<HTMLDivElement>(null);
   const megaWrap = useRef<HTMLDivElement>(null);
+
+  const isSeller = user?.role === 'seller';
 
   const { data: tree = [] } = useCategoryTree();
   const { data: suggestions = [] } = useSuggestions(q);
@@ -147,32 +157,64 @@ export function Header() {
           </button>
         </form>
 
-        {/* دکمه‌های انتها — فروشندگان، خریداران، ورود/ثبت‌نام (آیکون بالای متن) */}
+        {/* دکمه‌های انتها — نقش‌محور: سیستم با نقش کاربر تطبیق می‌یابد */}
         <nav className="hidden items-center nav-desktop:flex" aria-label="حساب کاربری">
-          <Link
-            href="/product-list"
-            className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
-          >
-            <SellersIcon size={24} />
-            <span className="mt-1">فروشندگان</span>
-          </Link>
-          <span className="mx-1 h-9 w-px bg-[#eee]" aria-hidden />
-          <Link
-            href="/buyAd-requests"
-            className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
-          >
-            <BuyersIcon size={24} />
-            <span className="mt-1">خریداران</span>
-          </Link>
-          <span className="mx-1 h-9 w-px bg-[#eee]" aria-hidden />
-          <Link
-            href="/register"
-            className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
-          >
-            <UserPlusBadge />
-            <span className="mt-1">ورود / ثبت نام</span>
-          </Link>
+          {user ? (
+            <>
+              {/* فروشنده → خریداران (بازار درخواست‌های خرید) / خریدار → فروشندگان پیشنهادی */}
+              <Link
+                href={isSeller ? '/buyAd-requests' : '/panel/suggested-sellers'}
+                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
+              >
+                {isSeller ? <BuyersIcon size={24} /> : <SellersIcon size={24} />}
+                <span className="mt-1">{isSeller ? 'خریداران' : 'فروشندگان'}</span>
+              </Link>
+              <span className="mx-1 h-9 w-px bg-[#eee]" aria-hidden />
+              {/* آیکون پیام‌ها — فقط برای کاربر واردشده */}
+              <Link
+                href="/panel/messages"
+                aria-label="پیام‌ها"
+                title="پیام‌ها"
+                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
+              >
+                <MessagesIcon size={24} />
+                <span className="mt-1">پیام ها</span>
+              </Link>
+              <span className="mx-1 h-9 w-px bg-[#eee]" aria-hidden />
+              {/* آواتار + نام + آیکون دراپ‌داون → منوی کانتکست نقش‌محور */}
+              <HeaderUserMenu variant="desktop" />
+            </>
+          ) : (
+            <>
+              <Link
+                href="/product-list"
+                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
+              >
+                <SellersIcon size={24} />
+                <span className="mt-1">فروشندگان</span>
+              </Link>
+              <span className="mx-1 h-9 w-px bg-[#eee]" aria-hidden />
+              <Link
+                href="/buyAd-requests"
+                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
+              >
+                <BuyersIcon size={24} />
+                <span className="mt-1">خریداران</span>
+              </Link>
+              <span className="mx-1 h-9 w-px bg-[#eee]" aria-hidden />
+              <Link
+                href="/register"
+                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#5f6368] hover:bg-accent hover:text-foreground"
+              >
+                <UserPlusBadge />
+                <span className="mt-1">ورود / ثبت نام</span>
+              </Link>
+            </>
+          )}
         </nav>
+
+        {/* آواتار کاربر در هدر موبایل — در جای خودش، بعد از جستجو */}
+        <HeaderUserMenu variant="mobile" />
       </div>
 
       {/* ─── ردیف ۲ — نوار زیر هدر (دسکتاپ): دسته بندی | فروشنده شوید ── */}
@@ -198,7 +240,7 @@ export function Header() {
         <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
 
         <Link
-          href="/register"
+          href={user ? '/panel/products/new' : '/register'}
           className="flex h-9 shrink-0 items-center whitespace-nowrap rounded-lg px-2.5 text-sm font-bold text-brand-orange transition-colors hover:bg-brand-orange/10 hover:text-[#EA580C]"
         >
           فروشنده شوید

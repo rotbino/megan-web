@@ -134,9 +134,14 @@ export function PanelSidebar({
             collapsed && 'justify-center px-0',
           )}
         >
-          <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white/10 text-sm font-extrabold">
-            {profile ? profile.userInfo.firstName.charAt(0) : '؟'}
-          </span>
+          {profile?.userInfo.avatarUrl ? (
+            // آواتار واقعی — آپلودی از ویرایش پروفایل
+            <img src={profile.userInfo.avatarUrl} alt="" className="grid size-11 shrink-0 place-items-center rounded-full object-cover" />
+          ) : (
+            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white/10 text-sm font-extrabold">
+              {profile ? profile.userInfo.firstName.charAt(0) : '؟'}
+            </span>
+          )}
           {!collapsed && (
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2">

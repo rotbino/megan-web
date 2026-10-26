@@ -7,7 +7,7 @@
  * قواعد دقیق باسکول: حداکثر ۴ تصویر jpeg/jpg زیر ۵ مگ، بالای ۲۰ کیلوبایت و ...
  */
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -20,7 +20,7 @@ import {
   Trash2,
   TrendingUp,
 } from 'lucide-react';
-import { useCities, useMyProducts, useProvinces, useSubmitProduct } from '@/lib/mock/hooks';
+import { useCities, useMyProducts, usePanelProfile, useProvinces, useSubmitProduct } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,6 +81,7 @@ export default function RegisterProductPage() {
   const { toast } = useToast();
   const { data: mine } = useMyProducts();
   const { data: provinces } = useProvinces();
+  const { data: profile } = usePanelProfile();
   const submit = useSubmitProduct();
 
   const [step, setStep] = useState(0);
@@ -91,6 +92,23 @@ export default function RegisterProductPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: cities } = useCities(num(draft.provinceId) || undefined);
+
+  // ─── پیش‌پر کردن استان/شهر از پروفایل کاربر (خواسته مالک) ───
+  // الگوی تنظیم state هنگام رندر (مثل فرم ویرایش پروفایل) — فقط وقتی
+  // کاربر خودش چیزی انتخاب نکرده؛ هر وقت خواست عوض می‌کند.
+  if (draft.provinceId === '' && draft.cityId === '' && profile?.userInfo.provinceId != null) {
+    const pid = profile.userInfo.provinceId;
+    const cid = profile.userInfo.cityId;
+    setDraft((d) =>
+      d.provinceId || d.cityId
+        ? d
+        : {
+            ...d,
+            provinceId: String(pid),
+            ...(cid != null ? { cityId: String(cid) } : {}),
+          },
+    );
+  }
 
   const patch = (p: Partial<Draft>) => setDraft((d) => ({ ...d, ...p }));
 

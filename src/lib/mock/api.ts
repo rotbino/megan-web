@@ -7,7 +7,7 @@
  */
 
 import { apiFetch, serverPost, setTokens, clearTokens, getTokens, ApiError } from '@/lib/api/client';
-import type { BuyRequest, Category, City, PackageType, Product, ProductQuery, Province } from '@/lib/types';
+import type { BuyRequest, Category, City, PackageType, Product, ProductQuery, Province, SessionUser } from '@/lib/types';
 import {
   categories as categoriesData,
   cities as citiesData,
@@ -381,11 +381,35 @@ export async function requestOtp(phone: string): Promise<{ ok: true; devCode?: s
   return { ok: true, devCode: data.devCode };
 }
 
-/** تایید کد + ورود — توکن‌ها را ذخیره می‌کند و userName می‌گیرد */
+/** شکل user پاسخ getProfile — مبنای کاربر نشست و پروفایل پنل */
+interface RawProfileUser {
+  id: string;
+  phone: string;
+  user_name: string | null;
+  first_name: string;
+  last_name: string;
+  sex: string | null;
+  role: string;
+  is_verified: boolean;
+  is_buyer: boolean;
+  is_seller: boolean;
+  wallet_balance: number;
+  avatar_url: string | null;
+  business_desc: string | null;
+  province_id: number | null;
+  city_id: number | null;
+  province: string | null;
+  city: string | null;
+  product_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** تایید کد + ورود — توکن‌ها را ذخیره و کاربر نشست را برمی‌گرداند */
 export async function verifyOtp(input: {
   phone: string;
   code: string;
-}): Promise<{ ok: boolean; userName?: string; isNewUser?: boolean }> {
+}): Promise<{ ok: boolean; isNewUser?: boolean; user?: SessionUser }> {
   const data = await apiFetch<{
     isNewUser: boolean;
     accessToken: string;
@@ -394,16 +418,55 @@ export async function verifyOtp(input: {
 
   setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
 
-  // نام کاربری عمومی برای نشست فرانت
-  let userName = '';
+  // کاربر نشست — از پروفایل واقعی؛ اگر موقتاً نرسید، حداقلِ قابل‌نمایش
+  let user: SessionUser = {
+    phone: input.phone,
+    userName: '',
+    firstName: '',
+    lastName: '',
+    avatarUrl: null,
+    role: 'buyer',
+  };
   try {
-    const profile = await apiFetch<{ user: { user_name: string | null } }>('/users/getProfile', {});
-    userName = profile.user.user_name ?? '';
+    const profile = await apiFetch<{ user: RawProfileUser }>('/users/getProfile', {});
+    user = mapSessionUser(profile.user);
   } catch {
     /* پروفایل اختیاری است — ورود موفق بوده */
   }
 
-  return { ok: true, userName, isNewUser: data.isNewUser };
+  return { ok: true, isNewUser: data.isNewUser, user };
+}
+
+/** نگاشت user بک‌اند → کاربر نشست فرانت */
+export function mapSessionUser(u: RawProfileUser): SessionUser {
+  return {
+    phone: u.phone,
+    userName: u.user_name ?? '',
+    firstName: u.first_name ?? '',
+    lastName: u.last_name ?? '',
+    avatarUrl: u.avatar_url ?? null,
+    role: u.is_seller ? 'seller' : 'buyer',
+  };
+}
+
+/** کاربر نشست از پروفایل واقعی — null یعنی لاگین نیست؛ خطای شبکه reject می‌شود */
+export async function fetchAuthUser(): Promise<SessionUser | null> {
+  if (!getTokens()?.accessToken) return null;
+  try {
+    const profile = await apiFetch<{ user: RawProfileUser }>('/users/getProfile', {});
+    return mapSessionUser(profile.user);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) return null;
+    throw err;
+  }
+}
+
+/** تغییر نقش فعال (فروشنده/خریدار) — ماندگار روی is_seller/is_buyer بک‌اند */
+export async function updateUserRoleRemote(role: 'seller' | 'buyer'): Promise<void> {
+  await apiFetch('/users/updateProfile', {
+    is_seller: role === 'seller',
+    is_buyer: role === 'buyer',
+  });
 }
 
 /** خروج — ابطال رفرش‌توکن + پاک‌سازی نشست */
@@ -434,27 +497,7 @@ import type {
 
 /** پروفایل پنل — واقعی از بک‌اند */
 export async function getPanelProfile(): Promise<PanelProfile> {
-  interface RawProfile {
-    user: {
-      id: string;
-      phone: string;
-      user_name: string | null;
-      first_name: string;
-      last_name: string;
-      sex: string | null;
-      role: string;
-      is_verified: boolean;
-      is_buyer: boolean;
-      is_seller: boolean;
-      wallet_balance: number;
-      avatar_url: string | null;
-      business_desc: string | null;
-      product_count: number;
-      created_at: string;
-    };
-    profile: Record<string, unknown>;
-  }
-  const raw = await apiFetch<RawProfile>('/users/getProfile', {});
+  const raw = await apiFetch<{ user: RawProfileUser; profile: Record<string, unknown> }>('/users/getProfile', {});
   const p = raw.profile as Partial<PanelProfile['profile']>;
 
   return {
@@ -475,8 +518,12 @@ export async function getPanelProfile(): Promise<PanelProfile> {
       firstName: raw.user.first_name,
       lastName: raw.user.last_name,
       sex: raw.user.sex,
-      province: (p.province as string) ?? '',
-      city: (p.city as string) ?? '',
+      province: raw.user.province ?? '',
+      city: raw.user.city ?? '',
+      provinceId: raw.user.province_id ?? null,
+      cityId: raw.user.city_id ?? null,
+      avatarUrl: raw.user.avatar_url ?? null,
+      phone: raw.user.phone,
       isVerified: raw.user.is_verified,
       isBuyer: raw.user.is_buyer,
       isSeller: raw.user.is_seller,
@@ -487,9 +534,28 @@ export async function getPanelProfile(): Promise<PanelProfile> {
   };
 }
 
-/** ذخیره فرم «ویرایش پروفایل» — واقعی */
-export async function updatePanelProfile(input: Partial<PanelProfile['profile']>): Promise<{ ok: true }> {
+/** ذخیره «ویرایش پروفایل» — واقعی؛ فیلدهای پایه (نام/مکان/نقش/آواتار) + کسب‌وکار */
+export async function updatePanelProfile(
+  input: Partial<PanelProfile['profile']> & {
+    first_name?: string;
+    last_name?: string;
+    province_id?: number | null;
+    city_id?: number | null;
+    /** نقش فعال — روی is_seller/is_buyer بک‌اند ماندگار می‌شود */
+    role?: 'seller' | 'buyer';
+    avatar_url?: string;
+  },
+): Promise<{ ok: true }> {
   const body: Record<string, unknown> = {};
+  if (input.first_name !== undefined) body.first_name = input.first_name;
+  if (input.last_name !== undefined) body.last_name = input.last_name;
+  if (input.province_id !== undefined) body.province_id = input.province_id;
+  if (input.city_id !== undefined) body.city_id = input.city_id;
+  if (input.role !== undefined) {
+    body.is_seller = input.role === 'seller';
+    body.is_buyer = input.role === 'buyer';
+  }
+  if (input.avatar_url !== undefined) body.avatar_url = input.avatar_url;
   if (input.description !== undefined) body.business_desc = input.description;
   await apiFetch('/users/updateProfile', {
     ...body,
@@ -500,8 +566,6 @@ export async function updatePanelProfile(input: Partial<PanelProfile['profile']>
       ...(input.address !== undefined ? { address: input.address } : {}),
       ...(input.isCompany !== undefined ? { isCompany: input.isCompany } : {}),
       ...(input.companyName !== undefined ? { companyName: input.companyName } : {}),
-      ...(input.province !== undefined ? { province: input.province } : {}),
-      ...(input.city !== undefined ? { city: input.city } : {}),
     },
   });
   return { ok: true };

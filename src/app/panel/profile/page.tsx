@@ -47,9 +47,14 @@ export default function PanelProfilePage() {
       {/* کارت هویت */}
       <PanelCard>
         <div className="flex flex-wrap items-center gap-4">
-          <span className="grid size-16 shrink-0 place-items-center rounded-full bg-primary/10 text-xl font-extrabold text-primary">
-            {u.firstName.charAt(0)}
-          </span>
+          {u.avatarUrl ? (
+            // آواتار واقعی — آپلودی از ویرایش پروفایل
+            <img src={u.avatarUrl} alt={`تصویر ${u.firstName}`} className="grid size-16 shrink-0 rounded-full object-cover" />
+          ) : (
+            <span className="grid size-16 shrink-0 place-items-center rounded-full bg-primary/10 text-xl font-extrabold text-primary">
+              {u.firstName.charAt(0)}
+            </span>
+          )}
           <div className="min-w-0 flex-1">
             <p className="flex flex-wrap items-center gap-2 text-lg font-extrabold">
               {u.firstName} {u.lastName}

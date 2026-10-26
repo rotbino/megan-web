@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ArrowRight, Loader2, Smartphone, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
  * مودال ورود/ثبت‌نام — فقط با شماره موبایل + کد یک‌بارمصرف (الگوی باسکول).
  * موبایل: بات‌شیت پایین‌رونده (قانون کلی مودال‌های ایمچ) / دسکتاپ: مودال مرکزی.
  * کاربر لاگین‌نشیده قیمت‌ها را نمی‌بیند؛ همین مودال از دکمه «مشاهده قیمت» باز می‌شود.
+ * کاربر جدید به /register?step=info هدایت می‌شود تا نام/استان/شهر را تکمیل کند.
  */
 export function AuthModal({
   open,
@@ -29,6 +31,7 @@ export function AuthModal({
   onClose: () => void;
   onLoggedIn: () => void;
 }) {
+  const router = useRouter();
   const { login } = useAuth();
   const { toast } = useToast();
   const [step, setStep] = useState<'phone' | 'code'>('phone');
@@ -67,11 +70,13 @@ export function AuthModal({
         {
           onSuccess: (res) => {
             if (res.ok) {
-              login({ phone, userName: res.userName ?? '' });
+              if (res.user) login(res.user);
               onLoggedIn();
               setStep('phone');
               setPhone('');
               setCode('');
+              // کاربر جدید → تکمیل اطلاعات (نام/استان/شهر) در صفحه ثبت‌نام
+              if (res.isNewUser) router.push('/register?step=info');
             } else {
               setError('کد وارد شده صحیح نیست.');
             }

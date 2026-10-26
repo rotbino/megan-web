@@ -146,6 +146,20 @@ export interface ProductFeature {
  * { status, profile: {...}, user_info: {...} }
  * در فاز اتصال، فقط همین دو شیء از JSON بک‌اند پر می‌شود.
  */
+/**
+ * کاربر نشست فرانت — هویت نمایشی (نام/آواتار/نقش) از پروفایل واقعی بک‌اند.
+ * هدر، نوار پایین موبایل و منوها با «role» عوض می‌شوند؛ نقش در بک‌اند
+ * (is_seller/is_buyer) ماندگار است و با رادیوی ویرایش پروفایل/سوییچ پنل عوض می‌شود.
+ */
+export interface SessionUser {
+  phone: string;
+  userName: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+  role: 'seller' | 'buyer';
+}
+
 export interface PanelProfile {
   profile: {
     description: string | null; // «درباره شما» — حداقل ۳ تا ۵ خط
@@ -169,6 +183,11 @@ export interface PanelProfile {
     sex: string | null; // «آقا» / «خانم»
     province: string;
     city: string;
+    /** id عددی باسکول — برای پیش‌پر کردن فرم‌های ثبت آگهی/درخواست */
+    provinceId: number | null;
+    cityId: number | null;
+    avatarUrl: string | null;
+    phone: string;
     isVerified: boolean;
     isBuyer: boolean;
     isSeller: boolean;
