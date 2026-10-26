@@ -20,9 +20,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/products/product-card';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
 import { useCities, useCategoryTree, useProducts, useProvinces } from '@/lib/mock/hooks';
+import type { Paged } from '@/lib/mock/api';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { Category, SortKey } from '@/lib/types';
+import type { Category, Product, SortKey } from '@/lib/types';
 
 /** مرتب‌سازی — دقیقاً مثل باسکول: مرتبط‌ترین / جدیدترین (نردبان‌شده‌ها همیشه بالا) */
 const SORTS: { key: SortKey; label: string }[] = [
@@ -32,7 +33,13 @@ const SORTS: { key: SortKey; label: string }[] = [
 
 type SheetKind = 'categories' | 'sort' | null;
 
-function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
+interface ProductListingInnerProps {
+  categorySlug?: string;
+  /** دیتای اولیه SSR (صفحه ۱، مرتبط‌ترین، بدون فیلتر مکان) — فقط برای همان کوئری seed می‌شود */
+  initialData?: Paged<Product>;
+}
+
+function ProductListingInner({ categorySlug, initialData }: ProductListingInnerProps) {
   const router = useRouter();
   const sp = useSearchParams();
   const s = sp.get('s') ?? '';
@@ -62,7 +69,11 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
     () => ({ categorySlug, s, provinceId, cityId, sort, page }),
     [categorySlug, s, provinceId, cityId, sort, page],
   );
-  const { data, isFetching, isLoading } = useProducts(query);
+
+  // seed فقط وقتی کوئری فعال عین کوئری پیش‌فرض اولیه باشد (تطبیق ساخت‌یافته — بدون JSON.stringify)
+  const isDefaultQuery =
+    page === 1 && sort === 'related' && !provinceId && !cityId && (!s || s === '');
+  const { data, isFetching, isLoading } = useProducts(query, isDefaultQuery ? initialData : undefined);
   const items = data?.items ?? [];
 
   const activeCategory = useMemo(() => {
@@ -246,7 +257,10 @@ function ProductListingInner({ categorySlug }: { categorySlug?: string }) {
           </div>
         ) : (
           <div className={cn('grid grid-cols-1 gap-2.5 transition-opacity md:grid-cols-3 md:gap-4 xl:grid-cols-4', isFetching && 'opacity-60')}>
-            {items.map((p) => <ProductCard key={p.id} product={p} />)}
+            {items.map((p, i) => (
+              // اولین ردیف کارت‌ها (LCP) eager لود می‌شود — بقیه lazy
+              <ProductCard key={p.id} product={p} priority={i < 4} />
+            ))}
           </div>
         )}
 
@@ -365,10 +379,16 @@ function CategoryFilter({ tree, activeSlug }: { tree: Category[]; activeSlug?: s
   );
 }
 
-export function ProductListing({ categorySlug }: { categorySlug?: string }) {
+export function ProductListing({
+  categorySlug,
+  initialData,
+}: {
+  categorySlug?: string;
+  initialData?: Paged<Product>;
+}) {
   return (
     <Suspense fallback={<div className="mx-auto max-w-7xl px-4 py-6 lg:px-6"><Skeleton className="h-96 rounded-md" /></div>}>
-      <ProductListingInner categorySlug={categorySlug} />
+      <ProductListingInner categorySlug={categorySlug} initialData={initialData} />
     </Suspense>
   );
 }

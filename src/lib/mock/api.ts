@@ -6,7 +6,7 @@
  * CRM نشان‌شده‌ها، کیف پول، …) موقتاً ماک می‌مانند تا فاز B6..B9 آزاد شوند.
  */
 
-import { apiFetch, setTokens, clearTokens, getTokens, ApiError } from '@/lib/api/client';
+import { apiFetch, serverPost, setTokens, clearTokens, getTokens, ApiError } from '@/lib/api/client';
 import type { BuyRequest, Category, City, PackageType, Product, ProductQuery, Province } from '@/lib/types';
 import {
   categories as categoriesData,
@@ -174,6 +174,62 @@ export async function getRelatedProducts(product: Product, limit = 6): Promise<P
 export async function getCategoryTree(): Promise<Category[]> {
   const raw = await apiFetch<RawCategoryNode[]>('/categories/getAllCategories', {}, { auth: false });
   return raw.map(toCategory);
+}
+
+// ─── SSR/ISR — فقط برای Server Components صفحات عمومی (F2) ──────────────────
+// کش دادهٔ نکست با revalidate؛ در خطا null برمی‌گردند تا صفحه با کلاینت‌رندر ادامه دهد.
+
+export async function getProductsSSR(
+  query: ProductQuery = {},
+  revalidate = 60,
+): Promise<Paged<Product> | null> {
+  try {
+    const raw = await serverPost<
+      { items: RawProduct[]; total: number; page: number; pageCount: number }
+    >(
+      '/products/getProductList',
+      {
+        categorySlug: query.categorySlug,
+        s: query.s,
+        provinceId: query.provinceId,
+        cityId: query.cityId,
+        sort: query.sort,
+        page: query.page,
+      },
+      revalidate,
+    );
+    return { ...raw, items: raw.items.map(toProduct) };
+  } catch {
+    return null; // بک‌اند خاموش/خطا → صفحه با رندر کلاینت ادامه می‌دهد
+  }
+}
+
+export async function getBuyRequestsSSR(
+  opts: { s?: string; provinceId?: number; page?: number; perPage?: number } = {},
+  revalidate = 60,
+): Promise<Paged<BuyRequest> | null> {
+  try {
+    const raw = await serverPost<
+      { items: RawBuyRequest[]; total: number; page: number; pageCount: number }
+    >(
+      '/buy-requests/getBuyRequestList',
+      { s: opts.s, provinceId: opts.provinceId, page: opts.page, perPage: opts.perPage },
+      revalidate,
+    );
+    return { ...raw, items: raw.items.map(toBuyRequest) };
+  } catch {
+    return null;
+  }
+}
+
+/** درخت دسته‌ها سمت سرور — برای نام دسته و مسیر BreadcrumbList */
+export async function getCategoryTreeSSR(revalidate = 600): Promise<Category[] | null> {
+  try {
+    const raw = await serverPost<RawCategoryNode[]>('/categories/getAllCategories', {}, revalidate);
+    return raw.map(toCategory);
+  } catch {
+    return null;
+  }
 }
 
 export async function getProvinces(): Promise<Province[]> {

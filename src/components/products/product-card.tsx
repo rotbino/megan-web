@@ -14,7 +14,7 @@ import type { Product } from '@/lib/types';
  * دسکتاپ: کارت عمودی در گرید.
  * قیمت فقط برای اعضا: لاگین‌نشده دکمه «مشاهده قیمت» (فرم ورود) می‌بیند (ProductPrice).
  */
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
   const href = `/product-view/${product.slug}/${product.categoryName}/${product.id}`;
 
   return (
@@ -26,6 +26,7 @@ export function ProductCard({ product }: { product: Product }) {
           alt={product.productName}
           className="h-full w-full object-cover md:aspect-[4/3] md:h-auto"
           iconSize={48}
+          priority={priority}
         />
         {product.isLadder && (
           <span className="absolute start-1.5 top-1.5 md:start-2 md:top-2">

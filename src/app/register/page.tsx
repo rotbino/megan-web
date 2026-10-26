@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import {
   InputOTP,
   InputOTPGroup,
-  InputOTPSeparator,
   InputOTPSlot,
 } from '@/components/ui/input-otp';
 import { useRequestOtp, useVerifyOtp } from '@/lib/mock/hooks';
@@ -124,13 +123,11 @@ export default function RegisterPage() {
               ) : (
                 <div className="space-y-4">
                   <div className="flex justify-center" dir="ltr">
+                    {/* کد پیامکی ۴ رقم ساده است — بدون جداکننده، عین متن پیامک */}
                     <InputOTP maxLength={4} value={code} onChange={verify} disabled={verifyMutation.isPending}>
                       <InputOTPGroup>
                         <InputOTPSlot index={0} />
                         <InputOTPSlot index={1} />
-                      </InputOTPGroup>
-                      <InputOTPSeparator />
-                      <InputOTPGroup>
                         <InputOTPSlot index={2} />
                         <InputOTPSlot index={3} />
                       </InputOTPGroup>

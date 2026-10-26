@@ -2,10 +2,11 @@ import type { Metadata, Viewport } from "next";
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/toaster";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://imach.example.com"),
+  metadataBase: new URL(SITE_URL),
   manifest: "/manifest.webmanifest",
   title: {
     default: "ایمچ | بازار خرید و فروش عمده بدون واسطه",

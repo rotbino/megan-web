@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBuyRequestContact, useBuyRequests, useProvinces } from '@/lib/mock/hooks';
+import type { Paged } from '@/lib/mock/api';
 import { AuthModal } from '@/components/shared/auth-modal';
 import { getTokens } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/client';
@@ -19,17 +20,21 @@ import type { BuyRequest } from '@/lib/types';
  * صفحه‌بندی واقعی. شماره خریدار فقط برای کاربران واردشده آشکار می‌شود
  * (مدل Lead-gen باسکول) — در غیر این صورت مودال ورود باز می‌شود.
  */
-export function BuyRequestsView() {
+export function BuyRequestsView({ initialData }: { initialData?: Paged<BuyRequest> } = {}) {
   const [s, setS] = useState('');
   const [provinceId, setProvinceId] = useState<string>('all');
   const [page, setPage] = useState(1);
 
   const { data: provinces } = useProvinces();
-  const { data, isLoading } = useBuyRequests({
-    s,
-    provinceId: provinceId === 'all' ? undefined : Number(provinceId),
-    page,
-  });
+  const { data, isLoading } = useBuyRequests(
+    {
+      s,
+      provinceId: provinceId === 'all' ? undefined : Number(provinceId),
+      page,
+    },
+    // seed فقط وقتی فیلترها عین حالت اولیه SSR باشند
+    !s && provinceId === 'all' && page === 1 ? initialData : undefined,
+  );
 
   const items = data?.items ?? [];
   const total = data?.total ?? 0;

@@ -25,7 +25,8 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { products } from '@/lib/mock/data';
 import { stockFa, toFa } from '@/lib/format';
-import { apiBase } from '@/lib/api/client';
+import { apiBase, joinUrl } from '@/lib/api/client';
+import { SITE_URL } from '@/lib/site';
 import type { Product } from '@/lib/types';
 
 interface Props {
@@ -35,7 +36,7 @@ interface Props {
 /** SSR — دیتای زنده از بک‌اند مگان (عمومی، بدون توکن) + فالبک ماک dev */
 async function getProduct(id: number): Promise<Product | null> {
   try {
-    const res = await fetch(`${apiBase()}/products/getProductById`, {
+    const res = await fetch(joinUrl(apiBase(), '/products/getProductById'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
@@ -227,6 +228,33 @@ export default async function ProductViewPage({ params }: Props) {
         <RelatedProducts product={product} />
       </main>
       <Footer />
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'ایمچ', item: SITE_URL },
+            {
+              '@type': 'ListItem',
+              position: 2,
+              name: product.categoryName,
+              item: `${SITE_URL}/product-list/category/${encodeURIComponent(product.categoryName)}`,
+            },
+            {
+              '@type': 'ListItem',
+              position: 3,
+              name: product.subCategoryName,
+              item: `${SITE_URL}/product-list/category/${encodeURIComponent(product.subCategoryName)}`,
+            },
+            {
+              '@type': 'ListItem',
+              position: 4,
+              name: product.productName,
+              item: `${SITE_URL}/product-view/${product.slug}/${product.categoryName}/${product.id}`,
+            },
+          ],
+        }}
+      />
       <JsonLd
         data={{
           '@context': 'https://schema.org',

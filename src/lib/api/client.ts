@@ -116,11 +116,16 @@ export interface ApiFetchOptions {
   retryOn401?: boolean;
 }
 
+/** الحاق مسیر بدون اسلش تکراری — apiBase بدون / پایان می‌یابد، path ممکن است با / شروع شود */
+export function joinUrl(base: string, path: string): string {
+  return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
 export async function apiFetch<T>(path: string, body?: unknown, opts: ApiFetchOptions = {}): Promise<T> {
   const needAuth = opts.auth !== false;
   const tokens = getTokens();
 
-  const res = await fetch(`${apiBase()}/${path}`, {
+  const res = await fetch(joinUrl(apiBase(), path), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -147,6 +152,35 @@ export async function apiFetch<T>(path: string, body?: unknown, opts: ApiFetchOp
   if (json.status === false) {
     throw new ApiError(json.message, res.status, json.code);
   }
+  return json.data;
+}
+
+// ─── SSR/ISR — فقط Server Components صفحات عمومی ────────────────────────────
+
+/**
+ * POST با کش دادهٔ نکست (revalidate) — برای SSR/ISR صفحات عمومی سئو.
+ * تفاوت با apiFetch: بدون توکن (عمومی)، بدون no-store، کش‌شده تا revalidate ثانیه.
+ * فراخوانی از کلاینت ممنوع — فقط در Server Components/پیش‌رندر.
+ */
+export async function serverPost<T>(
+  path: string,
+  body: unknown,
+  revalidateSec: number,
+): Promise<T> {
+  const res = await fetch(joinUrl(apiBase(), path), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body ?? {}),
+    next: { revalidate: revalidateSec },
+  });
+
+  const json = (await res.json().catch(() => null)) as
+    | { status: true; data: T; message?: string }
+    | { status: false; message: string; code?: string }
+    | null;
+
+  if (!json) throw new ApiError('ارتباط با سرور برقرار نشد.', res.status, 'NETWORK');
+  if (json.status === false) throw new ApiError(json.message, res.status, json.code);
   return json.data;
 }
 

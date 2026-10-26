@@ -6,7 +6,8 @@ import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { ensureChatSocket, onChatEvent } from '@/lib/api/socket';
 import * as api from './api';
-import type { Product, ProductQuery, SavedUserItem } from '@/lib/types';
+import type { Paged } from './api';
+import type { BuyRequest, Product, ProductQuery, SavedUserItem } from '@/lib/types';
 
 const qk = {
   products: (q: ProductQuery) => ['products', q] as const,
@@ -20,10 +21,12 @@ const qk = {
   suggestions: (q: string) => ['suggestions', q] as const,
 };
 
-export function useProducts(query: ProductQuery) {
+/** initialData = دیتای SSR صفحه (فقط وقتی کوئری فعال همان کوئری پیش‌فرض اولیه باشد) */
+export function useProducts(query: ProductQuery, initialData?: Paged<Product>) {
   return useQuery({
     queryKey: qk.products(query),
     queryFn: () => api.getProducts(query),
+    ...(initialData ? { initialData } : {}),
     placeholderData: keepPreviousData, // صفحه‌بندی نرم بدون پرش اسکلتون
     staleTime: 60_000,
   });
@@ -66,10 +69,12 @@ export function useCities(provinceId?: number) {
 
 export function useBuyRequests(
   opts: { s?: string; provinceId?: number; page?: number; perPage?: number } = {},
+  initialData?: Paged<BuyRequest>,
 ) {
   return useQuery({
     queryKey: qk.buyRequests(opts),
     queryFn: () => api.getBuyRequests(opts),
+    ...(initialData ? { initialData } : {}),
     placeholderData: keepPreviousData, // صفحه‌بندی نرم
     staleTime: 30_000,
   });
