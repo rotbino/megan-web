@@ -52,7 +52,7 @@ export default function RegisterPage() {
   const verify = (value: string) => {
     setCode(value);
     setError('');
-    if (value.length === 5) {
+    if (value.length === 4) {
       verifyMutation.mutate(
         { phone, code: value },
         {
@@ -96,7 +96,7 @@ export default function RegisterPage() {
                 <p className="text-xs leading-5 text-muted-foreground">
                   {step === 'phone'
                     ? 'ورود و ثبت‌نام ایمچ فقط با شماره موبایل انجام می‌شود.'
-                    : `کد ۵ رقمی پیامک‌شده به ${phone} را وارد کنید.`}
+                    : `کد ۴ رقمی پیامک‌شده به ${phone} را وارد کنید.`}
                 </p>
               </div>
 
@@ -124,7 +124,7 @@ export default function RegisterPage() {
               ) : (
                 <div className="space-y-4">
                   <div className="flex justify-center" dir="ltr">
-                    <InputOTP maxLength={5} value={code} onChange={verify} disabled={verifyMutation.isPending}>
+                    <InputOTP maxLength={4} value={code} onChange={verify} disabled={verifyMutation.isPending}>
                       <InputOTPGroup>
                         <InputOTPSlot index={0} />
                         <InputOTPSlot index={1} />
@@ -133,7 +133,6 @@ export default function RegisterPage() {
                       <InputOTPGroup>
                         <InputOTPSlot index={2} />
                         <InputOTPSlot index={3} />
-                        <InputOTPSlot index={4} />
                       </InputOTPGroup>
                     </InputOTP>
                   </div>

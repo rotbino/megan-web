@@ -62,7 +62,7 @@ export function AuthModal({
   const verify = (value: string) => {
     setCode(value);
     setError('');
-    if (value.length === 5) {
+    if (value.length === 4) {
       verifyMutation.mutate(
         { phone, code: value },
         {
@@ -94,7 +94,7 @@ export function AuthModal({
   const subtitle =
     step === 'phone'
       ? 'مشاهده قیمت‌ها فقط برای اعضای ایمچ امکان‌پذیر است.'
-      : `کد ۵ رقمی پیامک‌شده به ${phone} را وارد کنید.`;
+      : `کد ۴ رقمی پیامک‌شده به ${phone} را وارد کنید.`;
 
   const body = (
     <div className="space-y-4 p-1">
@@ -130,7 +130,7 @@ export function AuthModal({
       ) : (
         <div className="space-y-4">
           <div className="flex justify-center" dir="ltr">
-            <InputOTP maxLength={5} value={code} onChange={verify} disabled={verifyMutation.isPending}>
+            <InputOTP maxLength={4} value={code} onChange={verify} disabled={verifyMutation.isPending}>
               <InputOTPGroup>
                 <InputOTPSlot index={0} />
                 <InputOTPSlot index={1} />
@@ -139,7 +139,6 @@ export function AuthModal({
               <InputOTPGroup>
                 <InputOTPSlot index={2} />
                 <InputOTPSlot index={3} />
-                <InputOTPSlot index={4} />
               </InputOTPGroup>
             </InputOTP>
           </div>
