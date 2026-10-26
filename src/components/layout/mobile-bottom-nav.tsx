@@ -87,6 +87,8 @@ const loggedOutItems: NavItem[] = [
 export function MobileBottomNav() {
   const pathname = usePathname() ?? '/';
   const { user } = useAuth();
+  // پنل ادمین پوسته و ناوبری خودش را دارد — نوار پایین اپ عمومی آنجا نیست
+  if (pathname.startsWith('/admin')) return null;
   const items = !user ? loggedOutItems : user.role === 'buyer' ? buyerItems : sellerItems;
   return (
     <nav
