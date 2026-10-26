@@ -102,15 +102,15 @@ export function PanelSidebar({
   const wallet = profile?.userInfo.walletBalance ?? 0;
 
   return (
-    <div className="flex h-full flex-col bg-primary-deep text-white">
+    <div className="flex h-full flex-col border-e border-border bg-card text-foreground">
       {/* هدر — برگر + لوگو */}
-      <div className="flex h-[59px] shrink-0 items-center gap-3 border-b border-white/10 px-4">
+      <div className="flex h-[59px] shrink-0 items-center gap-3 border-b border-border px-4">
         {onToggleCollapse && (
           <button
             type="button"
             onClick={onToggleCollapse}
             aria-label={collapsed ? 'باز کردن منو' : 'جمع کردن منو'}
-            className="grid size-8 place-items-center rounded-sm text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+            className="grid size-8 place-items-center rounded-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             <Menu size={18} />
           </button>
@@ -130,7 +130,7 @@ export function PanelSidebar({
           onClick={onNavigate}
           title="پروفایل"
           className={cn(
-            'flex items-center gap-3 border-b border-white/10 px-4 py-4 transition-colors hover:bg-white/5',
+            'flex items-center gap-3 border-b border-border px-4 py-4 transition-colors hover:bg-secondary/60',
             collapsed && 'justify-center px-0',
           )}
         >
@@ -138,7 +138,7 @@ export function PanelSidebar({
             // آواتار واقعی — آپلودی از ویرایش پروفایل
             <img src={profile.userInfo.avatarUrl} alt="" className="grid size-11 shrink-0 place-items-center rounded-full object-cover" />
           ) : (
-            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white/10 text-sm font-extrabold">
+            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-extrabold text-primary">
               {profile ? profile.userInfo.firstName.charAt(0) : '؟'}
             </span>
           )}
@@ -150,10 +150,10 @@ export function PanelSidebar({
                   {role === 'buyer' ? 'خریدار' : 'فروشنده'}
                 </span>
               </span>
-              <span className="block truncate text-xs text-white/60">{city}</span>
+              <span className="block truncate text-xs text-muted-foreground">{city}</span>
             </span>
           )}
-          {!collapsed && <ChevronLeft size={16} className="shrink-0 text-white/50" />}
+          {!collapsed && <ChevronLeft size={16} className="shrink-0 text-muted-foreground/60" />}
         </Link>
 
         {/* کیف پول */}
@@ -162,7 +162,7 @@ export function PanelSidebar({
             href="/panel/wallet"
             onClick={onNavigate}
             className={cn(
-              'flex w-full items-center gap-2 rounded-md bg-white/10 px-3 py-2.5 text-start transition-colors hover:bg-white/15',
+              'flex w-full items-center gap-2 rounded-md border border-border px-3 py-2.5 text-start transition-colors hover:bg-secondary',
               collapsed && 'justify-center px-0',
             )}
             title="شارژ کیف پول"
@@ -170,9 +170,9 @@ export function PanelSidebar({
             <Wallet size={16} className="shrink-0 text-amber-400" />
             {!collapsed && (
               <span className="min-w-0 flex-1 text-xs">
-                <span className="block text-white/70">موجودی</span>
+                <span className="block text-muted-foreground">موجودی</span>
                 <span className="block font-bold">
-                  {toFa(wallet)} <span className="font-normal text-white/70">تومان</span>
+                  {toFa(wallet)} <span className="font-normal text-muted-foreground">تومان</span>
                 </span>
               </span>
             )}
@@ -182,7 +182,7 @@ export function PanelSidebar({
         {/* سوییچ فروشنده / خریدار */}
         {!collapsed && (
           <div className="px-4 pt-3">
-            <div className="flex rounded-md bg-white/10 p-1 text-xs" role="radiogroup" aria-label="نوع حساب کاربری">
+            <div className="flex rounded-md bg-secondary p-1 text-xs" role="radiogroup" aria-label="نوع حساب کاربری">
               {(
                 [
                   { key: 'seller', label: 'فروشنده' },
@@ -197,7 +197,7 @@ export function PanelSidebar({
                   onClick={() => setRole(key)}
                   className={cn(
                     'flex-1 rounded-sm py-1.5 font-bold transition-colors',
-                    role === key ? 'bg-white text-primary-deep' : 'text-white/70 hover:text-white',
+                    role === key ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
                   {label}
@@ -220,12 +220,12 @@ export function PanelSidebar({
                 className={cn(
                   'relative flex h-11 items-center gap-3 rounded-md px-3 text-sm transition-colors',
                   active
-                    ? 'bg-white/10 font-bold text-white before:absolute before:inset-y-1.5 before:right-0 before:w-[3px] before:rounded-full before:bg-white'
-                    : 'text-white/75 hover:bg-white/5 hover:text-white',
+                    ? 'bg-primary/10 font-bold text-primary before:absolute before:inset-y-1.5 before:right-0 before:w-[3px] before:rounded-full before:bg-primary'
+                    : 'text-muted-foreground hover:bg-secondary/70 hover:text-foreground',
                   collapsed && 'justify-center px-0',
                 )}
               >
-                <Icon size={19} className={cn('shrink-0', active ? 'text-amber-400' : 'text-white/70')} />
+                <Icon size={19} className={cn('shrink-0', active ? 'text-primary' : 'text-muted-foreground/70')} />
                 {!collapsed && <span className="truncate">{label}</span>}
               </Link>
             );
@@ -233,7 +233,7 @@ export function PanelSidebar({
         </nav>
 
         {/* خروج از حساب کاربری */}
-        <div className={cn('mt-2 border-t border-white/10 px-3 pt-2', collapsed && 'px-2')}>
+        <div className={cn('mt-2 border-t border-border px-3 pt-2', collapsed && 'px-2')}>
           <button
             type="button"
             onClick={() => {

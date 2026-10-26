@@ -53,29 +53,29 @@ export default function AdminLoginPage() {
 
   if (booting) {
     return (
-      <div className="grid min-h-screen place-items-center bg-primary">
-        <Loader2 className="size-8 animate-spin text-white/80" />
+      <div className="grid min-h-screen place-items-center bg-background">
+        <Loader2 className="size-8 animate-spin text-muted-foreground/60" />
       </div>
     );
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-gradient-to-b from-primary to-primary-deep p-4">
+    <div className="grid min-h-screen place-items-center bg-background p-4">
       <div className="w-full max-w-sm">
         {/* برند */}
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <span className="grid size-14 place-items-center rounded-xl bg-white/10 text-white ring-1 ring-white/20">
+          <span className="grid size-14 place-items-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
             <ShieldCheck size={28} />
           </span>
-          <h1 className="text-lg font-extrabold text-white">پنل مدیریت ایمچ</h1>
-          <p className="text-xs leading-5 text-white/70">
+          <h1 className="text-lg font-extrabold">پنل مدیریت ایمچ</h1>
+          <p className="text-xs leading-5 text-muted-foreground">
             ورود مخصوص مدیران سیستم — با نام کاربری و رمز عبور مدیریت.
           </p>
         </div>
 
         <form
           onSubmit={submit}
-          className="space-y-4 rounded-xl bg-card p-6 shadow-2xl"
+          className="space-y-4 rounded-xl border bg-card p-6 shadow-sm"
         >
           <div className="space-y-1.5">
             <Label htmlFor="admin-username">
@@ -129,7 +129,7 @@ export default function AdminLoginPage() {
           </Button>
         </form>
 
-        <p className="mt-5 text-center text-[11px] leading-5 text-white/60">
+        <p className="mt-5 text-center text-[11px] leading-5 text-muted-foreground">
           دسترسی مدیریتی محرمانه است — رمز خود را به اشتراک نگذارید.
         </p>
       </div>

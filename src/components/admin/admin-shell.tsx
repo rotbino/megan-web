@@ -2,11 +2,12 @@
 
 /**
  * پوسته پنل ادمین — کاملاً جدا از پوسته کاربران (components/panel):
- *  • دسکتاپ: سایدبار تیره ثابت سمت راست + محتوای روشن
- *  • موبایل: تاپ‌بار + دراور منو
+ *  • تم سفیدِ فلت: سایدبار سفید + فقط یک خط ظریف بین منو و محتوا (border-e)؛
+ *    رنگ اصلی (آبی) فقط در دکمه‌ها و لهجه‌های کوچک، نه پس‌زمینه
+ *  • دسکتاپ: سایدبار ثابت سمت راست + محتوای سفید — موبایل: تاپ‌بار + دراور
  *  • گارد نشست: توکن ادمین → me؛ ناموفق → /admin/login
  *  • تغییر رمز خودم از تاپ‌بار (API زنده — admin/auth/changePassword)
- * آیتم‌های فازهای بعد (A2..A5) نمایش داده می‌شوند با چیپ فاز و غیرفعال.
+ * آیتم‌های فازهای بعد (A3..A5) نمایش داده می‌شوند با چیپ فاز و غیرفعال.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -47,8 +48,8 @@ const NAV = [
   { href: '/admin/users', label: 'کاربران', Icon: Users, phase: 'A3' },
   { href: '/admin/products', label: 'آگهی‌ها', Icon: Boxes, phase: 'A4' },
   { href: '/admin/buy-requests', label: 'درخواست‌های خرید', Icon: ClipboardList, phase: 'A4' },
-  { href: '/admin/categories', label: 'دسته‌بندی‌ها', Icon: Network, phase: 'A2' },
-  { href: '/admin/locations', label: 'مکان‌ها', Icon: MapPin, phase: 'A2' },
+  { href: '/admin/categories', label: 'دسته‌بندی‌ها', Icon: Network, phase: null },
+  { href: '/admin/locations', label: 'مکان‌ها', Icon: MapPin, phase: null },
   { href: '/admin/logs', label: 'لاگ عملیات', Icon: ScrollText, phase: 'A5' },
   { href: '/admin/settings', label: 'تنظیمات', Icon: Settings, phase: 'A5' },
 ] as const;
@@ -61,10 +62,10 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         const active = !phase && (href === '/admin' ? pathname === '/admin' : pathname === href || pathname.startsWith(`${href}/`));
         const inner = (
           <>
-            <Icon size={18} className="shrink-0 opacity-90" />
+            <Icon size={18} className={cn('shrink-0', active ? 'text-primary' : 'text-muted-foreground/70')} />
             <span className="min-w-0 flex-1 truncate">{label}</span>
             {phase ? (
-              <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-white/60">
+              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground/70">
                 {phase}
               </span>
             ) : null}
@@ -78,7 +79,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               disabled
               aria-disabled
               title={`${label} — در فاز ${phase} فعال می‌شود`}
-              className="flex w-full cursor-not-allowed items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-normal text-white/40"
+              className="flex w-full cursor-not-allowed items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-normal text-muted-foreground/40"
             >
               {inner}
             </button>
@@ -91,8 +92,10 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors',
-              active ? 'bg-white/15 font-bold text-white' : 'font-normal text-white/75 hover:bg-white/10 hover:text-white',
+              'relative flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors',
+              active
+                ? 'bg-primary/10 font-bold text-primary before:absolute before:inset-y-1.5 before:right-0 before:w-[3px] before:rounded-full before:bg-primary'
+                : 'font-normal text-muted-foreground hover:bg-secondary/70 hover:text-foreground',
             )}
           >
             {inner}
@@ -243,7 +246,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   if (state !== 'ready') {
     return (
-      <div className="grid min-h-screen place-items-center bg-[#f2f3f7]">
+      <div className="grid min-h-screen place-items-center bg-background">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
           <Loader2 className="size-8 animate-spin" />
           <p className="text-xs">{state === 'checking' ? 'در حال بررسی نشست مدیریت…' : 'در حال انتقال به ورود…'}</p>
@@ -255,30 +258,30 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const sidebarInner = (
     <>
       {/* سر برند */}
-      <div className="flex h-14 items-center gap-2.5 border-b border-white/10 px-4">
-        <span className="grid size-9 place-items-center rounded-lg bg-white/10 text-white">
+      <div className="flex h-14 items-center gap-2.5 border-b border-border px-4">
+        <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
           <ShieldCheck size={19} />
         </span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-extrabold text-white">مدیریت ایمچ</p>
-          <p className="text-[10px] text-white/50">پنل کنترل بازارگاه</p>
+          <p className="truncate text-sm font-extrabold">مدیریت ایمچ</p>
+          <p className="text-[10px] text-muted-foreground">پنل کنترل بازارگاه</p>
         </div>
       </div>
       <SidebarNav onNavigate={() => setDrawerOpen(false)} />
       {/* پایین: ادمین + خروج */}
-      <div className="border-t border-white/10 p-3">
-        <div className="mb-2 flex items-center gap-2.5 rounded-md bg-white/5 px-3 py-2">
-          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-white">
+      <div className="border-t border-border p-3">
+        <div className="mb-2 flex items-center gap-2.5 rounded-md border border-border px-3 py-2">
+          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
             <Users size={15} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-bold text-white">{admin?.name ?? 'مدیر'}</p>
-            <p className="truncate text-[10px] text-white/50" dir="ltr">
+            <p className="truncate text-xs font-bold">{admin?.name ?? 'مدیر'}</p>
+            <p className="truncate text-[10px] text-muted-foreground" dir="ltr">
               {admin?.username}
             </p>
           </div>
           {admin?.role === 'SUPER_ADMIN' ? (
-            <span className="rounded-full bg-brand-orange/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">
+            <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-600">
               ارشد
             </span>
           ) : null}
@@ -287,7 +290,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <Button
             size="sm"
             variant="outline"
-            className="h-8 flex-1 gap-1.5 rounded-md border-white/15 bg-transparent text-[11px] text-white/80 hover:bg-white/10 hover:text-white"
+            className="h-8 flex-1 gap-1.5 rounded-md text-[11px] text-muted-foreground hover:bg-secondary hover:text-foreground"
             onClick={() => setCpOpen(true)}
           >
             <KeyRound size={13} />
@@ -296,7 +299,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <Button
             size="sm"
             variant="outline"
-            className="h-8 gap-1.5 rounded-md border-white/15 bg-transparent text-[11px] text-white/80 hover:bg-red-500/20 hover:text-white"
+            className="h-8 gap-1.5 rounded-md text-[11px] text-muted-foreground hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive"
             onClick={() => void logout()}
           >
             <LogOut size={13} />
@@ -308,10 +311,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#f2f3f7]">
-      {/* سایدبار دسکتاپ — ستون ثابت راست */}
+    <div className="min-h-screen bg-background">
+      {/* سایدبار دسکتاپ — سفید؛ جداکننده: خط ظریف border-e */}
       <aside
-        className="fixed inset-y-0 right-0 z-30 hidden w-60 flex-col bg-primary lg:flex"
+        className="fixed inset-y-0 right-0 z-30 hidden w-60 flex-col border-e border-border bg-card lg:flex"
         aria-label="منوی مدیریت"
       >
         {sidebarInner}
@@ -360,12 +363,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             className="animate-sheet-fade absolute inset-0 bg-black/40"
             onClick={() => setDrawerOpen(false)}
           />
-          <div className="animate-sheet-up absolute inset-y-0 right-0 flex w-64 max-w-[80vw] flex-col bg-primary shadow-2xl">
+          <div className="animate-sheet-up absolute inset-y-0 right-0 flex w-64 max-w-[80vw] flex-col border-e border-border bg-card shadow-2xl">
             <button
               type="button"
               aria-label="بستن"
               onClick={() => setDrawerOpen(false)}
-              className="absolute left-2 top-3 grid size-8 place-items-center rounded-md text-white/70 hover:bg-white/10"
+              className="absolute left-2 top-3 grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-secondary"
             >
               <X size={17} />
             </button>

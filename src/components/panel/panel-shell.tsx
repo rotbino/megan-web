@@ -69,7 +69,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   }, [drawerOpen]);
 
   return (
-    <div className="min-h-screen bg-[#f2f3f7]">
+    <div className="min-h-screen bg-background">
       {/* سایدبار دسکتاپ — ستون ثابت راست */}
       <aside
         className={cn(

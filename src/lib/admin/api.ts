@@ -28,6 +28,63 @@ export interface AdminStats {
   queues: { pendingVerifications: number; pendingCharges: number; ladderOrders: number };
 }
 
+// ─── فاز A2 — اطلاعات پایه ───────────────────────────────────────────────────
+
+/** نود درخت دسته (ادمین) — عین AdminCategoryNode بک‌اند */
+export interface AdminCategoryNode {
+  id: number;
+  categoryName: string;
+  slug: string;
+  kind: string; // CATEGORY | PRODUCT_TYPE
+  unit: string;
+  min: number;
+  example: string | null;
+  parentId: number | null;
+  parentName: string | null;
+  score: number;
+  childCount: number;
+  productCount: number;
+  requestCount: number;
+  children: AdminCategoryNode[];
+}
+
+export interface AdminCategoryInput {
+  id?: number;
+  categoryName: string;
+  parentId?: number | null;
+  unit?: string;
+  min?: number;
+  example?: string;
+  score?: number;
+}
+
+/** استان/شهر (ادمین) — id = buskolId عددی */
+export interface AdminProvince {
+  id: number;
+  name: string;
+  enName: string | null;
+  isActive: boolean;
+  cityCount: number;
+}
+
+export interface AdminCity {
+  id: number;
+  name: string;
+  enName: string | null;
+  isActive: boolean;
+  provinceId: number;
+  userCount: number;
+  productCount: number;
+}
+
+export interface AdminLocationInput {
+  buskolId?: number;
+  type: 'province' | 'city';
+  name: string;
+  enName?: string;
+  parentId?: number; // برای شهر: buskolId استان
+}
+
 // ─── توکن ────────────────────────────────────────────────────────────────────
 
 function isServer(): boolean {
@@ -139,4 +196,38 @@ export async function adminChangePassword(currentPassword: string, newPassword: 
 /** آمار داشبورد */
 export async function fetchAdminStats(): Promise<AdminStats> {
   return adminFetch<AdminStats>('/admin/dashboard/getStats', {});
+}
+
+// ─── فاز A2 — اطلاعات پایه ───────────────────────────────────────────────────
+
+/** درخت دسته‌ها با شمارش فرزند/آگهی/درخواست */
+export async function fetchAdminCategoryTree(): Promise<AdminCategoryNode[]> {
+  return adminFetch<AdminCategoryNode[]>('/admin/base-data/getCategoryTree', {});
+}
+
+/** ایجاد/ویرایش دسته */
+export async function upsertCategory(input: AdminCategoryInput): Promise<AdminCategoryNode> {
+  return adminFetch<AdminCategoryNode>('/admin/base-data/upsertCategory', input as unknown as Record<string, unknown>);
+}
+
+/** حذف دسته — فقط بدون فرزند و بدون ارجاع */
+export async function deleteAdminCategory(id: number): Promise<{ id: number; deleted: boolean }> {
+  return adminFetch<{ id: number; deleted: boolean }>('/admin/base-data/deleteCategory', { id });
+}
+
+/** استان‌ها + شهرها (provinceId داده شود فقط آن استان) */
+export async function fetchAdminLocations(provinceId?: number): Promise<{ provinces: AdminProvince[]; cities: AdminCity[] }> {
+  return adminFetch<{ provinces: AdminProvince[]; cities: AdminCity[] }>('/admin/base-data/getLocations', {
+    ...(provinceId != null ? { provinceId } : {}),
+  });
+}
+
+/** ایجاد/ویرایش استان یا شهر */
+export async function upsertLocation(input: AdminLocationInput): Promise<{ id: number; type: string; name: string; isActive: boolean }> {
+  return adminFetch('/admin/base-data/upsertLocation', input as unknown as Record<string, unknown>);
+}
+
+/** فعال/غیرفعال کردن مکان */
+export async function setLocationActive(buskolId: number, type: 'province' | 'city', active: boolean): Promise<{ id: number; isActive: boolean }> {
+  return adminFetch('/admin/base-data/setLocationActive', { buskolId, type, active });
 }
