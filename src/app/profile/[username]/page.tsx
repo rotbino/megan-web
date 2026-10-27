@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { BadgeCheck, MapPin, MessagesSquare, Phone, Star } from 'lucide-react';
+import { BadgeCheck, MapPin, Phone } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { VerifiedBadge } from '@/components/shared/badges';
 import { ProfileTabs } from '@/components/products/profile-tabs';
 import { ShareBox } from '@/components/shared/share-box';
 import { Button } from '@/components/ui/button';
-import { users, products } from '@/lib/mock/data';
 import { toFa } from '@/lib/format';
 import { apiBase } from '@/lib/api/client';
+import { SITE_URL } from '@/lib/site';
 import type { Product } from '@/lib/types';
 
 interface Props {
@@ -33,7 +33,8 @@ interface SellerData {
   products: Product[];
 }
 
-/** SSR — فروشنده زنده از بک‌اند + فالبک ماک dev */
+/** SSR — فروشنده زنده از بک‌اند.
+ *  فالبک ماک حذف شد — پروفایل فقط با کاربر واقعی دیتابیس می‌آید؛ نبود = ۴۰۴. */
 async function getSeller(userName: string): Promise<SellerData | null> {
   try {
     const res = await fetch(`${apiBase()}/products/getSeller`, {
@@ -62,13 +63,8 @@ async function getSeller(userName: string): Promise<SellerData | null> {
       })) as Product[],
     };
   } catch {
-    // بک‌اند در دسترس نیست (dev آفلاین) → ماک
-    const user = users.find((u) => u.userName === userName);
-    if (!user) return null;
-    return {
-      user: user as unknown as SellerData['user'],
-      products: products.filter((p) => p.myuserId === String(user.id)),
-    };
+    // بک‌اند در دسترس نیست — دیتای ماک وجود ندارد؛ ۴۰۴
+    return null;
   }
 }
 
@@ -113,16 +109,12 @@ export default async function ProfilePage({ params }: Props) {
                   <MapPin size={14} className="text-primary/70" />
                   {toFa(user.daysInImach ?? 1)} روز در ایمچ
                 </p>
-                <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1"><Star size={13} className="text-ladder" /> {toFa(9)} نظر</span>
-                  <span className="inline-flex items-center gap-1"><MessagesSquare size={13} /> پاسخ‌گویی زیر ۲ ساعت</span>
-                </div>
               </div>
               <div className="flex gap-2 sm:flex-col">
                 <Button className="rounded-md"><Phone size={16} /> شماره تماس</Button>
               </div>
             </div>
-            <ShareBox url={`https://imach.example.com/profile/${user.userName}`} />
+            <ShareBox url={`${SITE_URL}/profile/${user.userName}`} />
           </div>
         </div>
 

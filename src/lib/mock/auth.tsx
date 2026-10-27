@@ -21,8 +21,11 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { getTokens } from '@/lib/api/client';
 import { fetchAuthUser, logoutRemote, updateUserRoleRemote } from '@/lib/mock/api';
+import { closeChatSocket } from '@/lib/api/socket';
 import { silentResubscribeIfGranted } from '@/lib/push';
 import { LazyAuthModal } from '@/components/shared/lazy-auth-modal';
 import type { SessionUser } from '@/lib/types';
@@ -63,6 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [open, setOpen] = useState(false);
   const bootedRef = useRef(false);
+  const router = useRouter();
+  const queryClient = useQueryClient();
 
   const persist = useCallback((u: SessionUser | null) => {
     try {
@@ -117,12 +122,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [persist],
   );
 
+  /** خروج کامل — کلاینت + سرور + انتقال به صفحه اصلی سایت:
+   *  • سرور: ابطال همه نشست‌ها (اکسس‌توکن و همه رفرش‌توکن‌ها) — logoutRemote
+   *  • کلاینت: پاک‌سازی توکن‌ها و کاربر نشست از localStorage،
+   *    تخلیه کامل کش React Query (دیتای پنل برای کاربر بعدی نمی‌ماند)،
+   *    قطع سوکت چت و در پایان ریدایرکت به صفحه اصلی. */
   const logout = useCallback(() => {
     setUser(null);
     persist(null);
-    // خروج واقعی — ابطال رفرش‌توکن در بک‌اند + پاک‌سازی توکن‌ها
+    // خروج واقعی — ابطال همه نشست‌ها در بک‌اند + پاک‌سازی توکن‌ها
     void logoutRemote();
-  }, [persist]);
+    // داده کش‌شدهٔ پنل/چت‌ها نباید بعد از خروج قابل مشاهده باشد
+    queryClient.clear();
+    closeChatSocket();
+    // خروج = بازگشت به صفحه اصلی سایت (نه ماندن در مسیر پنل)
+    router.push('/');
+  }, [persist, queryClient, router]);
 
   const setRole = useCallback((role: 'seller' | 'buyer') => {
     setUser((u) => {

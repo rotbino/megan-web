@@ -23,7 +23,6 @@ import { ChatWidget } from '@/components/products/chat-widget';
 import { RelatedProducts } from '@/components/products/related-products';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { products } from '@/lib/mock/data';
 import { stockFa, toFa } from '@/lib/format';
 import { apiBase, joinUrl } from '@/lib/api/client';
 import { SITE_URL } from '@/lib/site';
@@ -33,7 +32,8 @@ interface Props {
   params: Promise<{ slug: string; category: string; id: string }>;
 }
 
-/** SSR — دیتای زنده از بک‌اند مگان (عمومی، بدون توکن) + فالبک ماک dev */
+/** SSR — دیتای زنده از بک‌اند مگان (عمومی، بدون توکن).
+ *  فالبک ماک حذف شد — آگهی فقط از دیتابیس واقعی می‌آید؛ نبود = ۴۰۴. */
 async function getProduct(id: number): Promise<Product | null> {
   try {
     const res = await fetch(joinUrl(apiBase(), '/products/getProductById'), {
@@ -61,8 +61,8 @@ async function getProduct(id: number): Promise<Product | null> {
       seller: { ...p.seller, activePakageType: 0 },
     } as Product;
   } catch {
-    // بک‌اند در دسترس نیست (dev آفلاین) → ماک
-    return products.find((x) => x.id === id) ?? null;
+    // بک‌اند در دسترس نیست — دیتای ماک وجود ندارد؛ صفحه ۴۰۴ می‌شود
+    return null;
   }
 }
 

@@ -1,18 +1,13 @@
 /**
- * لایه API ایمچ — F1: اتصال واقعی به بک‌اند مگان (NestJS :4000/api/v1).
+ * لایه API ایمچ — اتصال واقعی به بک‌اند مگان (NestJS :4000/api/v1).
  *
  * همه توابع خروجی هم‌شکل ماک قبلی دارند تا هوک‌ها و کامپوننت‌ها دست‌نخورده
- * بمانند. اندپوینت‌هایی که هنوز در بک پیاده نشده‌اند (درخواست‌های خرید،
- * CRM نشان‌شده‌ها، کیف پول، …) موقتاً ماک می‌مانند تا فاز B6..B9 آزاد شوند.
+ * بمانند. ماک آگهی/کاربر/درخواست/کیف پول حذف شده است — تنها ثابت‌های UI
+ * (برچسب‌ها، پکیج‌ها، شماره کارت) از data.ts می‌آیند.
  */
 
 import { apiFetch, serverPost, setTokens, clearTokens, getTokens, ApiError } from '@/lib/api/client';
 import type { BuyRequest, Category, City, PackageType, Product, ProductQuery, Province, SessionUser } from '@/lib/types';
-import {
-  categories as categoriesData,
-  cities as citiesData,
-  provinces,
-} from './data';
 
 export interface Paged<T> {
   items: T[];
@@ -88,7 +83,9 @@ const toProduct = (p: RawProduct): Product => {
       ...p.seller,
       activePakageType: (p.seller.activePakageType ?? 0) as PackageType,
     },
-    ...(status ? { status: status as Product['status'] } : {}),
+    // اندپوینت‌های عمومی فقط آگهی confirmed برمی‌گردانند و status را
+    // نمی‌فرستند — پیش‌فرض confirmed تا تب‌های «محصولات من» درست فیلتر شوند
+    status: (status ?? 'confirmed') as Product['status'],
   };
 };
 
@@ -879,9 +876,8 @@ export async function submitVerification(input: {
   return json.data;
 }
 
-// ─── پنل خریدار (ماک تا فازهای بعدی) ──────────────────────────────────────
+// ─── پنل خریدار ────────────────────────────────────────────────────────────
 
-import { suggestedSellerGroups } from './data';
 import type { BuyRequestStatus, MyBuyRequest, SuggestedSellerGroup } from '@/lib/types';
 
 export async function getMyBuyRequests(): Promise<{
@@ -922,32 +918,69 @@ export async function deleteMyBuyRequest(id: number): Promise<{ ok: true }> {
   return { ok: true };
 }
 
+/** فروشندگان پیشنهادی — واقعی از بک‌اند (گروه دسته‌ای بر اساس درخواست‌های من) */
 export async function getSuggestedSellerGroups(): Promise<SuggestedSellerGroup[]> {
-  await new Promise((r) => setTimeout(r, 450));
-  return suggestedSellerGroups.map((g) => ({ ...g }));
+  return apiFetch<SuggestedSellerGroup[]>('/buy-requests/getSuggestedSellers', {});
 }
 
-// ─── کیف پول (ماک تا فاز B9) ──────────────────────────────────────────────
+// ─── کیف پول (B9 — واقعی) ──────────────────────────────────────────────────
 
 import {
   AIMCH_CARD_NUMBER,
   AIMCH_CARD_OWNER,
   CHARGE_PACKAGES,
-  walletTransactions as walletTransactionsData,
 } from './data';
 import type { ChargePackage, WalletTransaction } from '@/lib/types';
 
+/** ارسال فیش شارژ کارت‌به‌کارت — واقعی: multipart (packageKey + receipt) */
 export async function submitChargeRequest(input: {
   packageKey: ChargePackage['key'];
   receiptDataUrl: string;
-}): Promise<{ ok: true; transactionId: number }> {
-  await new Promise((r) => setTimeout(r, 900));
-  return { ok: true, transactionId: Date.now() };
+}): Promise<{ ok: true; transactionId: string }> {
+  const tokens = getTokens();
+  if (!tokens?.accessToken) {
+    throw new ApiError('برای شارژ کیف پول ابتدا وارد حساب خود شوید.', 401, 'AUTH_REQUIRED');
+  }
+
+  // dataURL → Blob (فرم صفحه همان dataURL را می‌دهد)
+  const form = new FormData();
+  form.append('packageKey', input.packageKey);
+  form.append('receipt', dataUrlToBlob(input.receiptDataUrl));
+
+  const res = await fetch('/api/wallet/createChargeOrder', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    body: form,
+  });
+  const json = (await res.json().catch(() => null)) as
+    | { status: true; data?: { id?: number }; message?: string }
+    | { status: false; message: string; code?: string }
+    | null;
+  if (!json) throw new ApiError('ارسال فیش ناموفق بود.', res.status, 'NETWORK');
+  if (json.status === false) throw new ApiError(json.message, res.status, json.code);
+  return { ok: true, transactionId: String(json.data?.id ?? '') };
 }
 
+/** dataURL → Blob برای فرم multipart */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [head, body] = dataUrl.split(',');
+  const mime = /data:(.*?)(;|$)/.exec(head)?.[1] || 'image/jpeg';
+  const bin = atob(body);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+/** تاریخچه تراکنش‌ها — واقعی: شارژها + نردبان‌ها + اصلاح‌های ادمین */
 export async function getWalletTransactions(): Promise<WalletTransaction[]> {
-  await new Promise((r) => setTimeout(r, 250));
-  return walletTransactionsData;
+  const raw = await apiFetch<{ items: Array<Omit<WalletTransaction, 'at'> & { at: string }> }>(
+    '/wallet/getWalletTransactions',
+    {},
+  );
+  return raw.items.map((t) => ({
+    ...t,
+    at: t.at,
+  }));
 }
 
 export { AIMCH_CARD_NUMBER, AIMCH_CARD_OWNER, CHARGE_PACKAGES };

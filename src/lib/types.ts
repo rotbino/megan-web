@@ -298,7 +298,7 @@ export interface ChargePackage {
 
 /** تراکنش کیف پول */
 export interface WalletTransaction {
-  id: number;
+  id: string;
   title: string;
   amount: number;
   incoming: boolean; // واریز / کسر

@@ -8,7 +8,6 @@ import { CategoryFilter } from '@/components/products/category-filter';
 import { JsonLd } from '@/components/shared/json-ld';
 import { getCategoryTreeSSR, getProductsSSR } from '@/lib/mock/api';
 import { findCategoryPath } from '@/lib/categories';
-import { categories as mockTree } from '@/lib/mock/data';
 import { SITE_URL } from '@/lib/site';
 import type { Category } from '@/lib/types';
 
@@ -20,9 +19,9 @@ interface Props {
   params: Promise<{ slug: string }>;
 }
 
-/** مسیر دسته: از درخت زنده بک‌اند؛ در dev آفلاین از ماک seed باسکول */
+/** مسیر دسته: فقط از درخت زنده بک‌اند — بدون فالبک ماک */
 async function resolveCategory(slug: string): Promise<{ tree: Category[]; path: Category[] | null }> {
-  const tree = (await getCategoryTreeSSR(3600)) ?? mockTree;
+  const tree = (await getCategoryTreeSSR(3600)) ?? [];
   return { tree, path: findCategoryPath(tree, slug) };
 }
 
