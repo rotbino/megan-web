@@ -24,7 +24,9 @@ import {
   LogOut,
   MapPin,
   Menu,
+  MessagesSquare,
   Network,
+  PhoneCall,
   ScrollText,
   Settings,
   ShieldCheck,
@@ -48,6 +50,8 @@ import { cn } from '@/lib/utils';
 /** منوی پنل — همه فازها (A1-A5) فعال‌اند؛ «ادمین‌ها» فقط برای مدیر ارشد */
 const NAV = [
   { href: '/admin', label: 'داشبورد', Icon: LayoutDashboard, superOnly: false },
+  { href: '/admin/chats', label: 'چت‌های کاربران', Icon: MessagesSquare, superOnly: false },
+  { href: '/admin/calls', label: 'گزارش تماس‌ها', Icon: PhoneCall, superOnly: false },
   { href: '/admin/users', label: 'کاربران', Icon: Users, superOnly: false },
   { href: '/admin/products', label: 'آگهی‌ها', Icon: Boxes, superOnly: false },
   { href: '/admin/buy-requests', label: 'درخواست‌های خرید', Icon: ClipboardList, superOnly: false },

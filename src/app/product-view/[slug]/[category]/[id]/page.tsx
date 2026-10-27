@@ -196,7 +196,10 @@ export default async function ProductViewPage({ params }: Props) {
                 </div>
               </div>
               <Separator className="my-4" />
-              <PhoneReveal sellerName={`${product.seller.firstName} ${product.seller.lastName}`}>
+              <PhoneReveal
+                sellerName={`${product.seller.firstName} ${product.seller.lastName}`}
+                productId={product.id}
+              >
                 <Button className="h-11 w-full rounded-md text-sm font-medium">
                   <Phone size={17} />
                   شماره تماس

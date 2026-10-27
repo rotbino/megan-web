@@ -21,6 +21,7 @@ import {
   Hourglass,
   LayoutDashboard,
   MessageSquare,
+  PhoneCall,
   Store,
   TrendingUp,
   UserPlus,
@@ -42,12 +43,15 @@ function StatCard({
   Icon,
   tone,
   subs,
+  href,
 }: {
   label: string;
   value: string;
   Icon: typeof Users;
   tone: 'navy' | 'green' | 'amber' | 'sky' | 'rose' | 'violet';
   subs?: Array<{ text: string; value: string }>;
+  /** لینک مستقیم — مثل کارت‌های صف انتظار */
+  href?: string;
 }) {
   const tones: Record<typeof tone, string> = {
     navy: 'bg-primary/10 text-primary',
@@ -57,8 +61,8 @@ function StatCard({
     rose: 'bg-rose-500/10 text-rose-600',
     violet: 'bg-violet-500/10 text-violet-600',
   };
-  return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
+  const body = (
+    <>
       <div className="flex items-center gap-2.5">
         <span className={cn('grid size-10 shrink-0 place-items-center rounded-md', tones[tone])}>
           <Icon size={20} />
@@ -75,6 +79,17 @@ function StatCard({
           ))}
         </div>
       ) : null}
+    </>
+  );
+  return (
+    <div className="rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
+      {href ? (
+        <Link href={href} className="block" title={`رفتن به ${label}`}>
+          {body}
+        </Link>
+      ) : (
+        body
+      )}
     </div>
   );
 }
@@ -171,10 +186,27 @@ export default function AdminDashboardPage() {
               subs={[{ text: 'در انتظار', value: toFa(queues?.pendingBuyRequests ?? 0) }]}
             />
             <StatCard
-              label="مکالمات چت"
+              label="چت‌های کاربران"
               value={toFa(data.chatThreads)}
               Icon={MessageSquare}
               tone="violet"
+              href="/admin/chats"
+              subs={[
+                { text: 'خوانده‌نشده', value: toFa(data.chats?.withUnread ?? 0) },
+                { text: 'در انتظار پاسخ فروشنده', value: toFa(data.chats?.awaitingSellerReply ?? 0) },
+                { text: 'پیام امروز', value: toFa(data.chats?.messagesToday ?? 0) },
+              ]}
+            />
+            <StatCard
+              label="تماس‌های امروز"
+              value={toFa(data.calls?.today ?? 0)}
+              Icon={PhoneCall}
+              tone="sky"
+              href="/admin/calls"
+              subs={[
+                { text: '۷ روز اخیر', value: toFa(data.calls?.last7Days ?? 0) },
+                { text: 'کل', value: toFa(data.calls?.total ?? 0) },
+              ]}
             />
             <StatCard
               label="گردش کیف پول (تومان)"
@@ -300,7 +332,18 @@ export default function AdminDashboardPage() {
               </span>
               <h2 className="text-sm font-bold">صف‌های انتظار بررسی</h2>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <Link
+                href="/admin/chats?filter=awaiting"
+                className="flex items-center justify-between rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 transition-colors hover:bg-rose-100"
+              >
+                <span className="flex items-center gap-2 text-[13px] text-rose-900">
+                  <MessageSquare size={16} /> در انتظار پاسخ فروشنده
+                </span>
+                <span className="text-lg font-extrabold tabular-nums text-rose-700">
+                  {toFa(data.chats?.awaitingSellerReply ?? 0)}
+                </span>
+              </Link>
               <Link
                 href="/admin/products?status=pending"
                 className="flex items-center justify-between rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 transition-colors hover:bg-rose-100"

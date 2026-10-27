@@ -603,6 +603,20 @@ export interface AdminStatsV2 extends AdminStats {
     last30Days: { ladder: number; charge: number };
   };
   trends: AdminTrendPoint[];
+  /** چت‌ها (A6) — سنجه‌های روزانه ادمین */
+  chats?: {
+    threads: number;
+    withUnread: number;
+    awaitingSellerReply: number;
+    messagesTotal: number;
+    messagesToday: number;
+  };
+  /** تماس‌ها (A6) — سنجه‌های روزانه ادمین */
+  calls?: {
+    total: number;
+    today: number;
+    last7Days: number;
+  };
 }
 
 /** getRecentActivity — فید زنده داشبورد */
@@ -749,4 +763,138 @@ export interface AdminVerificationOrderRow {
 
 export async function fetchAdminVerificationOrders(status?: 'pending' | 'approved' | 'rejected', page = 1, perPage = 20): Promise<{ total: number; page: number; items: AdminVerificationOrderRow[] }> {
   return adminFetch('/admin/users/getVerificationOrders', { ...(status ? { status } : {}), page, perPage });
+}
+
+// ─── فاز A6 — چت‌های کاربران + گزارش تماس‌ها ─────────────────────────────────
+
+/** طرف مکالمه/تماس (ادمین) — عین UserCard بک‌اند */
+export interface AdminUserCard {
+  id: string;
+  firstName: string;
+  lastName: string;
+  userName: string;
+  phone: string;
+  displayName: string;
+  isActive: boolean;
+  isVerified: boolean;
+  lastLoginAt: string | null;
+}
+
+/** ردیف مکالمه (ادمین) — عین AdminThreadRow بک‌اند */
+export interface AdminChatRow {
+  id: string;
+  product: { id: number; name: string };
+  buyer: AdminUserCard;
+  seller: AdminUserCard;
+  lastMessage: {
+    text: string;
+    at: string;
+    senderId: string;
+    senderRole: 'buyer' | 'seller';
+    senderName: string;
+    readAt: string | null;
+  } | null;
+  messageCount: number;
+  /** پیام‌هایی که گیرنده واقعی هنوز نخوانده — نمایش ادمین، تغییردهنده نیست */
+  unreadCount: number;
+  /** آخرین پیام از خریدار است و فروشنده هنوز نخوانده — «زنگ بزنید به فروشنده» */
+  awaitingSellerReply: boolean;
+  lastMessageAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminChatList {
+  total: number;
+  page: number;
+  perPage: number;
+  items: AdminChatRow[];
+}
+
+export interface AdminChatListFilters {
+  search?: string;
+  filter?: 'all' | 'unread' | 'awaiting';
+  page?: number;
+  perPage?: number;
+}
+
+/** پیام یک مکالمه در نمای ادمین — با نقش خریدار/فروشنده */
+export interface AdminChatMessage {
+  id: string;
+  senderId: string;
+  senderRole: 'buyer' | 'seller';
+  senderName: string;
+  text: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminChatThreadDetail {
+  thread: Omit<AdminChatRow, 'lastMessage'> & {
+    product: { id: number; name: string; status: string };
+  };
+  messages: AdminChatMessage[];
+}
+
+export interface AdminChatStats {
+  threads: number;
+  withUnread: number;
+  awaitingSellerReply: number;
+  messagesTotal: number;
+  messagesToday: number;
+}
+
+/** لیست مکالمات کاربران — تازه‌ترین بالا + badge خوانده‌نشده */
+export async function fetchAdminChats(filters: AdminChatListFilters = {}): Promise<AdminChatList> {
+  return adminFetch<AdminChatList>('/admin/chats/getThreadList', filters as unknown as Record<string, unknown>);
+}
+
+/** کل پیام‌های یک مکالمه — فقط خواندنی؛ خوانده‌شده علامت نمی‌خورد */
+export async function fetchAdminChatMessages(threadId: string): Promise<AdminChatThreadDetail> {
+  return adminFetch<AdminChatThreadDetail>('/admin/chats/getThreadMessages', { threadId });
+}
+
+/** آمار چت‌ها */
+export async function fetchAdminChatStats(): Promise<AdminChatStats> {
+  return adminFetch<AdminChatStats>('/admin/chats/getChatStats', {});
+}
+
+// ─── گزارش تماس‌ها ────────────────────────────────────────────────────────────
+
+/** ردیف تماس (ادمین) — عین AdminCallRow بک‌اند */
+export interface AdminCallRow {
+  id: string;
+  caller: AdminUserCard;
+  callee: AdminUserCard;
+  product: { id: number; name: string } | null;
+  source: string;
+  createdAt: string;
+}
+
+export interface AdminCallStats {
+  total: number;
+  today: number;
+  last7Days: number;
+  last30Days: number;
+  uniqueCallers: number;
+  uniqueCallees: number;
+}
+
+export interface AdminCallReport {
+  total: number;
+  page: number;
+  perPage: number;
+  items: AdminCallRow[];
+  stats: AdminCallStats;
+}
+
+export interface AdminCallReportFilters {
+  search?: string;
+  range?: 'all' | 'today' | 'd7' | 'd30';
+  page?: number;
+  perPage?: number;
+}
+
+/** گزارش تماس‌های کاربران — «کی به کی زنگ زده» + آمار */
+export async function fetchAdminCallReport(filters: AdminCallReportFilters = {}): Promise<AdminCallReport> {
+  return adminFetch<AdminCallReport>('/admin/calls/getCallReport', filters as unknown as Record<string, unknown>);
 }
