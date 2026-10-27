@@ -14,8 +14,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
+  BadgeCheck,
   Boxes,
   ClipboardList,
+  Coins,
   KeyRound,
   LayoutDashboard,
   Loader2,
@@ -26,6 +28,7 @@ import {
   ScrollText,
   Settings,
   ShieldCheck,
+  UserCog,
   Users,
   X,
 } from 'lucide-react';
@@ -42,49 +45,28 @@ import {
 import { adminChangePassword, adminLogout, fetchAdminMe, type AdminProfile } from '@/lib/admin/api';
 import { cn } from '@/lib/utils';
 
-/** منوی پنل — فازهای بعد غیرفعال با چیپ فاز (نقشه: docs/ADMIN-IMPLEMENTATION.md) */
+/** منوی پنل — همه فازها (A1-A5) فعال‌اند؛ «ادمین‌ها» فقط برای مدیر ارشد */
 const NAV = [
-  { href: '/admin', label: 'داشبورد', Icon: LayoutDashboard, phase: null },
-  { href: '/admin/users', label: 'کاربران', Icon: Users, phase: null },
-  { href: '/admin/products', label: 'آگهی‌ها', Icon: Boxes, phase: null },
-  { href: '/admin/buy-requests', label: 'درخواست‌های خرید', Icon: ClipboardList, phase: null },
-  { href: '/admin/categories', label: 'دسته‌بندی‌ها', Icon: Network, phase: null },
-  { href: '/admin/locations', label: 'مکان‌ها', Icon: MapPin, phase: null },
-  { href: '/admin/logs', label: 'لاگ عملیات', Icon: ScrollText, phase: 'A5' },
-  { href: '/admin/settings', label: 'تنظیمات', Icon: Settings, phase: 'A5' },
+  { href: '/admin', label: 'داشبورد', Icon: LayoutDashboard, superOnly: false },
+  { href: '/admin/users', label: 'کاربران', Icon: Users, superOnly: false },
+  { href: '/admin/products', label: 'آگهی‌ها', Icon: Boxes, superOnly: false },
+  { href: '/admin/buy-requests', label: 'درخواست‌های خرید', Icon: ClipboardList, superOnly: false },
+  { href: '/admin/charges', label: 'شارژها', Icon: Coins, superOnly: false },
+  { href: '/admin/verifications', label: 'احراز هویت', Icon: BadgeCheck, superOnly: false },
+  { href: '/admin/categories', label: 'دسته‌بندی‌ها', Icon: Network, superOnly: false },
+  { href: '/admin/locations', label: 'مکان‌ها', Icon: MapPin, superOnly: false },
+  { href: '/admin/logs', label: 'لاگ عملیات', Icon: ScrollText, superOnly: false },
+  { href: '/admin/admins', label: 'ادمین‌ها', Icon: UserCog, superOnly: true },
+  { href: '/admin/settings', label: 'تنظیمات', Icon: Settings, superOnly: false },
 ] as const;
 
-function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarNav({ onNavigate, superAdmin }: { onNavigate?: () => void; superAdmin?: boolean }) {
   const pathname = usePathname() ?? '/admin';
   return (
     <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-2" aria-label="منوی مدیریت">
-      {NAV.map(({ href, label, Icon, phase }) => {
-        const active = !phase && (href === '/admin' ? pathname === '/admin' : pathname === href || pathname.startsWith(`${href}/`));
-        const inner = (
-          <>
-            <Icon size={18} className={cn('shrink-0', active ? 'text-primary' : 'text-muted-foreground/70')} />
-            <span className="min-w-0 flex-1 truncate">{label}</span>
-            {phase ? (
-              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground/70">
-                {phase}
-              </span>
-            ) : null}
-          </>
-        );
-        if (phase) {
-          return (
-            <button
-              key={label}
-              type="button"
-              disabled
-              aria-disabled
-              title={`${label} — در فاز ${phase} فعال می‌شود`}
-              className="flex w-full cursor-not-allowed items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-normal text-muted-foreground/40"
-            >
-              {inner}
-            </button>
-          );
-        }
+      {NAV.map(({ href, label, Icon, superOnly }) => {
+        if (superOnly && !superAdmin) return null; // فقط مدیر ارشد
+        const active = href === '/admin' ? pathname === '/admin' : pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
             key={label}
@@ -98,7 +80,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                 : 'font-normal text-muted-foreground hover:bg-secondary/70 hover:text-foreground',
             )}
           >
-            {inner}
+            <Icon size={18} className={cn('shrink-0', active ? 'text-primary' : 'text-muted-foreground/70')} />
+            <span className="min-w-0 flex-1 truncate">{label}</span>
           </Link>
         );
       })}
@@ -267,7 +250,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <p className="text-[10px] text-muted-foreground">پنل کنترل بازارگاه</p>
         </div>
       </div>
-      <SidebarNav onNavigate={() => setDrawerOpen(false)} />
+      <SidebarNav onNavigate={() => setDrawerOpen(false)} superAdmin={admin?.role === 'SUPER_ADMIN'} />
       {/* پایین: ادمین + خروج */}
       <div className="border-t border-border p-3">
         <div className="mb-2 flex items-center gap-2.5 rounded-md border border-border px-3 py-2">

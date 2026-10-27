@@ -555,3 +555,198 @@ export async function reviewAdminBuyRequest(id: number, approve: boolean, reject
 export async function deleteAdminBuyRequest(id: number): Promise<{ id: number; status: string }> {
   return adminFetch('/admin/buy-requests/deleteBuyRequest', { id });
 }
+
+// ─── فاز A5 — داشبورد عملیاتی، لاگ، ادمین‌ها، شارژها ─────────────────────────
+
+/** نقطه روند ۳۰ روزه — هر روز یک نقطه */
+export interface AdminTrendPoint {
+  date: string; // YYYY-MM-DD (UTC)
+  registrations: number;
+  products: number;
+  buyRequests: number;
+  ladderRevenue: number;
+  chargeRevenue: number;
+}
+
+export interface AdminRecentAction {
+  id: string;
+  action: string;
+  targetType?: string | null;
+  targetId?: string | null;
+  message?: string | null;
+  createdAt: string;
+  admin: { id: string; name: string; username: string; role: string };
+}
+
+export interface AdminRecentUser {
+  id: string;
+  phone: string;
+  userName: string;
+  firstName: string;
+  lastName: string;
+  isSeller: boolean;
+  createdAt: string;
+}
+
+/** آمار داشبورد عملیاتی (A5) — کلیدهای A1 حفظ شده‌اند */
+export interface AdminStatsV2 extends AdminStats {
+  queues: {
+    pendingProducts: number;
+    pendingBuyRequests: number;
+    pendingVerifications: number;
+    pendingCharges: number;
+    ladderOrders: number;
+  };
+  revenue: {
+    ladderTotal: number;
+    chargeTotal: number;
+    last30Days: { ladder: number; charge: number };
+  };
+  trends: AdminTrendPoint[];
+}
+
+/** getRecentActivity — فید زنده داشبورد */
+export async function fetchAdminRecentActivity(): Promise<{ recentActions: AdminRecentAction[]; recentUsers: AdminRecentUser[] }> {
+  return adminFetch('/admin/dashboard/getRecentActivity', {});
+}
+
+/** آمار داشبورد عملیاتی (روند + درآمد + صف‌ها) */
+export async function fetchAdminStatsV2(): Promise<AdminStatsV2> {
+  return adminFetch<AdminStatsV2>('/admin/dashboard/getStats', {});
+}
+
+// ─── لاگ عملیات ادمین ────────────────────────────────────────────────────────
+
+export interface AdminActionRow {
+  id: string;
+  action: string;
+  targetType?: string | null;
+  targetId?: string | null;
+  payload?: Record<string, unknown> | null;
+  message?: string | null;
+  createdAt: string;
+  admin: { id: string; username: string; name: string; role: string };
+}
+
+export interface AdminActionList {
+  total: number;
+  page: number;
+  perPage: number;
+  pageCount: number;
+  items: AdminActionRow[];
+}
+
+export interface AdminActionFilters {
+  adminId?: string;
+  action?: string;
+  targetType?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  perPage?: number;
+}
+
+/** لاگ عملیات ادمین‌ها — فیلتر ادمین/مسیر/نوع هدف/تاریخ */
+export async function fetchAdminActions(filters: AdminActionFilters = {}): Promise<AdminActionList> {
+  return adminFetch<AdminActionList>('/admin/actions/getAdminActions', filters as unknown as Record<string, unknown>);
+}
+
+// ─── مدیریت ادمین‌ها (SUPER_ADMIN) ───────────────────────────────────────────
+
+export interface AdminRow {
+  id: string;
+  username: string;
+  name: string;
+  role: string; // SUPER_ADMIN | ADMIN
+  isActive: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+  actionCount: number;
+}
+
+export interface AdminList {
+  total: number;
+  page: number;
+  perPage: number;
+  pageCount: number;
+  items: AdminRow[];
+}
+
+export async function fetchAdminAdmins(page = 1, perPage = 20): Promise<AdminList> {
+  return adminFetch<AdminList>('/admin/admins/getAdminList', { page, perPage });
+}
+
+export async function createAdminAdmin(input: {
+  username: string;
+  name: string;
+  role: 'ADMIN' | 'SUPER_ADMIN';
+  password: string;
+}): Promise<AdminRow> {
+  return adminFetch('/admin/admins/createAdmin', input);
+}
+
+export async function setAdminAdminActive(adminId: string, active: boolean): Promise<AdminRow> {
+  return adminFetch('/admin/admins/setAdminActive', { adminId, active });
+}
+
+export async function resetAdminAdminPassword(adminId: string, newPassword: string): Promise<{ id: string; username: string }> {
+  return adminFetch('/admin/admins/resetAdminPassword', { adminId, newPassword });
+}
+
+// ─── صف شارژهای کارت‌به‌کارت (A5) ────────────────────────────────────────────
+
+export interface AdminChargeOrderRow {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  packageKey: string;
+  amount: number;
+  bonusPercent: number;
+  charge: number;
+  rejectionReason?: string | null;
+  reviewedAt?: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    phone: string;
+    user_name: string;
+    first_name: string;
+    last_name: string;
+    wallet_balance: number;
+  };
+  receipt: { id: string; url: string; thumbUrl?: string } | null;
+}
+
+export interface AdminChargeOrderList {
+  total: number;
+  page: number;
+  perPage: number;
+  items: AdminChargeOrderRow[];
+}
+
+export async function fetchAdminChargeOrders(status?: 'pending' | 'approved' | 'rejected', page = 1, perPage = 20): Promise<AdminChargeOrderList> {
+  return adminFetch<AdminChargeOrderList>('/admin/wallet/getChargeOrders', { ...(status ? { status } : {}), page, perPage });
+}
+
+export async function reviewAdminChargeOrder(orderId: string, approve: boolean, rejectionReason?: string): Promise<{ id: string; status: string; charged?: number }> {
+  return adminFetch('/admin/wallet/reviewChargeOrder', {
+    orderId,
+    approve,
+    ...(approve ? {} : { rejectionReason }),
+  });
+}
+
+// ─── صف احراز هویت (A5 — نمای صف) ───────────────────────────────────────────
+
+export interface AdminVerificationOrderRow {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  reviewedAt?: string | null;
+  rejectionReason?: string | null;
+  user?: { id: string; phone: string; userName?: string; firstName?: string; lastName?: string };
+  docs?: Record<string, { url: string } | undefined>;
+}
+
+export async function fetchAdminVerificationOrders(status?: 'pending' | 'approved' | 'rejected', page = 1, perPage = 20): Promise<{ total: number; page: number; items: AdminVerificationOrderRow[] }> {
+  return adminFetch('/admin/users/getVerificationOrders', { ...(status ? { status } : {}), page, perPage });
+}
