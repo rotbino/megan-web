@@ -20,6 +20,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useCategoryTree, useCities, useMyProductDetail, useProvinces, useUpdateMyProduct } from '@/lib/mock/hooks';
+import { retryProductPhotos } from '@/lib/mock/api';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -103,6 +104,9 @@ export default function EditProductPage() {
   const [removedPhotoIds, setRemovedPhotoIds] = useState<string[]>([]);
   const [newPhotos, setNewPhotos] = useState<NewPhoto[]>([]);
   const [done, setDone] = useState(false);
+  // عکس‌های ناموفق آپلود در ویرایش — هشدار + تلاش دوباره (مثل ثبت جدید)
+  const [failedPhotos, setFailedPhotos] = useState<File[]>([]);
+  const [retryingPhotos, setRetryingPhotos] = useState(false);
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -177,7 +181,7 @@ export default function EditProductPage() {
       return;
     }
     try {
-      await submit.mutateAsync({
+      const result = await submit.mutateAsync({
         id: productId,
         productName: `${draft.leaf.categoryName} ${draft.productType.trim()}`,
         subCategoryId: draft.leaf.id,
@@ -191,9 +195,27 @@ export default function EditProductPage() {
         newPhotos: newPhotos.map((p) => p.file),
         removedPhotoIds,
       });
+      setFailedPhotos(result.failedPhotos);
       setDone(true);
     } catch (err) {
       toast({ description: err instanceof Error && err.message ? err.message : 'خطا در ذخیره ویرایش — دوباره تلاش کنید.' });
+    }
+  };
+
+  // ─── تلاش دوباره عکس‌های ناموفق ویرایش ───
+  const retryPhotos = async () => {
+    if (failedPhotos.length === 0) return;
+    setRetryingPhotos(true);
+    try {
+      const { failed } = await retryProductPhotos(productId, failedPhotos);
+      setFailedPhotos(failed);
+      if (failed.length === 0) {
+        toast({ description: 'تصاویر محصول با موفقیت ذخیره شدند.' });
+      } else {
+        toast({ description: 'باز هم ذخیره نشد — دوباره تلاش کنید یا بعداً دوباره ویرایش کنید.' });
+      }
+    } finally {
+      setRetryingPhotos(false);
     }
   };
 
@@ -280,6 +302,27 @@ export default function EditProductPage() {
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             آگهی «{draft?.leaf?.categoryName} {draft?.productType}» ویرایش شد و دوباره در انتظار تایید کارشناسان ایمچ است.
           </p>
+
+          {/* هشدار عکس‌های ذخیره‌نشده — دیگر بی‌صدا گم نمی‌شوند */}
+          {failedPhotos.length > 0 && (
+            <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-right">
+              <p className="text-sm font-bold text-amber-800">
+                ذخیره {failedPhotos.length.toLocaleString('fa-IR')} تصویر ناموفق بود
+              </p>
+              <p className="mt-1 text-xs leading-5 text-amber-700">
+                ویرایش ذخیره شد اما تصاویر جدید ذخیره نشدند — دوباره تلاش کنید.
+              </p>
+              <Button
+                size="sm"
+                className="mt-2 rounded-md"
+                disabled={retryingPhotos}
+                onClick={() => void retryPhotos()}
+              >
+                {retryingPhotos ? 'در حال تلاش…' : 'تلاش دوباره ذخیره تصاویر'}
+              </Button>
+            </div>
+          )}
+
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             <Button className="rounded-md" onClick={() => router.push('/panel/products?tab=pending')}>
               مشاهده محصول در لیست محصولات

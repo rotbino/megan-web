@@ -197,7 +197,7 @@ export interface UploadedFile {
   createdAt: string;
 }
 
-/** آپلود تصویر — عین قرارداد بک‌اند uploads/uploadImage */
+/** آپلود تصویر — عین قرارداد بک‌اند uploads/uploadImage (با رفرش 401 مثل apiFetch) */
 export async function uploadImage(
   file: File | Blob,
   params: {
@@ -207,6 +207,7 @@ export async function uploadImage(
     description?: string | null;
     replace?: boolean;
   },
+  opts: { retryOn401?: boolean } = {},
 ): Promise<UploadedFile> {
   const tokens = getTokens();
   if (!tokens?.accessToken) {
@@ -229,6 +230,12 @@ export async function uploadImage(
     headers: { Authorization: `Bearer ${tokens.accessToken}` },
     body: form,
   });
+
+  // 401 → رفرش تک‌پرواز + یک تکرار (فرم طولانی ممکن است توکن را کهنه کند)
+  if (res.status === 401 && opts.retryOn401 !== false) {
+    const refreshed = await tryRefreshTokens();
+    if (refreshed) return uploadImage(file, params, { retryOn401: false });
+  }
 
   const json = (await res.json().catch(() => null)) as
     | { status: true; data: UploadedFile; message?: string }

@@ -21,6 +21,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useCities, useMyProducts, usePanelProfile, useProvinces, useSubmitProduct } from '@/lib/mock/hooks';
+import { retryProductPhotos } from '@/lib/mock/api';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -94,6 +95,10 @@ export default function RegisterProductPage() {
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  // عکس‌هایی که ثبت محصول موفق بود ولی آپلودشان شکست خورد — برای هشدار/تلاش-دوباره
+  const [failedPhotos, setFailedPhotos] = useState<File[]>([]);
+  const [retryingPhotos, setRetryingPhotos] = useState(false);
+  const [createdId, setCreatedId] = useState<number | null>(null);
 
   const { data: cities } = useCities(num(draft.provinceId) || undefined);
 
@@ -160,7 +165,7 @@ export default function RegisterProductPage() {
       return;
     }
     try {
-      await submit.mutateAsync({
+      const result = await submit.mutateAsync({
         productName: `${draft.leaf!.categoryName} ${draft.productType.trim()}`,
         subCategoryId: draft.leaf!.id,
         provinceId: num(draft.provinceId),
@@ -172,9 +177,28 @@ export default function RegisterProductPage() {
         features: draft.features.filter((f) => f.key && f.value.trim()),
         photos: draft.photos.map((p) => p.file),
       });
+      setFailedPhotos(result.failedPhotos);
+      setCreatedId(result.id);
       setDone(true);
     } catch (err) {
       toast({ description: err instanceof Error && err.message ? err.message : 'خطا در ثبت محصول — دوباره تلاش کنید.' });
+    }
+  };
+
+  // ─── تلاش دوباره عکس‌های ناموفق — محصول ثبت شده، فقط عکس‌ها مانده ───
+  const retryPhotos = async () => {
+    if (createdId == null || failedPhotos.length === 0) return;
+    setRetryingPhotos(true);
+    try {
+      const { failed } = await retryProductPhotos(createdId, failedPhotos);
+      setFailedPhotos(failed);
+      if (failed.length === 0) {
+        toast({ description: 'تصاویر محصول با موفقیت ذخیره شدند.' });
+      } else {
+        toast({ description: 'باز هم ذخیره نشد — دوباره تلاش کنید یا بعداً از ویرایش آگهی عکس بگذارید.' });
+      }
+    } finally {
+      setRetryingPhotos(false);
     }
   };
 
@@ -263,6 +287,27 @@ export default function RegisterProductPage() {
             آگهی «{draft.leaf?.categoryName} {draft.productType}» ثبت شد و پس از بررسی کارشناسان ایمچ، در «محصولات من»
             و نتایج بازار منتشر می‌شود.
           </p>
+
+          {/* هشدار عکس‌های ذخیره‌نشده — دیگر بی‌صدا گم نمی‌شوند */}
+          {failedPhotos.length > 0 && (
+            <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-right">
+              <p className="text-sm font-bold text-amber-800">
+                ذخیره {failedPhotos.length.toLocaleString('fa-IR')} تصویر از {draft.photos.length.toLocaleString('fa-IR')} تصویر ناموفق بود
+              </p>
+              <p className="mt-1 text-xs leading-5 text-amber-700">
+                آگهی ثبت شد اما تصاویر ذخیره نشدند — اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.
+              </p>
+              <Button
+                size="sm"
+                className="mt-2 rounded-md"
+                disabled={retryingPhotos}
+                onClick={() => void retryPhotos()}
+              >
+                {retryingPhotos ? 'در حال تلاش…' : 'تلاش دوباره ذخیره تصاویر'}
+              </Button>
+            </div>
+          )}
+
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             <Button
               variant="outline"
@@ -272,6 +317,8 @@ export default function RegisterProductPage() {
                 setStep(0);
                 setMaxReached(0);
                 setDone(false);
+                setFailedPhotos([]);
+                setCreatedId(null);
               }}
             >
               <RotateCcw size={15} /> ثبت محصول دیگر

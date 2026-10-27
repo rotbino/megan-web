@@ -655,6 +655,10 @@ export async function getMyProducts(): Promise<{
  * ثبت محصول جدید از ویزارد — واقعی:
  * ۱) createProduct → id عددی؛ ۲) آپلود هر عکس به گالری همان آگهی
  * (دکترین فایل: آپلود فقط بعد از وجود مدل — عین imach-back)
+ *
+ * آپلود عکس‌ها دیگر بی‌صدا گم نمی‌شوند — فایل‌های ناموفق برمی‌گردند تا
+ * ویزارد به کاربر هشدار دهد و دکمه «تلاش دوباره» بدهد (خواسته مالک:
+ * «تصویر در هیچ قسمتی ذخیره نمی‌شود» ریشه همین بی‌صدایی بود).
  */
 export async function submitProduct(input: {
   productName: string;
@@ -667,7 +671,7 @@ export async function submitProduct(input: {
   description: string;
   features: { key: string; value: string }[];
   photos?: File[];
-}): Promise<{ ok: true; id: number; status: 'pending' }> {
+}): Promise<{ ok: true; id: number; status: 'pending'; failedPhotos: File[] }> {
   const created = await apiFetch<{ id: number; status: string }>('/products/createProduct', {
     productName: input.productName,
     subCategoryId: input.subCategoryId,
@@ -680,17 +684,36 @@ export async function submitProduct(input: {
     features: input.features,
   });
 
-  // آپلود عکس‌ها به گالری همین آگهی — با خطا راه می‌افتیم ولی ثبت لغو نمی‌شود
-  const files = input.photos ?? [];
-  for (const file of files.slice(0, 4)) {
+  // آپلود عکس‌ها به گالری همین آگهی — ناموفق‌ها برای «تلاش دوباره» برمی‌گردند
+  const failedPhotos: File[] = [];
+  for (const file of (input.photos ?? []).slice(0, 4)) {
     try {
       await uploadImage(file, { model: 'Product', modelId: created.id, key: 'gallery', replace: false });
-    } catch (err) {
-      console.warn('آپلود عکس آگهی ناموفق بود:', err instanceof Error ? err.message : err);
+    } catch {
+      failedPhotos.push(file);
     }
   }
 
-  return { ok: true, id: created.id, status: 'pending' };
+  return { ok: true, id: created.id, status: 'pending', failedPhotos };
+}
+
+/**
+ * تلاش دوباره آپلود عکس‌های ناموفقِ ثبت/ویرایش — به گالری همان آگهی.
+ * خروجی: فایل‌هایی که باز هم ناموفق ماندند (اگر خالی بود همه رفتند).
+ */
+export async function retryProductPhotos(
+  productId: number,
+  files: File[],
+): Promise<{ failed: File[] }> {
+  const failed: File[] = [];
+  for (const file of files.slice(0, 4)) {
+    try {
+      await uploadImage(file, { model: 'Product', modelId: productId, key: 'gallery', replace: false });
+    } catch {
+      failed.push(file);
+    }
+  }
+  return { failed };
 }
 
 /** حذف نرم آگهی — واقعی */
@@ -716,6 +739,7 @@ export async function getMyProductDetail(id: number): Promise<{
  * ویرایش آگهی خودم — واقعی:
  * ۱) updateMyProduct (دوباره «در انتظار تایید» مثل باسکول)؛
  * ۲) عکس‌های جدید آپلود می‌شوند؛ ۳) عکس‌های حذف‌شده پاک می‌شوند.
+ * ناموفق‌های آپلود برمی‌گردند (نه بی‌صدایی) تا فرم هشدار/تلاش-دوباره بدهد.
  */
 export async function updateMyProduct(input: {
   id: number;
@@ -730,7 +754,7 @@ export async function updateMyProduct(input: {
   features: { key: string; value: string }[];
   newPhotos?: File[];
   removedPhotoIds?: string[];
-}): Promise<{ ok: true; id: number; status: 'pending' }> {
+}): Promise<{ ok: true; id: number; status: 'pending'; failedPhotos: File[] }> {
   const updated = await apiFetch<{ id: number; status: string }>('/products/updateMyProduct', {
     id: input.id,
     productName: input.productName,
@@ -748,21 +772,22 @@ export async function updateMyProduct(input: {
   for (const fileId of input.removedPhotoIds ?? []) {
     try {
       await deleteImage(fileId);
-    } catch (err) {
-      console.warn('حذف عکس آگهی ناموفق بود:', err instanceof Error ? err.message : err);
+    } catch {
+      /* ردیف DB منبع حقیقت است — عروسک دوره‌ای ادمین جمع می‌کند */
     }
   }
 
-  // عکس‌های جدید — ظرفیت ۴ تایی کل گالری
+  // عکس‌های جدید — ناموفق‌ها برمی‌گردند
+  const failedPhotos: File[] = [];
   for (const file of (input.newPhotos ?? []).slice(0, 4)) {
     try {
       await uploadImage(file, { model: 'Product', modelId: input.id, key: 'gallery', replace: false });
-    } catch (err) {
-      console.warn('آپلود عکس آگهی ناموفق بود:', err instanceof Error ? err.message : err);
+    } catch {
+      failedPhotos.push(file);
     }
   }
 
-  return { ok: true, id: updated.id, status: 'pending' };
+  return { ok: true, id: updated.id, status: 'pending', failedPhotos };
 }
 
 /** خرید نردبان یک‌ماهه — کسر واقعی از کیف پول */

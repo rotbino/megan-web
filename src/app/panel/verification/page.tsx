@@ -16,14 +16,14 @@ import { PanelCard } from '@/components/panel/panel-parts';
 import { useMyVerification, useSubmitVerification } from '@/lib/mock/hooks';
 import { cn } from '@/lib/utils';
 
-/** قواعد تصویر باسکول: jpeg/jpg، ۲۰KB تا ۵MB */
+/** قواعد تصویر احراز: jpeg/jpg، ۴KB تا ۵MB (کفِ پایین‌تر با بهینه‌سازی کلاینت هماهنگ) */
 const MAX_BYTES = 5 * 1024 * 1024;
-const MIN_BYTES = 20 * 1024;
+const MIN_BYTES = 4 * 1024;
 
 function validateImage(file: File): string | null {
   if (!/^image\/(jpeg|jpg)$/i.test(file.type)) return 'فرمت تصویر باید jpeg یا jpg باشد.';
   if (file.size > MAX_BYTES) return 'حجم تصویر نباید از ۵ مگابایت بیشتر باشد.';
-  if (file.size < MIN_BYTES) return 'حجم تصویر باید حداقل ۲۰ کیلوبایت باشد.';
+  if (file.size < MIN_BYTES) return 'حجم تصویر بسیار کم است — تصویر واضح‌تری انتخاب کنید.';
   return null;
 }
 
