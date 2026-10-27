@@ -502,7 +502,9 @@ export function mapSessionUser(u: RawProfileUser): SessionUser {
     firstName: u.first_name ?? '',
     lastName: u.last_name ?? '',
     avatarUrl: u.avatar_url ?? null,
-    role: u.is_seller ? 'seller' : 'buyer',
+    // پیش‌فرض فروشنده (خواسته مالک) — فقط وقتی خودش خریدار را انتخاب کرده باشد
+    // (is_buyer=true و is_seller=false) پنل خریدار باز می‌شود؛ انتخاب در بک‌اند ماندگار است.
+    role: u.is_buyer && !u.is_seller ? 'buyer' : 'seller',
     hasPassword: Boolean(u.has_password),
   };
 }
@@ -543,7 +545,7 @@ export async function logoutRemote(): Promise<void> {
 // ─── پنل فروشنده ──────────────────────────────────────────────────────────
 
 import { PRODUCT_CAPACITY } from './data';
-import { uploadImage } from '@/lib/api/client';
+import { uploadImage, deleteImage } from '@/lib/api/client';
 import type {
   PanelProfile,
   ProductStatus,
@@ -695,6 +697,77 @@ export async function submitProduct(input: {
 export async function deleteMyProduct(id: number): Promise<{ ok: true }> {
   await apiFetch('/products/deleteMyProduct', { id });
   return { ok: true };
+}
+
+/** جزئیات کامل آگهی خودم برای پیش‌پر کردن فرم ویرایش — واقعی */
+export async function getMyProductDetail(id: number): Promise<{
+  product: Product;
+  photoFiles: { id: string; url: string; thumbUrl: string }[];
+}> {
+  const raw = await apiFetch<RawProduct & { photoFiles: { id: string; url: string; thumbUrl: string }[] }>(
+    '/products/getMyProductDetail',
+    { id },
+  );
+  const { photoFiles, ...rest } = raw;
+  return { product: toProduct(rest), photoFiles };
+}
+
+/**
+ * ویرایش آگهی خودم — واقعی:
+ * ۱) updateMyProduct (دوباره «در انتظار تایید» مثل باسکول)؛
+ * ۲) عکس‌های جدید آپلود می‌شوند؛ ۳) عکس‌های حذف‌شده پاک می‌شوند.
+ */
+export async function updateMyProduct(input: {
+  id: number;
+  productName: string;
+  subCategoryId: number;
+  provinceId: number;
+  cityId: number;
+  stock: number;
+  minSaleAmount: number;
+  minSalePrice: number;
+  description: string;
+  features: { key: string; value: string }[];
+  newPhotos?: File[];
+  removedPhotoIds?: string[];
+}): Promise<{ ok: true; id: number; status: 'pending' }> {
+  const updated = await apiFetch<{ id: number; status: string }>('/products/updateMyProduct', {
+    id: input.id,
+    productName: input.productName,
+    subCategoryId: input.subCategoryId,
+    provinceId: input.provinceId,
+    cityId: input.cityId,
+    stock: input.stock,
+    minSaleAmount: input.minSaleAmount,
+    minSalePrice: input.minSalePrice,
+    description: input.description,
+    features: input.features,
+  });
+
+  // عکس‌های حذف‌شده — بهترین‌حال؛ خطا جریان ویرایش را نمی‌شکند
+  for (const fileId of input.removedPhotoIds ?? []) {
+    try {
+      await deleteImage(fileId);
+    } catch (err) {
+      console.warn('حذف عکس آگهی ناموفق بود:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  // عکس‌های جدید — ظرفیت ۴ تایی کل گالری
+  for (const file of (input.newPhotos ?? []).slice(0, 4)) {
+    try {
+      await uploadImage(file, { model: 'Product', modelId: input.id, key: 'gallery', replace: false });
+    } catch (err) {
+      console.warn('آپلود عکس آگهی ناموفق بود:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  return { ok: true, id: updated.id, status: 'pending' };
+}
+
+/** خرید نردبان یک‌ماهه — کسر واقعی از کیف پول */
+export async function ladderProduct(productId: number): Promise<{ productId: number; expiresAt: string }> {
+  return apiFetch<{ productId: number; expiresAt: string }>('/wallet/ladderProduct', { productId });
 }
 
 // ─── نشان شده ها (B7 — واقعی) ──────────────────────────────────────────────

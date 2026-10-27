@@ -2,13 +2,16 @@
 
 /**
  * محصولات من — تب‌های وضعیت (تایید شده/در انتظار تایید/حذف شده/رد شده) عین باسکول.
- * ردیف آگهی + دکمه نردبان (یک‌ماهه ۱۰۰ هزار تومان — کسر از کیف پول) + دلایل رد شدن + حالت خالی.
+ * ردیف آگهی + دکمه نردبان (پرداخت واقعی از کیف پول — wallet/ladderProduct)
+ * + دلایل رد شدن + حالت خالی + ویرایش (فرم کامل) + حذف واقعی.
+ * تب فعال از ?tab= می‌آید (لینک عمقی صفحه موفقیت ثبت: tab=pending).
  */
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertTriangle, Eye, ImageIcon, Pencil, Trash2, TrendingUp, Wallet } from 'lucide-react';
-import { useMyProducts, usePanelProfile } from '@/lib/mock/hooks';
+import { useDeleteMyProduct, useLadderProduct, useMyProducts, usePanelProfile } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -41,21 +44,44 @@ const STATUS_LABEL: Record<ProductStatus, string> = {
 
 const LADDER_LABEL = 'یک ماه';
 
-export default function MyProductsPage() {
+function isTabKey(v: string | null): v is ProductStatus {
+  return v === 'confirmed' || v === 'pending' || v === 'rejected' || v === 'deleted';
+}
+
+function MyProductsPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { data, isLoading } = useMyProducts();
   const { data: profile } = usePanelProfile();
   const { toast } = useToast();
-  const [tab, setTab] = useState<ProductStatus>('confirmed');
+  const remove = useDeleteMyProduct();
+  const ladder = useLadderProduct();
+
+  const tabParam = searchParams.get('tab');
+  const [tab, setTab] = useState<ProductStatus>(isTabKey(tabParam) ? tabParam : 'confirmed');
+  // لینک عمقی ?tab=pending (دکمه موفقیت ثبت) — الگوی «تنظیم state هنگام رندر»
+  // برای همگام‌سازی با URL بدون effect (مثل فرم‌های دیگر ایمچ)
+  const [lastParam, setLastParam] = useState<string | null>(tabParam);
+  if (tabParam !== lastParam) {
+    setLastParam(tabParam);
+    if (isTabKey(tabParam)) setTab(tabParam);
+  }
+
   const [ladderProduct, setLadderProduct] = useState<Product | null>(null);
-  const [removed, setRemoved] = useState<Set<number>>(new Set());
 
   if (isLoading || !data) {
     return <div className="h-64 animate-pulse rounded-lg border bg-card" />;
   }
 
-  const items = data.items.filter((p) => p.status === tab && !removed.has(p.id));
+  const items = data.items.filter((p) => p.status === tab);
   const balance = profile?.userInfo.walletBalance ?? 0;
   const canPayLadder = balance >= LADDER_MONTHLY_PRICE;
+
+  const changeTab = (key: ProductStatus) => {
+    setTab(key);
+    // آدرس هم‌گام شود — refresh/back دقیقاً همان تب را نشان می‌دهد
+    router.replace(`/panel/products?tab=${key}`, { scroll: false });
+  };
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
@@ -68,19 +94,19 @@ export default function MyProductsPage() {
       {/* تب‌ها */}
       <div className="flex gap-2 overflow-x-auto pb-1">
         {TABS.map(({ key, label }) => {
-          const count = data.items.filter((p) => p.status === key && !(key === 'deleted' && removed.has(p.id))).length;
+          const count = data.items.filter((p) => p.status === key).length;
           const active = tab === key;
           return (
             <button
               key={key}
               type="button"
-              onClick={() => setTab(key)}
+              onClick={() => changeTab(key)}
               className={cn(
                 'flex shrink-0 items-center gap-1.5 rounded-md border px-3.5 py-2 text-xs font-bold transition-colors',
                 active ? 'border-primary bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:border-primary/40',
               )}
             >
-              {label} <span className={cn('rounded-full px-1.5 py-0.5 text-[10px]', active ? 'bg-primary-foreground/20' : 'bg-secondary')}>({toFa(count)})</span>
+              {label} <span className={cn('font-num rounded-full px-1.5 py-0.5 text-[10px]', active ? 'bg-primary-foreground/20' : 'bg-secondary')}>({toFa(count)})</span>
             </button>
           );
         })}
@@ -119,7 +145,7 @@ export default function MyProductsPage() {
               <div className="flex gap-3">
                 <div className="relative size-20 shrink-0 overflow-hidden rounded-md border bg-secondary sm:size-24">
                   {p.photos[0] ? (
-                    <img src={p.photos[0]} alt={p.productName} className="size-full object-cover" />
+                    <img src={(p.photoThumbs && p.photoThumbs[0]) ?? p.photos[0]} alt={p.productName} className="size-full object-cover" />
                   ) : (
                     <span className="grid size-full place-items-center text-muted-foreground/40">
                       <ImageIcon size={26} />
@@ -145,7 +171,7 @@ export default function MyProductsPage() {
                       موجودی: <b>{stockFa(p.stock, p.unit)}</b>
                     </span>
                     <span>
-                      حداقل فروش: <b>{stockFa(p.minSaleAmount, p.unit)}</b>
+                      حداقل سفارش: <b>{stockFa(p.minSaleAmount, p.unit)}</b>
                     </span>
                     <span>
                       کف قیمت: <b>{priceFa(p.minSalePrice)}</b>
@@ -166,17 +192,27 @@ export default function MyProductsPage() {
                 >
                   <TrendingUp size={14} /> نردبان
                 </Button>
-                <Button size="sm" variant="outline" className="rounded-md text-xs">
-                  <Pencil size={14} /> ویرایش
+                <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
+                  <Link href={`/panel/products/edit/${p.id}`}>
+                    <Pencil size={14} /> ویرایش
+                  </Link>
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="rounded-md text-xs text-red-500 hover:bg-red-50 hover:text-red-600"
-                  onClick={() => setRemoved((prev) => new Set(prev).add(p.id))}
-                >
-                  <Trash2 size={14} /> حذف
-                </Button>
+                {p.status !== 'deleted' && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="rounded-md text-xs text-red-500 hover:bg-red-50 hover:text-red-600"
+                    disabled={remove.isPending}
+                    onClick={() =>
+                      remove.mutate(p.id, {
+                        onSuccess: () => toast({ description: `آگهی «${p.productName}» حذف شد.` }),
+                        onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
+                      })
+                    }
+                  >
+                    <Trash2 size={14} /> حذف
+                  </Button>
+                )}
               </div>
             </article>
           ))}
@@ -186,15 +222,15 @@ export default function MyProductsPage() {
       {/* ظرفیت ثبت */}
       <PanelCard className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
-          ظرفیت ثبت محصول: <b className="text-foreground">{toFa(data.items.filter((p) => !removed.has(p.id)).length)}</b> از{' '}
-          {toFa(data.capacity)} آگهی رایگان
+          ظرفیت ثبت محصول: <b className="font-num text-foreground">{toFa(data.items.filter((p) => p.status !== 'deleted').length)}</b> از{' '}
+          <span className="font-num">{toFa(data.capacity)}</span> آگهی رایگان
         </p>
         <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
           <Link href="/panel/pricing">افزایش ظرفیت</Link>
         </Button>
       </PanelCard>
 
-      {/* مودال نردبان — یک‌ماهه، پرداخت از کیف پول (کارت به کارتی) */}
+      {/* مودال نردبان — یک‌ماهه، پرداخت واقعی از کیف پول */}
       <Dialog open={Boolean(ladderProduct)} onOpenChange={(o) => !o && setLadderProduct(null)}>
         <DialogContent className="rounded-lg sm:max-w-md">
           <DialogHeader>
@@ -204,7 +240,7 @@ export default function MyProductsPage() {
           <div className="space-y-4 text-sm">
             <div className="rounded-md bg-secondary/70 p-3">
               <p className="text-xs text-muted-foreground">هزینه نردبان این محصول</p>
-              <p className="mt-1 text-base font-extrabold">
+              <p className="font-num mt-1 text-base font-extrabold">
                 {priceFa(LADDER_MONTHLY_PRICE)}
               </p>
               <p className="mt-1 text-[11px] text-muted-foreground">
@@ -221,7 +257,7 @@ export default function MyProductsPage() {
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Wallet size={14} /> موجودی کیف پول
               </span>
-              <span className="text-sm font-extrabold">
+              <span className="font-num text-sm font-extrabold">
                 {priceFa(balance)}
               </span>
             </div>
@@ -229,14 +265,20 @@ export default function MyProductsPage() {
             {canPayLadder ? (
               <Button
                 className="w-full rounded-md"
-                onClick={() => {
-                  setLadderProduct(null);
-                  toast({
-                    description: `نردبان «${ladderProduct?.productName}» برای یک ماه فعال شد — ${priceFa(LADDER_MONTHLY_PRICE)} از کیف پول کسر شد.`,
-                  });
-                }}
+                disabled={ladder.isPending}
+                onClick={() =>
+                  ladder.mutate(ladderProduct!.id, {
+                    onSuccess: () => {
+                      toast({
+                        description: `نردبان «${ladderProduct?.productName}» برای یک ماه فعال شد — ${priceFa(LADDER_MONTHLY_PRICE)} از کیف پول کسر شد.`,
+                      });
+                      setLadderProduct(null);
+                    },
+                    onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
+                  })
+                }
               >
-                پرداخت از کیف پول
+                {ladder.isPending ? 'در حال پرداخت…' : 'پرداخت از کیف پول'}
               </Button>
             ) : (
               <div className="space-y-2">
@@ -252,5 +294,13 @@ export default function MyProductsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function MyProductsPage() {
+  return (
+    <Suspense>
+      <MyProductsPageInner />
+    </Suspense>
   );
 }

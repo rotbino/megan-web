@@ -91,6 +91,11 @@ function ProductsPageInner() {
         perPage: 20,
       }),
     placeholderData: keepPreviousData,
+    // تازگی زنده (خواسته مالک): آگهی تازه‌ثبت‌شده بدون رفرش دستی دیده شود —
+    // ۱۵ ثانیه stale + poll دوره‌ای + تازه‌سازی هنگام بازگشت به تب مرورگر
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   });
 
   const invalidate = () => {
@@ -248,8 +253,10 @@ function ProductsPageInner() {
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="flex flex-col">
-                      <span className="text-[12px] font-bold">{p.seller.user_name}</span>
-                      <span dir="ltr" className="text-[11px] text-muted-foreground">{p.seller.phone}</span>
+                      {/* نام کامل (خواسته مالک) — نام کاربری زیرش کوچک */}
+                      <span className="text-[12px] font-bold">{p.seller.full_name || p.seller.user_name}</span>
+                      <span className="text-[10px] text-muted-foreground">{p.seller.user_name}</span>
+                      <span dir="ltr" className="font-num text-[11px] text-muted-foreground">{p.seller.phone}</span>
                     </div>
                   </td>
                   <td className="px-3 py-2.5 text-[11px]">

@@ -111,13 +111,17 @@ export default function AdminDashboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-stats-v2'],
     queryFn: fetchAdminStatsV2,
-    refetchInterval: 60_000,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: activity } = useQuery({
     queryKey: ['admin-recent-activity'],
     queryFn: fetchAdminRecentActivity,
-    refetchInterval: 60_000,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   });
 
   const trends: AdminTrendPoint[] = data?.trends ?? [];

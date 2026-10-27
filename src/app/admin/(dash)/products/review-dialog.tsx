@@ -24,7 +24,7 @@ import { reviewAdminProduct, type AdminProductRow } from '@/lib/admin/api';
 export type ReviewableProduct = Pick<
   AdminProductRow,
   'id' | 'product_name' | 'sub_category_name' | 'province_name'
-> & { seller: { user_name: string } };
+> & { seller: { user_name: string; full_name?: string; first_name?: string; last_name?: string } };
 
 export function ReviewProductDialog({
   product,
@@ -71,7 +71,11 @@ export function ReviewProductDialog({
         <DialogHeader className="text-right">
           <DialogTitle>بازبینی آگهی «{product.product_name}»</DialogTitle>
           <DialogDescription>
-            فروشنده: {product.seller.user_name} — {product.sub_category_name} / {product.province_name}
+            فروشنده:{' '}
+            {product.seller.full_name ||
+              [product.seller.first_name, product.seller.last_name].filter(Boolean).join(' ').trim() ||
+              product.seller.user_name}{' '}
+            — {product.sub_category_name} / {product.province_name}
           </DialogDescription>
         </DialogHeader>
 

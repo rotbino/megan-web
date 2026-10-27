@@ -101,6 +101,10 @@ function BuyRequestsPageInner() {
         perPage: 20,
       }),
     placeholderData: keepPreviousData,
+    // تازگی زنده — درخواست تازه بدون رفرش دستی دیده شود
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   });
 
   const invalidate = () => {
@@ -253,9 +257,9 @@ function BuyRequestsPageInner() {
                   <td className="px-3 py-2.5">
                     <div className="flex flex-col">
                       <Link href={`/admin/users/${r.buyer.id}`} className="text-[12px] font-bold hover:text-primary">
-                        {r.buyer.user_name}
+                        {r.buyer.full_name || r.buyer.user_name}
                       </Link>
-                      <span dir="ltr" className="text-[11px] text-muted-foreground">{r.buyer.phone}</span>
+                      <span dir="ltr" className="font-num text-[11px] text-muted-foreground">{r.buyer.phone}</span>
                     </div>
                   </td>
                   <td className="px-3 py-2.5 text-[12px] font-bold">{stockFa(r.requirement_amount, r.unit)}</td>
@@ -382,7 +386,7 @@ function BuyRequestsPageInner() {
           <div className="w-full max-w-md rounded-xl border bg-card p-4 shadow-xl">
             <p className="text-sm font-extrabold">بازبینی درخواست «{reviewRow.name || reviewRow.category_name}»</p>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              خریدار: {reviewRow.buyer.user_name} — نیازمندی {stockFa(reviewRow.requirement_amount, reviewRow.unit)}
+              خریدار: {reviewRow.buyer.full_name || reviewRow.buyer.user_name} — نیازمندی {stockFa(reviewRow.requirement_amount, reviewRow.unit)}
             </p>
             {reviewRow.description ? (
               <p className="mt-2 rounded-md bg-secondary/40 p-2.5 text-[12px] leading-6">{reviewRow.description}</p>

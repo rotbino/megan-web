@@ -397,7 +397,7 @@ export interface AdminProductRow {
   sub_category_name: string;
   province_name: string;
   city_name: string;
-  seller: { id: string; user_name: string; phone: string; is_verified: boolean };
+  seller: { id: string; user_name: string; full_name?: string; phone: string; is_verified: boolean };
   stock: number;
   min_sale_amount: number;
   min_sale_price: number;
@@ -509,7 +509,7 @@ export interface AdminBuyRequestRow {
   category_name: string;
   province_name: string | null;
   city_name: string | null;
-  buyer: { id: string; user_name: string; phone: string; is_verified: boolean };
+  buyer: { id: string; user_name: string; full_name?: string; phone: string; is_verified: boolean };
   requirement_amount: number;
   unit: string;
   goal: string;

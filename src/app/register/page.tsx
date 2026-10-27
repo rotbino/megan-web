@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, KeyRound, Loader2, Lock, MapPin, Smartphone, UserRound } from 'lucide-react';
+import { ArrowRight, KeyRound, Loader2, MapPin, Smartphone, UserRound } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,8 +26,10 @@ import { getTokens } from '@/lib/api/client';
  * کاربر ذخیره می‌شود تا در فرم‌های ثبت آگهی/درخواست خودکار انتخاب شده باشد.
  *
  * پشتیبانی از /register?step=info — ریدایرکت کاربر تازه‌ثبت‌نام‌شده از مودال ورود.
+ * بعد از ورود/تکمیل، کاربر بلافاصله به پنل می‌رود (خواسته مالک — بدون دکمه اضافه).
  */
 export default function RegisterPage() {
+  const router = useRouter();
   const { user, login, refreshUser } = useAuth();
   const [step, setStep] = useState<'phone' | 'password' | 'info'>('phone');
   const [phone, setPhone] = useState('');
@@ -60,6 +63,13 @@ export default function RegisterPage() {
     }
   }, [user?.phone]);
 
+  // ورود موفق (کاربر قبلی) → بلافاصله پنل (خواسته مالک — بدون دکمه اضافه)
+  useEffect(() => {
+    if (done) {
+      router.push('/panel');
+    }
+  }, [done, router]);
+
   const handleLogin = (withPassword: boolean) => {
     setError('');
     loginMutation.mutate(
@@ -68,9 +78,9 @@ export default function RegisterPage() {
         onSuccess: (res) => {
           if (res.ok && res.user) {
             login(res.user);
-            // کاربر جدید → مرحله اطلاعات؛ کاربر قبلی → مستقیم وارد شد
-            setStep(res.isNewUser ? 'info' : 'phone');
-            setDone(!res.isNewUser);
+            // کاربر جدید → مرحله اطلاعات؛ کاربر قبلی → مستقیم به پنل
+            if (res.isNewUser) setStep('info');
+            else setDone(true);
           } else if (res.requiresPassword) {
             setStep('password'); // کاربر رمز تعیین کرده است
           }
@@ -149,15 +159,10 @@ export default function RegisterPage() {
       <main className="flex flex-1 items-center justify-center bg-gradient-to-b from-secondary/60 to-background px-4 py-12">
         <div className="w-full max-w-sm rounded-md border bg-card p-6 shadow-sm">
           {done ? (
-            <div className="space-y-4 py-6 text-center">
-              <span className="mx-auto grid size-16 place-items-center rounded-full bg-primary/10 text-primary">
-                <Lock size={28} />
-              </span>
-              <h1 className="text-lg font-bold">ورود موفق!</h1>
-              <p className="text-sm text-muted-foreground">به ایمچ خوش آمدید. اکنون به پنل کاربری منتقل می‌شوید.</p>
-              <Button asChild className="w-full rounded-md">
-                <Link href="/panel">ورود به پنل کاربری</Link>
-              </Button>
+            // ورود/تکمیل موفق — لحظه‌ای بعد خودکار به پنل می‌رود (بدون دکمه اضافه)
+            <div className="grid place-items-center gap-3 py-10 text-center">
+              <Loader2 size={30} className="animate-spin text-primary" />
+              <p className="text-sm font-bold">ورود موفق — در حال انتقال به پنل…</p>
             </div>
           ) : (
             <>
@@ -179,9 +184,9 @@ export default function RegisterPage() {
                       inputMode="numeric"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value.replace(/[^\d]/g, ''))}
-                      placeholder="09123456789"
+                      placeholder="0912…"
                       maxLength={11}
-                      className="rounded-md text-center font-mono tracking-widest"
+                      className="font-num rounded-md text-center text-base tracking-widest"
                     />
                   </div>
                   {error && <p className="text-xs text-destructive">{error}</p>}
@@ -230,7 +235,6 @@ export default function RegisterPage() {
                         id="first-name"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
-                        placeholder="مثلا: علی"
                         maxLength={60}
                         autoFocus
                       />
@@ -241,7 +245,6 @@ export default function RegisterPage() {
                         id="last-name"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
-                        placeholder="مثلا: رضایی"
                         maxLength={60}
                       />
                     </div>

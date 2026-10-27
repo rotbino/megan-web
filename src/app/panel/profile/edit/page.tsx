@@ -558,7 +558,7 @@ export default function EditProfilePage() {
           aria-label="افزودن تصویر مربوطه"
         >
           <ImageIcon size={22} className="text-muted-foreground" />
-          <span className="mt-2 text-xs font-bold">تصویر را اینجا رها کنید</span>
+          <span className="mt-2 text-xs font-bold">انتخاب تصویر</span>
           <span className="mt-0.5 text-[11px] text-muted-foreground">یا کلیک کنید — jpeg/jpg/png/webp، حداکثر ۵ مگابایت</span>
         </button>
         <input
@@ -610,7 +610,7 @@ export default function EditProfilePage() {
           aria-label="افزودن گواهی"
         >
           <FileCheck2 size={22} className="text-muted-foreground" />
-          <span className="mt-2 text-xs font-bold">تصویر را اینجا رها کنید</span>
+          <span className="mt-2 text-xs font-bold">انتخاب تصویر</span>
           <span className="mt-0.5 text-[11px] text-muted-foreground">یا کلیک کنید — jpeg/jpg/png/webp، حداکثر ۵ مگابایت</span>
         </button>
         <input

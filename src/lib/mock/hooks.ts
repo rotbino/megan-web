@@ -178,6 +178,53 @@ export function useSubmitProduct() {
   });
 }
 
+/** حذف نرم آگهی خودم — با ابطال کش لیست */
+export function useDeleteMyProduct() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.deleteMyProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-my-products'] });
+      queryClient.invalidateQueries({ queryKey: ['panel-profile'] });
+    },
+  });
+}
+
+/** جزئیات آگهی خودم — پیش‌پر کردن فرم ویرایش */
+export function useMyProductDetail(id: number | null) {
+  return useQuery({
+    queryKey: ['panel-my-product-detail', id],
+    queryFn: () => api.getMyProductDetail(id!),
+    enabled: id != null && id > 0,
+    staleTime: 30_000,
+  });
+}
+
+/** ویرایش آگهی خودم → دوباره در انتظار تایید */
+export function useUpdateMyProduct() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.updateMyProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-my-products'] });
+      queryClient.invalidateQueries({ queryKey: ['panel-my-product-detail'] });
+    },
+  });
+}
+
+/** خرید نردبان یک‌ماهه — کسر واقعی از کیف پول */
+export function useLadderProduct() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.ladderProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-my-products'] });
+      queryClient.invalidateQueries({ queryKey: ['panel-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['panel-wallet-transactions'] });
+    },
+  });
+}
+
 
 // ─── چت و پیام‌ها (B8) ────────────────────────────────────────────────
 

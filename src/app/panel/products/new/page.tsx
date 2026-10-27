@@ -32,6 +32,7 @@ import { CategoryCascade } from '@/components/panel/product-form/category-cascad
 import { PanelCard } from '@/components/panel/panel-parts';
 import { UnitInput } from '@/components/shared/unit-input';
 import { PRODUCT_FEATURE_KEYS } from '@/lib/mock/data';
+import { optimizeProductImage } from '@/lib/image-optimize';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { Category, ProductFeature } from '@/lib/types';
@@ -72,9 +73,12 @@ const IMAGE_RULES = [
   'فقط تصاویر مرتبط با محصول را بارگذاری کنید.',
   'از درج شماره تماس یا لوگو بر روی تصاویر خودداری کنید.',
   'حداکثر مجاز به انتخاب ۴ تصویر هستید.',
-  'حجم هر تصویر باید کمتر از 5 مگابایت باشد.',
   'تصویر از نوع jpeg یا jpg باشد.',
+  'تصاویر بزرگ خودکار به عرض حداکثر ۱۲۰۰ پیکسل و حجم ۵۰۰ کیلوبایت بهینه می‌شوند.',
 ];
+
+/** سقف توضیحات محصول (خواسته مالک: ۳۰۰۰ نویسه) */
+const DESCRIPTION_MAX = 3000;
 
 export default function RegisterProductPage() {
   const router = useRouter();
@@ -178,7 +182,6 @@ export default function RegisterProductPage() {
   const addFiles = (files: FileList | null) => {
     if (!files) return;
     let rejected = '';
-    const readers: Promise<{ id: number; url: string; file: File }>[] = [];
     const slots = 4 - draft.photos.length;
     Array.from(files)
       .slice(0, Math.max(0, slots))
@@ -187,27 +190,37 @@ export default function RegisterProductPage() {
           rejected = 'تصویر از نوع jpeg یا jpg باشد.';
           return;
         }
-        if (file.size > 5 * 1024 * 1024) {
-          rejected = 'حجم تصویر بالاست، باید کمتر از 5 مگابایت باشد.';
+        if (file.size > 15 * 1024 * 1024) {
+          rejected = 'حجم تصویر بسیار بالا است (بیش از ۱۵ مگابایت).';
           return;
         }
-        if (file.size < 20 * 1024) {
-          rejected = 'حجم تصویر پایین است، باید بیشتر از 20 کیلوبایت باشد.';
-          return;
-        }
-        readers.push(
-          new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () =>
-              resolve({ id: Date.now() + Math.random(), url: String(reader.result), file });
-            reader.readAsDataURL(file);
-          }),
-        );
       });
-    void Promise.all(readers).then((loaded) => {
-      setDraft((d) => ({ ...d, photos: [...d.photos, ...loaded].slice(0, 4) }));
-    });
-    setError(rejected);
+    if (rejected) {
+      setError(rejected);
+      return;
+    }
+
+    // بهینه‌سازی سمت کلاینت (عرض ≤۱۲۰۰، حجم ≤۵۰۰KB) بعد پیش‌نمایش محلی
+    void (async () => {
+      const loaded: Draft['photos'] = [];
+      for (const file of Array.from(files).slice(0, Math.max(0, slots))) {
+        try {
+          const optimized = await optimizeProductImage(file);
+          const url = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.readAsDataURL(optimized);
+          });
+          loaded.push({ id: Date.now() + Math.random(), url, file: optimized });
+        } catch {
+          rejected = 'خواندن یکی از تصاویر ممکن نشد.';
+        }
+      }
+      if (loaded.length > 0) {
+        setDraft((d) => ({ ...d, photos: [...d.photos, ...loaded].slice(0, 4) }));
+      }
+      if (rejected) setError(rejected);
+    })();
   };
 
   const featureOptions = (currentKey: string) =>
@@ -263,8 +276,8 @@ export default function RegisterProductPage() {
             >
               <RotateCcw size={15} /> ثبت محصول دیگر
             </Button>
-            <Button className="rounded-md" onClick={() => router.push('/panel/products')}>
-              مشاهده محصولات من
+            <Button className="rounded-md" onClick={() => router.push('/panel/products?tab=pending')}>
+              مشاهده محصول در لیست محصولات
             </Button>
           </div>
         </PanelCard>
@@ -345,8 +358,8 @@ export default function RegisterProductPage() {
 
       {/* ─── مرحله ۳: موجودی و قیمت ─── */}
       {step === 2 && (
-        <PanelCard className="space-y-5">
-          <div className="space-y-2">
+        <PanelCard className="space-y-6">
+          <div className="space-y-2.5">
             <Label htmlFor="stock">
               میزان موجودی محصول <span className="text-muted-foreground">({leaf?.unit ?? 'کیلوگرم'})</span>{' '}
               <span className="text-red-500">*</span>
@@ -356,14 +369,13 @@ export default function RegisterProductPage() {
               kind="weight"
               value={draft.stock}
               onValueChange={(v) => patch({ stock: v })}
-              placeholder="مثلا: 50,000"
               unit={leaf?.unit ?? 'کیلوگرم'}
             />
             <p className="text-[11px] text-muted-foreground">مقیاس عمده — مقیاس‌های خرده‌فروشی قابل قبول نیستند.</p>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <Label htmlFor="min-amount">
-              حداقل میزان فروش <span className="text-muted-foreground">({leaf?.unit ?? 'کیلوگرم'})</span>{' '}
+              حداقل سفارش <span className="text-muted-foreground">({leaf?.unit ?? 'کیلوگرم'})</span>{' '}
               <span className="text-red-500">*</span>
             </Label>
             <UnitInput
@@ -371,11 +383,10 @@ export default function RegisterProductPage() {
               kind="weight"
               value={draft.minSaleAmount}
               onValueChange={(v) => patch({ minSaleAmount: v })}
-              placeholder="مثلا: 25,000"
               unit={leaf?.unit ?? 'کیلوگرم'}
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <Label htmlFor="price">
               حداقل قیمت محصول <span className="text-muted-foreground">(تومان)</span> <span className="text-red-500">*</span>
             </Label>
@@ -384,7 +395,6 @@ export default function RegisterProductPage() {
               kind="price"
               value={draft.minSalePrice}
               onValueChange={(v) => patch({ minSalePrice: v })}
-              placeholder="مثلا: 15,000"
               unit={`هر ${leaf?.unit ?? 'کیلوگرم'}`}
               invalid={Boolean(draft.minSalePrice) && num(draft.minSalePrice) < 1000}
             />
@@ -414,8 +424,8 @@ export default function RegisterProductPage() {
             <span className="grid size-12 place-items-center rounded-full bg-white text-primary shadow-sm">
               <ImagePlus size={22} />
             </span>
-            <p className="mt-3 text-sm font-bold">تصویر را اینجا رها کنید</p>
-            <p className="mt-1 text-xs text-muted-foreground">یا کلیک کنید</p>
+            <p className="mt-3 text-sm font-bold">انتخاب تصویر</p>
+            <p className="mt-1 text-xs text-muted-foreground">کلیک کنید — یا تصویر را همین‌جا رها کنید</p>
           </div>
           <input
             ref={fileRef}
@@ -471,14 +481,19 @@ export default function RegisterProductPage() {
           <Textarea
             id="description"
             dir="rtl"
-            rows={9}
+            rows={18}
             value={draft.description}
-            onChange={(e) => patch({ description: e.target.value })}
-            className="resize-none text-sm leading-7"
+            onChange={(e) => {
+              if (e.target.value.length <= DESCRIPTION_MAX) patch({ description: e.target.value });
+            }}
+            className="min-h-72 resize-none text-sm leading-8 md:min-h-80"
             placeholder="کیفیت، بسته‌بندی، شرایط ارسال و هر نکته‌ای که خریدار عمده باید بداند…"
+            maxLength={DESCRIPTION_MAX}
           />
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-muted-foreground">{toFa(descLen)} حرف</span>
+            <span className="font-num text-muted-foreground">
+              {toFa(descLen)} / {toFa(DESCRIPTION_MAX)} نویسه
+            </span>
             <span
               className={cn(
                 'rounded-full px-2.5 py-0.5 font-bold',
@@ -495,12 +510,13 @@ export default function RegisterProductPage() {
       {step === 5 && (
         <PanelCard className="space-y-4">
           <p className="text-sm leading-6 text-muted-foreground">
-            ویژگی‌های محصول خود را با انتخاب «جزئیات» و نوشتن توضیح آن ثبت کنید — مثل: بسته‌بندی / کیسه ۵۰ کیلویی.
+            ویژگی‌های محصول خود را با انتخاب «ویژگی» و نوشتن توضیح آن ثبت کنید — مثل: بسته‌بندی / کیسه ۵۰ کیلویی.
+            (اختیاری است — تا {toFa(PRODUCT_FEATURE_KEYS.length)} ویژگی می‌توانید اضافه کنید.)
           </p>
 
           {draft.features.length === 0 && (
             <div className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
-              هنوز جزئیاتی اضافه نشده است.
+              هنوز ویژگی‌ای اضافه نشده است (اختیاری).
             </div>
           )}
 
@@ -547,14 +563,17 @@ export default function RegisterProductPage() {
             </div>
           ))}
 
-          {draft.features.length < 5 && (
+          {draft.features.length < PRODUCT_FEATURE_KEYS.length && (
             <Button
               type="button"
               variant="outline"
               className="w-full rounded-md border-dashed"
               onClick={() => patch({ features: [...draft.features, { key: '', value: '' }] })}
             >
-              <Plus size={15} /> افزودن جزئیات بیشتر
+              <Plus size={15} /> افزودن ویژگی بیشتر
+              <span className="text-[10px] font-normal text-muted-foreground">
+                ({toFa(draft.features.length)} از {toFa(PRODUCT_FEATURE_KEYS.length)})
+              </span>
             </Button>
           )}
         </PanelCard>

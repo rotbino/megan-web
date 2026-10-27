@@ -213,7 +213,7 @@ export default function WalletPage() {
                       <ImagePlus size={22} />
                     </span>
                     <span className="mt-2 flex items-center gap-1.5 text-xs font-bold">
-                      <ReceiptText size={14} /> تصویر فیش را اینجا رها کنید
+                      <ReceiptText size={14} /> انتخاب تصویر فیش
                     </span>
                     <span className="mt-0.5 text-[11px] text-muted-foreground">یا کلیک کنید — jpeg/jpg/png/webp، حداکثر ۵ مگابایت</span>
                   </>

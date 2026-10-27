@@ -3,11 +3,12 @@
 /**
  * ورودی عددی هوشمند — الگوی باسکول:
  * ۱) ارقام وسط‌چین (نه از چپ که روی واحد بیفتد) + جداکننده هزارگان زنده.
- * ۲) بادکنک کوچک بالای گوشه چپ: تبدیل لحظه‌ای به واحد عمده‌فروشی —
+ * ۲) بادکنک بالای گوشه چپ: تبدیل لحظه‌ای به واحد عمده‌فروشی —
  *    ۱٬۰۰۰ کیلوگرم ← «≈ ۱ تن» / ۳٬۵۰۰٬۰۰۰ تومان ← «≈ ۳٫۵ میلیون تومان».
- * ۳) واحد (کیلوگرم/تومان/…) ثابت در گوشه چپ داخل فیلد.
- * ۴) ارتفاع کمی بیشتر (تپل‌تر و خواناتر، مخصوصاً دسکتاپ).
- * در همه‌ی فرم‌های ورودی عددی ایمچ از همین استفاده می‌شود.
+ *    (بادکنک بالای فیلد شناور است؛ نوکش به لبهٔ بالای تکست‌باکس می‌خورد
+ *    و با خود فیلد قاطی نمی‌شود — خواسته مالک.)
+ * ۳) واحد (کیلوگرم/تومان/…) ثابت در گوشه چپ داخل فیلد — درشت و بولد.
+ * ۴) فونت IRANSansNum (FaNum) — ارقام همیشه فارسی نمایش داده می‌شوند.
  */
 
 import { Input } from '@/components/ui/input';
@@ -72,8 +73,8 @@ export function UnitInput({
         autoComplete="off"
         aria-label={ariaLabel}
         className={cn(
-          'h-11 text-center font-bold tabular-nums md:h-12',
-          unit && 'ps-3 pe-12',
+          'font-num h-13 text-center text-base font-bold tabular-nums md:h-14 md:text-lg',
+          unit && 'ps-3 pe-20',
           invalid && 'border-red-400 focus-visible:ring-red-300',
         )}
         value={value}
@@ -84,15 +85,20 @@ export function UnitInput({
         }}
       />
       {unit && (
-        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[11px] font-normal text-muted-foreground">
+        <span className="font-num pointer-events-none absolute inset-y-0 left-3 flex items-center text-[13px] font-bold text-muted-foreground md:text-sm">
           {unit}
         </span>
       )}
       {badge && (
-        <span className="animate-badge-in pointer-events-none absolute -top-3 left-0 z-10 inline-flex items-center rounded-md bg-primary px-2 py-[3px] text-[10px] font-bold leading-none text-primary-foreground shadow-sm">
+        <span
+          className="font-num animate-badge-in pointer-events-none absolute -top-4.5 left-0 z-10 inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-xs font-bold leading-none text-primary-foreground shadow-md"
+        >
           ≈ {badge}
-          {/* دُم بادکنک — مثلث کوچک رو به گوشه فیلد */}
-          <span aria-hidden className="absolute -bottom-1 left-2 size-2 rotate-45 rounded-[1.5px] bg-primary" />
+          {/* دُم بادکنک — نوک به لبهٔ بالایی تکست‌باکس می‌خورد */}
+          <span
+            aria-hidden
+            className="absolute -bottom-1 left-2.5 size-2.5 rotate-45 rounded-[2px] bg-primary"
+          />
         </span>
       )}
     </div>

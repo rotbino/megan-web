@@ -55,7 +55,7 @@ export function AuthModal({
     e.preventDefault();
     setError('');
     if (!/^09\d{9}$/.test(phone)) {
-      setError('شماره موبایل معتبر نیست (مثال: 09123456789)');
+      setError('شماره موبایل معتبر نیست (مثل 09123456789).');
       return;
     }
     loginMutation.mutate(
@@ -121,9 +121,9 @@ export function AuthModal({
               inputMode="numeric"
               value={phone}
               onChange={(e) => setPhone(e.target.value.replace(/[^\d]/g, ''))}
-              placeholder="09123456789"
+              placeholder="0912…"
               maxLength={11}
-              className="rounded-md text-center font-mono tracking-widest"
+              className="font-num rounded-md text-center text-base tracking-widest"
               autoFocus={open}
             />
           </div>

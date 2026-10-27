@@ -27,7 +27,7 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
-import { usePanelProfile, useSavedLists, useMyProducts, useMyBuyRequests } from '@/lib/mock/hooks';
+import { useMyBuyRequests, useMyProducts, usePanelProfile, useSavedLists, useUpdatePanelProfile } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -81,8 +81,10 @@ export default function PanelDashboard() {
   const { data: myRequests } = useMyBuyRequests();
   const { user, logout } = useAuth();
   const { toast } = useToast();
+  const aboutMutation = useUpdatePanelProfile();
   const [aboutOpen, setAboutOpen] = useState(false);
   const [aboutText, setAboutText] = useState('');
+  const [aboutError, setAboutError] = useState('');
 
   const isBuyer = user?.role === 'buyer';
 
@@ -136,8 +138,12 @@ export default function PanelDashboard() {
           </Button>
         </div>
 
-        {/* سنجه تکمیل پروفایل */}
-        <div className="mt-4 rounded-md bg-secondary/70 p-3">
+        {/* سنجه تکمیل پروفایل — کل کادر به صفحه پروفایل لینک است (خواسته مالک) */}
+        <Link
+          href="/panel/profile"
+          className="mt-4 block rounded-md bg-secondary/70 p-3 transition-colors hover:bg-secondary"
+          aria-label="تکمیل پروفایل — رفتن به صفحه پروفایل"
+        >
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold">تکمیل پروفایل :</span>
             <span
@@ -163,7 +169,7 @@ export default function PanelDashboard() {
             هویت حساب کاربری خود را احراز کنید. با تایید هویت خود، برای{' '}
             {isBuyer ? 'فروشندگان، خریدار مطمئن‌تری' : 'خریداران، فروشنده مطمئن‌تری'} باشید.
           </p>
-        </div>
+        </Link>
       </PanelCard>
 
       {/* میان‌برهای آماری */}
@@ -240,8 +246,8 @@ export default function PanelDashboard() {
       {/* لینک‌های حساب کاربری — عین menu-list باسکول (موبایل‌پسند، همه‌جا نمایش) */}
       <AccountLinks />
 
-      {/* مودال درباره شما */}
-      <Dialog open={aboutOpen} onOpenChange={setAboutOpen}>
+      {/* مودال درباره شما — ذخیره واقعی در پروفایل */}
+      <Dialog open={aboutOpen} onOpenChange={(v) => { setAboutOpen(v); if (!v) setAboutError(''); }}>
         <DialogContent className="rounded-lg sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-start">درباره شما</DialogTitle>
@@ -254,6 +260,7 @@ export default function PanelDashboard() {
             rows={7}
             className="resize-none text-sm leading-7"
             placeholder="به عنوان مثال: سامی جابر هستم از شهر تهران، عرضه‌کننده عمده پسته و خشکبار…"
+            maxLength={2000}
           />
           <div className="flex items-center justify-between">
             <span className={cn('text-[11px]', aboutText.trim().length >= 100 ? 'text-emerald-600' : 'text-muted-foreground')}>
@@ -261,14 +268,25 @@ export default function PanelDashboard() {
             </span>
             <Button
               className="rounded-md"
+              disabled={aboutMutation.isPending}
               onClick={() => {
-                setAboutOpen(false);
-                toast({ description: 'متن «درباره شما» ذخیره شد.' });
+                setAboutError('');
+                aboutMutation.mutate(
+                  { description: aboutText.trim() },
+                  {
+                    onSuccess: () => {
+                      setAboutOpen(false);
+                      toast({ description: 'متن «درباره شما» ذخیره شد.' });
+                    },
+                    onError: (err: Error) => setAboutError(err.message || 'ذخیره ناموفق بود — دوباره تلاش کنید.'),
+                  },
+                );
               }}
             >
-              ذخیره
+              {aboutMutation.isPending ? 'در حال ذخیره…' : 'ذخیره'}
             </Button>
           </div>
+          {aboutError && <p className="text-start text-xs text-destructive">{aboutError}</p>}
         </DialogContent>
       </Dialog>
     </div>

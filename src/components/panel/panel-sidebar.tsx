@@ -179,31 +179,73 @@ export function PanelSidebar({
           </Link>
         </div>
 
-        {/* سوییچ فروشنده / خریدار */}
+        {/* سوییچ فروشنده / خریدار — درشت و تابلوتر (خواسته مالک): سمت فعال
+            پررنگ/پرشده دیده می‌شود تا کاربر بفهمد کدام پنل را می‌بیند */}
         {!collapsed && (
           <div className="px-4 pt-3">
-            <div className="flex rounded-md bg-secondary p-1 text-xs" role="radiogroup" aria-label="نوع حساب کاربری">
+            <div
+              className="flex rounded-lg border border-border bg-secondary p-1.5"
+              role="radiogroup"
+              aria-label="نوع حساب کاربری"
+            >
               {(
                 [
                   { key: 'seller', label: 'فروشنده' },
                   { key: 'buyer', label: 'خریدار' },
                 ] as const
-              ).map(({ key, label }) => (
+              ).map(({ key, label }) => {
+                const active = role === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setRole(key)}
+                    className={cn(
+                      'flex-1 rounded-md py-2 text-sm font-extrabold transition-all',
+                      active
+                        ? 'bg-primary text-primary-foreground shadow-md'
+                        : 'text-muted-foreground hover:bg-card hover:text-foreground',
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1.5 text-center text-[10px] leading-4 text-muted-foreground">
+              پنل {role === 'buyer' ? 'خریدار' : 'فروشنده'} ایمچ
+            </p>
+          </div>
+        )}
+        {collapsed && (
+          <div className="flex flex-col gap-1 px-2 pt-3">
+            {(
+              [
+                { key: 'seller', label: 'ف', title: 'پنل فروشنده' },
+                { key: 'buyer', label: 'خ', title: 'پنل خریدار' },
+              ] as const
+            ).map(({ key, label, title }) => {
+              const active = role === key;
+              return (
                 <button
                   key={key}
                   type="button"
                   role="radio"
-                  aria-checked={role === key}
+                  aria-checked={active}
+                  title={title}
+                  aria-label={title}
                   onClick={() => setRole(key)}
                   className={cn(
-                    'flex-1 rounded-sm py-1.5 font-bold transition-colors',
-                    role === key ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
+                    'grid size-9 place-items-center rounded-md text-sm font-extrabold transition-colors',
+                    active ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground',
                   )}
                 >
                   {label}
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         )}
 

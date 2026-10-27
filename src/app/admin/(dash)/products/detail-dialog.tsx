@@ -134,13 +134,14 @@ export function ProductDetailDialog({
                         href={`/admin/users/${p.seller.id}`}
                         className="inline-flex items-center gap-1 text-primary hover:underline"
                       >
-                        {p.seller.user_name} <ArrowUpRight size={12} />
+                        {[p.seller.first_name, p.seller.last_name].filter(Boolean).join(' ').trim() || p.seller.user_name} <ArrowUpRight size={12} />
                       </Link>
                     ) : '—'
                   } />
-                  <Field label="موبایل فروشنده" value={<span dir="ltr">{p.seller?.phone || '—'}</span>} />
+                  <Field label="نام کاربری" value={p.seller?.user_name || '—'} />
+                  <Field label="موبایل فروشنده" value={<span dir="ltr" className="font-num">{p.seller?.phone || '—'}</span>} />
                   <Field label="موجودی" value={stockFa(p.stock, p.unit)} />
-                  <Field label="حداقل فروش" value={stockFa(p.min_sale_amount, p.unit)} />
+                  <Field label="حداقل سفارش" value={stockFa(p.min_sale_amount, p.unit)} />
                   <Field label="کف قیمت" value={p.min_sale_price > 0 ? priceFa(p.min_sale_price) : 'تماس بگیرید'} />
                 </div>
                 <div>
