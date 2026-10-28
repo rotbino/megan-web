@@ -20,6 +20,7 @@ import { ProductPrice } from '@/components/shared/product-price';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { LadderBadge, OldAdBadge } from '@/components/shared/badges';
 import { ChatWidget } from '@/components/products/chat-widget';
+import { ChatDialog } from '@/components/products/chat-dialog';
 import { RelatedProducts } from '@/components/products/related-products';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -196,15 +197,24 @@ export default async function ProductViewPage({ params }: Props) {
                 </div>
               </div>
               <Separator className="my-4" />
-              <PhoneReveal
-                sellerName={`${product.seller.firstName} ${product.seller.lastName}`}
-                productId={product.id}
-              >
-                <Button className="h-11 w-full rounded-md text-sm font-medium">
-                  <Phone size={17} />
-                  شماره تماس
-                </Button>
-              </PhoneReveal>
+              {/* تماس + چت — افقی کنار هم (مثل باسکول؛ گویاتر از عمودی) */}
+              <div className="grid grid-cols-2 gap-2">
+                <PhoneReveal
+                  sellerName={`${product.seller.firstName} ${product.seller.lastName}`}
+                  productId={product.id}
+                >
+                  <Button className="h-11 w-full rounded-md text-sm font-medium">
+                    <Phone size={17} />
+                    شماره تماس
+                  </Button>
+                </PhoneReveal>
+                <ChatDialog
+                  productId={product.id}
+                  sellerName={`${product.seller.firstName} ${product.seller.lastName}`}
+                  productName={product.productName}
+                  className="h-11 w-full rounded-md text-sm font-medium"
+                />
+              </div>
               <Button asChild variant="outline" className="mt-2 w-full rounded-md">
                 <Link href={`/profile/${product.seller.userName}`}>
                   <Store size={16} />

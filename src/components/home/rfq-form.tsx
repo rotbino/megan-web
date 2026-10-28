@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +9,7 @@ import { CategoryPicker } from '@/components/shared/category-picker';
 import { UnitInput } from '@/components/shared/unit-input';
 import { useSubmitBuyRequest } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
+import { savePendingRfq, PANEL_RFQ_DEST } from '@/lib/pending-rfq';
 import { toFa } from '@/lib/format';
 import type { Category } from '@/lib/types';
 
@@ -21,10 +23,12 @@ import type { Category } from '@/lib/types';
  *    همان کالا در پنل کاربری برسد.
  */
 export function RfqForm() {
+  const router = useRouter();
   const [category, setCategory] = useState<Category | null>(null);
   const [productType, setProductType] = useState('');
   const [amount, setAmount] = useState('');
   const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
   const mutation = useSubmitBuyRequest();
   const { requireAuth } = useAuth();
 
@@ -33,15 +37,34 @@ export function RfqForm() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!category || !amount) return;
-    // مهمان: مودال ورود باز می‌شود و فرم دست‌نخورده می‌ماند تا بعد از ورود ثبت شود
-    if (!requireAuth()) return;
+    // مهمان: داده فرم ذخیره می‌شود (pending RFQ)؛ مودال ورود باز می‌شود و
+    // بعد از ورود/ثبت‌نام همین درخواست «بلافاصله» ثبت و کاربر به پنل خرید
+    // (درخواست‌های در انتظار) می‌رود (خواسته مالک ۲۸-۱۰)
+    if (!requireAuth()) {
+      savePendingRfq({
+        subCategoryId: category.id,
+        productType: productType.trim(),
+        amount: Number(amount),
+      });
+      return;
+    }
     mutation.mutate(
       {
         subCategoryId: category.id,
         productType: productType.trim(),
         amount: Number(amount),
       },
-      { onSuccess: () => setDone(true) },
+      {
+        onSuccess: () => {
+          setError('');
+          setDone(true);
+          // کاربر واردشده هم بعد از ثبت مستقیم به درخواست‌های خودش می‌رود —
+          // همان تجربه‌ای که مهمان بعد از ثبت‌نام می‌بیند
+          router.push(PANEL_RFQ_DEST);
+        },
+        onError: (err) =>
+          setError(err instanceof Error ? err.message : 'ثبت درخواست ناموفق بود — دوباره تلاش کنید.'),
+      },
     );
   };
 
@@ -124,6 +147,7 @@ export function RfqForm() {
                   {mutation.isPending && <Loader2 className="animate-spin" size={18} />}
                   {mutation.isPending ? 'در حال ثبت…' : 'ثبت درخواست خرید'}
                 </Button>
+                {error && <p className="text-xs text-destructive">{error}</p>}
               </form>
             )}
           </div>

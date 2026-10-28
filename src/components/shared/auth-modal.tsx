@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
 import { useAuth } from '@/lib/mock/auth';
 import { useLoginSession } from '@/lib/mock/hooks';
+import { flushPendingRfq, takeAfterAuthRedirect, PANEL_RFQ_DEST } from '@/lib/pending-rfq';
 
 /**
  * مودال ورود/ثبت‌نام — روش سشن: فقط با شماره موبایل، بدون پیامک
@@ -40,15 +41,31 @@ export function AuthModal({
 
   const loginMutation = useLoginSession();
 
-  const handleSuccess = (isNewUser: boolean, user: Parameters<typeof login>[0]) => {
+  const handleSuccess = async (isNewUser: boolean, user: Parameters<typeof login>[0]) => {
     login(user);
-    onLoggedIn();
     setStep('phone');
     setPhone('');
     setPassword('');
     setError('');
-    // کاربر جدید → تکمیل اطلاعات (نام/استان/شهر) در صفحه ثبت‌نام
-    if (isNewUser) router.push('/register?step=info');
+    // کاربر جدید → تکمیل اطلاعات (نام/استان/شهر) در صفحه ثبت‌نام؛
+    // درخواست معلق/مقصد پس از ورود می‌ماند تا بعد از تکمیل اجرا شود
+    if (isNewUser) {
+      onLoggedIn();
+      router.push('/register?step=info');
+      return;
+    }
+    // کاربر قبلی — نیت‌های معلق (درخواست خرید صفحه اول / مقصد بنر فروشگاه)
+    // همین حالا اجرا شوند؛ بدون نیت، همان صفحه فعلی می‌ماند (رفتار قبلی)
+    const flushed = await flushPendingRfq();
+    onLoggedIn();
+    if (flushed !== 'none') {
+      // submitted: درخواست ثبت شد → پنل خرید
+      // failed: شبکه خطا داد → کاربر در پنل لیست را می‌بیند و از همان‌جا دوباره ثبت می‌کند
+      router.push(PANEL_RFQ_DEST);
+      return;
+    }
+    const redirect = takeAfterAuthRedirect('');
+    if (redirect) router.push(redirect);
   };
 
   const sendPhone = (e: React.FormEvent) => {

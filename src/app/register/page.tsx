@@ -18,6 +18,7 @@ import {
 import { useLoginSession, useProvinces, useCities, useUpdatePanelProfile } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
 import { getTokens } from '@/lib/api/client';
+import { resolveAfterAuthDest } from '@/lib/pending-rfq';
 
 /**
  * ورود/ثبت‌نام (روش سشن — بدون پیامک، تا آمدن پنل پیامک):
@@ -63,11 +64,19 @@ export default function RegisterPage() {
     }
   }, [user?.phone]);
 
-  // ورود موفق (کاربر قبلی) → بلافاصله پنل (خواسته مالک — بدون دکمه اضافه)
+  // ورود/تکمیل موفق → نیت‌های معلق اجرا می‌شوند به ترتیب:
+  // ۱) درخواست خرید صفحه اول → ثبت + پنل خرید ۲) مقصد بنر فروشگاه →
+  // /panel/products ۳) هیچ‌کدام → پنل عمومی (خواسته مالک)
   useEffect(() => {
-    if (done) {
-      router.push('/panel');
-    }
+    if (!done) return;
+    let cancelled = false;
+    void (async () => {
+      const dest = await resolveAfterAuthDest('/panel');
+      if (!cancelled) router.push(dest);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [done, router]);
 
   const handleLogin = (withPassword: boolean) => {

@@ -388,6 +388,17 @@ export function useDeleteMyBuyRequest() {
   });
 }
 
+/** ویرایش درخواست «در انتظار تایید» — با ابطال کش لیست */
+export function useUpdateMyBuyRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.updateMyBuyRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-my-buy-requests'] });
+    },
+  });
+}
+
 // ─── پروفایل + کیف پول کارت به کارت ───────────────────────────────────
 
 export function useUpdatePanelProfile() {

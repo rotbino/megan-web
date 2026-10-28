@@ -21,15 +21,20 @@ import type { ChatMessage } from '@/lib/mock/api';
  * چت با فروشنده روی آگهی (B8 — واقعی): مکالمه خریدار ↔ فروشنده.
  * شروع با startThread (لاگین لازم — مودال ورود)، پیام‌ها از REST،
  * دریافت لحظه‌ای پیام تازه از WebSocket (socket.io).
+ *
+ * bare=true: بدون قاب section — برای استفاده داخل Dialog (دکمه «چت با فروشنده»
+ * کنار شماره تماس در کارت فروشنده، مثل باسکول).
  */
 export function ChatWidget({
   productId,
   sellerName,
   productName,
+  bare = false,
 }: {
   productId: number;
   sellerName: string;
   productName: string;
+  bare?: boolean;
 }) {
   const { user } = useAuth();
   const [loginOpen, setLoginOpen] = useState(false);
@@ -67,12 +72,8 @@ export function ChatWidget({
 
   // ── هنوز وارد نشده ──
   if (!user || !getTokens()?.accessToken) {
-    return (
-      <section id="chat" aria-labelledby="chat-title" className="scroll-mt-24 rounded-md border bg-card">
-        <div className="flex items-center gap-2 border-b p-4">
-          <MessageSquareText size={16} className="text-primary" />
-          <h2 id="chat-title" className="text-sm font-extrabold">چت با {sellerName}</h2>
-        </div>
+    const loggedOut = (
+      <>
         <div className="p-6 text-center">
           <p className="text-sm leading-6 text-muted-foreground">
             برای گفتگو با فروشنده درباره «{productName}» وارد حساب خود شوید.
@@ -82,17 +83,22 @@ export function ChatWidget({
           </Button>
         </div>
         {loginOpen && <LazyAuthModal open={loginOpen} onClose={() => setLoginOpen(false)} onLoggedIn={() => setLoginOpen(false)} />}
+      </>
+    );
+    if (bare) return loggedOut;
+    return (
+      <section id="chat" aria-labelledby="chat-title" className="scroll-mt-24 rounded-md border bg-card">
+        <div className="flex items-center gap-2 border-b p-4">
+          <MessageSquareText size={16} className="text-primary" />
+          <h2 id="chat-title" className="text-sm font-extrabold">چت با {sellerName}</h2>
+        </div>
+        {loggedOut}
       </section>
     );
   }
 
-  return (
-    <section id="chat" aria-labelledby="chat-title" className="scroll-mt-24 rounded-md border bg-card">
-      <div className="flex items-center gap-2 border-b p-4">
-        <MessageSquareText size={16} className="text-primary" />
-        <h2 id="chat-title" className="text-sm font-extrabold">چت با {sellerName}</h2>
-      </div>
-
+  const chatBody = (
+    <>
       {start.isPending || (start.data === undefined && !start.isError) ? (
         <div className="space-y-3 p-4">
           {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-md" />)}
@@ -133,6 +139,18 @@ export function ChatWidget({
           </form>
         </>
       )}
+    </>
+  );
+
+  if (bare) return chatBody;
+
+  return (
+    <section id="chat" aria-labelledby="chat-title" className="scroll-mt-24 rounded-md border bg-card">
+      <div className="flex items-center gap-2 border-b p-4">
+        <MessageSquareText size={16} className="text-primary" />
+        <h2 id="chat-title" className="text-sm font-extrabold">چت با {sellerName}</h2>
+      </div>
+      {chatBody}
     </section>
   );
 }

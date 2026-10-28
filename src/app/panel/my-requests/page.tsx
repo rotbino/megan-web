@@ -8,9 +8,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, CheckCircle2, Clock3, FileText, Info, Trash2, XCircle } from 'lucide-react';
-import { useMyBuyRequests, useDeleteMyBuyRequest } from '@/lib/mock/hooks';
+import { AlertTriangle, CheckCircle2, Clock3, FileText, Info, Loader2, Pencil, Trash2, XCircle } from 'lucide-react';
+import { useMyBuyRequests, useDeleteMyBuyRequest, useUpdateMyBuyRequest } from '@/lib/mock/hooks';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { UnitInput } from '@/components/shared/unit-input';
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
 import { BUY_REQUEST_REJECTION_REASONS } from '@/lib/mock/data';
 import { stockFa, toFa } from '@/lib/format';
@@ -39,9 +41,35 @@ const STATUS_LABEL: Record<BuyRequestStatus, string> = {
 function RequestRow({ req }: { req: MyBuyRequest }) {
   const title = req.productType ? `${req.subcategoryName} ${req.productType}` : req.subcategoryName;
   const del = useDeleteMyBuyRequest();
+  const upd = useUpdateMyBuyRequest();
   const [confirmDel, setConfirmDel] = useState(false);
+  // ویرایش — فقط «در انتظار تایید» (خواسته مالک: بعد از ثبت از صفحه اول، در پنل قابل ویرایش)
+  const [editing, setEditing] = useState(false);
+  const [eType, setEType] = useState(req.productType);
+  const [eAmount, setEAmount] = useState(String(req.requirementAmount));
+  const [eGoal, setEGoal] = useState<'price_and_buy' | 'price_only'>(req.goal ?? 'price_and_buy');
+  const [eErr, setEErr] = useState('');
+
+  const saveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setEErr('');
+    const amount = Number(eAmount.replace(/[^\d]/g, ''));
+    if (!amount || amount < 1) {
+      setEErr('میزان نیازمندی را وارد کنید.');
+      return;
+    }
+    upd.mutate(
+      { id: req.id, productType: eType.trim(), requirementAmount: amount, goal: eGoal },
+      {
+        onSuccess: () => setEditing(false),
+        onError: (err) => setEErr(err instanceof Error ? err.message : 'ذخیره ناموفق بود — دوباره تلاش کنید.'),
+      },
+    );
+  };
+
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3.5 sm:p-4">
+    <div className="rounded-lg border bg-card p-3.5 sm:p-4">
+    <div className="flex flex-wrap items-center gap-3">
       <span className="grid size-11 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground">
         <FileText size={20} />
       </span>
@@ -66,6 +94,23 @@ function RequestRow({ req }: { req: MyBuyRequest }) {
         <span className="shrink-0 text-[11px] text-muted-foreground">
           <RelativeTime date={req.createdAt} />
         </span>
+        {req.status === 'pending' && !editing && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0 rounded-md text-xs"
+            onClick={() => {
+              setEType(req.productType);
+              setEAmount(String(req.requirementAmount));
+              setEGoal(req.goal ?? 'price_and_buy');
+              setEErr('');
+              setEditing(true);
+              setConfirmDel(false);
+            }}
+          >
+            <Pencil size={14} /> ویرایش
+          </Button>
+        )}
         {confirmDel ? (
           <span className="flex shrink-0 items-center gap-1">
             <Button
@@ -92,9 +137,71 @@ function RequestRow({ req }: { req: MyBuyRequest }) {
         )}
       </div>
 
+      {/* فرم ویرایش — فقط در انتظار تایید */}
+      {editing && req.status === 'pending' && (
+        <form onSubmit={saveEdit} className="mt-3 w-full space-y-3 rounded-md border bg-secondary/30 p-3.5">
+          <p className="text-xs font-extrabold text-muted-foreground">
+            ویرایش درخواست «{req.subcategoryName}»
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">نوع کالا (اختیاری)</p>
+              <Input
+                value={eType}
+                onChange={(ev) => setEType(ev.target.value)}
+                placeholder="مثلاً اکبری"
+                className="rounded-md"
+                maxLength={100}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">میزان نیازمندی ({req.unit})</p>
+              <UnitInput
+                kind="weight"
+                unit={req.unit}
+                value={eAmount}
+                onValueChange={setEAmount}
+                placeholder="مثلاً ۵۰۰"
+                ariaLabel="میزان نیازمندی"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground">هدف درخواست</p>
+            <div className="flex gap-2">
+              {(['price_and_buy', 'price_only'] as const).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setEGoal(g)}
+                  className={cn(
+                    'rounded-md border px-3 py-2 text-xs font-bold transition-colors',
+                    eGoal === g
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'bg-card text-muted-foreground hover:border-primary/40',
+                  )}
+                >
+                  {g === 'price_and_buy' ? 'اطلاع از قیمت و خرید' : 'فقط اطلاع از قیمت'}
+                </button>
+              ))}
+            </div>
+          </div>
+          {eErr && <p className="text-xs text-destructive">{eErr}</p>}
+          <div className="flex items-center gap-2">
+            <Button type="submit" size="sm" className="rounded-md" disabled={upd.isPending}>
+              {upd.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
+              {upd.isPending ? 'در حال ذخیره…' : 'ذخیره تغییرات'}
+            </Button>
+            <Button type="button" size="sm" variant="outline" className="rounded-md" onClick={() => setEditing(false)}>
+              انصراف
+            </Button>
+          </div>
+        </form>
+      )}
+
       {/* دلایل رد شدن — فقط رد شده */}
       {req.status === 'rejected' && req.rejectionReasons && req.rejectionReasons.length > 0 && (
-        <div className="w-full rounded-md border border-red-100 bg-red-50/60 p-3">
+        <div className="mt-3 w-full rounded-md border border-red-100 bg-red-50/60 p-3">
           <p className="flex items-center gap-1.5 text-xs font-bold text-red-600">
             <AlertTriangle size={14} className="shrink-0" />
             دلایل رد شدن:
@@ -107,12 +214,22 @@ function RequestRow({ req }: { req: MyBuyRequest }) {
         </div>
       )}
     </div>
+    </div>
   );
 }
 
 export default function MyRequestsPage() {
   const { data, isLoading } = useMyBuyRequests();
-  const [tab, setTab] = useState<BuyRequestStatus>('confirmed');
+  // تب اولیه از URL (?tab=pending) — ریدایرکت‌های «درخواست ثبت شد» (RFQ
+  // صفحه اول مهمان/واردشده) مستقیم روی تب درست باز می‌شوند
+  const [tab, setTab] = useState<BuyRequestStatus>(() => {
+    try {
+      const t = new URLSearchParams(window.location.search).get('tab');
+      return t === 'pending' || t === 'rejected' ? t : 'confirmed';
+    } catch {
+      return 'confirmed';
+    }
+  });
 
   if (isLoading || !data) {
     return <div className="h-64 animate-pulse rounded-lg border bg-card" />;

@@ -16,10 +16,10 @@ export function LatestBuyRequests() {
   const items = (data ?? []).slice(0, 12);
 
   return (
-      <section
-          aria-labelledby="latest-buyads"
-          className="mx-auto max-w-7xl px-4 py-6 lg:px-6 sm:border sm:border-gray-300 sm:rounded-lg sm:mt-6"
-      >
+    <section
+      aria-labelledby="latest-buyads"
+      className="mx-auto max-w-7xl px-4 py-6 lg:px-6 nav-desktop:mt-6 nav-desktop:rounded-lg nav-desktop:border nav-desktop:border-border/70 nav-desktop:bg-card nav-desktop:shadow-sm"
+    >
       <div className="mb-3 flex h-10 items-center justify-between nav-desktop:mb-4">
         <h2 id="latest-buyads" className="text-base font-medium leading-7 nav-desktop:text-xl">جدیدترین درخواست های خرید</h2>
         <Link

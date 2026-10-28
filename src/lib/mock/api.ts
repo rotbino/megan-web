@@ -1016,6 +1016,22 @@ export async function deleteMyBuyRequest(id: number): Promise<{ ok: true }> {
   return { ok: true };
 }
 
+/** ویرایش درخواست «در انتظار تایید» خودم — نوع/میزان/هدف */
+export async function updateMyBuyRequest(input: {
+  id: number;
+  productType: string;
+  requirementAmount: number;
+  goal: 'price_and_buy' | 'price_only';
+}): Promise<{ ok: true }> {
+  await apiFetch('/buy-requests/updateMyBuyRequest', {
+    id: input.id,
+    name: input.productType || undefined,
+    requirementAmount: input.requirementAmount,
+    goal: input.goal,
+  });
+  return { ok: true };
+}
+
 /** فروشندگان پیشنهادی — واقعی از بک‌اند (گروه دسته‌ای بر اساس درخواست‌های من) */
 export async function getSuggestedSellerGroups(): Promise<SuggestedSellerGroup[]> {
   return apiFetch<SuggestedSellerGroup[]>('/buy-requests/getSuggestedSellers', {});
