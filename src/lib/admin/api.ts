@@ -276,13 +276,14 @@ export interface AdminUserListFilters {
   perPage?: number;
 }
 
-/** تراکنش کیف پول در جزئیات کاربر */
+/** تراکنش کیف پول در جزئیات کاربر — فقط اقلام قطعی‌شده (در انتظار/ردشده در صف شارژها دیده می‌شوند) */
 export interface AdminWalletTx {
   id: string;
   title: string;
   amount: number;
   incoming: boolean;
-  pendingAdmin: boolean;
+  /** card = شارژ کارت‌به‌کارت تأییدشده؛ ladder = نردبان؛ adjust = اصلاح ادمین */
+  type: 'card' | 'ladder' | 'adjust';
   at: string;
 }
 

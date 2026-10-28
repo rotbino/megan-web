@@ -1044,7 +1044,7 @@ import {
   AIMCH_CARD_OWNER,
   CHARGE_PACKAGES,
 } from './data';
-import type { ChargePackage, WalletTransaction } from '@/lib/types';
+import type { ChargePackage, MyChargeOrder, WalletTransaction } from '@/lib/types';
 
 /** ارسال فیش شارژ کارت‌به‌کارت — واقعی: multipart (packageKey + receipt) */
 export async function submitChargeRequest(input: {
@@ -1085,7 +1085,7 @@ function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([arr], { type: mime });
 }
 
-/** تاریخچه تراکنش‌ها — واقعی: شارژها + نردبان‌ها + اصلاح‌های ادمین */
+/** تراکنش‌های قطعی‌شده — فقط شارژ کارت‌به‌کارت «تأییدشده» + نردبان + اصلاح ادمین */
 export async function getWalletTransactions(): Promise<WalletTransaction[]> {
   const raw = await apiFetch<{ items: Array<Omit<WalletTransaction, 'at'> & { at: string }> }>(
     '/wallet/getWalletTransactions',
@@ -1095,6 +1095,12 @@ export async function getWalletTransactions(): Promise<WalletTransaction[]> {
     ...t,
     at: t.at,
   }));
+}
+
+/** فیش‌های کارت‌به‌کارت خودم — در انتظار/تأیید/رد + دلیل رد (تب «کارت به کارت») */
+export async function getMyChargeOrders(): Promise<MyChargeOrder[]> {
+  const raw = await apiFetch<{ items: MyChargeOrder[] }>('/wallet/getMyChargeOrders', {});
+  return raw.items;
 }
 
 export { AIMCH_CARD_NUMBER, AIMCH_CARD_OWNER, CHARGE_PACKAGES };

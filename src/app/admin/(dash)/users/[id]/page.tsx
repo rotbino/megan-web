@@ -551,9 +551,18 @@ export default function AdminUserDetailPage() {
                       <p className="truncate text-[12.5px] font-medium">{t.title}</p>
                       <p className="text-[10px] text-muted-foreground">{timeAgoFa(t.at)}</p>
                     </div>
-                    {t.pendingAdmin ? (
-                      <span className="shrink-0 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-600">در انتظار</span>
-                    ) : null}
+                    <span
+                      className={cn(
+                        'shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold',
+                        t.type === 'card'
+                          ? 'bg-primary/10 text-primary'
+                          : t.type === 'ladder'
+                            ? 'bg-amber-500/10 text-amber-600'
+                            : 'bg-secondary text-muted-foreground',
+                      )}
+                    >
+                      {t.type === 'card' ? 'کارت به کارت' : t.type === 'ladder' ? 'نردبان' : 'اصلاح'}
+                    </span>
                     <span className={cn('shrink-0 text-[12.5px] font-extrabold', t.incoming ? 'text-emerald-600' : 'text-destructive')}>
                       {t.incoming ? '+' : '−'}{priceFa(t.amount)}
                     </span>

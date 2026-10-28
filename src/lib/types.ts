@@ -296,13 +296,27 @@ export interface ChargePackage {
   charge: number; // شارژ اعمالی نهایی = amount × (۱ + درصد)
 }
 
-/** تراکنش کیف پول */
+/** تراکنش کیف پول — فقط اقلام قطعی‌شده (در انتظار/ردشده اینجا نیستند؛ تب کارت‌به‌کارت‌اند) */
 export interface WalletTransaction {
   id: string;
   title: string;
   amount: number;
   incoming: boolean; // واریز / کسر
   at: string;
-  /** کارت به کارت: تا تایید ادمین «در انتظار تایید» است */
-  pendingAdmin?: boolean;
+  /** نوع تراکنش: card = شارژ کارت‌به‌کارت تأییدشده؛ ladder = نردبان؛ adjust = اصلاح ادمین (آینده: online) */
+  type: 'card' | 'ladder' | 'adjust';
+}
+
+/** فیش شارژ کارت‌به‌کارت کاربر — تب «کارت به کارت» کیف پول */
+export interface MyChargeOrder {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  packageKey: string;
+  amount: number; // مبلغ واریزی (تومان)
+  bonusPercent: number; // ۰/۱۰/۲۰ درصد شارژ اضافه
+  charge: number; // شارژ اعمالی نهایی پس از تأیید
+  rejectionReason?: string | null; // فقط وقتی رد شده — کاربر باید دلیل و راه‌حل را ببیند
+  reviewedAt?: string | null;
+  createdAt: string;
+  receipt: { url: string; thumbUrl?: string } | null;
 }

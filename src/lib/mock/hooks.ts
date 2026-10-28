@@ -415,12 +415,18 @@ export function useWalletTransactions() {
   return useQuery({ queryKey: ['panel-wallet-transactions'], queryFn: api.getWalletTransactions, staleTime: 30_000 });
 }
 
+/** فیش‌های کارت‌به‌کارت خودم — تب «کارت به کارت» کیف پول */
+export function useMyChargeOrders() {
+  return useQuery({ queryKey: ['panel-wallet-charges'], queryFn: api.getMyChargeOrders, staleTime: 15_000 });
+}
+
 export function useSubmitChargeRequest() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: api.submitChargeRequest,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['panel-wallet-transactions'] });
+      // فیش جدید → صف کارت‌به‌کارت فوراً؛ تراکنش‌ها فقط بعد از تأیید ادمین عوض می‌شوند
+      queryClient.invalidateQueries({ queryKey: ['panel-wallet-charges'] });
       queryClient.invalidateQueries({ queryKey: ['panel-profile'] });
     },
   });

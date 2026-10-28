@@ -3,25 +3,47 @@
 /**
  * کیف پول — پرداخت کارت به کارت (جایگزین درگاه پرداخت، خواسته کاربر):
  * ۱) انتخاب یکی از ۳ پکیج: ۱۰۰ هزار / ۲۰۰ هزار (۱۰٪ شارژ اضافه) / ۴۰۰ هزار (۲۰٪ شارژ اضافه)
- * ۲) واریز مبلغ به کارت ایمچ + بارگذاری تصویر فیش
+ * ۲) واریز مبلغ به کارت + بارگذاری تصویر فیش
  * ۳) ارسال فیش برای ادمین → پس از تایید در پنل ادمین، شارژ اعمال می‌شود
- * + تاریخچه تراکنش‌ها (کارت به کارت‌ها تا تایید «در انتظار تایید» هستند).
+ *
+ * ساختار مرتب (خواسته مالک TEST-D6):
+ *  • تب «تراکنش‌ها» = فقط اقلام قطعی‌شده (شارژ کارت‌به‌کارت تاییدشده + نردبان + اصلاح ادمین)
+ *  • تب «کارت به کارت» = فیش‌های خودم: در انتظار / تاییدشده / ردشده + دلیل رد + راهنمای اقدام
+ *  • فیش ردشده هرگز به تراکنش‌ها نمی‌رود؛ کاربر دلیل و کار بعدی را اینجا می‌بیند.
  */
 
 import { useRef, useState } from 'react';
-import { Coins, Copy, CreditCard, Hourglass, ImagePlus, ReceiptText, TrendingDown, TrendingUp } from 'lucide-react';
-import { usePanelProfile, useWalletTransactions, useSubmitChargeRequest } from '@/lib/mock/hooks';
+import {
+  CheckCircle2,
+  Coins,
+  Copy,
+  CreditCard,
+  Hourglass,
+  ImagePlus,
+  ReceiptText,
+  TrendingDown,
+  TrendingUp,
+  XCircle,
+} from 'lucide-react';
+import {
+  useMyChargeOrders,
+  usePanelProfile,
+  useSubmitChargeRequest,
+  useWalletTransactions,
+} from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PanelCard } from '@/components/panel/panel-parts';
 import { AIMCH_CARD_NUMBER, AIMCH_CARD_OWNER, CHARGE_PACKAGES, MIN_CHARGE } from '@/lib/mock/data';
 import { dateFa, priceFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { ChargePackage } from '@/lib/types';
+import type { ChargePackage, MyChargeOrder, WalletTransaction } from '@/lib/types';
 
 export default function WalletPage() {
   const { data: profile } = usePanelProfile();
   const { data: transactions } = useWalletTransactions();
+  const { data: chargeOrders } = useMyChargeOrders();
   const submitCharge = useSubmitChargeRequest();
   const { toast } = useToast();
 
@@ -72,6 +94,8 @@ export default function WalletPage() {
     }
   };
 
+  const pendingCount = chargeOrders?.filter((c) => c.status === 'pending').length ?? 0;
+
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       {/* موجودی */}
@@ -82,9 +106,7 @@ export default function WalletPage() {
           </span>
           <div>
             <p className="text-xs text-muted-foreground">موجودی کیف پول</p>
-            <p className="mt-0.5 text-lg font-extrabold">
-              {priceFa(balance)}
-            </p>
+            <p className="mt-0.5 text-lg font-extrabold">{priceFa(balance)}</p>
           </div>
         </div>
         <p className="text-[11px] leading-5 text-muted-foreground">
@@ -144,8 +166,8 @@ export default function WalletPage() {
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-center">
             <p className="text-sm font-extrabold text-emerald-700">فیش شما با موفقیت ارسال شد.</p>
             <p className="mt-1.5 text-xs leading-6 text-emerald-700/90">
-              پس از بررسی و تایید توسط ادمین ایمچ، {priceFa(pkg.charge)} به کیف پول شما اضافه می‌شود.
-              وضعیت تراکنش تا آن زمان «در انتظار تایید» است.
+              وضعیت فیش را در تب <span className="font-bold">«کارت به کارت»</span> در پایین همین صفحه دنبال کنید؛
+              پس از بررسی و تایید ادمین، {priceFa(pkg.charge)} به کیف پول اضافه شده و در تراکنش‌ها ثبت می‌شود.
             </p>
             <Button variant="outline" size="sm" className="mt-3 rounded-md" onClick={() => setSent(false)}>
               شارژ مجدد
@@ -160,7 +182,7 @@ export default function WalletPage() {
                 <li className="flex items-start gap-2">
                   <StepNo n={1} />
                   <span>
-                    مبلغ <span className="font-bold text-foreground">{priceFa(pkg.amount)}</span> را به کارت ایمچ واریز کنید:
+                    مبلغ <span className="font-bold text-foreground">{priceFa(pkg.amount)}</span> را به کارت زیر واریز کنید:
                   </span>
                 </li>
               </ol>
@@ -238,45 +260,167 @@ export default function WalletPage() {
         )}
       </PanelCard>
 
-      {/* تاریخچه تراکنش‌ها */}
+      {/* تاریخچه — دو تب: تراکنش‌های قطعی / فیش‌های کارت به کارت */}
       <PanelCard>
-        <h2 className="mb-3 text-sm font-extrabold">تاریخچه تراکنش‌ها</h2>
-        {!transactions || transactions.length === 0 ? (
-          <p className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
-            هیچ تراکنشی انجام نداده‌اید.
-          </p>
-        ) : (
-          <ul className="divide-y divide-border/70">
-            {transactions.map((t) => (
-              <li key={t.id} className="flex items-center gap-3 py-3">
-                <span
-                  className={`grid size-9 shrink-0 place-items-center rounded-full ${
-                    t.pendingAdmin ? 'bg-amber-50 text-amber-600' : t.incoming ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'
-                  }`}
-                >
-                  {t.pendingAdmin ? <Hourglass size={16} /> : t.incoming ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+        <Tabs defaultValue="transactions">
+          <TabsList className="mb-3 w-full">
+            <TabsTrigger value="transactions" className="gap-1.5">
+              <ReceiptText size={14} /> تراکنش‌ها
+            </TabsTrigger>
+            <TabsTrigger value="charges" className="gap-1.5">
+              <CreditCard size={14} /> کارت به کارت
+              {pendingCount > 0 && (
+                <span className="ms-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-700">
+                  {toFa(pendingCount)}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-bold">{t.title}</p>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">
-                    {dateFa(t.at)}
-                    {t.pendingAdmin && ' — در انتظار تایید ادمین'}
-                  </p>
-                </div>
-                <span
-                  className={cn(
-                    'shrink-0 text-xs font-extrabold',
-                    t.pendingAdmin ? 'text-amber-600' : t.incoming ? 'text-emerald-600' : 'text-red-500',
-                  )}
-                >
-                  {t.incoming ? '+' : '−'} {priceFa(t.amount)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ── تب تراکنش‌ها: فقط اقلام قطعی‌شده ── */}
+          <TabsContent value="transactions">
+            {!transactions || transactions.length === 0 ? (
+              <p className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
+                هنوز تراکنشی ثبت نشده است — پس از تایید فیش کارت‌به‌کارت یا خرید نردبان، اینجا دیده می‌شود.
+              </p>
+            ) : (
+              <ul className="divide-y divide-border/70">
+                {transactions.map((t) => (
+                  <TransactionRow key={t.id} t={t} />
+                ))}
+              </ul>
+            )}
+          </TabsContent>
+
+          {/* ── تب کارت به کارت: فیش‌های خودم + وضعیت + دلیل رد ── */}
+          <TabsContent value="charges">
+            {!chargeOrders || chargeOrders.length === 0 ? (
+              <p className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
+                فیشی برای بررسی نفرستاده‌اید — با فرم بالا شارژ کارت‌به‌کارت را شروع کنید.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {chargeOrders.map((c) => (
+                  <ChargeOrderRow key={c.id} c={c} />
+                ))}
+              </ul>
+            )}
+          </TabsContent>
+        </Tabs>
       </PanelCard>
     </div>
+  );
+}
+
+/** ردیف تراکنش قطعی‌شده — نوع + جهت + مبلغ */
+function TransactionRow({ t }: { t: WalletTransaction }) {
+  const icon = t.type === 'card' ? CreditCard : t.incoming ? TrendingUp : TrendingDown;
+  const Icon = icon;
+  return (
+    <li className="flex items-center gap-3 py-3">
+      <span
+        className={`grid size-9 shrink-0 place-items-center rounded-full ${
+          t.incoming ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'
+        }`}
+      >
+        <Icon size={16} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-bold">{t.title}</p>
+        <p className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          {dateFa(t.at)}
+          <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
+            {t.type === 'card' ? 'کارت به کارت' : t.type === 'ladder' ? 'نردبان' : 'اصلاح ادمین'}
+          </span>
+        </p>
+      </div>
+      <span className={cn('shrink-0 text-xs font-extrabold', t.incoming ? 'text-emerald-600' : 'text-red-500')}>
+        {t.incoming ? '+' : '−'} {priceFa(t.amount)}
+      </span>
+    </li>
+  );
+}
+
+/** ردیف فیش کارت‌به‌کارت — وضعیت (در انتظار/تایید/رد) + دلیل رد + راهنمای اقدام */
+function ChargeOrderRow({ c }: { c: MyChargeOrder }) {
+  return (
+    <li
+      className={cn(
+        'rounded-lg border p-3',
+        c.status === 'pending' ? 'border-amber-200 bg-amber-50/40' : c.status === 'rejected' ? 'border-red-200 bg-red-50/40' : 'border-emerald-200 bg-emerald-50/40',
+      )}
+    >
+      <div className="flex items-center gap-3">
+        {/* بندانگشتی فیش — کلیک = تصویر کامل */}
+        {c.receipt ? (
+          <a href={c.receipt.url} target="_blank" rel="noreferrer" className="shrink-0" aria-label="مشاهده فیش">
+            <img
+              src={c.receipt.thumbUrl || c.receipt.url}
+              alt="فیش واریزی"
+              className="size-14 rounded-md border object-cover transition-opacity hover:opacity-80"
+            />
+          </a>
+        ) : (
+          <span className="grid size-14 shrink-0 place-items-center rounded-md border bg-card text-muted-foreground">
+            <ReceiptText size={18} />
+          </span>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold">
+            فیش شارژ {priceFa(c.amount)}
+            {c.bonusPercent > 0 && <span className="text-[10px] text-muted-foreground"> ({toFa(c.bonusPercent)}٪ شارژ اضافه)</span>}
+          </p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground">
+            ارسال: {dateFa(c.createdAt)}
+            {c.status !== 'pending' && c.reviewedAt && <span> — بررسی: {dateFa(c.reviewedAt)}</span>}
+          </p>
+        </div>
+
+        <StatusChip status={c.status} />
+      </div>
+
+      {/* شرح وضعیت + مبلغ تاییدی */}
+      {c.status === 'pending' && (
+        <p className="mt-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-[10px] leading-5 text-amber-800">
+          فیش شما در صف بررسی است؛ پس از تایید ادمین، {priceFa(c.charge)} به کیف پول اضافه شده و در تب «تراکنش‌ها» ثبت می‌شود.
+        </p>
+      )}
+      {c.status === 'approved' && (
+        <p className="mt-2 rounded-md bg-emerald-50 px-2.5 py-1.5 text-[10px] leading-5 text-emerald-800">
+          تایید شد — {priceFa(c.charge)} به کیف پول شما اضافه شد و در تراکنش‌ها ثبت شد.
+        </p>
+      )}
+
+      {/* دلیل رد + راهنمای «حالا چه کنم؟» */}
+      {c.status === 'rejected' && (
+        <div className="mt-2 space-y-1.5">
+          <p className="rounded-md bg-red-50 px-2.5 py-1.5 text-[10px] leading-5 text-red-800">
+            <span className="font-extrabold">دلیل رد: </span>
+            {c.rejectionReason || 'با پشتیبانی هماهنگ کنید.'}
+          </p>
+          <p className="rounded-md border border-dashed px-2.5 py-1.5 text-[10px] leading-5 text-muted-foreground">
+            <span className="font-extrabold text-foreground">حالا چه کار کنید؟ </span>
+            صحت شماره کارت، مبلغ واریزی و تصویر فیش را چک کنید و با فرم بالا فیش درست را دوباره بفرستید.
+            اگر مطمئنید مبلغ واریز شده است، با پشتیبانی تماس بگیرید تا پیگیری شود.
+          </p>
+        </div>
+      )}
+    </li>
+  );
+}
+
+function StatusChip({ status }: { status: MyChargeOrder['status'] }) {
+  const map = {
+    pending: { icon: Hourglass, text: 'در انتظار تایید', cls: 'bg-amber-100 text-amber-700' },
+    approved: { icon: CheckCircle2, text: 'تایید شد', cls: 'bg-emerald-100 text-emerald-700' },
+    rejected: { icon: XCircle, text: 'رد شد', cls: 'bg-red-100 text-red-700' },
+  } as const;
+  const { icon: Icon, text, cls } = map[status];
+  return (
+    <span className={cn('flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10px] font-extrabold', cls)}>
+      <Icon size={12} /> {text}
+    </span>
   );
 }
 

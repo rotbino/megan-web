@@ -68,6 +68,6 @@ export const MIN_CHARGE = 100_000;
 /** نردبان هر محصول برای یک ماه — از کیف پول کسر می‌شود */
 export const LADDER_MONTHLY_PRICE = 100_000;
 
-/** شماره کارت ایمچ برای واریز کارت به کارت */
+/** شماره کارت برای واریز کارت به کارت — به نام مالک سایت (سعید یوسفی) */
 export const AIMCH_CARD_NUMBER = '6037-9975-1234-5678';
-export const AIMCH_CARD_OWNER = 'شرکت بازارگاه ایمچ';
+export const AIMCH_CARD_OWNER = 'سعید یوسفی';
