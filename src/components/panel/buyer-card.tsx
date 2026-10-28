@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import { BadgeCheck, CalendarDays, Loader2, MapPin, MessageSquare, Phone, Star } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useBuyRequestContact } from '@/lib/mock/hooks';
 import { toFa } from '@/lib/format';
@@ -108,8 +109,10 @@ export function BuyerCard({
           {contact.isPending ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />}
           {phone ? toFa(phone) : 'تماس با خریدار'}
         </Button>
-        <Button type="button" size="sm" variant="outline" className="rounded-md text-xs">
-          <MessageSquare size={14} /> چت با خریدار
+        <Button type="button" size="sm" variant="outline" className="rounded-md text-xs" asChild>
+          <Link href="/panel/messages">
+            <MessageSquare size={14} /> چت با خریدار
+          </Link>
         </Button>
       </div>
 

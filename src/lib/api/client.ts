@@ -229,6 +229,12 @@ export async function uploadImage(
     method: 'POST',
     headers: { Authorization: `Bearer ${tokens.accessToken}` },
     body: form,
+    // سقف انتظار آپلود (درس تست ۲۸-۱۰-۲۰۲۶): بدون سقف، شبکه/پروکسی لرزان
+    // می‌تواند فرم را دقیقه‌ها معلق نگه دارد. بک‌اند خودش retry دارد؛ این‌جا
+    // فقط تضمین می‌کنیم دیر یا زود جواب می‌آید → هشدار کهربایی + «تلاش دوباره».
+    ...(typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+      ? { signal: AbortSignal.timeout(100_000) }
+      : {}),
   });
 
   // 401 → رفرش تک‌پرواز + یک تکرار (فرم طولانی ممکن است توکن را کهنه کند)

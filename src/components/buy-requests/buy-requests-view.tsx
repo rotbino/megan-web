@@ -203,7 +203,7 @@ function RequestCard({ request }: { request: BuyRequest }) {
           {phone ? <span dir="ltr" className="font-mono">{toFa(phone)}</span> : 'تماس با خریدار'}
         </Button>
         <Button size="sm" variant="outline" className="rounded-md" asChild>
-          <Link href="/register">
+          <Link href={getTokens()?.accessToken ? '/panel/messages' : '/register'}>
             <MessageSquareText size={15} />
             چت با خریدار
           </Link>

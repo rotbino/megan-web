@@ -166,6 +166,20 @@ function MyProductsPageInner() {
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     {p.categoryName} ← {p.subCategoryName} | {p.provinceName}، {p.cityName}
                   </p>
+                  {/* دلایل اختصاصی رد همین آگهی — از بازبینی ادمین */}
+                  {p.status === 'rejected' && p.rejectionReasons && p.rejectionReasons.length > 0 && (
+                    <div className="mt-2 rounded-md border border-red-200 bg-red-50/60 px-3 py-2">
+                      <p className="text-[11px] font-extrabold text-red-600">دلیل رد این آگهی:</p>
+                      <ul className="mt-1 space-y-1">
+                        {p.rejectionReasons.map((r) => (
+                          <li key={r} className="flex items-start gap-1.5 text-[11px] leading-5 text-red-700/90">
+                            <span className="mt-1.5 size-1 shrink-0 rounded-full bg-red-400" aria-hidden />
+                            {r}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
                     <span>
                       موجودی: <b>{stockFa(p.stock, p.unit)}</b>

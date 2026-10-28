@@ -253,7 +253,10 @@ export default function RegisterProductPage() {
   const descLen = draft.description.trim().length;
 
   // ─── ظرفیت تکمیل — مودال «امکان ثبت محصول جدید را ندارید!» ───
-  const capacityFull = Boolean(mine && mine.items.length >= mine.capacity);
+  // آیتم‌های حذف‌شده ظرفیت نمی‌گیرند (تب حذف‌شده حالا در items هست — باگ ۲۸-۱۰-۲۰۲۶)
+  const capacityFull = Boolean(
+    mine && mine.items.filter((p) => p.status !== 'deleted').length >= mine.capacity,
+  );
 
   if (capacityFull && !done) {
     return (

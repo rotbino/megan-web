@@ -8,12 +8,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, CheckCircle2, Clock3, FileText, Info, XCircle } from 'lucide-react';
-import { useMyBuyRequests } from '@/lib/mock/hooks';
+import { AlertTriangle, CheckCircle2, Clock3, FileText, Info, Trash2, XCircle } from 'lucide-react';
+import { useMyBuyRequests, useDeleteMyBuyRequest } from '@/lib/mock/hooks';
 import { Button } from '@/components/ui/button';
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
 import { BUY_REQUEST_REJECTION_REASONS } from '@/lib/mock/data';
 import { stockFa, toFa } from '@/lib/format';
+import { RelativeTime } from '@/components/shared/relative-time';
 import { cn } from '@/lib/utils';
 import type { BuyRequestStatus, MyBuyRequest } from '@/lib/types';
 
@@ -37,6 +38,8 @@ const STATUS_LABEL: Record<BuyRequestStatus, string> = {
 
 function RequestRow({ req }: { req: MyBuyRequest }) {
   const title = req.productType ? `${req.subcategoryName} ${req.productType}` : req.subcategoryName;
+  const del = useDeleteMyBuyRequest();
+  const [confirmDel, setConfirmDel] = useState(false);
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3.5 sm:p-4">
       <span className="grid size-11 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground">
@@ -60,7 +63,33 @@ function RequestRow({ req }: { req: MyBuyRequest }) {
             <Link href="/panel/suggested-sellers">فروشندگان پیشنهادی</Link>
           </Button>
         )}
-        <span className="shrink-0 text-[11px] text-muted-foreground">{toFa(req.createdAt)}</span>
+        <span className="shrink-0 text-[11px] text-muted-foreground">
+          <RelativeTime date={req.createdAt} />
+        </span>
+        {confirmDel ? (
+          <span className="flex shrink-0 items-center gap-1">
+            <Button
+              size="sm"
+              className="rounded-md bg-red-600 text-xs hover:bg-red-700"
+              disabled={del.isPending}
+              onClick={() => del.mutate(req.id)}
+            >
+              {del.isPending ? '…' : 'حذف قطعی'}
+            </Button>
+            <Button size="sm" variant="outline" className="rounded-md text-xs" onClick={() => setConfirmDel(false)}>
+              انصراف
+            </Button>
+          </span>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0 rounded-md text-xs text-red-600 hover:border-red-300 hover:bg-red-50"
+            onClick={() => setConfirmDel(true)}
+          >
+            <Trash2 size={14} /> حذف
+          </Button>
+        )}
       </div>
 
       {/* دلایل رد شدن — فقط رد شده */}
