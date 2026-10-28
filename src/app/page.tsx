@@ -23,7 +23,7 @@ export default function HomePage() {
         <CategoryCards />
         <LatestProducts />
         <LatestBuyRequests />
-        <div id="rfq" className="scroll-mt-20">
+        <div id="rfq" className="scroll-mt-20 mt-6">
           <RfqForm />
         </div>
         <RegisterBanner />
