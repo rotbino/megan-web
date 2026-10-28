@@ -26,22 +26,25 @@ interface SellerPhoneInfo {
 }
 
 /**
- * دکمه «شماره تماس» فروشنده — عین باسکول: دکمه پررنگ در کارت فروشنده
+ * دکمه «شماره تماس» فروشنده — عین باسکول: دکمه پررنگ در کارت فروشنده/پروفایل
  * که شماره تماس را آشکار می‌کند.
  *
  * مهمان (لاگین‌نشده): کلیک «نمایش شماره تماس» مودال ورود را باز می‌کند —
  * شماره/قیمت تماس از اعضا پنهان است (مدل lead-gen + ثبت گزارش تماس).
- * با productId داده شود شماره واقعی از بک‌اند می‌آید و همین آشکارسازی
- * به‌عنوان «تماس» در گزارش ادمین ثبت می‌شود (کی به کی زنگ زده).
+ * با productId (صفحه آگهی) یا userName (پروفایل) داده شود شماره واقعی از
+ * بک‌اند می‌آید و همین آشکارسازی به‌عنوان «تماس» در گزارش ادمین ثبت می‌شود.
  */
 export function PhoneReveal({
   sellerName,
   productId,
+  userName,
   fallbackPhone = '۰۹۱۲ ۰۰۰ ۰۰۰۰',
   children,
 }: {
   sellerName: string;
   productId?: number;
+  /** شناسه عمومی فروشنده — مسیر پروفایل */
+  userName?: string;
   /** وقتی بک‌اند در دسترس نیست/productId نیست */
   fallbackPhone?: string;
   children?: React.ReactNode;
@@ -56,10 +59,13 @@ export function PhoneReveal({
     // مهمان: مودال ورود باز می‌شود؛ بعد از ورود دوباره کلیک کند
     if (!requireAuth()) return;
     setShown(true);
-    if (phone || !productId || loading) return;
+    if (phone || loading || (!productId && !userName)) return;
     setLoading(true);
     try {
-      const info = await apiFetch<SellerPhoneInfo>('/products/getSellerPhone', { id: productId });
+      const info = await apiFetch<SellerPhoneInfo>(
+        '/products/getSellerPhone',
+        productId != null ? { id: productId } : { userName },
+      );
       setPhone(info.phone);
     } catch {
       setFailed(true); // شماره جایگزین نشان بده — تجربه خریدار نباید خراب شود

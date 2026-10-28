@@ -255,6 +255,9 @@ export interface AdminUserRow {
   request_count: number;
   verification: 'pending' | 'verified' | 'none';
   last_login_at: string | null;
+  /** آنلاین — نبض تازه‌تر از پنجره ۹۰ ثانیه */
+  online: boolean;
+  last_seen_at: string | null;
   created_at: string;
 }
 
@@ -263,6 +266,8 @@ export interface AdminUserList {
   page: number;
   perPage: number;
   pageCount: number;
+  /** شمار کاربران آنلاین (پنجره ۹۰s) — مستقل از فیلتر جاری */
+  onlineCount: number;
   items: AdminUserRow[];
 }
 
@@ -272,6 +277,8 @@ export interface AdminUserListFilters {
   active?: boolean;
   verified?: boolean;
   seller?: boolean;
+  /** فقط آنلاین‌ها / فقط آفلاین‌ها */
+  online?: boolean;
   page?: number;
   perPage?: number;
 }
@@ -319,6 +326,8 @@ export interface AdminUserDetail {
     city: string | null;
     profile: Record<string, unknown>;
     last_login_at: string | null;
+    online: boolean;
+    last_seen_at: string | null;
     created_at: string;
   };
   stats: {

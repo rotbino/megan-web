@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/toaster";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
+import { PresenceProvider } from "@/components/shared/presence-provider";
 import { BaseDataProvider } from "@/lib/base-data";
 import { getCategoryTreeSSR, getProvincesSSR } from "@/lib/mock/api";
 import { SITE_URL } from "@/lib/site";
@@ -97,6 +98,7 @@ export default async function RootLayout({
           <BaseDataProvider tree={tree ?? undefined} provinces={provinces ?? undefined}>
             <div className="flex min-h-screen flex-col">{children}</div>
             <MobileBottomNav />
+            <PresenceProvider />
             <Toaster />
           </BaseDataProvider>
         </Providers>

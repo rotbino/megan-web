@@ -54,7 +54,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ already: true, alive: true });
   }
   const out = openSync(LOG, 'a');
-  const child = spawn('node', ['dist/main.js'], {
+  // مسیر به‌صورت داینامیک ساخته می‌شود تا باندلر آن را ماژول‌رفرنس نشمارد
+  const entry = ['dist', 'main.js'].join('/');
+  const child = spawn('node', [entry], {
     cwd: BACKEND_DIR,
     detached: true,
     stdio: ['ignore', out, out],

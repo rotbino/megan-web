@@ -336,11 +336,20 @@ export async function getSeller(userName: string) {
       userName: string;
       firstName: string;
       lastName: string;
+      sex: string | null;
       activePakageType: number;
       isVerified: boolean;
       businessDesc: string | null;
       avatarUrl: string | null;
       createdAt: string;
+      online: boolean;
+      lastSeenAt: string | null;
+      provinceName: string | null;
+      cityName: string | null;
+      reviewSummary: { avg: number; count: number };
+      responseRate: number | null;
+      productCount: number;
+      totalStock: number;
     };
     products: RawProduct[];
   }>('/products/getSeller', { userName }, { auth: false });
@@ -884,8 +893,10 @@ export interface ChatMessage {
 
 export interface ChatThreadInfo {
   id: string;
-  productId: number;
-  productName: string;
+  /** آگهی زمینه — null یعنی گفتگوی مستقیم از پروفایل فروشنده */
+  productId: number | null;
+  /** نام آگهی زمینه — null برای گفتگوی مستقیم */
+  productName: string | null;
   myId: string;
   myRole: 'buyer' | 'seller';
   counterpart: { id: string; firstName: string; lastName: string; userName: string };
@@ -894,9 +905,9 @@ export interface ChatThreadInfo {
   updatedAt: string;
 }
 
-/** شروع/یافتن مکالمه روی یک آگهی */
-export async function startChatThread(productId: number): Promise<ChatThreadInfo> {
-  return apiFetch<ChatThreadInfo>('/chat/startThread', { productId });
+/** شروع/یافتن مکالمه — روی آگهی (productId) یا مستقیم با فروشنده (userName) */
+export async function startChatThread(target: { productId?: number; userName?: string }): Promise<ChatThreadInfo> {
+  return apiFetch<ChatThreadInfo>('/chat/startThread', target);
 }
 
 /** ارسال پیام — بک‌اند push لحظه‌ای WS هم می‌فرستد */
@@ -1131,3 +1142,50 @@ export async function getMyChargeOrders(): Promise<MyChargeOrder[]> {
 }
 
 export { AIMCH_CARD_NUMBER, AIMCH_CARD_OWNER, CHARGE_PACKAGES };
+
+// ─── نظرات فروشنده (عین «نظرات کاربران» باسکول) ────────────────────────────
+
+export interface SellerReviewRow {
+  id: string;
+  rating: number;
+  text: string;
+  author: { userName: string; firstName: string; lastName: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SellerReviewsPage {
+  summary: {
+    avg: number;
+    count: number;
+    distribution: Array<{ rating: number; count: number }>;
+  };
+  items: SellerReviewRow[];
+  total: number;
+  page: number;
+  perPage: number;
+  pageCount: number;
+  myReview: SellerReviewRow | null;
+}
+
+/** نظرات فروشنده + خلاصه امتیاز — عمومی (مهمان هم) */
+export async function getSellerReviews(userName: string, page = 1, perPage = 10): Promise<SellerReviewsPage> {
+  return apiFetch<SellerReviewsPage>('/reviews/getSellerReviews', { userName, page, perPage }, { auth: false });
+}
+
+/** ثبت/ویرایش نظر من درباره فروشنده (upsert) */
+export async function addSellerReview(input: { userName: string; rating: number; text: string }): Promise<SellerReviewRow> {
+  return apiFetch<SellerReviewRow>('/reviews/addSellerReview', input);
+}
+
+/** شماره تماس فروشنده — با آگهی (id) یا پروفایل (userName) */
+export async function getSellerPhone(target: { id?: number; userName?: string }): Promise<{
+  sellerId: string;
+  phone: string;
+  firstName: string;
+  lastName: string;
+  userName: string;
+  callLogged: boolean;
+}> {
+  return apiFetch('/products/getSellerPhone', target);
+}

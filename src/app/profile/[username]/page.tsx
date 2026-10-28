@@ -1,15 +1,25 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { BadgeCheck, MapPin, Phone } from 'lucide-react';
+import {
+  BadgeCheck,
+  Boxes,
+  MapPin,
+  Send,
+  ShieldAlert,
+  Store,
+  Timer,
+} from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { VerifiedBadge } from '@/components/shared/badges';
-import { ProfileTabs } from '@/components/products/profile-tabs';
+import { ProfileHero } from '@/components/products/profile-hero';
+import { ProfileScrollNav } from '@/components/products/profile-scroll-nav';
+import { SellerReviews } from '@/components/products/seller-reviews';
+import { ProductCard } from '@/components/products/product-card';
 import { ShareBox } from '@/components/shared/share-box';
-import { Button } from '@/components/ui/button';
-import { toFa } from '@/lib/format';
+import { RatingStars } from '@/components/shared/rating-stars';
 import { apiBase } from '@/lib/api/client';
 import { SITE_URL } from '@/lib/site';
+import { stockFa, toFa } from '@/lib/format';
 import type { Product } from '@/lib/types';
 
 interface Props {
@@ -28,12 +38,19 @@ interface SellerData {
     avatarUrl: string | null;
     createdAt: string;
     daysInImach?: number;
-    phone?: string;
+    online?: boolean;
+    lastSeenAt?: string | null;
+    provinceName?: string | null;
+    cityName?: string | null;
+    reviewSummary?: { avg: number; count: number } | null;
+    responseRate?: number | null;
+    productCount?: number;
+    totalStock?: number;
   };
   products: Product[];
 }
 
-/** SSR — فروشنده زنده از بک‌اند.
+/** SSR — فروشنده زنده از بک‌اند (غنی‌شده: مکان/آنلاین/نظرات/پاسخگویی).
  *  فالبک ماک حذف شد — پروفایل فقط با کاربر واقعی دیتابیس می‌آید؛ نبود = ۴۰۴. */
 async function getSeller(userName: string): Promise<SellerData | null> {
   try {
@@ -45,12 +62,10 @@ async function getSeller(userName: string): Promise<SellerData | null> {
     });
     const json = (await res.json()) as { status: boolean; data: SellerData };
     if (!json?.status || !json.data) return null;
-    // شکل هم‌نما با User فرانت برای کامپوننت‌های موجود
     const u = json.data.user;
     return {
       user: {
         ...u,
-        activePakageType: 0,
         daysInImach: Math.max(
           1,
           Math.round((Date.now() - new Date(u.createdAt || Date.now()).getTime()) / 86_400_000),
@@ -72,10 +87,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
   const seller = await getSeller(decodeURIComponent(username));
   if (!seller) return { title: 'پروفایل یافت نشد' };
-  const name = `${seller.user.firstName} ${seller.user.lastName}`;
+  const name = `${seller.user.firstName} ${seller.user.lastName}`.trim();
+  const location = [seller.user.provinceName, seller.user.cityName].filter(Boolean).join('، ');
   return {
     title: `فروشگاه ${name} | پروفایل فروشنده ایمچ`,
-    description: `${name} — ${(seller.user.businessDesc ?? '').slice(0, 120)}`,
+    description: `${name}${location ? ` — ${location}` : ''} — ${(seller.user.businessDesc ?? '').slice(0, 120)}`,
     alternates: { canonical: `/profile/${seller.user.userName}` },
   };
 }
@@ -85,43 +101,139 @@ export default async function ProfilePage({ params }: Props) {
   const seller = await getSeller(decodeURIComponent(username));
   if (!seller) notFound();
   const user = seller.user;
+  const name = `${user.firstName} ${user.lastName}`.trim() || 'فروشنده ایمچ';
+  const location = [user.provinceName, user.cityName].filter(Boolean).join('، ');
+  const products = seller.products;
+  const totalStock = user.totalStock ?? products.reduce((a, p) => a + p.stock, 0);
+  const unit = products[0]?.unit ?? 'کیلوگرم';
 
-  const sellerProducts = seller.products;
-  const name = `${user.firstName} ${user.lastName}`;
+  /** آمار فروشنده — سه جعقه مثل تب «اصلی» باسکول */
+  const stats = [
+    { icon: Boxes, label: 'آگهی فعال', value: toFa(user.productCount ?? products.length) },
+    { icon: Store, label: 'موجودی عرضه', value: stockFa(totalStock, unit) },
+    {
+      icon: BadgeCheck,
+      label: 'امتیاز اعتماد',
+      value: user.reviewSummary && user.reviewSummary.count > 0
+        ? `${toFa(user.reviewSummary.avg)} از ۵`
+        : 'بدون نظر',
+    },
+  ] as const;
 
   return (
     <>
       <Header />
       <main className="flex-1">
-        {/* کارت هویت فروشنده + جعبه اشتراک گذاری */}
-        <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
-          <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
-            <div className="flex flex-col gap-5 rounded-md border bg-card p-6 sm:flex-row sm:items-center">
-              <span className="grid size-16 shrink-0 place-items-center rounded-md bg-primary/10 text-xl font-extrabold text-primary">
-                {user.firstName[0]}
-              </span>
-              <div className="flex-1 space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-xl font-bold">{name}</h1>
-                  {user.isVerified && <VerifiedBadge />}
-                </div>
-                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <MapPin size={14} className="text-primary/70" />
-                  {toFa(user.daysInImach ?? 1)} روز در ایمچ
-                </p>
-              </div>
-              <div className="flex gap-2 sm:flex-col">
-                <Button className="rounded-md"><Phone size={16} /> شماره تماس</Button>
-              </div>
-            </div>
-            <ShareBox url={`${SITE_URL}/profile/${user.userName}`} />
-          </div>
+        {/* هویت فروشنده (کاور + آواتار + نشان‌ها + دکمه‌ها) + جعبه اشتراک‌گذاری */}
+        <div className="mx-auto max-w-7xl space-y-4 px-4 pt-6 lg:px-6">
+          <ProfileHero user={user as unknown as Parameters<typeof ProfileHero>[0]['user']} />
         </div>
 
-        <ProfileTabs
-          user={user as unknown as Parameters<typeof ProfileTabs>[0]['user']}
-          products={sellerProducts}
-        />
+        {/* ناوبری چسبان بخش‌ها — بهبود نسبت به تب باسکول (همه‌چیز در یک صفحه) */}
+        <ProfileScrollNav productCount={user.productCount ?? products.length} />
+
+        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 pb-12 lg:grid-cols-[1fr_320px] lg:px-6">
+          {/* ستون اصلی */}
+          <div className="min-w-0 space-y-8">
+            {/* درباره فروشنده */}
+            <section id="about" aria-labelledby="about-title" className="scroll-mt-24">
+              <h2 id="about-title" className="mb-3 text-base font-extrabold">درباره فروشنده</h2>
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-2.5">
+                  {stats.map(({ icon: Icon, label, value }) => (
+                    <div key={label} className="rounded-md border bg-card p-3 text-center sm:p-4">
+                      <Icon size={18} className="mx-auto text-primary" />
+                      <p className="mt-1.5 text-sm font-extrabold leading-6 sm:text-base">{value}</p>
+                      <p className="mt-0.5 text-[10.5px] text-muted-foreground">{label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-md border bg-card p-5">
+                  <h3 className="flex items-center gap-2 text-sm font-bold">
+                    <Store size={15} className="text-primary" />
+                    توضیحات کسب و کار
+                  </h3>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-7 text-muted-foreground">
+                    {user.businessDesc?.trim() || 'این فروشنده هنوز توضیحی برای کسب‌وکارش ننوشته است.'}
+                  </p>
+                  <dl className="mt-4 grid gap-2 border-t pt-4 text-xs sm:grid-cols-3">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <MapPin size={13} className="shrink-0 text-primary/70" />
+                      <dt className="shrink-0">شهر:</dt>
+                      <dd className="font-bold text-foreground">{location || '—'}</dd>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Timer size={13} className="shrink-0 text-primary/70" />
+                      <dt className="shrink-0">عضویت:</dt>
+                      <dd className="font-bold text-foreground">{toFa(user.daysInImach ?? 1)} روز در ایمچ</dd>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Send size={13} className="shrink-0 text-primary/70" />
+                      <dt className="shrink-0">احتمال پاسخگویی:</dt>
+                      <dd className="font-bold text-foreground">
+                        {user.responseRate != null ? `${toFa(user.responseRate)}٪` : '—'}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            </section>
+
+            {/* محصولات */}
+            <section id="products" aria-labelledby="products-title" className="scroll-mt-24">
+              <h2 id="products-title" className="mb-3 text-base font-extrabold">
+                محصولات ({toFa(user.productCount ?? products.length)})
+              </h2>
+              {products.length === 0 ? (
+                <p className="rounded-md border bg-card p-10 text-center text-sm text-muted-foreground">
+                  این فروشنده هنوز آگهی فعالی ثبت نکرده است.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-4 xl:grid-cols-4">
+                  {products.map((p) => <ProductCard key={p.id} product={p} />)}
+                </div>
+              )}
+            </section>
+
+            {/* نظرات کاربران */}
+            <SellerReviews userName={user.userName} sellerName={name} />
+          </div>
+
+          {/* سایدبار — کارت فروشنده + اشتراک‌گذاری + توصیه ایمچ */}
+          <aside className="space-y-4" aria-label="اطلاعات فروشنده">
+            <div className="rounded-md border bg-card p-5">
+              <h2 className="flex items-center gap-2 text-sm font-bold">
+                <Store size={15} className="text-primary" />
+                فروشنده {name}
+              </h2>
+              {user.reviewSummary && user.reviewSummary.count > 0 && (
+                <div className="mt-3 border-b pb-3">
+                  <RatingStars value={user.reviewSummary.avg} size={14} showValue count={user.reviewSummary.count} />
+                </div>
+              )}
+              <p className="mt-3 line-clamp-4 text-xs leading-6 text-muted-foreground">
+                {user.businessDesc?.trim() || 'فروشنده عمده در بازارگاه ایمچ.'}
+              </p>
+              <p className="mt-3 border-t pt-3 text-[11px] leading-5 text-muted-foreground">
+                عضویت از{' '}
+                {new Intl.DateTimeFormat('fa-IR', { dateStyle: 'long' }).format(new Date(user.createdAt))}
+              </p>
+            </div>
+
+            <ShareBox url={`${SITE_URL}/profile/${user.userName}`} />
+
+            <div className="space-y-2 rounded-md border bg-secondary/50 p-5">
+              <p className="flex items-center gap-2 text-sm font-bold">
+                <ShieldAlert size={16} />
+                توصیه ایمچ
+              </p>
+              <p className="text-[11px] leading-6 text-muted-foreground">
+                همواره به انجام معاملات حضوری است.
+              </p>
+            </div>
+          </aside>
+        </div>
       </main>
       <Footer />
     </>

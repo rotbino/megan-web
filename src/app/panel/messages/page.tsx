@@ -30,6 +30,8 @@ import {
 import type { ChatThreadInfo } from '@/lib/mock/api';
 import { toFa } from '@/lib/format';
 import { RelativeTime } from '@/components/shared/relative-time';
+import { PresenceDot } from '@/components/shared/presence-dot';
+import { findPresence, usePresenceStatus } from '@/lib/api/presence';
 import { cn } from '@/lib/utils';
 
 const SHARE_LINK = 'https://imach.ir';
@@ -78,8 +80,14 @@ export default function PanelMessagesPage() {
 
   const visible = threads.filter((t) => {
     const name = `${t.counterpart.firstName} ${t.counterpart.lastName}`.trim();
-    return !q.trim() || name.includes(q.trim()) || t.productName.includes(q.trim());
+    return !q.trim() || name.includes(q.trim()) || (t.productName ?? '').includes(q.trim());
   });
+
+  // وضعیت آنلاین همه مخاطبان — یک درخواست گروهی (تا ۵۰ نفر)
+  const counterpartNames = threads.map((t) => t.counterpart.userName).filter(Boolean);
+  const { data: presenceItems } = usePresenceStatus({ userNames: counterpartNames });
+  const presenceOf = (t: ChatThreadInfo) =>
+    findPresence(presenceItems, { id: t.counterpart.id, userName: t.counterpart.userName });
 
   const sendMsg = (text: string) => {
     const t = text.trim();
@@ -108,7 +116,9 @@ export default function PanelMessagesPage() {
     <div className="mx-auto max-w-5xl space-y-4">
       {/* وب‌پوش (B10) — اعلان پیام‌های جدید وقتی سایت باز نیست */}
       <PushEnableBanner />
-      <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+      {/* grid-cols-1 صریح: ستون ضمنی گرید auto با max-content سنجیده می‌شود و
+          برچسب nowrap حضور می‌تواند آن را از عرض صفحه بیرون بکشد */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
         {/* لیست مخاطبان */}
         <PanelCard className="order-2 lg:order-1">
           <div className="flex items-center justify-between">
@@ -176,8 +186,14 @@ export default function PanelMessagesPage() {
                       !showingSupport && active?.id === t.id ? 'bg-primary/10' : 'hover:bg-secondary/70',
                     )}
                   >
-                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-xs font-extrabold">
+                    <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-xs font-extrabold">
                       {nameOf(t).charAt(0)}
+                      <PresenceDot
+                        online={presenceOf(t)?.online}
+                        showLabel={false}
+                        size="sm"
+                        className="absolute -bottom-0.5 -start-0.5"
+                      />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-2">
@@ -304,8 +320,17 @@ export default function PanelMessagesPage() {
                   {nameOf(active).charAt(0)}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold">{nameOf(active)}</p>
-                  <p className="truncate text-[11px] text-muted-foreground">مکالمه روی: {active.productName}</p>
+                  <p className="flex min-w-0 items-center gap-2 text-sm font-bold">
+                    <span className="truncate">{nameOf(active)}</span>
+                    <PresenceDot
+                      online={presenceOf(active)?.online}
+                      lastSeenAt={presenceOf(active)?.lastSeenAt ?? undefined}
+                      className="shrink-0"
+                    />
+                  </p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {active.productName ? <>مکالمه روی: {active.productName}</> : <>گفتگوی مستقیم از پروفایل</>}
+                  </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <Button

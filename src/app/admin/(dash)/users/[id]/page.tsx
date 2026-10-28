@@ -31,6 +31,7 @@ import {
   setAdminUserRoles,
 } from '@/lib/admin/api';
 import { UserMessagesTab } from './messages-tab';
+import { PresenceDot } from '@/components/shared/presence-dot';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -332,6 +333,7 @@ export default function AdminUserDetailPage() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-base font-extrabold">{fullName}</h1>
+              <PresenceDot online={u.online} lastSeenAt={u.last_seen_at} />
               {u.is_verified ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-verified/10 px-1.5 py-0.5 text-[9px] font-bold text-verified">
                   <BadgeCheck size={10} /> احرازشده
@@ -352,6 +354,7 @@ export default function AdminUserDetailPage() {
               {u.city || u.province ? <span>{[u.province, u.city].filter(Boolean).join('، ')}</span> : null}
               <span>عضویت: {dateFa(u.created_at)}</span>
               <span>آخرین ورود: {u.last_login_at ? timeAgoFa(u.last_login_at) : 'هرگز'}</span>
+              <span>آخرین بازدید: {u.last_seen_at ? timeAgoFa(u.last_seen_at) : '—'}</span>
             </div>
           </div>
 

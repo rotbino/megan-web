@@ -475,3 +475,25 @@ export function useSubmitVerification() {
     },
   });
 }
+
+// ─── نظرات فروشنده ──────────────────────────────────────────────────────────
+
+export function useSellerReviews(userName: string, page = 1) {
+  return useQuery({
+    queryKey: ['seller-reviews', userName, page] as const,
+    queryFn: () => api.getSellerReviews(userName, page),
+    enabled: Boolean(userName),
+    staleTime: 60_000,
+  });
+}
+
+export function useAddSellerReview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { userName: string; rating: number; text: string }) => api.addSellerReview(input),
+    onSuccess: (_d, input) => {
+      void queryClient.invalidateQueries({ queryKey: ['seller-reviews', input.userName] });
+      void queryClient.invalidateQueries({ queryKey: ['seller', input.userName] });
+    },
+  });
+}

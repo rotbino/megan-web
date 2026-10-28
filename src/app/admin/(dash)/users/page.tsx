@@ -28,6 +28,7 @@ import {
   setAdminUserActive,
   type AdminUserRow,
 } from '@/lib/admin/api';
+import { PresenceDot } from '@/components/shared/presence-dot';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,10 +37,12 @@ import { cn } from '@/lib/utils';
 import { priceFa, timeAgoFa, toFa } from '@/lib/format';
 import { SendMessageDialog, type MessageTarget } from './message-dialog';
 
-type FilterKey = 'all' | 'sellers' | 'unverified' | 'inactive';
+type FilterKey = 'all' | 'online' | 'offline' | 'sellers' | 'unverified' | 'inactive';
 
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: 'all', label: 'همه' },
+  { key: 'online', label: 'آنلاین' },
+  { key: 'offline', label: 'آفلاین' },
   { key: 'sellers', label: 'فروشندگان' },
   { key: 'unverified', label: 'احرازنشده' },
   { key: 'inactive', label: 'غیرفعال' },
@@ -47,6 +50,10 @@ const FILTERS: Array<{ key: FilterKey; label: string }> = [
 
 function filterPayload(key: FilterKey): Record<string, unknown> {
   switch (key) {
+    case 'online':
+      return { online: true };
+    case 'offline':
+      return { online: false };
     case 'sellers':
       return { seller: true };
     case 'unverified':
@@ -128,6 +135,8 @@ export default function AdminUsersPage() {
         perPage: 20,
       }),
     placeholderData: keepPreviousData,
+    // وضعیت آنلاین حقیقتاً لحظه‌ای است — نرم ۳۰ ثانیه بازخوانی می‌شود
+    refetchInterval: 30_000,
   });
 
   const toggleActive = useMutation({
@@ -179,8 +188,16 @@ export default function AdminUsersPage() {
           </span>
           <div>
             <h1 className="text-base font-extrabold">مدیریت کاربران</h1>
-            <p className="text-[11px] text-muted-foreground">
-              {data ? `${toFa(data.total)} کاربر — جستجو با موبایل، نام یا شناسه` : 'جستجو و مدیریت حساب‌ها'}
+            <p className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+              {data ? (
+                <>
+                  <span>{toFa(data.total)} کاربر — جستجو با موبایل، نام یا شناسه</span>
+                  <PresenceDot online={data.onlineCount > 0} showLabel={false} className="mx-0.5" />
+                  <span className="font-bold text-emerald-600">{toFa(data.onlineCount)} آنلاین</span>
+                </>
+              ) : (
+                'جستجو و مدیریت حساب‌ها'
+              )}
             </p>
           </div>
         </div>
@@ -257,6 +274,7 @@ export default function AdminUsersPage() {
                   />
                 </th>
                 <th className="px-3 py-2.5 text-start font-bold">کاربر</th>
+                <th className="px-3 py-2.5 text-start font-bold">وضعیت حضور</th>
                 <th className="px-3 py-2.5 text-start font-bold">نقش‌ها</th>
                 <th className="px-3 py-2.5 text-start font-bold">احراز</th>
                 <th className="px-3 py-2.5 text-start font-bold">آگهی / درخواست</th>
@@ -285,6 +303,9 @@ export default function AdminUsersPage() {
                       </span>
                       <span dir="ltr" className="text-[11px] text-muted-foreground">{u.phone}</span>
                     </Link>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <PresenceDot online={u.online} lastSeenAt={u.last_seen_at} />
                   </td>
                   <td className="px-3 py-2.5"><RoleChips user={u} /></td>
                   <td className="px-3 py-2.5"><VerifyChip user={u} /></td>
@@ -354,14 +375,23 @@ export default function AdminUsersPage() {
                 </label>
                 <Link href={`/admin/users/${u.id}`} className="min-w-0 flex-1 p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="min-w-0 truncate font-bold">
-                      {[u.first_name, u.last_name].filter(Boolean).join(' ') || 'بی‌نام'}
+                    <span className="flex min-w-0 items-center gap-1.5 font-bold">
+                      <span className="truncate">{[u.first_name, u.last_name].filter(Boolean).join(' ') || 'بی‌نام'}</span>
+                      <PresenceDot online={u.online} showLabel={false} className="shrink-0" />
                     </span>
                     <VerifyChip user={u} />
                   </div>
                   <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
                     <span dir="ltr">{u.phone}</span>
-                    <span>{u.last_login_at ? timeAgoFa(u.last_login_at) : 'بدون ورود'}</span>
+                    <span>
+                      {u.online
+                        ? 'آنلاین'
+                        : u.last_seen_at
+                          ? `آخرین بازدید ${timeAgoFa(u.last_seen_at)}`
+                          : u.last_login_at
+                            ? `آخرین ورود ${timeAgoFa(u.last_login_at)}`
+                            : 'بدون ورود'}
+                    </span>
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <RoleChips user={u} />

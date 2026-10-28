@@ -22,6 +22,8 @@ import { LadderBadge, OldAdBadge } from '@/components/shared/badges';
 import { ChatWidget } from '@/components/products/chat-widget';
 import { ChatDialog } from '@/components/products/chat-dialog';
 import { RelatedProducts } from '@/components/products/related-products';
+import { SellerRatingBadge } from '@/components/products/seller-rating-badge';
+import { SellerOnlineBadge } from '@/components/products/seller-online-badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { stockFa, toFa } from '@/lib/format';
@@ -171,6 +173,8 @@ export default async function ProductViewPage({ params }: Props) {
             {/* چت با فروشنده */}
             <ChatWidget
               productId={product.id}
+              sellerUserName={product.seller.userName}
+              sellerId={product.myuserId}
               sellerName={`${product.seller.firstName} ${product.seller.lastName}`}
               productName={product.productName}
             />
@@ -184,8 +188,11 @@ export default async function ProductViewPage({ params }: Props) {
                   <Store size={22} />
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate font-bold">{product.seller.firstName} {product.seller.lastName}</p>
-                  <div className="mt-1 flex items-center gap-2">
+                  <p className="flex min-w-0 items-center gap-2 font-bold">
+                    <span className="truncate">{product.seller.firstName} {product.seller.lastName}</span>
+                    <SellerOnlineBadge userName={product.seller.userName} sellerId={product.myuserId} />
+                  </p>
+                  <div className="mt-1 flex flex-col items-start gap-1">
                     {product.seller.isVerified ? (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
                         <BadgeCheck size={13} /> احراز هویت شده
@@ -193,6 +200,7 @@ export default async function ProductViewPage({ params }: Props) {
                     ) : (
                       <span className="text-xs text-muted-foreground">بدون احراز هویت</span>
                     )}
+                    <SellerRatingBadge userName={product.seller.userName} />
                   </div>
                 </div>
               </div>
@@ -210,6 +218,8 @@ export default async function ProductViewPage({ params }: Props) {
                 </PhoneReveal>
                 <ChatDialog
                   productId={product.id}
+                  sellerUserName={product.seller.userName}
+                  sellerId={product.myuserId}
                   sellerName={`${product.seller.firstName} ${product.seller.lastName}`}
                   productName={product.productName}
                   className="h-11 w-full rounded-md text-sm font-medium"
