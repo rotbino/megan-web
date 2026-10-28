@@ -253,9 +253,10 @@ export default function RegisterProductPage() {
   const descLen = draft.description.trim().length;
 
   // ─── ظرفیت تکمیل — مودال «امکان ثبت محصول جدید را ندارید!» ───
-  // آیتم‌های حذف‌شده ظرفیت نمی‌گیرند (تب حذف‌شده حالا در items هست — باگ ۲۸-۱۰-۲۰۲۶)
+  // هماهنگ با بک‌اند: فقط pending + confirmed ظرفیت می‌گیرند (رد شده و حذف
+  // شده نه — باگ ۲۸-۱۰: فرایت رد شده‌ها را هم می‌شمرد و زودتر بلاک می‌کرد)
   const capacityFull = Boolean(
-    mine && mine.items.filter((p) => p.status !== 'deleted').length >= mine.capacity,
+    mine && mine.items.filter((p) => p.status === 'pending' || p.status === 'confirmed').length >= mine.capacity,
   );
 
   if (capacityFull && !done) {
