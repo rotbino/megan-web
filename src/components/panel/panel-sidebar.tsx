@@ -36,6 +36,8 @@ import {
 import { cn } from '@/lib/utils';
 import { toFa } from '@/lib/format';
 import { useAuth } from '@/lib/mock/auth';
+import { useUnreadMessagesCount } from '@/lib/mock/hooks';
+import { UnreadBadge } from '@/components/shared/unread-badge';
 import type { PanelProfile } from '@/lib/types';
 
 interface PanelNavItem {
@@ -96,6 +98,10 @@ export function PanelSidebar({
   const { user, setRole, logout } = useAuth();
   const role = user?.role ?? 'seller';
   const nav = role === 'buyer' ? BUYER_NAV : SELLER_NAV;
+
+  // بج پیام‌های خوانده‌نشده روی آیتم «پیام ها» — زنده با push WS
+  const { data: unread } = useUnreadMessagesCount(Boolean(user));
+  const unreadCount = unread?.count ?? 0;
 
   const fullName = profile ? `${profile.userInfo.firstName} ${profile.userInfo.lastName}` : 'کاربر ایمچ';
   const city = profile ? `${profile.userInfo.province} - ${profile.userInfo.city}` : '';
@@ -253,6 +259,7 @@ export function PanelSidebar({
         <nav aria-label="منوی پنل" className="mt-4 flex-1 space-y-0.5 px-3">
           {nav.map(({ href, label, icon: Icon, exact }) => {
             const active = exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+            const showUnread = label === 'پیام ها';
             return (
               <Link
                 key={href}
@@ -267,8 +274,15 @@ export function PanelSidebar({
                   collapsed && 'justify-center px-0',
                 )}
               >
-                <Icon size={19} className={cn('shrink-0', active ? 'text-primary' : 'text-muted-foreground/70')} />
+                <span className="relative">
+                  <Icon size={19} className={cn('shrink-0', active ? 'text-primary' : 'text-muted-foreground/70')} />
+                  {showUnread && !collapsed && <UnreadBadge count={unreadCount} className="-top-1.5 -end-2" />}
+                </span>
                 {!collapsed && <span className="truncate">{label}</span>}
+                {/* جمع‌شده: نقطه قرمز کوچک — جا برای عدد نیست */}
+                {showUnread && collapsed && unreadCount > 0 && (
+                  <span className="absolute end-2 top-1.5 size-2 rounded-full bg-primary" aria-hidden />
+                )}
               </Link>
             );
           })}

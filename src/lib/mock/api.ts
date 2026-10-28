@@ -932,6 +932,18 @@ export async function markChatThreadRead(threadId: string): Promise<{ read: numb
 
 // ─── پیام‌های پشتیبانی (ادمین → کاربر) ─────────────────────────────────────
 
+/** شمار خوانده‌نشده — بج آیکون پیام هدر/فوتر موبایل (چت + پشتیبانی) */
+export interface UnreadCounts {
+  count: number;
+  chat: number;
+  support: number;
+}
+
+/** POST /chat/unreadCount — ریز؛ بج همه صفحات هر ۳۰s و با هر push WS تازه می‌شود */
+export async function getUnreadMessagesCount(): Promise<UnreadCounts> {
+  return apiFetch<UnreadCounts>('/chat/unreadCount', {});
+}
+
 export interface AdminInboxMessage {
   id: string;
   text: string;

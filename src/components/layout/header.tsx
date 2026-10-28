@@ -14,7 +14,8 @@ import {
   SellersIcon,
 } from '@/components/shared/buskool-icons';
 import { useAuth } from '@/lib/mock/auth';
-import { useCategoryTree, useSuggestions } from '@/lib/mock/hooks';
+import { useCategoryTree, useSuggestions, useUnreadMessagesCount } from '@/lib/mock/hooks';
+import { UnreadBadge } from '@/components/shared/unread-badge';
 import { cn } from '@/lib/utils';
 import type { Category } from '@/lib/types';
 
@@ -40,6 +41,10 @@ export function Header() {
   const megaWrap = useRef<HTMLDivElement>(null);
 
   const isSeller = user?.role === 'seller';
+
+  // بج پیام‌های خوانده‌نشده — کنار آیکون پیام‌ها (کاربر واردشده)
+  const { data: unread } = useUnreadMessagesCount(Boolean(user));
+  const unreadCount = unread?.count ?? 0;
 
   const { data: tree = [] } = useCategoryTree();
   const { data: suggestions = [] } = useSuggestions(q);
@@ -170,14 +175,17 @@ export function Header() {
                 <span className="mt-1">{isSeller ? 'خریداران' : 'فروشندگان'}</span>
               </Link>
               <span className="mx-1 h-9 w-px bg-border" aria-hidden />
-              {/* آیکون پیام‌ها — فقط برای کاربر واردشده */}
+              {/* آیکون پیام‌ها — فقط برای کاربر واردشده؛ بج خوانده‌نشده با push WS زنده می‌ماند */}
               <Link
                 href="/panel/messages"
-                aria-label="پیام‌ها"
+                aria-label={unreadCount > 0 ? `پیام‌ها — ${unreadCount} پیام خوانده‌نشده` : 'پیام‌ها'}
                 title="پیام‌ها"
                 className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
               >
-                <MessagesIcon size={24} />
+                <span className="relative">
+                  <MessagesIcon size={24} />
+                  <UnreadBadge count={unreadCount} />
+                </span>
                 <span className="mt-1">پیام ها</span>
               </Link>
               <span className="mx-1 h-9 w-px bg-border" aria-hidden />

@@ -236,6 +236,7 @@ export function useChatSocketEvents(opts: { onNewMessage?: (p: unknown) => void;
       opts.onNewMessage?.(p);
       queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
       queryClient.invalidateQueries({ queryKey: ['chat-thread-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
     });
     const offRead = onChatEvent('read', (p) => {
       opts.onRead?.(p);
@@ -245,6 +246,7 @@ export function useChatSocketEvents(opts: { onNewMessage?: (p: unknown) => void;
     const offAdmin = onChatEvent('adminMessage', (p) => {
       opts.onAdminMessage?.(p);
       queryClient.invalidateQueries({ queryKey: ['admin-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
     });
     // کاربر ممکن است بعد از mount لاگین کند — تلاش دوره‌ای اتصال با توکن تازه
     const timer = setInterval(() => ensureChatSocket(), 5_000);
@@ -273,9 +275,15 @@ export function useSendChatMessage() {
 }
 
 export function useChatThreadMessages(threadId: string | null) {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: ['chat-thread-messages', threadId],
-    queryFn: () => api.getChatThreadMessages(threadId!),
+    queryFn: async () => {
+      const msgs = await api.getChatThreadMessages(threadId!);
+      // باز کردن مکالمه = خوانده‌شدن سمت سرور → بج هدر/فوتر همان لحظه صفر شود
+      void queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
+      return msgs;
+    },
     enabled: !!threadId,
     staleTime: 15_000,
     refetchInterval: 30_000, // شبکه ایمنی — WS قطع شد، از REST تازه می‌شود
@@ -287,6 +295,19 @@ export function useConversations() {
 }
 
 // ─── پیام‌های پشتیبانی (ادمین → کاربر) ─────────────────────────────────
+
+/** بج پیام‌های خوانده‌نشده — هدر/فوتر موبایل؛ polling ۳۰s + push WS */
+export function useUnreadMessagesCount(enabled: boolean) {
+  return useQuery({
+    queryKey: ['unread-messages-count'],
+    queryFn: api.getUnreadMessagesCount,
+    enabled,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    retry: 1,
+  });
+}
 
 /** صندوق «پشتیبانی ایمچ» — WS + شبکه ایمنی REST هر ۳۰ ثانیه */
 export function useAdminMessages() {
@@ -303,7 +324,10 @@ export function useMarkAdminMessagesRead() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: api.markAdminMessagesRead,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-messages'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
+    },
   });
 }
 

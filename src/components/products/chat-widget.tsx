@@ -25,6 +25,8 @@ import type { ChatMessage } from '@/lib/mock/api';
  * (sellerUserName — عین «ارسال پیام» باسکول).
  * نشان آنلاین/آفلاین فروشنده در سربرگ فرم (polling ۳۰s).
  *
+ * چیدمان اپ‌گونه (برای مودال تمام‌صفحه/شیت دسکتاپ): ستون انعطاف‌پذیر —
+ * لیست پیام‌ها هر ارتفاعی که باشد می‌گیرد و کیبورد به پایین می‌چسبد.
  * bare=true: بدون قاب section — برای استفاده داخل Dialog.
  */
 export function ChatWidget({
@@ -103,8 +105,8 @@ export function ChatWidget({
   // ── هنوز وارد نشده ──
   if (!user || !getTokens()?.accessToken) {
     const loggedOut = (
-      <>
-        <div className="p-6 text-center">
+      <div className="grid flex-1 place-items-center p-6 text-center">
+        <div>
           <p className="text-sm leading-6 text-muted-foreground">
             {productId != null
               ? <>برای گفتگو با فروشنده درباره «{productName}» وارد حساب خود شوید.</>
@@ -114,10 +116,16 @@ export function ChatWidget({
             <LogIn size={15} /> ورود / ثبت‌نام
           </Button>
         </div>
-        {loginOpen && <LazyAuthModal open={loginOpen} onClose={() => setLoginOpen(false)} onLoggedIn={() => setLoginOpen(false)} />}
-      </>
+      </div>
     );
-    if (bare) return loggedOut;
+    if (bare) {
+      return (
+        <div className="flex h-full min-h-0 flex-1 flex-col">
+          {loggedOut}
+          {loginOpen && <LazyAuthModal open={loginOpen} onClose={() => setLoginOpen(false)} onLoggedIn={() => setLoginOpen(false)} />}
+        </div>
+      );
+    }
     return (
       <section id="chat" aria-labelledby="chat-title" className="scroll-mt-24 rounded-md border bg-card">
         <div className="flex items-center gap-2 border-b p-4">
@@ -125,6 +133,7 @@ export function ChatWidget({
           <h2 id="chat-title" className="text-sm font-extrabold">چت با {sellerName}</h2>
         </div>
         {loggedOut}
+        {loginOpen && <LazyAuthModal open={loginOpen} onClose={() => setLoginOpen(false)} onLoggedIn={() => setLoginOpen(false)} />}
       </section>
     );
   }
@@ -133,7 +142,7 @@ export function ChatWidget({
     <>
       {start.isPending || (start.data === undefined && !start.isError) ? (
         <div className="space-y-3 p-4">
-          {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-md" />)}
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-md" />)}
         </div>
       ) : start.isError ? (
         <p className="p-6 text-center text-sm text-muted-foreground">
@@ -141,13 +150,14 @@ export function ChatWidget({
         </p>
       ) : (
         <>
-          <div ref={listRef} className="max-h-72 space-y-3 overflow-y-auto p-4">
+          {/* لیست پیام‌ها — انعطاف‌پذیر؛ در مودال تمام ارتفاع را می‌گیرد */}
+          <div ref={listRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 nav-desktop:p-4">
             {messagesLoading && !messages ? (
               <div className="space-y-3">
-                {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-md" />)}
+                {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-md" />)}
               </div>
             ) : !messages || messages.length === 0 ? (
-              <p className="py-6 text-center text-xs leading-6 text-muted-foreground">
+              <p className="py-8 text-center text-xs leading-6 text-muted-foreground">
                 {productId != null
                   ? <>برای شروع مکالمه درباره «{productName}» پیامی بنویسید.</>
                   : <>برای شروع گفتگو با {sellerName} پیامی بنویسید.</>}
@@ -158,7 +168,11 @@ export function ChatWidget({
               ))
             )}
           </div>
-          <form onSubmit={sendMsg} className="flex gap-2 border-t p-3">
+          {/* کیبورد — چسبیده به پایین (در موبایل بالای safe-area) */}
+          <form
+            onSubmit={sendMsg}
+            className="flex shrink-0 gap-2 border-t p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] nav-desktop:p-3"
+          >
             <Input
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -176,10 +190,12 @@ export function ChatWidget({
     </>
   );
 
-  if (bare) return chatBody;
+  if (bare) {
+    return <div className="flex h-full min-h-0 flex-1 flex-col">{chatBody}</div>;
+  }
 
   return (
-    <section id="chat" aria-labelledby="chat-title" className="scroll-mt-24 rounded-md border bg-card">
+    <section id="chat" aria-labelledby="chat-title" className="flex scroll-mt-24 flex-col rounded-md border bg-card">
       <div className="flex flex-wrap items-center gap-2 border-b p-4">
         <MessageSquareText size={16} className="text-primary" />
         <h2 id="chat-title" className="text-sm font-extrabold">چت با {sellerName}</h2>
@@ -191,19 +207,23 @@ export function ChatWidget({
   );
 }
 
-/** حباب پیام — «من» سمت چپ (پررنگ) مثل چت باسکول */
+/** حباب پیام — عین صفحه پیام‌ها: «من» با پس‌زمینه برند و تیک دوتایی خوانده‌شدن */
 function MessageBubble({ message, mine }: { message: ChatMessage; mine: boolean }) {
   return (
     <div className={cn('flex', mine ? 'justify-start' : 'justify-end')}>
       <p
+        dir="auto"
         className={cn(
-          'max-w-[80%] px-3.5 py-2 text-sm leading-6',
+          'w-fit max-w-[80%] rounded-lg px-3.5 py-2.5 text-xs leading-6',
           mine
-            ? 'rounded-md rounded-s-md bg-primary text-primary-foreground'
-            : 'rounded-md rounded-e-md bg-secondary',
+            ? 'rounded-tl-sm bg-primary text-primary-foreground'
+            : 'rounded-tr-sm bg-secondary',
         )}
       >
         {message.text}
+        {mine && message.readAt && (
+          <span className="ms-2 align-middle text-[9px] text-primary-foreground/70">✓✓</span>
+        )}
       </p>
     </div>
   );

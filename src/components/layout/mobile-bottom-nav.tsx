@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation';
 import { Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/mock/auth';
+import { useUnreadMessagesCount } from '@/lib/mock/hooks';
+import { UnreadBadge } from '@/components/shared/unread-badge';
 import {
   AddProductIcon,
   BuyersIcon,
@@ -87,6 +89,10 @@ const loggedOutItems: NavItem[] = [
 export function MobileBottomNav() {
   const pathname = usePathname() ?? '/';
   const { user } = useAuth();
+  // بج پیام‌های خوانده‌نشده روی آیتم «پیام ها» — با push WS در همه صفحات زنده
+  const { data: unread } = useUnreadMessagesCount(Boolean(user));
+  const unreadCount = unread?.count ?? 0;
+
   // پنل ادمین پوسته و ناوبری خودش را دارد — نوار پایین اپ عمومی آنجا نیست
   if (pathname.startsWith('/admin')) return null;
   const items = !user ? loggedOutItems : user.role === 'buyer' ? buyerItems : sellerItems;
@@ -98,17 +104,22 @@ export function MobileBottomNav() {
       <div className="flex h-[58px] pe-2">
         {items.map(({ href, label, Icon, match }) => {
           const active = match(pathname);
+          const showUnread = label === 'پیام ها';
           return (
             <Link
               key={label}
               href={href}
               aria-current={active ? 'page' : undefined}
+              aria-label={showUnread && unreadCount > 0 ? `پیام‌ها — ${unreadCount} پیام خوانده‌نشده` : undefined}
               className={cn(
                 'flex h-[58px] flex-1 flex-col items-center justify-center gap-0 px-0 pb-1 pt-[2px]',
                 active ? 'font-bold text-primary' : 'font-normal text-muted-foreground',
               )}
             >
-              <Icon size={24} className="shrink-0" />
+              <span className="relative">
+                <Icon size={24} className="shrink-0" />
+                {showUnread && <UnreadBadge count={unreadCount} className="-top-1 -end-2" />}
+              </span>
               <span className={cn('mt-0.5 text-[12px] leading-none', active && 'font-bold')}>{label}</span>
             </Link>
           );
