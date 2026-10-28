@@ -116,10 +116,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (u: SessionUser) => {
       setUser(u);
       persist(u);
+      // دیتای پنل نباید از نشست کاربر قبلی باقی بماند: ریسِس خروج (
+      // queryClient.clear) درخواست‌های در حال پرواز را لغو نمی‌کند و نتیجه‌شان
+      // بعداً به کش برمی‌گردد → با ورود کاربر جدید، کش را دوباره تخلیه می‌کنیم
+      // تا پنل هرگز پروفایل کاربر قبل را نشان ندهد.
+      queryClient.cancelQueries().catch(() => undefined);
+      queryClient.clear();
       // وب‌پوش (B10): بعد از ورود، اگر اجازهٔ اعلان دارد بی‌صدا سابسکرایب کن
       void silentResubscribeIfGranted();
     },
-    [persist],
+    [persist, queryClient],
   );
 
   /** خروج کامل — کلاینت + سرور + انتقال به صفحه اصلی سایت:
@@ -133,6 +139,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // خروج واقعی — ابطال همه نشست‌ها در بک‌اند + پاک‌سازی توکن‌ها
     void logoutRemote();
     // داده کش‌شدهٔ پنل/چت‌ها نباید بعد از خروج قابل مشاهده باشد
+    // (cancelQueries: درخواست‌های در حال پرواز را هم لغو می‌کند تا بعد از clear
+    // نتیجه‌شان به کش برنگردد)
+    queryClient.cancelQueries().catch(() => undefined);
     queryClient.clear();
     closeChatSocket();
     // خروج = بازگشت به صفحه اصلی سایت (نه ماندن در مسیر پنل)

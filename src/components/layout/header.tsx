@@ -225,7 +225,7 @@ export function Header() {
       >
         <button
           type="button"
-          onClick={() => setMegaOpen((v) => !v)}
+          onClick={() => setMegaOpen(true)}
           onMouseEnter={() => setMegaOpen(true)}
           aria-expanded={megaOpen}
           aria-haspopup="true"

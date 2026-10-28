@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { apiFetch } from '@/lib/api/client';
+import { useAuth } from '@/lib/mock/auth';
 
 /** پاسخ POST /products/getSellerPhone */
 interface SellerPhoneInfo {
@@ -28,9 +29,10 @@ interface SellerPhoneInfo {
  * دکمه «شماره تماس» فروشنده — عین باسکول: دکمه پررنگ در کارت فروشنده
  * که شماره تماس را آشکار می‌کند.
  *
- * با productId داده شود شماره واقعی از بک‌اند می‌آید و اگر خریدار وارد
- * شده باشد، همین آشکارسازی به‌عنوان «تماس» در گزارش ادمین ثبت می‌شود
- * (سنجه lead-gen: کی به کی زنگ زده). بدون productId — رفتار قدیمی.
+ * مهمان (لاگین‌نشده): کلیک «نمایش شماره تماس» مودال ورود را باز می‌کند —
+ * شماره/قیمت تماس از اعضا پنهان است (مدل lead-gen + ثبت گزارش تماس).
+ * با productId داده شود شماره واقعی از بک‌اند می‌آید و همین آشکارسازی
+ * به‌عنوان «تماس» در گزارش ادمین ثبت می‌شود (کی به کی زنگ زده).
  */
 export function PhoneReveal({
   sellerName,
@@ -48,8 +50,11 @@ export function PhoneReveal({
   const [loading, setLoading] = useState(false);
   const [phone, setPhone] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const { requireAuth } = useAuth();
 
   const reveal = async () => {
+    // مهمان: مودال ورود باز می‌شود؛ بعد از ورود دوباره کلیک کند
+    if (!requireAuth()) return;
     setShown(true);
     if (phone || !productId || loading) return;
     setLoading(true);

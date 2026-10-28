@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { CategoryPicker } from '@/components/shared/category-picker';
 import { UnitInput } from '@/components/shared/unit-input';
 import { useSubmitBuyRequest } from '@/lib/mock/hooks';
+import { useAuth } from '@/lib/mock/auth';
 import { toFa } from '@/lib/format';
 import type { Category } from '@/lib/types';
 
@@ -25,12 +26,15 @@ export function RfqForm() {
   const [amount, setAmount] = useState('');
   const [done, setDone] = useState(false);
   const mutation = useSubmitBuyRequest();
+  const { requireAuth } = useAuth();
 
   const unit = category?.unit ?? 'کیلوگرم';
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!category || !amount) return;
+    // مهمان: مودال ورود باز می‌شود و فرم دست‌نخورده می‌ماند تا بعد از ورود ثبت شود
+    if (!requireAuth()) return;
     mutation.mutate(
       {
         subCategoryId: category.id,
