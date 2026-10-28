@@ -30,6 +30,7 @@ import {
   setAdminUserActive,
   setAdminUserRoles,
 } from '@/lib/admin/api';
+import { UserMessagesTab } from './messages-tab';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -423,6 +424,7 @@ export default function AdminUserDetailPage() {
           <TabsTrigger value="products">آگهی‌ها ({toFa(Object.values(data.stats.products).reduce((a, b) => a + b, 0))})</TabsTrigger>
           <TabsTrigger value="wallet">کیف پول</TabsTrigger>
           <TabsTrigger value="verification">احراز هویت</TabsTrigger>
+          <TabsTrigger value="messages">پیام‌ها</TabsTrigger>
         </TabsList>
 
         {/* نمای کلی */}
@@ -671,6 +673,11 @@ export default function AdminUserDetailPage() {
               </>
             )}
           </div>
+        </TabsContent>
+
+        {/* پیام‌ها — ارسال مستقیم + تاریخچه با وضعیت خوانده‌شدن */}
+        <TabsContent value="messages" className="mt-3">
+          <UserMessagesTab userId={id} userName={fullName} />
         </TabsContent>
       </Tabs>
 

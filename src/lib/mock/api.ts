@@ -919,6 +919,33 @@ export async function markChatThreadRead(threadId: string): Promise<{ read: numb
   return apiFetch<{ read: number }>('/chat/markThreadRead', { threadId });
 }
 
+// ─── پیام‌های پشتیبانی (ادمین → کاربر) ─────────────────────────────────────
+
+export interface AdminInboxMessage {
+  id: string;
+  text: string;
+  adminUsername: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminInbox {
+  /** صعودی — قدیمی → جدید (۵۰ پیام آخر) */
+  items: AdminInboxMessage[];
+  total: number;
+  unread: number;
+}
+
+/** پیام‌های «پشتیبانی ایمچ» من — ارسال مستقیم ادمین (یک‌طرفه) */
+export async function getMyAdminMessages(): Promise<AdminInbox> {
+  return apiFetch<AdminInbox>('/chat/getMyAdminMessages', {});
+}
+
+/** باز کردن مکالمه پشتیبانی = خواندن همه پیام‌های خوانده‌نشده */
+export async function markAdminMessagesRead(): Promise<{ read: number }> {
+  return apiFetch<{ read: number }>('/chat/markMyAdminMessagesRead', {});
+}
+
 // ─── احراز هویت اسناد (B6 — واقعی) ────────────────────────────────────────
 
 export interface VerificationDoc {

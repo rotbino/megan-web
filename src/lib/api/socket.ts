@@ -27,11 +27,22 @@ export interface ChatReadEvent {
   by: string;
 }
 
+/** پیام پشتیبانی (ادمین → کاربر) — یک‌طرفه؛ بدون threadId */
+export interface AdminNewMessageEvent {
+  message: {
+    id: string;
+    text: string;
+    adminUsername: string;
+    createdAt: string;
+  };
+}
+
 type Handler = (payload: unknown) => void;
 
-const listeners: Record<'newMessage' | 'read', Set<Handler>> = {
+const listeners: Record<'newMessage' | 'read' | 'adminMessage', Set<Handler>> = {
   newMessage: new Set(),
   read: new Set(),
+  adminMessage: new Set(),
 };
 
 let socket: Socket | null = null;
@@ -69,6 +80,9 @@ export function ensureChatSocket(): Socket | null {
   socket.on('chat:read', (p) => {
     listeners.read.forEach((h) => h(p));
   });
+  socket.on('chat:adminMessage', (p) => {
+    listeners.adminMessage.forEach((h) => h(p));
+  });
   socket.on('connect', () => {
     connecting = false;
   });
@@ -82,7 +96,7 @@ export function ensureChatSocket(): Socket | null {
 
 /** اشتراک رویداد چت — تابع لغو اشتراک برمی‌گرداند */
 export function onChatEvent(
-  event: 'newMessage' | 'read',
+  event: 'newMessage' | 'read' | 'adminMessage',
   handler: Handler,
 ): () => void {
   listeners[event].add(handler);

@@ -15,9 +15,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  Megaphone,
+  MessageSquare,
   Search,
+  Send,
   ShieldCheck,
   Users,
+  X,
 } from 'lucide-react';
 import {
   fetchAdminUsers,
@@ -30,6 +34,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { priceFa, timeAgoFa, toFa } from '@/lib/format';
+import { SendMessageDialog, type MessageTarget } from './message-dialog';
 
 type FilterKey = 'all' | 'sellers' | 'unverified' | 'inactive';
 
@@ -94,6 +99,11 @@ export default function AdminUsersPage() {
   const [filter, setFilter] = useState<FilterKey>('all');
   const [page, setPage] = useState(1);
 
+  // انتخاب چندتایی — چک‌باکس جدول (دسکتاپ) و کارت (موبایل)
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  // دیالوگ ارسال پیام — تکی/چندتایی/همه
+  const [messageTarget, setMessageTarget] = useState<MessageTarget | null>(null);
+
   // جستجو با تأخیر ۴۰۰ms
   useEffect(() => {
     const t = setTimeout(() => {
@@ -136,6 +146,29 @@ export default function AdminUsersPage() {
   const items = data?.items ?? [];
   const pageCount = data?.pageCount ?? 1;
 
+  // ─── انتخاب چندتایی ──────────────────────────────────────────────
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // همه‌ی ردیف‌های همین صفحه — for تیک صفحه (حالت میانی = نیمه‌تیک)
+  const pageIds = items.map((u) => u.id);
+  const allOnPage = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  const someOnPage = pageIds.some((id) => selected.has(id));
+  const toggleSelectAll = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allOnPage) pageIds.forEach((id) => next.delete(id));
+      else pageIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
   return (
     <div className="mx-auto max-w-6xl space-y-4">
       {/* سربرگ */}
@@ -151,7 +184,16 @@ export default function AdminUsersPage() {
             </p>
           </div>
         </div>
-        {isFetching && !isLoading ? <Loader2 size={15} className="animate-spin text-muted-foreground" /> : null}
+        <div className="flex items-center gap-2">
+          {isFetching && !isLoading ? <Loader2 size={15} className="animate-spin text-muted-foreground" /> : null}
+          <Button
+            size="sm"
+            className="h-9 rounded-[10px] px-3 text-[11.5px]"
+            onClick={() => setMessageTarget({ mode: 'all' })}
+          >
+            <Megaphone size={14} /> پیام به همه
+          </Button>
+        </div>
       </div>
 
       {/* جستجو + فیلترها */}
@@ -202,6 +244,18 @@ export default function AdminUsersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-secondary/40 text-[11px] text-muted-foreground">
+                <th className="w-8 px-2 py-2.5">
+                  <input
+                    type="checkbox"
+                    aria-label="انتخاب همه کاربران این صفحه"
+                    checked={allOnPage}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someOnPage && !allOnPage;
+                    }}
+                    onChange={toggleSelectAll}
+                    className="size-4 cursor-pointer accent-primary"
+                  />
+                </th>
                 <th className="px-3 py-2.5 text-start font-bold">کاربر</th>
                 <th className="px-3 py-2.5 text-start font-bold">نقش‌ها</th>
                 <th className="px-3 py-2.5 text-start font-bold">احراز</th>
@@ -215,6 +269,15 @@ export default function AdminUsersPage() {
             <tbody>
               {items.map((u) => (
                 <tr key={u.id} className={cn('border-b transition-colors last:border-0 hover:bg-secondary/30', !u.is_active && 'opacity-60')}>
+                  <td className="px-2 py-2.5">
+                    <input
+                      type="checkbox"
+                      aria-label={`انتخاب ${u.first_name} ${u.last_name}`}
+                      checked={selected.has(u.id)}
+                      onChange={() => toggleSelect(u.id)}
+                      className="size-4 cursor-pointer accent-primary"
+                    />
+                  </td>
                   <td className="px-3 py-2.5">
                     <Link href={`/admin/users/${u.id}`} className="group flex flex-col">
                       <span className="font-bold group-hover:text-primary">
@@ -241,6 +304,15 @@ export default function AdminUsersPage() {
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        aria-label="ارسال پیام به این کاربر"
+                        title="ارسال پیام"
+                        onClick={() => setMessageTarget({ mode: 'single', user: u })}
+                        className="grid size-7 place-items-center rounded-[10px] border border-input bg-card text-muted-foreground transition-colors hover:border-primary-line hover:bg-primary-soft hover:text-primary"
+                      >
+                        <MessageSquare size={13} />
+                      </button>
                       <Link
                         href={`/admin/users/${u.id}`}
                         className="rounded-[10px] border border-input bg-card px-2.5 py-1 text-[11px] font-bold text-secondary-foreground transition-colors hover:border-primary-line hover:bg-primary-soft hover:text-primary"
@@ -265,33 +337,49 @@ export default function AdminUsersPage() {
         )}
       </div>
 
-      {/* کارت موبایل */}
+      {/* کارت موبایل — چک‌باکس + پیام تکی کنار کارت */}
       <div className="space-y-2 lg:hidden">
         {isLoading
           ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-lg" />)
           : items.map((u) => (
-              <Link
-                key={u.id}
-                href={`/admin/users/${u.id}`}
-                className={cn('block rounded-lg border bg-card p-3', !u.is_active && 'opacity-60')}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 truncate font-bold">
-                    {[u.first_name, u.last_name].filter(Boolean).join(' ') || 'بی‌نام'}
-                  </span>
-                  <VerifyChip user={u} />
-                </div>
-                <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-                  <span dir="ltr">{u.phone}</span>
-                  <span>{u.last_login_at ? timeAgoFa(u.last_login_at) : 'بدون ورود'}</span>
-                </div>
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  <RoleChips user={u} />
-                  <span className="text-[10px] text-muted-foreground">
-                    {toFa(u.product_count)} آگهی · {priceFa(u.wallet_balance)}
-                  </span>
-                </div>
-              </Link>
+              <div key={u.id} className={cn('flex items-stretch gap-1 rounded-lg border bg-card', !u.is_active && 'opacity-60')}>
+                <label className="flex w-9 shrink-0 cursor-pointer items-center justify-center">
+                  <input
+                    type="checkbox"
+                    aria-label={`انتخاب ${u.first_name} ${u.last_name}`}
+                    checked={selected.has(u.id)}
+                    onChange={() => toggleSelect(u.id)}
+                    className="size-4 cursor-pointer accent-primary"
+                  />
+                </label>
+                <Link href={`/admin/users/${u.id}`} className="min-w-0 flex-1 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate font-bold">
+                      {[u.first_name, u.last_name].filter(Boolean).join(' ') || 'بی‌نام'}
+                    </span>
+                    <VerifyChip user={u} />
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                    <span dir="ltr">{u.phone}</span>
+                    <span>{u.last_login_at ? timeAgoFa(u.last_login_at) : 'بدون ورود'}</span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <RoleChips user={u} />
+                    <span className="text-[10px] text-muted-foreground">
+                      {toFa(u.product_count)} آگهی · {priceFa(u.wallet_balance)}
+                    </span>
+                  </div>
+                </Link>
+                <button
+                  type="button"
+                  aria-label="ارسال پیام به این کاربر"
+                  title="ارسال پیام"
+                  onClick={() => setMessageTarget({ mode: 'single', user: u })}
+                  className="grid w-10 shrink-0 place-items-center border-s text-muted-foreground transition-colors hover:bg-primary-soft hover:text-primary"
+                >
+                  <MessageSquare size={15} />
+                </button>
+              </div>
             ))}
         {!isLoading && items.length === 0 && (
           <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
@@ -331,6 +419,48 @@ export default function AdminUsersPage() {
       <p className="text-center text-[10.5px] leading-6 text-muted-foreground">
         غیرفعال‌سازی حساب = حذف نرم: ورود مسدود، نشست‌ها باطل و محتوا از لیست‌های عمومی پنهان می‌شود؛ داده‌های کاربر حذف نمی‌شوند.
       </p>
+
+      {/* نوار ارسال گروهی — چسبیده به پایین وقتی کاربری انتخاب شده */}
+      {selected.size > 0 && (
+        <div className="fixed inset-x-0 bottom-4 z-40 mx-auto w-fit animate-in fade-in slide-in-from-bottom-2 px-4">
+          <div className="flex items-center gap-2 rounded-full border bg-card px-4 py-2.5 shadow-lg">
+            <span className="text-xs font-bold">
+              {toFa(selected.size)} کاربر انتخاب شده
+            </span>
+            <Button
+              size="sm"
+              className="h-8 rounded-full px-3 text-[11.5px]"
+              onClick={() => setMessageTarget({ mode: 'multi', userIds: [...selected] })}
+            >
+              <Send size={13} /> ارسال پیام
+            </Button>
+            <button
+              type="button"
+              aria-label="لغو انتخاب"
+              onClick={() => setSelected(new Set())}
+              className="grid size-7 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* دیالوگ ارسال پیام — تکی/چندتایی/همه (key: فرم تازه در هر باز شدن) */}
+      <SendMessageDialog
+        key={
+          messageTarget === null
+            ? 'none'
+            : messageTarget.mode === 'single'
+              ? `single:${messageTarget.user.id}`
+              : messageTarget.mode === 'multi'
+                ? `multi:${messageTarget.userIds.length}:${messageTarget.userIds[0]}`
+                : 'all'
+        }
+        target={messageTarget}
+        onClose={() => setMessageTarget(null)}
+        onSent={() => setSelected(new Set())}
+      />
     </div>
   );
 }

@@ -384,6 +384,53 @@ export async function reviewAdminVerification(orderId: string, approve: boolean,
   });
 }
 
+// ─── پیام مستقیم ادمین → کاربر («پشتیبانی ایمچ») ───────────────────────────
+
+/** ردیف تاریخچه پیام‌های پشتیبانی یک کاربر — snake_case عین بک‌اند */
+export interface AdminDirectMessageRow {
+  id: string;
+  user_id: string;
+  admin_username: string;
+  text: string;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface AdminUserMessagesList {
+  total: number;
+  unread: number;
+  page: number;
+  perPage: number;
+  pageCount: number;
+  items: AdminDirectMessageRow[];
+}
+
+/** مخاطب ارسال انبوه — همان فیلترهای لیست کاربران */
+export type AdminBroadcastAudience = 'all' | 'active' | 'sellers' | 'buyers' | 'verified';
+
+/** ارسال پیام به یک کاربر (ردیف لیست / صفحه جزئیات) */
+export async function adminSendUserMessage(userId: string, text: string): Promise<{ sent: number }> {
+  return adminFetch('/admin/messages/sendToUser', { userId, text });
+}
+
+/** ارسال پیام به چند کاربر انتخابی (چک‌باکس‌های لیست) */
+export async function adminSendUsersMessage(userIds: string[], text: string): Promise<{ sent: number; skipped: number }> {
+  return adminFetch('/admin/messages/sendToUsers', { userIds, text });
+}
+
+/** ارسال پیام به همه کاربران — با مخاطب اختیاری */
+export async function adminSendAllUsersMessage(
+  text: string,
+  audience: AdminBroadcastAudience = 'all',
+): Promise<{ sent: number; audience: string }> {
+  return adminFetch('/admin/messages/sendToAll', { text, audience });
+}
+
+/** تاریخچه پیام‌های پشتیبانی یک کاربر — تب «پیام‌ها» صفحه جزئیات */
+export async function fetchAdminUserMessages(id: string, page = 1, perPage = 20): Promise<AdminUserMessagesList> {
+  return adminFetch('/admin/messages/getUserMessages', { userId: id, page, perPage });
+}
+
 // ─── فاز A4 — مدیریت آگهی‌ها و درخواست‌های خرید ───────────────────────────────
 
 /** وضعیت آگهی/درخواست — تب‌های ادمین (عین پنل کاربر) */

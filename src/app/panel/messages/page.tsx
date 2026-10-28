@@ -4,10 +4,12 @@
  * پیام ها — پیام‌رسان پنل (B8 — واقعی، منطق MHTML باسکول):
  * لیست مکالمات با جستجو + نمای چت زنده (WS + REST) + «ویرایش قیمت»
  * (ارسال پیام قالب‌دار قیمت) + «گزارش تخلف کاربر» + جعبه «ارسال برای دوستان».
+ * + مکالمه سنجاق‌شده «پشتیبانی ایمچ» — پیام‌های مستقیم ادمین (یک‌طرفه).
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { Copy, Flag, Mail, MessageSquare, Pencil, Search, Send, Share2 } from 'lucide-react';
+import Link from 'next/link';
+import { Copy, Flag, Headset, Mail, MessageSquare, Pencil, Search, Send, Share2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -18,9 +20,11 @@ import { PushEnableBanner } from '@/components/shared/push-enable';
 import { UnitInput } from '@/components/shared/unit-input';
 import { useToast } from '@/hooks/use-toast';
 import {
+  useAdminMessages,
   useChatSocketEvents,
   useChatThreadMessages,
   useConversations,
+  useMarkAdminMessagesRead,
   useSendChatMessage,
 } from '@/lib/mock/hooks';
 import type { ChatThreadInfo } from '@/lib/mock/api';
@@ -30,9 +34,14 @@ import { cn } from '@/lib/utils';
 
 const SHARE_LINK = 'https://imach.ir';
 
+/** شناسه ساختگی مکالمه پشتیبانی — از id مکالمات واقعی جدا می‌ماند */
+const SUPPORT_ID = '__support__';
+
 export default function PanelMessagesPage() {
   const { toast } = useToast();
   const { data: conversations, isLoading } = useConversations();
+  const { data: adminInbox } = useAdminMessages();
+  const markAdminRead = useMarkAdminMessagesRead();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [draft, setDraft] = useState('');
@@ -40,18 +49,32 @@ export default function PanelMessagesPage() {
 
   const send = useSendChatMessage();
 
-  // رویدادهای زنده — لیست و پیام‌ها خودشان تازه می‌شوند
+  // رویدادهای زنده — لیست و پیام‌ها خودشان تازه می‌شوند (چت + پشتیبانی)
   useChatSocketEvents();
 
   const threads: ChatThreadInfo[] = conversations ?? [];
-  const active = threads.find((t) => t.id === activeId) ?? threads[0] ?? null;
-  const { data: messages } = useChatThreadMessages(active?.id ?? null);
+  const supportMessages = adminInbox?.items ?? [];
+  const supportUnread = adminInbox?.unread ?? 0;
+  const isSupport = activeId === SUPPORT_ID;
+  const active = isSupport ? null : threads.find((t) => t.id === activeId) ?? threads[0] ?? null;
+  // پیش‌فرض: اولین مکالمه؛ نبود → پشتیبانی (اگر پیام دارد)
+  const effectiveActive = active ?? (supportMessages.length > 0 ? SUPPORT_ID : null);
+  const showingSupport = effectiveActive === SUPPORT_ID;
+  const { data: messages } = useChatThreadMessages(showingSupport ? null : active?.id ?? null);
   const myId = active?.myId ?? null;
+  const lastSupport = supportMessages[supportMessages.length - 1];
+
+  // باز کردن مکالمه پشتیبانی = خواندن همه خوانده‌نشده‌ها
+  useEffect(() => {
+    if (showingSupport && supportUnread > 0 && !markAdminRead.isPending) {
+      markAdminRead.mutate();
+    }
+  }, [showingSupport, supportUnread]);
 
   useEffect(() => {
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages?.length, active?.id]);
+  }, [messages?.length, supportMessages.length, showingSupport]);
 
   const visible = threads.filter((t) => {
     const name = `${t.counterpart.firstName} ${t.counterpart.lastName}`.trim();
@@ -101,12 +124,48 @@ export default function PanelMessagesPage() {
             <div className="mt-3 space-y-2">
               {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-14 animate-pulse rounded-md bg-secondary/60" />)}
             </div>
-          ) : visible.length === 0 ? (
-            <p className="mt-6 rounded-md bg-secondary/50 px-3 py-4 text-center text-xs leading-6 text-muted-foreground">
-              مکالمه‌ای یافت نشد. گفتگو از صفحه هر آگهی («چت با فروشنده») شروع می‌شود.
-            </p>
           ) : (
             <ul className="mt-3 divide-y divide-border/70">
+              {/* پشتیبانی ایمچ — سنجاق‌شده بالا؛ پیام‌های مستقیم ادمین (یک‌طرفه) */}
+              <li className="pb-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveId(SUPPORT_ID)}
+                  className={cn(
+                    'flex w-full items-center gap-3 rounded-md px-2 py-3 text-start transition-colors',
+                    showingSupport ? 'bg-primary/10' : 'hover:bg-secondary/70',
+                  )}
+                >
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                    <Headset size={18} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm font-bold text-primary">پشتیبانی ایمچ</span>
+                      <span className="shrink-0 text-[10px] text-muted-foreground">
+                        {lastSupport ? <RelativeTime date={lastSupport.createdAt} /> : '—'}
+                      </span>
+                    </span>
+                    <span className="mt-0.5 flex items-center justify-between gap-2">
+                      <span className="truncate text-xs text-muted-foreground">
+                        {lastSupport?.text ?? 'پیام‌های مدیریت ایمچ اینجا می‌آید'}
+                      </span>
+                      {supportUnread > 0 && (
+                        <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                          {toFa(supportUnread)}
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                </button>
+              </li>
+              {visible.length === 0 && (
+                <li>
+                  <p className="rounded-md bg-secondary/50 px-3 py-3 text-center text-xs leading-6 text-muted-foreground">
+                    مکالمه‌ای یافت نشد. گفتگو از صفحه هر آگهی («چت با فروشنده») شروع می‌شود.
+                  </p>
+                </li>
+              )}
               {visible.map((t) => (
                 <li key={t.id}>
                   <button
@@ -114,7 +173,7 @@ export default function PanelMessagesPage() {
                     onClick={() => setActiveId(t.id)}
                     className={cn(
                       'flex w-full items-center gap-3 rounded-md px-2 py-3 text-start transition-colors',
-                      active?.id === t.id ? 'bg-primary/10' : 'hover:bg-secondary/70',
+                      !showingSupport && active?.id === t.id ? 'bg-primary/10' : 'hover:bg-secondary/70',
                     )}
                   >
                     <span className="grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-xs font-extrabold">
@@ -197,7 +256,48 @@ export default function PanelMessagesPage() {
 
         {/* نمای چت */}
         <PanelCard className="order-1 flex min-h-[420px] flex-col lg:order-2">
-          {active ? (
+          {showingSupport ? (
+            <>
+              {/* مکالمه پشتیبانی — یک‌طرفه (ادمین → کاربر) */}
+              <div className="flex items-center gap-3 border-b border-border/70 pb-3">
+                <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary">
+                  <Headset size={18} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-primary">پشتیبانی ایمچ</p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    اطلاع‌رسانی و پیام‌های مدیریت ایمچ
+                    {adminInbox ? ` — ${toFa(adminInbox.total)} پیام` : ''}
+                  </p>
+                </div>
+              </div>
+
+              <div ref={listRef} className="flex-1 space-y-2.5 overflow-y-auto py-4">
+                {supportMessages.length === 0 ? (
+                  <p className="py-8 text-center text-xs leading-6 text-muted-foreground">
+                    هنوز پیامی از پشتیبانی ندارید.
+                  </p>
+                ) : (
+                  supportMessages.map((m) => (
+                    <div key={m.id} className="w-fit max-w-[80%] rounded-lg rounded-tr-sm bg-secondary px-3.5 py-2.5">
+                      <p dir="auto" className="text-xs leading-6">{m.text}</p>
+                      <p className="mt-1 flex items-center gap-1.5 text-[9px] text-muted-foreground">
+                        <span>{m.adminUsername}</span>·<span><RelativeTime date={m.createdAt} /></span>
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="border-t border-border/70 pt-3">
+                <p className="rounded-md bg-secondary/50 px-3 py-2.5 text-center text-[11px] leading-6 text-muted-foreground">
+                  این پیام‌ها یک‌طرفه از طرف مدیریت ایمچ است. برای پرسش‌ها از{' '}
+                  <Link href="/panel/support" className="font-bold text-primary hover:underline">صفحه پشتیبانی</Link>{' '}
+                  استفاده کنید.
+                </p>
+              </div>
+            </>
+          ) : active ? (
             <>
               <div className="flex items-center gap-3 border-b border-border/70 pb-3">
                 <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-xs font-extrabold text-primary">

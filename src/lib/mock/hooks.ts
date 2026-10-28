@@ -229,7 +229,7 @@ export function useLadderProduct() {
 // ─── چت و پیام‌ها (B8) ────────────────────────────────────────────────
 
 /** رویدادهای WS چت — با invalidation خودکار React Query */
-export function useChatSocketEvents(opts: { onNewMessage?: (p: unknown) => void; onRead?: (p: unknown) => void } = {}) {
+export function useChatSocketEvents(opts: { onNewMessage?: (p: unknown) => void; onRead?: (p: unknown) => void; onAdminMessage?: (p: unknown) => void } = {}) {
   const queryClient = useQueryClient();
   useEffect(() => {
     const offNew = onChatEvent('newMessage', (p) => {
@@ -241,12 +241,18 @@ export function useChatSocketEvents(opts: { onNewMessage?: (p: unknown) => void;
       opts.onRead?.(p);
       queryClient.invalidateQueries({ queryKey: ['chat-thread-messages'] });
     });
+    // پیام مستقیم پشتیبانی (ادمین → کاربر) — صندوق جدا از مکالمات
+    const offAdmin = onChatEvent('adminMessage', (p) => {
+      opts.onAdminMessage?.(p);
+      queryClient.invalidateQueries({ queryKey: ['admin-messages'] });
+    });
     // کاربر ممکن است بعد از mount لاگین کند — تلاش دوره‌ای اتصال با توکن تازه
     const timer = setInterval(() => ensureChatSocket(), 5_000);
     return () => {
       clearInterval(timer);
       offNew();
       offRead();
+      offAdmin();
     };
   }, []);
 }
@@ -278,6 +284,27 @@ export function useChatThreadMessages(threadId: string | null) {
 
 export function useConversations() {
   return useQuery({ queryKey: ['chat-conversations'], queryFn: api.getConversations, staleTime: 15_000 });
+}
+
+// ─── پیام‌های پشتیبانی (ادمین → کاربر) ─────────────────────────────────
+
+/** صندوق «پشتیبانی ایمچ» — WS + شبکه ایمنی REST هر ۳۰ ثانیه */
+export function useAdminMessages() {
+  return useQuery({
+    queryKey: ['admin-messages'],
+    queryFn: api.getMyAdminMessages,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+}
+
+/** باز کردن مکالمه پشتیبانی = خواندن همه خوانده‌نشده‌ها */
+export function useMarkAdminMessagesRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.markAdminMessagesRead,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-messages'] }),
+  });
 }
 
 // ─── CRM نشان شده ها (B7) ─────────────────────────────────────────────
