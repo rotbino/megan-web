@@ -20,9 +20,11 @@ import { cn } from '@/lib/utils';
 import type { Category } from '@/lib/types';
 
 /**
- * هدر ایمچ (v7):
- * ردیف ۱ (هدر اصلی): [لوگو | جستجو (flex) | لینک‌های نقش‌محور + پیام‌ها + منوی کاربر]
- * ردیف ۲ (نوار زیر هدر — فقط دسکتاپ): [دسته بندی (مگامنو) | فروشنده شوید]
+ * هدر ایمچ (v8):
+ * ردیف ۱ (هدر اصلی): [لوگو |۱۰px| جستجو (flex) | لینک‌های نقش‌محور + پیام‌ها + منوی کاربر]
+ *         جستجو با فاصله ثابت ۱۰px (gap-2.5) به لوگو چسبیده است؛
+ *         دکمه‌های انتها با پدینگ ۲۴px (px-6) به منتهی‌الیه چپ هدر می‌چسبند.
+ * ردیف ۲ (نوار زیر هدر — فقط دسکتاپ): [دسته بندی (مگامنو) | فروشنده شوید] — هم‌تراز با px-6
  *
  * بعد از ورود (خواسته مالک): لینک ورود/ثبت‌نام حذف و به جایش آواتار + نام و
  * نام خانوادگی + آیکون دراپ‌داون می‌آید (منوی کانتکست نقش‌محور).
@@ -80,13 +82,13 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card shadow-[0_2px_12px_rgba(35,38,43,0.08)]">
-      {/* ─── ردیف ۱ — هدر اصلی: لوگو | جستجو | دکمه‌های انتها ── */}
-      <div className="flex items-center justify-between gap-3 px-3 py-2.5 nav-desktop:gap-4 nav-desktop:px-4 nav-desktop:py-3">
+      {/* ─── ردیف ۱ — هدر اصلی: لوگو |۱۰px| جستجو | دکمه‌های انتها (پدینگ ۲۴px لبه چپ) ── */}
+      <div className="flex items-center justify-between gap-2.5 px-3 py-2.5 nav-desktop:gap-2.5 nav-desktop:px-6 nav-desktop:py-3">
         <Link href="/" aria-label="ایمچ — صفحه اصلی" className="shrink-0">
           <BrandLogo size="sm" className="h-7" />
         </Link>
 
-        {/* جستجوی دسکتاپ — فضای باقی‌مانده بین لوگو و دکمه‌ها (سقف عرض منطقی) */}
+        {/* جستجوی دسکتاپ — چسبیده به لوگو با فاصله ۱۰px؛ فضای باقی‌مانده تا دکمه‌ها (سقف عرض منطقی) */}
         <div ref={searchWrap} className="relative hidden min-w-0 max-w-[680px] flex-1 nav-desktop:block">
           <form
             onSubmit={(e) => { e.preventDefault(); submit(); }}
@@ -229,7 +231,7 @@ export function Header() {
       <div
         ref={megaWrap}
         onMouseLeave={() => setMegaOpen(false)}
-        className="relative hidden items-center gap-2.5 border-t border-border/60 nav-desktop:flex nav-desktop:gap-3 nav-desktop:px-4"
+        className="relative hidden items-center gap-2.5 border-t border-border/60 nav-desktop:flex nav-desktop:gap-3 nav-desktop:px-6"
       >
         <button
           type="button"
