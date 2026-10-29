@@ -566,10 +566,17 @@ import type {
 
 /** پروفایل پنل — واقعی از بک‌اند */
 export async function getPanelProfile(): Promise<PanelProfile> {
-  const raw = await apiFetch<{ user: RawProfileUser; profile: Record<string, unknown> }>('/users/getProfile', {});
+  const raw = await apiFetch<{
+    user: RawProfileUser;
+    profile: Record<string, unknown>;
+    gallery?: Array<{ id: string; url: string; thumbUrl: string }>;
+    certificates?: Array<{ id: string; url: string; thumbUrl: string }>;
+  }>('/users/getProfile', {});
   const p = raw.profile as Partial<PanelProfile['profile']>;
 
   return {
+    gallery: raw.gallery ?? [],
+    certificates: raw.certificates ?? [],
     profile: {
       description: (p.description as string) ?? raw.user.business_desc ?? null,
       activityDomain: (p.activityDomain as string) ?? null,
@@ -899,7 +906,7 @@ export interface ChatThreadInfo {
   productName: string | null;
   myId: string;
   myRole: 'buyer' | 'seller';
-  counterpart: { id: string; firstName: string; lastName: string; userName: string };
+  counterpart: { id: string; firstName: string; lastName: string; userName: string; avatarUrl?: string | null };
   lastMessage: { text: string; at: string; senderId: string } | null;
   unreadCount: number;
   updatedAt: string;
@@ -1161,7 +1168,7 @@ export interface SellerReviewRow {
   id: string;
   rating: number;
   text: string;
-  author: { userName: string; firstName: string; lastName: string };
+  author: { userName: string; firstName: string; lastName: string; avatarUrl?: string | null };
   createdAt: string;
   updatedAt: string;
 }

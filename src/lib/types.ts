@@ -197,6 +197,9 @@ export interface PanelProfile {
     productCount: number; // آگهی‌های فعال
     createdAt: string;
   };
+  /** تصاویر مربوطه/گواهی‌های کسب‌وکار — آپلودی همان کاربر (اسلات‌های User) */
+  gallery: Array<{ id: string; url: string; thumbUrl: string }>;
+  certificates: Array<{ id: string; url: string; thumbUrl: string }>;
 }
 
 /** لیست نشان‌شده — پاسخ سرویس: { lists: [{ id, name, cnt, saved }] } */

@@ -11,6 +11,7 @@
 
 import { useRef, useState } from 'react';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   BadgeCheck,
   Building2,
@@ -34,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { uploadImage } from '@/lib/api/client';
+import { uploadImage, deleteImage } from '@/lib/api/client';
 import { usePanelProfile, useUpdatePanelProfile, useProvinces, useCities } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -57,8 +58,15 @@ interface FormState {
   companyName: string;
   companyRegisterNumber: string;
   about: string;
-  gallery: string[]; // data-url تصاویر مربوطه
-  certificates: string[]; // data-url گواهی‌ها
+  gallery: ProfileImage[]; // تصاویر مربوطه — سروری + آپلودی تازه
+  certificates: ProfileImage[]; // گواهی‌ها — سروری + آپلودی تازه
+}
+
+/** تصویر پروفایل — سروری (id دارد) یا تازه (file دارد که موقع ثبت آپلود می‌شود) */
+interface ProfileImage {
+  id?: string;
+  url: string;
+  file?: File;
 }
 
 const ABOUT_HINTS = [
@@ -70,11 +78,13 @@ const ABOUT_HINTS = [
 export default function EditProfilePage() {
   const { data: profile } = usePanelProfile();
   const save = useUpdatePanelProfile();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user, setRole, refreshUser } = useAuth();
   const [form, setForm] = useState<FormState | null>(null);
   const [error, setError] = useState('');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const galleryRef = useRef<HTMLInputElement>(null);
   const certRef = useRef<HTMLInputElement>(null);
   const avatarRef = useRef<HTMLInputElement>(null);
@@ -102,8 +112,9 @@ export default function EditProfilePage() {
       companyName: pf.companyName ?? '',
       companyRegisterNumber: '',
       about: pf.description ?? '',
-      gallery: [],
-      certificates: [],
+      // گالری/گواهی‌ها از سرور — تصاویر ذخیره‌شده قبلی دیده و قابل حذف‌اند
+      gallery: profile.gallery.map((f) => ({ id: f.id, url: f.thumbUrl ?? f.url })),
+      certificates: profile.certificates.map((f) => ({ id: f.id, url: f.thumbUrl ?? f.url })),
     });
     return <div className="grid h-64 place-items-center text-sm text-muted-foreground">در حال بارگذاری…</div>;
   }
@@ -139,9 +150,27 @@ export default function EditProfilePage() {
           return;
         }
         const reader = new FileReader();
-        reader.onload = () => patch({ [key]: [...form[key], String(reader.result)] } as Partial<FormState>);
+        reader.onload = () =>
+          patch({ [key]: [...form[key], { url: String(reader.result), file }] } as Partial<FormState>);
         reader.readAsDataURL(file);
       });
+    if (Array.from(files).length > Math.max(0, slots)) {
+      toast({ description: `حداکثر ${toFa(max)} تصویر — بقیه نادیده گرفته شد.` });
+    }
+  };
+
+  /** حذف تصویر — سروری: حذف فوری از بک‌اند؛ تازه: فقط از فرم */
+  const removeImage = async (key: 'gallery' | 'certificates', index: number) => {
+    const img = form[key][index];
+    patch({ [key]: form[key].filter((_, j) => j !== index) } as Partial<FormState>);
+    if (img.id) {
+      try {
+        await deleteImage(img.id);
+        await queryClient.invalidateQueries({ queryKey: ['panel-profile'] });
+      } catch (err) {
+        toast({ description: err instanceof Error ? err.message : 'حذف تصویر ناموفق بود.' });
+      }
+    }
   };
 
   /** آپلود آواتار واقعی — uploads/uploadImage (User/avatar) + updateProfile */
@@ -179,6 +208,23 @@ export default function EditProfilePage() {
       return;
     }
     try {
+      // تصاویر تازه (گالری/گواهی) — اول آپلود واقعی، بعد ذخیره فیلدها
+      const pending = [
+        ...form.gallery.map((g) => ({ img: g, key: 'gallery' as const })),
+        ...form.certificates.map((c) => ({ img: c, key: 'certificate' as const })),
+      ].filter(({ img }) => img.file);
+      if (pending.length > 0) {
+        setUploadingImages(true);
+        for (const { img, key } of pending) {
+          if (!img.file) continue;
+          await uploadImage(img.file, {
+            model: 'User',
+            modelId: u.id,
+            key,
+            replace: false, // چند‌تایی — اسلات‌ها انباشته می‌شوند
+          });
+        }
+      }
       await save.mutateAsync({
         first_name: form.firstName.trim(),
         last_name: form.lastName.trim(),
@@ -191,9 +237,22 @@ export default function EditProfilePage() {
         companyName: form.isCompany ? form.companyName.trim() : '',
       });
       await refreshUser(); // نام/نقش هدر تازه شود
+      await queryClient.invalidateQueries({ queryKey: ['panel-profile'] });
+      // تصاویر آپلودشده تازه → فرم با نسخه سروری (id دار) دوباره پر شود
+      setForm((f) =>
+        f
+          ? {
+              ...f,
+              gallery: f.gallery.map((g) => (g.file ? { ...g, file: undefined } : g)),
+              certificates: f.certificates.map((c) => (c.file ? { ...c, file: undefined } : c)),
+            }
+          : f,
+      );
       toast({ description: 'تغییرات پروفایل شما با موفقیت ذخیره شد.' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'خطا در ذخیره — دوباره تلاش کنید.');
+    } finally {
+      setUploadingImages(false);
     }
   };
 
@@ -579,14 +638,17 @@ export default function EditProfilePage() {
           </p>
         ) : (
           <div className="mt-2 flex flex-wrap gap-3">
-            {form.gallery.map((url, i) => (
-              <div key={i} className="relative size-20 overflow-hidden rounded-md border bg-secondary">
-                {/* پیش‌نمایش محلی تصویر آپلودی */}
-                <img src={url} alt="تصویر مربوطه" className="size-full object-cover" />
+            {form.gallery.map((img, i) => (
+              <div key={img.id ?? img.url} className="relative size-20 overflow-hidden rounded-md border bg-secondary">
+                {/* تصویر ذخیره‌شده سروری یا پیش‌نمایش محلی آپلود تازه */}
+                <img src={img.url} alt="تصویر مربوطه" className="size-full object-cover" />
+                {img.file && (
+                  <span className="absolute bottom-1 start-1 rounded-full bg-primary px-1.5 text-[9px] font-bold text-primary-foreground">جدید</span>
+                )}
                 <button
                   type="button"
                   aria-label="حذف تصویر"
-                  onClick={() => patch({ gallery: form.gallery.filter((_, j) => j !== i) })}
+                  onClick={() => void removeImage('gallery', i)}
                   className="absolute left-1 top-1 grid size-6 place-items-center rounded-full bg-black/60 text-white transition-colors hover:bg-red-500"
                 >
                   <Trash2 size={13} />
@@ -631,14 +693,17 @@ export default function EditProfilePage() {
           </p>
         ) : (
           <div className="mt-2 flex flex-wrap gap-3">
-            {form.certificates.map((url, i) => (
-              <div key={i} className="relative size-20 overflow-hidden rounded-md border bg-secondary">
-                {/* پیش‌نمایش محلی گواهی آپلودی */}
-                <img src={url} alt="گواهی" className="size-full object-cover" />
+            {form.certificates.map((img, i) => (
+              <div key={img.id ?? img.url} className="relative size-20 overflow-hidden rounded-md border bg-secondary">
+                {/* گواهی ذخیره‌شده سروری یا پیش‌نمایش محلی آپلود تازه */}
+                <img src={img.url} alt="گواهی" className="size-full object-cover" />
+                {img.file && (
+                  <span className="absolute bottom-1 start-1 rounded-full bg-primary px-1.5 text-[9px] font-bold text-primary-foreground">جدید</span>
+                )}
                 <button
                   type="button"
                   aria-label="حذف گواهی"
-                  onClick={() => patch({ certificates: form.certificates.filter((_, j) => j !== i) })}
+                  onClick={() => void removeImage('certificates', i)}
                   className="absolute left-1 top-1 grid size-6 place-items-center rounded-full bg-black/60 text-white transition-colors hover:bg-red-500"
                 >
                   <Trash2 size={13} />
@@ -647,8 +712,8 @@ export default function EditProfilePage() {
             ))}
           </div>
         )}
-        <Button className="mt-4 w-full rounded-md" onClick={() => void saveAll()} disabled={save.isPending}>
-          <Save size={15} /> {save.isPending ? 'در حال ثبت تصاویر…' : 'ثبت تصاویر'}
+        <Button className="mt-4 w-full rounded-md" onClick={() => void saveAll()} disabled={save.isPending || uploadingImages}>
+          <Save size={15} /> {save.isPending || uploadingImages ? 'در حال ثبت تصاویر…' : 'ثبت تصاویر'}
         </Button>
       </PanelCard>
 

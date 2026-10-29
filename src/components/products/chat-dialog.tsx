@@ -31,6 +31,7 @@ export function ChatDialog({
   sellerUserName,
   sellerId,
   sellerName,
+  sellerAvatarUrl,
   productName,
   className,
   buttonLabel = 'چت با فروشنده',
@@ -40,6 +41,8 @@ export function ChatDialog({
   sellerUserName?: string;
   sellerId?: string;
   sellerName: string;
+  /** آواتار طرف مقابل — در سربرگ مودال چت (اگر ست شده باشد) */
+  sellerAvatarUrl?: string | null;
   productName?: string;
   className?: string;
   buttonLabel?: string;
@@ -80,8 +83,12 @@ export function ChatDialog({
       >
         {/* سربرگ چت — عین صفحه پیام‌ها: آواتار + نام + آنلاین + زمینه گفتگو */}
         <div className="flex shrink-0 items-center gap-3 border-b bg-card px-3 py-2.5 nav-desktop:px-4">
-          <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-extrabold text-primary">
-            {initial}
+          <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/10 text-sm font-extrabold text-primary">
+            {sellerAvatarUrl ? (
+              <img src={sellerAvatarUrl} alt={sellerName} className="size-full object-cover" />
+            ) : (
+              initial
+            )}
             <PresenceDot
               online={presence?.online}
               showLabel={false}

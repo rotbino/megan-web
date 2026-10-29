@@ -29,9 +29,18 @@ function ReviewCard({ review }: { review: SellerReviewRow }) {
     <article className="rounded-md border bg-card p-4">
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-            {review.author.firstName?.[0] ?? '؟'}
-          </span>
+          {review.author.avatarUrl ? (
+            <img
+              src={review.author.avatarUrl}
+              alt={name}
+              className="size-9 shrink-0 rounded-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+              {review.author.firstName?.[0] ?? '؟'}
+            </span>
+          )}
           <div className="min-w-0">
             <p className="truncate text-[13px] font-bold">{name}</p>
             <p className="text-[10.5px] text-muted-foreground">

@@ -155,6 +155,7 @@ export function ProfileHero({ user, shareUrl }: { user: ProfileHeroUser; shareUr
               sellerUserName={user.userName}
               sellerId={user.id}
               sellerName={name}
+              sellerAvatarUrl={user.avatarUrl}
               buttonLabel="ارسال پیام"
               buttonVariant="outline"
               className="h-11 flex-1 rounded-md px-5 text-sm font-bold sm:flex-none"

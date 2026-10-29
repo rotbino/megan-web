@@ -4,14 +4,20 @@
  * نظرسنجی — عین MHTML باسکول:
  * «لطفاً نظر خود را درباره عملکرد ایمچ بیان کنید» + پنج گزینه (عالی تا خیلی بد) +
  * «نظر شما» (متن دلخواه) + «ثبت نظر» + حالت تشکر پس از ثبت.
+ *
+ * ذخیره واقعی (بک‌اند /survey): پاسخ قبلی کاربر می‌آید تا فرم ویرایش پر شود؛
+ * ثبت مجدد = ویرایش همان پاسخ (upsert روی userId یکتا). پاسخ‌ها در پنل
+ * ادمین (نظرسنجی‌ها) دیده می‌شوند.
  */
 
-import { useState } from 'react';
-import { CheckCircle2, ScrollText } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CheckCircle2, Loader2, Pencil, ScrollText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { PanelCard } from '@/components/panel/panel-parts';
+import { apiFetch } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import type { SurveyScore } from '@/lib/types';
 
@@ -23,11 +29,53 @@ const OPTIONS: { key: SurveyScore; label: string; tone: string }[] = [
   { key: 'very_bad', label: 'خیلی بد', tone: 'border-red-400 bg-red-50 text-red-700' },
 ];
 
+interface MySurvey {
+  score: SurveyScore;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function SurveyPage() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [score, setScore] = useState<SurveyScore | null>(null);
   const [note, setNote] = useState('');
   const [done, setDone] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  // پاسخ قبلی من — فرم را برای ویرایش پر می‌کند
+  const { data: mine } = useQuery({
+    queryKey: ['my-survey'],
+    queryFn: () => apiFetch<MySurvey | null>('/survey/getMine', {}),
+  });
+
+  useEffect(() => {
+    if (!hydrated && mine !== undefined) {
+      setHydrated(true);
+      if (mine) {
+        setScore(mine.score);
+        setNote(mine.note ?? '');
+        setDone(true);
+      }
+    }
+  }, [mine, hydrated]);
+
+  const submit = useMutation({
+    mutationFn: () =>
+      apiFetch<MySurvey>('/survey/submit', {
+        score: score as SurveyScore,
+        ...(note.trim() ? { note: note.trim() } : {}),
+      }),
+    onSuccess: () => {
+      setDone(true);
+      queryClient.invalidateQueries({ queryKey: ['my-survey'] });
+      toast({ description: 'نظر شما با موفقیت ثبت شد.' });
+    },
+    onError: (err) => {
+      toast({ description: err instanceof Error ? err.message : 'ثبت نظر ناموفق بود.' });
+    },
+  });
 
   if (done) {
     return (
@@ -39,9 +87,10 @@ export default function SurveyPage() {
           <h1 className="mt-4 text-base font-extrabold">نظر شما ثبت شد</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             از همراهی شما سپاسگزاریم؛ نظرات شما ایمچ را بهتر می‌کند.
+            {mine?.score ? ' پاسخ شما هر زمان قابل ویرایش است.' : ''}
           </p>
           <Button variant="outline" className="mt-5 rounded-md" onClick={() => setDone(false)}>
-            ویرایش نظر
+            <Pencil size={14} /> ویرایش نظر
           </Button>
         </PanelCard>
       </div>
@@ -92,12 +141,10 @@ export default function SurveyPage() {
 
         <Button
           className="mt-4 w-full rounded-md sm:w-auto"
-          disabled={!score}
-          onClick={() => {
-            setDone(true);
-            toast({ description: 'نظر شما با موفقیت ثبت شد.' });
-          }}
+          disabled={!score || submit.isPending}
+          onClick={() => submit.mutate()}
         >
+          {submit.isPending && <Loader2 size={14} className="animate-spin" />}
           ثبت نظر
         </Button>
       </PanelCard>

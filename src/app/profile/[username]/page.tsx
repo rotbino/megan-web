@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation';
 import {
   BadgeCheck,
   Boxes,
+  Building2,
+  Camera,
+  FileCheck2,
   MapPin,
   Send,
   ShieldAlert,
@@ -46,6 +49,13 @@ interface SellerData {
     responseRate?: number | null;
     productCount?: number;
     totalStock?: number;
+    // فیلدهای کسب‌وکار — از فرم ویرایش پروفایل (embedded myuser_profiles)
+    address?: string | null;
+    publicPhone?: string | null;
+    isCompany?: boolean;
+    companyName?: string | null;
+    gallery?: Array<{ url: string; thumbUrl: string }>;
+    certificates?: Array<{ url: string; thumbUrl: string }>;
   };
   products: Product[];
 }
@@ -58,7 +68,9 @@ async function getSeller(userName: string): Promise<SellerData | null> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userName }),
-      next: { revalidate: 120 },
+      // ۳۰s هم‌قدم با کش بک‌اند (getSeller TTL.SHORT + invalidateTag) — ویرایش
+      // پروفایل همان لحظه کش را می‌شکند؛ این‌جا هم پنجره کوتاه است
+      next: { revalidate: 30 },
     });
     const json = (await res.json()) as { status: boolean; data: SellerData };
     if (!json?.status || !json.data) return null;
@@ -107,7 +119,7 @@ export default async function ProfilePage({ params }: Props) {
   const totalStock = user.totalStock ?? products.reduce((a, p) => a + p.stock, 0);
   const unit = products[0]?.unit ?? 'کیلوگرم';
 
-  /** آمار فروشنده — سه جعقه مثل تب «اصلی» باسکول */
+  /** آمار فروشنده — سه جعبه مثل تب «اصلی» باسکول */
   const stats = [
     { icon: Boxes, label: 'آگهی فعال', value: toFa(user.productCount ?? products.length) },
     { icon: Store, label: 'موجودی عرضه', value: stockFa(totalStock, unit) },
@@ -119,6 +131,9 @@ export default async function ProfilePage({ params }: Props) {
         : 'بدون نظر',
     },
   ] as const;
+  const gallery = user.gallery ?? [];
+  const certificates = user.certificates ?? [];
+  const companyLabel = user.isCompany && user.companyName?.trim() ? user.companyName.trim() : null;
 
   return (
     <>
@@ -168,6 +183,20 @@ export default async function ProfilePage({ params }: Props) {
                       <dt className="shrink-0">شهر:</dt>
                       <dd className="font-bold text-foreground">{location || '—'}</dd>
                     </div>
+                    {user.address?.trim() && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <MapPin size={13} className="shrink-0 text-primary/70" />
+                        <dt className="shrink-0">آدرس:</dt>
+                        <dd className="truncate font-bold text-foreground" title={user.address}>{user.address}</dd>
+                      </div>
+                    )}
+                    {companyLabel && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Building2 size={13} className="shrink-0 text-primary/70" />
+                        <dt className="shrink-0">شرکت:</dt>
+                        <dd className="truncate font-bold text-foreground" title={companyLabel}>{companyLabel}</dd>
+                      </div>
+                    )}
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Timer size={13} className="shrink-0 text-primary/70" />
                       <dt className="shrink-0">عضویت:</dt>
@@ -182,6 +211,66 @@ export default async function ProfilePage({ params }: Props) {
                     </div>
                   </dl>
                 </div>
+
+                {/* تصاویر مربوطه — عین باسکول (محصولات | شرکت | کارکنان) */}
+                {gallery.length > 0 && (
+                  <div className="rounded-md border bg-card p-5">
+                    <h3 className="flex items-center gap-2 text-sm font-bold">
+                      <Camera size={15} className="text-primary" />
+                      تصاویر مربوطه
+                    </h3>
+                    <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      {gallery.map((g, i) => (
+                        <a
+                          key={`${g.url}-${i}`}
+                          href={g.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group relative block aspect-square overflow-hidden rounded-md border bg-secondary"
+                          title="مشاهده تصویر کامل"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={g.thumbUrl ?? g.url}
+                            alt={`تصویر مربوطه ${i + 1}`}
+                            className="size-full object-cover transition-transform group-hover:scale-105"
+                            loading="lazy"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* گواهی‌های مربوطه — ثبت شرکت | استاندارد محصول */}
+                {certificates.length > 0 && (
+                  <div className="rounded-md border bg-card p-5">
+                    <h3 className="flex items-center gap-2 text-sm font-bold">
+                      <FileCheck2 size={15} className="text-primary" />
+                      گواهی های مربوطه
+                    </h3>
+                    <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      {certificates.map((c, i) => (
+                        <a
+                          key={`${c.url}-${i}`}
+                          href={c.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group relative block aspect-square overflow-hidden rounded-md border bg-secondary"
+                          title="مشاهده گواهی کامل"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={c.thumbUrl ?? c.url}
+                            alt={`گواهی ${i + 1}`}
+                            className="size-full object-cover transition-transform group-hover:scale-105"
+                            loading="lazy"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
 

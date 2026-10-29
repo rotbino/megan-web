@@ -186,8 +186,12 @@ export default function PanelMessagesPage() {
                       !showingSupport && active?.id === t.id ? 'bg-primary/10' : 'hover:bg-secondary/70',
                     )}
                   >
-                    <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-xs font-extrabold">
-                      {nameOf(t).charAt(0)}
+                    <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-secondary text-xs font-extrabold">
+                      {t.counterpart.avatarUrl ? (
+                        <img src={t.counterpart.avatarUrl} alt="" className="size-full object-cover" loading="lazy" />
+                      ) : (
+                        nameOf(t).charAt(0)
+                      )}
                       <PresenceDot
                         online={presenceOf(t)?.online}
                         showLabel={false}
@@ -316,8 +320,12 @@ export default function PanelMessagesPage() {
           ) : active ? (
             <>
               <div className="flex items-center gap-3 border-b border-border/70 pb-3">
-                <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-xs font-extrabold text-primary">
-                  {nameOf(active).charAt(0)}
+                <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/10 text-xs font-extrabold text-primary">
+                  {active.counterpart.avatarUrl ? (
+                    <img src={active.counterpart.avatarUrl} alt="" className="size-full object-cover" />
+                  ) : (
+                    nameOf(active).charAt(0)
+                  )}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="flex min-w-0 items-center gap-2 text-sm font-bold">

@@ -955,3 +955,98 @@ export interface AdminCallReportFilters {
 export async function fetchAdminCallReport(filters: AdminCallReportFilters = {}): Promise<AdminCallReport> {
   return adminFetch<AdminCallReport>('/admin/calls/getCallReport', filters as unknown as Record<string, unknown>);
 }
+
+// ─── نظرسنجی‌های کاربران (admin/surveys) ─────────────────────────────────────
+
+export interface AdminSurveyRow {
+  id: string;
+  score: 'excellent' | 'good' | 'average' | 'bad' | 'very_bad';
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: string;
+    userName: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    avatarUrl: string | null;
+  };
+}
+
+export interface AdminSurveyStats {
+  total: number;
+  withNote: number;
+  distribution: Array<{ score: string; count: number }>;
+  last7Days: number;
+}
+
+export interface AdminSurveyList {
+  items: AdminSurveyRow[];
+  total: number;
+  page: number;
+  perPage: number;
+  pageCount: number;
+  stats: AdminSurveyStats;
+}
+
+export interface AdminSurveyListFilters {
+  search?: string;
+  score?: string;
+  withNote?: 'true' | 'false';
+  page?: number;
+  perPage?: number;
+}
+
+/** فهرست پاسخ‌های نظرسنجی کاربران + آمار توزیع پنج‌گانه */
+export async function fetchAdminSurveyList(filters: AdminSurveyListFilters = {}): Promise<AdminSurveyList> {
+  return adminFetch<AdminSurveyList>('/admin/surveys/getSurveyList', filters as unknown as Record<string, unknown>);
+}
+
+/** حذف یک پاسخ نظرسنجی (توهین‌آمیز/نامعتبر) */
+export async function deleteAdminSurveyResponse(id: string): Promise<{ id: string }> {
+  return adminFetch<{ id: string }>('/admin/surveys/deleteSurveyResponse', { id });
+}
+
+// ─── نظرات فروشندگان (admin/reviews) ────────────────────────────────────────
+
+export interface AdminReviewRow {
+  id: string;
+  rating: number;
+  text: string;
+  createdAt: string;
+  updatedAt: string;
+  author: { userName: string; firstName: string; lastName: string; avatarUrl: string | null };
+  seller: { userName: string; firstName: string; lastName: string; avatarUrl: string | null };
+}
+
+export interface AdminReviewList {
+  items: AdminReviewRow[];
+  total: number;
+  page: number;
+  perPage: number;
+  pageCount: number;
+  stats: {
+    total: number;
+    avg: number;
+    distribution: Array<{ rating: number; count: number }>;
+    last7Days: number;
+  };
+}
+
+export interface AdminReviewListFilters {
+  search?: string;
+  rating?: number;
+  page?: number;
+  perPage?: number;
+}
+
+/** فهرست نظرات فروشندگان + آمار امتیاز */
+export async function fetchAdminReviewList(filters: AdminReviewListFilters = {}): Promise<AdminReviewList> {
+  return adminFetch<AdminReviewList>('/admin/reviews/getReviewList', filters as unknown as Record<string, unknown>);
+}
+
+/** حذف یک نظر (کش پروفایل فروشنده همان لحظه می‌شکند) */
+export async function deleteAdminReview(id: string): Promise<{ id: string }> {
+  return adminFetch<{ id: string }>('/admin/reviews/deleteReview', { id });
+}
