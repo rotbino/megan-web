@@ -124,15 +124,20 @@ export default async function ProfilePage({ params }: Props) {
     <>
       <Header />
       <main className="flex-1">
-        {/* هویت فروشنده (کاور + آواتار + نشان‌ها + دکمه‌ها) + جعبه اشتراک‌گذاری */}
-        <div className="mx-auto max-w-7xl space-y-4 px-4 pt-6 lg:px-6">
-          <ProfileHero user={user as unknown as Parameters<typeof ProfileHero>[0]['user']} />
+        {/* ─── کارت یکپارچه هدر پروفایل — عین باسکول (cp-header-main-content) ───
+            بنر + هویت فروشنده + نوار لینک بخش‌ها همه یک کارت‌اند؛
+            بدون خط بالای نوار لینک‌ها و با سایه نرم از محتوای زیرین جدا می‌شود. */}
+        <div className="mx-auto max-w-7xl px-4 pt-6 lg:px-6">
+          <div className="overflow-hidden rounded-lg border bg-card shadow-[0_6px_20px_rgba(35,38,43,0.09)]">
+            <ProfileHero
+              user={user as unknown as Parameters<typeof ProfileHero>[0]['user']}
+              shareUrl={`${SITE_URL}/profile/${user.userName}`}
+            />
+            <ProfileScrollNav productCount={user.productCount ?? products.length} />
+          </div>
         </div>
 
-        {/* ناوبری چسبان بخش‌ها — بهبود نسبت به تب باسکول (همه‌چیز در یک صفحه) */}
-        <ProfileScrollNav productCount={user.productCount ?? products.length} />
-
-        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 pb-12 lg:grid-cols-[1fr_320px] lg:px-6">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 pt-6 pb-12 lg:grid-cols-[1fr_320px] lg:px-6">
           {/* ستون اصلی */}
           <div className="min-w-0 space-y-8">
             {/* درباره فروشنده */}

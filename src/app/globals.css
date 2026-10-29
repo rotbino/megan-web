@@ -108,9 +108,11 @@
 }
 
 :root {
-  /* ─── برندبوک «تامینان» — ساده، ملایم و دلنشین ─────────────────
-     زمینه سفید خالص (خواسته مالک: طوسی خوب نشد)؛ کارت‌های سفید با
-     خط‌های ظریف؛ قرمز ملایم فقط برای دکمه‌ها و لهجه‌ها؛
+  /* ─── برندبوک ایمچ v3 — آبی اعتماد (#4c7dd0) ────────────────
+     زمینه سفید خالص؛ کارت‌های سفید با خط‌های ظریف؛ تیل B2B برای دکمه‌ها
+     و لهجه‌ها (اعتماد تجاری + تازگی محصولات کشاورزی)؛ متمایز از نارنجی
+     باسکول؛ مکمل نشان کهربایی «فروشنده ویژه»؛ و دیگر با قرمزِ خطا
+     (destructive) یکی نیست.
      گردی گوشه‌ها هم‌اندازه: کارت ۱۲ / دکمه-اینپوت ۱۰ / مودال ۱۶ / چیپ گرد کامل */
   --radius: 0.75rem; /* ۱۲px — کارت */
   --background: #ffffff; /* زمینه صفحه — سفید خالص */
@@ -119,12 +121,12 @@
   --card-foreground: #23262b;
   --popover: #ffffff;
   --popover-foreground: #23262b;
-  /* قرمز ملایم تامینان — فقط دکمه‌ها و لهجه‌های کوچک */
-  --primary: #a62626;
-  --primary-deep: #8e1f1f;
+  /* آبی اعتماد (#4c7dd0) — دکمه‌ها و لهجه‌ها؛ انتخاب مالک */
+  --primary: #4c7dd0;
+  --primary-deep: #3a68b8;
   --primary-foreground: #ffffff;
-  --primary-soft: #f8efef; /* حالت انتخاب‌شده/فعال */
-  --primary-line: #ebcfcf;
+  --primary-soft: #eef3fa; /* حالت انتخاب‌شده/فعال */
+  --primary-line: #ccd9ef;
   --secondary: #f0f1f4; /* چیپ خاکستری */
   --secondary-foreground: #4a505b;
   --muted: #f0f1f4;
@@ -135,16 +137,16 @@
   --destructive: #c62828;
   --border: #e9ebef; /* خط ظریف کارت‌ها */
   --input: #e2e5ea; /* خط اینپوت‌ها کمی پررنگ‌تر */
-  --ring: #a62626;
+  --ring: #4c7dd0;
   --verified: #4c7dd0; /* آبیِ فقطِ نشان احراز هویت */
   --sidebar: #ffffff;
   --sidebar-foreground: #23262b;
-  --sidebar-primary: #a62626;
+  --sidebar-primary: #4c7dd0;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f8efef;
-  --sidebar-accent-foreground: #a62626;
+  --sidebar-accent: #eef3fa;
+  --sidebar-accent-foreground: #4c7dd0;
   --sidebar-border: #e9ebef;
-  --sidebar-ring: #a62626;
+  --sidebar-ring: #4c7dd0;
   /* کهربایی ملایم — فقط برای نشان «نردبان» (۱۰ هزار تومان در روز) */
   --ladder: #b07818;
   --ladder-foreground: #fffdf7;
@@ -158,11 +160,11 @@
   --card-foreground: #e8eaee;
   --popover: #23262b;
   --popover-foreground: #e8eaee;
-  --primary: #d05c5c;
-  --primary-deep: #b84646;
+  --primary: #7ba3e0;
+  --primary-deep: #6590c9;
   --primary-foreground: #ffffff;
-  --primary-soft: #322525;
-  --primary-line: #4a3232;
+  --primary-soft: #1f2734;
+  --primary-line: #36425e;
   --secondary: #2a2d33;
   --secondary-foreground: #c8ccd4;
   --muted: #2a2d33;
@@ -173,16 +175,16 @@
   --destructive: #e05c5c;
   --border: #33373d;
   --input: #3a3e45;
-  --ring: #d05c5c;
+  --ring: #7ba3e0;
   --verified: #7ba3e0;
   --sidebar: #23262b;
   --sidebar-foreground: #e8eaee;
-  --sidebar-primary: #d05c5c;
+  --sidebar-primary: #7ba3e0;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #322525;
-  --sidebar-accent-foreground: #d05c5c;
+  --sidebar-accent: #1f2734;
+  --sidebar-accent-foreground: #7ba3e0;
   --sidebar-border: #33373d;
-  --sidebar-ring: #d05c5c;
+  --sidebar-ring: #7ba3e0;
   --ladder: #d0a04a;
   --ladder-foreground: #26200f;
   --ladder-soft: #3a3118;

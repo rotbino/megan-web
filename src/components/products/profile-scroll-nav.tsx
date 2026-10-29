@@ -1,21 +1,21 @@
 'use client';
 
 /**
- * ناوبری بخش‌های پروفایل — چسبان با scroll-spy (بهبود نسبت به تب باسکول):
- * همه بخش‌ها در یک صفحه قابل پیمایش‌اند (هیچ محتوایی پنهان نمی‌شود)؛
- * این نوار فقط «کجای صفحه هستیم» را هایلایت می‌کند و با کلیک نرم اسکرول
- * می‌کند — الگوی مدرن پروفایل‌ها (GitHub/LinkedIn) + ساختار باسکول.
+ * ناوبری بخش‌های پروفایل — عین باسکول (cp-navigation-container):
+ * نوار لینک‌های «درباره فروشنده / محصولات / نظرات» داخل همان کارت یکپارچه
+ * هدر (بنر + هویت + نوار) نشسته — بدون خط جداکننده بالای نوار؛
+ * تب فعال اندیکاتور خط زیرین دارد (cp-nav-button-indicator).
+ * کلیک اسکرول نرم به بخش مربوطه می‌برد و scroll-spy تب فعال را هایلایت می‌کند.
  */
 
 import { useEffect, useState } from 'react';
-import { Info, MessageSquareText, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toFa } from '@/lib/format';
 
 const SECTIONS = [
-  { id: 'about', label: 'درباره فروشنده', icon: Info },
-  { id: 'products', label: 'محصولات', icon: Package },
-  { id: 'reviews', label: 'نظرات', icon: MessageSquareText },
+  { id: 'about', label: 'درباره فروشنده' },
+  { id: 'products', label: 'محصولات' },
+  { id: 'reviews', label: 'نظرات' },
 ] as const;
 
 export function ProfileScrollNav({ productCount }: { productCount?: number }) {
@@ -40,25 +40,22 @@ export function ProfileScrollNav({ productCount }: { productCount?: number }) {
   }, []);
 
   return (
-    <nav
-      aria-label="بخش‌های پروفایل"
-      className="sticky top-0 z-30 mb-4 mt-4 border-y bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"
-    >
-      <ul className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto px-4 py-1.5 lg:px-6">
-        {SECTIONS.map(({ id, label, icon: Icon }) => (
+    <nav aria-label="بخش‌های پروفایل" className="px-2 sm:px-4">
+      <ul className="flex items-center gap-1 overflow-x-auto">
+        {SECTIONS.map(({ id, label }) => (
           <li key={id} className="shrink-0">
             <a
               href={`#${id}`}
               aria-current={active === id ? 'true' : undefined}
               onClick={() => setActive(id)}
               className={cn(
-                'flex h-9 items-center gap-1.5 rounded-[10px] px-3.5 text-[12.5px] font-bold transition-colors',
+                // عین cp-nav-button: ارتفاع ثابت + اندیکاتور خط زیرین برای تب فعال
+                'relative flex h-11 items-center border-b-2 px-3.5 text-[13px] font-bold transition-colors',
                 active === id
-                  ? 'bg-primary-soft text-primary'
-                  : 'text-muted-foreground hover:bg-secondary/70 hover:text-foreground',
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
               )}
             >
-              <Icon size={14} />
               {label}
               {id === 'products' && productCount !== undefined && (
                 <span className="text-[10.5px] font-medium text-muted-foreground">({toFa(productCount)})</span>

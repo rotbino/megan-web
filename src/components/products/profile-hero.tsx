@@ -1,20 +1,26 @@
 'use client';
 
 /**
- * کارت هویت فروشنده — سرصفحه پروفایل (ساختار باسکول، اجرای تمیزتر):
- * کاور گرادیانی برند + آواتار (تصویر یا حرف اول) + نام + نشان احراز +
- * نشان آنلاین/آفلاین زنده + امتیاز نظرات + مدت عضویت + شهر + دکمه‌های
- * «شماره تماس» و «ارسال پیام» (گفتگوی مستقیم).
+ * کارت هویت فروشنده — سرصفحه پروفایل (ساختار عین باسکول cp-header):
+ * بنر تصویری با ارتفاع مناسب + دکمه‌های اشتراک‌گذاری/ادامه در گوشه بالای بنر
+ * (cp-banner-buttons-container) + آواتار روی بنر + نام + نشان احراز + نشان
+ * آنلاین/آفلاین زنده + امتیاز نظرات + مدت عضویت + شهر + دکمه‌های «شماره تماس»
+ * و «ارسال پیام» به‌صورت افقی کنار هم (cp-header-buttons-container).
+ *
+ * توجه: خود این کامپوننت قاب/سایه ندارد — در صفحه داخل یک کارت یکپارچه
+ * (بنر + هویت + نوار بخش‌ها) نشسته که با سایه نرم از محتوا جدا می‌شود.
  */
 
-import { BadgeCheck, Crown, MapPin, Phone } from 'lucide-react';
+import { Crown, MapPin, Phone, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { ChatDialog } from '@/components/products/chat-dialog';
 import { PresenceDot } from '@/components/shared/presence-dot';
 import { RatingStars } from '@/components/shared/rating-stars';
 import { VerifiedBadge } from '@/components/shared/badges';
+import { ArrowLeftIcon } from '@/components/shared/buskool-icons';
 import { findPresence, usePresenceStatus } from '@/lib/api/presence';
+import { useToast } from '@/hooks/use-toast';
 import { toFa } from '@/lib/format';
 
 export interface ProfileHeroUser {
@@ -34,9 +40,10 @@ export interface ProfileHeroUser {
   reviewSummary?: { avg: number; count: number } | null;
 }
 
-export function ProfileHero({ user }: { user: ProfileHeroUser }) {
+export function ProfileHero({ user, shareUrl }: { user: ProfileHeroUser; shareUrl?: string }) {
   const name = `${user.firstName} ${user.lastName}`.trim() || 'فروشنده ایمچ';
   const location = [user.provinceName, user.cityName].filter(Boolean).join('، ');
+  const { toast } = useToast();
 
   // وضعیت زنده — SSR مقدار اولیه دارد (online/lastSeenAt)؛ این polling تازه نگه می‌دارد
   const { data: presenceItems } = usePresenceStatus({ userNames: [user.userName] });
@@ -44,20 +51,60 @@ export function ProfileHero({ user }: { user: ProfileHeroUser }) {
   const online = live?.online ?? user.online ?? null;
   const lastSeenAt = live?.lastSeenAt ?? user.lastSeenAt ?? null;
 
+  /** اشتراک‌گذاری پروفایل — عین باسکول: Web Share (موبایل) و در غیر این صورت کپی لینک */
+  const share = async () => {
+    const url = shareUrl ?? (typeof window !== 'undefined' ? window.location.href : '');
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ title: `فروشگاه ${name}`, url });
+        return;
+      } catch {
+        return; // کاربر لغو کرد
+      }
+    }
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(url).catch(() => {});
+      toast({ description: 'لینک پروفایل کپی شد.' });
+    }
+  };
+
   return (
-    <div className="overflow-hidden rounded-lg border bg-card">
-      {/* کاور — گرادیان برند + بافت نقطه‌ای ملایم */}
-      <div className="relative h-24 sm:h-32" aria-hidden>
-        <div className="absolute inset-0 bg-gradient-to-l from-primary/80 via-primary/60 to-primary/30" />
-        <div
-          className="absolute inset-0 opacity-20"
-          style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #fff 1px, transparent 0)', backgroundSize: '22px 22px' }}
+    <div>
+      {/* ─── بنر — تصویر مناسب با ارتفاع مناسب (cp-header-banner-container) ─── */}
+      <div className="relative h-28 bg-secondary sm:h-36 lg:h-40">
+        <img
+          src="/images/company-profile-banner.png"
+          alt=""
+          aria-hidden
+          className="absolute inset-0 size-full object-cover"
         />
+
+        {/* دکمه‌های گوشه بالای بنر — عین باسکول (cp-banner-buttons-container):
+            دکمه گرد «همه آگهی‌ها» (فلش رو به بیرون — قانون RTL) + دکمه اشتراک‌گذاری */}
+        <div className="absolute end-3 top-3 flex items-center gap-2">
+          <a
+            href="/product-list"
+            title="همه آگهی‌ها"
+            aria-label="مشاهده همه آگهی‌ها"
+            className="grid size-9 place-items-center rounded-full bg-white text-foreground shadow-[0_2px_8px_rgba(35,38,43,0.18)] transition-transform hover:scale-105"
+          >
+            <ArrowLeftIcon size={18} />
+          </a>
+          <button
+            type="button"
+            onClick={share}
+            className="flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-[12.5px] font-bold text-foreground shadow-[0_2px_8px_rgba(35,38,43,0.18)] transition-transform hover:scale-105"
+          >
+            <Share2 size={15} />
+            اشتراک گذاری
+          </button>
+        </div>
       </div>
 
-      <div className="px-4 pb-5 sm:px-6">
+      {/* ─── ردیف هویت — آواتار روی بنر + نام + متا + دکمه‌ها (cp-header-container) ─── */}
+      <div className="px-4 pb-4 sm:px-6">
         <div className="-mt-10 flex flex-col gap-4 sm:-mt-12 sm:flex-row sm:items-end">
-          {/* آواتار — روی کاور افتاده مثل باسکول */}
+          {/* آواتار — روی بنر افتاده مثل باسکول */}
           {user.avatarUrl ? (
             <img
               src={user.avatarUrl}
@@ -93,17 +140,13 @@ export function ProfileHero({ user }: { user: ProfileHeroUser }) {
                 </span>
               )}
               <span>{toFa(user.daysInImach ?? 1)} روز در ایمچ</span>
-              <span className="hidden items-center gap-1 sm:inline-flex">
-                <BadgeCheck size={13} className="text-primary/70" />
-                شناسه: <span dir="ltr" className="font-mono">{user.userName}</span>
-              </span>
             </div>
           </div>
 
-          {/* دکمه‌های اقدام — عین باسکول: تماس (پررنگ) + پیام (معمولی) */}
-          <div className="flex gap-2 pb-1 sm:flex-col">
+          {/* دکمه‌های اقدام — عین باسکول: افقی کنار هم (تماس پررنگ + پیام معمولی) */}
+          <div className="flex gap-2 pb-1">
             <PhoneReveal sellerName={name} userName={user.userName}>
-              <Button className="h-11 rounded-md px-5 text-sm font-bold">
+              <Button className="h-11 flex-1 rounded-md px-5 text-sm font-bold sm:flex-none">
                 <Phone size={17} />
                 شماره تماس
               </Button>
@@ -114,7 +157,7 @@ export function ProfileHero({ user }: { user: ProfileHeroUser }) {
               sellerName={name}
               buttonLabel="ارسال پیام"
               buttonVariant="outline"
-              className="h-11 rounded-md px-5 text-sm font-bold"
+              className="h-11 flex-1 rounded-md px-5 text-sm font-bold sm:flex-none"
             />
           </div>
         </div>
