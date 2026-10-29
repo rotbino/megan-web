@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import {
   BadgeCheck,
   Eye,
+  Home,
   MapPin,
   Package,
   Phone,
@@ -19,11 +20,12 @@ import { ProductImage } from '@/components/shared/product-image';
 import { ProductPrice } from '@/components/shared/product-price';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { LadderBadge, OldAdBadge } from '@/components/shared/badges';
-import { ChatWidget } from '@/components/products/chat-widget';
 import { ChatDialog } from '@/components/products/chat-dialog';
 import { RelatedProducts } from '@/components/products/related-products';
 import { SellerRatingBadge } from '@/components/products/seller-rating-badge';
 import { SellerOnlineBadge } from '@/components/products/seller-online-badge';
+import { MobileContactBar } from '@/components/products/mobile-contact-bar';
+import { ArrowLeftIcon } from '@/components/shared/buskool-icons';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { stockFa, toFa } from '@/lib/format';
@@ -98,8 +100,38 @@ export default async function ProductViewPage({ params }: Props) {
     <>
       <Header />
       <main className="flex-1">
+        <div className="mx-auto max-w-7xl px-4 pt-4 lg:px-6">
+          {/* ─── نوار ناوبری بالا (بردکرامب) — عین باسکول ─── */}
+          <nav aria-label="مسیر صفحه" className="no-scrollbar mb-3 flex h-9 items-center gap-1 overflow-x-auto text-[13px] md:text-sm">
+            <Link
+              href="/product-list"
+              className="flex shrink-0 items-center gap-1 whitespace-nowrap text-muted-foreground hover:text-primary"
+            >
+              <Home size={15} className="shrink-0" />
+              همه دسته ها
+            </Link>
+            <ArrowLeftIcon size={16} className="shrink-0 text-muted-foreground/60" />
+            <Link
+              href={`/product-list/category/${encodeURIComponent(product.categoryName)}`}
+              className="shrink-0 whitespace-nowrap text-muted-foreground hover:text-primary"
+            >
+              {product.categoryName}
+            </Link>
+            <ArrowLeftIcon size={16} className="shrink-0 text-muted-foreground/60" />
+            <Link
+              href={`/product-list/category/${encodeURIComponent(product.subCategoryName)}`}
+              className="shrink-0 whitespace-nowrap text-muted-foreground hover:text-primary"
+            >
+              {product.subCategoryName}
+            </Link>
+            <ArrowLeftIcon size={16} className="shrink-0 text-muted-foreground/60" />
+            <span className="shrink-0 whitespace-nowrap font-bold text-foreground" aria-current="page">
+              {product.productName}
+            </span>
+          </nav>
+        </div>
         <div
-          className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-6 lg:grid-cols-[1fr_360px] lg:px-6"
+          className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 pb-6 lg:grid-cols-[1fr_360px] lg:px-6"
         >
           {/* ستون اصلی */}
           <div className="space-y-6">
@@ -170,14 +202,6 @@ export default async function ProductViewPage({ params }: Props) {
               </p>
             </section>
 
-            {/* چت با فروشنده */}
-            <ChatWidget
-              productId={product.id}
-              sellerUserName={product.seller.userName}
-              sellerId={product.myuserId}
-              sellerName={`${product.seller.firstName} ${product.seller.lastName}`}
-              productName={product.productName}
-            />
           </div>
 
           {/* سایدبار فروشنده */}
@@ -249,7 +273,20 @@ export default async function ProductViewPage({ params }: Props) {
         </div>
 
         <RelatedProducts product={product} />
+
+        {/* جای نوار فیکس موبایل (۷۲px بالای نوار پایین ۵۹px) تا محتوا زیرش نماند */}
+        <div className="h-[74px] nav-desktop:hidden" aria-hidden />
       </main>
+
+      {/* نوار فیکس چت/تماس موبایل — عین باسکول (fix-send-message-wrapper) */}
+      <MobileContactBar
+        productId={product.id}
+        sellerUserName={product.seller.userName}
+        sellerId={product.myuserId}
+        sellerName={`${product.seller.firstName} ${product.seller.lastName}`}
+        productName={product.productName}
+      />
+
       <Footer />
       <JsonLd
         data={{

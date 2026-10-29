@@ -70,8 +70,10 @@ export function ChatDialog({
           // موبایل: تمام‌صفحه — مثل صفحه چت (۱۰۰dvh زیر نوار آدرس مرورگر)
           'top-0 left-0 flex h-[100dvh] w-full translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 p-0',
           'max-w-none sm:max-w-none',
-          // دسکتاپ: شیت پایینی — بزرگ، از پایین بالا می‌آید، چسبیده به پایین
-          'nav-desktop:bottom-0 nav-desktop:left-1/2 nav-desktop:top-auto nav-desktop:h-[85vh] nav-desktop:max-w-2xl nav-desktop:-translate-x-1/2 nav-desktop:translate-y-0 nav-desktop:rounded-b-none nav-desktop:rounded-t-2xl nav-desktop:border nav-desktop:shadow-2xl',
+          // دسکتاپ — عین باسکول (chat-modal-wrapper): پنل ۴۵۰×۵۵۰ چسبیده به پایین،
+          // گوشه پایین صفحه (در RTL: start=راست، پس پنل سمت چپ/بیرون می‌افتد)،
+          // radius 12px و سایه نرم؛ از پایین بالا می‌آید (bottom-sheet)
+          'nav-desktop:bottom-4 nav-desktop:start-4 nav-desktop:top-auto nav-desktop:h-[550px] nav-desktop:w-[450px] nav-desktop:max-w-none nav-desktop:translate-x-0 nav-desktop:translate-y-0 nav-desktop:rounded-[12px] nav-desktop:sm:rounded-[12px] nav-desktop:border nav-desktop:shadow-[0_0_22px_rgba(0,0,0,0.18)]',
           // انیمیشن شیت — بالا آمدن از پایین (نه zoom معلق)
           'duration-300 data-[state=closed]:slide-out-to-bottom data-[state=closed]:zoom-out-100 data-[state=open]:slide-in-from-bottom data-[state=open]:zoom-in-100',
         )}

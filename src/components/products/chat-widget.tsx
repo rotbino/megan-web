@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, LogIn, MessageSquareText, SendHorizonal } from 'lucide-react';
+import { Loader2, LogIn, MessageSquareText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LazyAuthModal } from '@/components/shared/lazy-auth-modal';
 import { PresenceDot } from '@/components/shared/presence-dot';
+import { SendIconRtl } from '@/components/shared/buskool-icons';
 import { getTokens } from '@/lib/api/client';
 import { findPresence, usePresenceStatus } from '@/lib/api/presence';
 import {
@@ -182,7 +183,7 @@ export function ChatWidget({
               maxLength={2000}
             />
             <Button type="submit" size="icon" className="shrink-0 rounded-md" aria-label="ارسال پیام" disabled={send.isPending || !text.trim()}>
-              {send.isPending ? <Loader2 size={18} className="animate-spin" /> : <SendHorizonal size={18} />}
+              {send.isPending ? <Loader2 size={18} className="animate-spin" /> : <SendIconRtl size={19} />}
             </Button>
           </form>
         </>
