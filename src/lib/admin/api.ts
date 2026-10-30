@@ -806,6 +806,48 @@ export async function reviewAdminChargeOrder(orderId: string, approve: boolean, 
   });
 }
 
+// ─── صف سفارش‌های بسته اشتراک ────────────────────────────────────────────────
+
+export interface AdminPackageOrderRow {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  planKey: string;
+  months: number;
+  amount: number;
+  rejectionReason?: string | null;
+  reviewedAt?: string | null;
+  startsAt?: string | null;
+  expiresAt?: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    phone: string;
+    user_name: string;
+    first_name: string;
+    last_name: string;
+  };
+  receipt: { id: string; url: string; thumbUrl?: string } | null;
+}
+
+export interface AdminPackageOrderList {
+  total: number;
+  page: number;
+  perPage: number;
+  items: AdminPackageOrderRow[];
+}
+
+export async function fetchAdminPackageOrders(status?: 'pending' | 'approved' | 'rejected', page = 1, perPage = 20): Promise<AdminPackageOrderList> {
+  return adminFetch<AdminPackageOrderList>('/admin/packages/getPackageOrders', { ...(status ? { status } : {}), page, perPage });
+}
+
+export async function reviewAdminPackageOrder(orderId: string, approve: boolean, rejectionReason?: string): Promise<{ id: string; status: string; expiresAt?: string }> {
+  return adminFetch('/admin/packages/reviewPackageOrder', {
+    orderId,
+    approve,
+    ...(approve ? {} : { rejectionReason }),
+  });
+}
+
 // ─── صف احراز هویت (A5 — نمای صف) ───────────────────────────────────────────
 
 export interface AdminVerificationOrderRow {

@@ -35,7 +35,7 @@ function isServer(): boolean {
 /** آدرس پایه — کلاینت از پروکسی هم‌مبدأ، سرور مستقیم به بک */
 export function apiBase(): string {
   return isServer()
-    ? `${process.env.BACKEND_URL ?? 'http://localhost:4000'}/api/v1`
+    ? `${process.env.BACKEND_URL ?? 'http://127.0.0.1:4000'}/api/v1`
     : '/api';
 }
 

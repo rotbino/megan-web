@@ -233,14 +233,23 @@ function MyProductsPageInner() {
         </div>
       )}
 
-      {/* ظرفیت ثبت */}
+      {/* ظرفیت ثبت — بسته فعال = نامحدود (-۱) */}
       <PanelCard className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
-          ظرفیت ثبت محصول: <b className="font-num text-foreground">{toFa(data.items.filter((p) => p.status !== 'deleted').length)}</b> از{' '}
-          <span className="font-num">{toFa(data.capacity)}</span> آگهی رایگان
+          {data.capacity === -1 ? (
+            <>
+              ظرفیت ثبت محصول: <b className="text-emerald-600">نامحدود</b>
+              <span className="ms-1.5 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600">بسته فعال</span>
+            </>
+          ) : (
+            <>
+              ظرفیت ثبت محصول: <b className="font-num text-foreground">{toFa(data.items.filter((p) => p.status !== 'deleted').length)}</b> از{' '}
+              <span className="font-num">{toFa(data.capacity)}</span> آگهی بسته رایگان
+            </>
+          )}
         </p>
         <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
-          <Link href="/panel/pricing">افزایش ظرفیت</Link>
+          <Link href="/panel/pricing">{data.capacity === -1 ? 'مدیریت بسته اشتراک' : 'افزایش ظرفیت با بسته اشتراک'}</Link>
         </Button>
       </PanelCard>
 

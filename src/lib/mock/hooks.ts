@@ -483,6 +483,39 @@ export function useSubmitChargeRequest() {
   });
 }
 
+// ─── بسته‌های اشتراک (عضویت ویژه) ─────────────────────────────────────
+
+/** بسته فعال من — تک منبع گیت‌های سمت کلاینت (خریداران، ظرفیت و ...) */
+export function useMyPackage(enabled = true) {
+  return useQuery({
+    queryKey: ['panel-my-package'],
+    queryFn: api.getMyPackage,
+    staleTime: 30_000,
+    enabled,
+  });
+}
+
+/** سفارش‌های بسته خودم — در انتظار/تایید/رد + دلیل رد + فیش */
+export function useMyPackageOrders() {
+  return useQuery({
+    queryKey: ['panel-package-orders'],
+    queryFn: api.getMyPackageOrders,
+    staleTime: 15_000,
+  });
+}
+
+/** ارسال فیش خرید بسته (کارت به کارت) → در انتظار تأیید ادمین */
+export function useSubmitPackageOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.createPackageOrder,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-package-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['panel-my-package'] });
+    },
+  });
+}
+
 // ─── احراز هویت اسناد (B6) ────────────────────────────────────────────
 
 export function useMyVerification() {

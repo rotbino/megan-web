@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   // درخواست‌های /api/** فرانت به بک‌اند مگان (NestJS :4000/api/v1) می‌روند.
   // در استقرار پروداکشن فقط BACKEND_ORIGIN در .env عوض می‌شود.
   async rewrites() {
-    const backend = process.env.BACKEND_ORIGIN ?? "http://localhost:4000";
+    const backend = process.env.BACKEND_ORIGIN ?? "http://127.0.0.1:4000";
     return [
       {
         source: "/api/:path*",

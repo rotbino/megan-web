@@ -7,9 +7,12 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
-import { useBuyRequests, useCategoryTree, useSaveBuyer } from '@/lib/mock/hooks';
+import Link from 'next/link';
+import { Crown, Lock, Search, SlidersHorizontal, Users } from 'lucide-react';
+import { useBuyRequests, useCategoryTree, useMyPackage, useSaveBuyer } from '@/lib/mock/hooks';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PanelCard, PanelPromoCards } from '@/components/panel/panel-parts';
 import { BuyerCard, BulkSmsBanner } from '@/components/panel/buyer-card';
@@ -22,6 +25,8 @@ export default function PanelBuyersPage() {
   const { data: paged, isLoading } = useBuyRequests({ perPage: 50 });
   const { data: tree } = useCategoryTree();
   const saveBuyer = useSaveBuyer();
+  // گیت بسته (خواسته مالک): بسته رایگان خریداران را نمی‌بیند
+  const { data: myPackage, isLoading: pkgLoading } = useMyPackage();
   const { toast } = useToast();
   const [q, setQ] = useState('');
   const [rootCat, setRootCat] = useState('all');
@@ -57,6 +62,44 @@ export default function PanelBuyersPage() {
   }, [paged, q, rootCat, roots]);
 
   const visible = filtered.slice(0, batch * PER_BATCH);
+
+  // ── گیت بسته: رایگان = قفل؛ در حال بارگذاری = اسکلتون ──
+  if (pkgLoading || !myPackage) {
+    return (
+      <div className="mx-auto max-w-5xl space-y-4">
+        <Skeleton className="h-40 w-full rounded-lg" />
+        <Skeleton className="h-64 w-full rounded-lg" />
+      </div>
+    );
+  }
+  if (!myPackage.features.canSeeBuyers) {
+    return (
+      <div className="mx-auto max-w-xl">
+        <PanelCard className="text-center">
+          <span className="mx-auto grid size-16 place-items-center rounded-full bg-amber-50 text-amber-500">
+            <Lock size={28} />
+          </span>
+          <h1 className="mt-4 flex items-center justify-center gap-2 text-base font-extrabold">
+            <Users size={18} className="text-primary" /> دسترسی به خریداران ویژه بسته فعال است
+          </h1>
+          <p className="mt-2 text-sm leading-7 text-muted-foreground">
+            با بسته رایگان می‌توانید تا ۱۰ محصول ثبت کنید و هر تعداد درخواست خرید بفرستید؛ اما برای دیدن
+            شماره تماس خریداران و خریداران پیشنهادی، یکی از بسته‌های اشتراک ایمچ را فعال کنید.
+          </p>
+          <div className="mt-4 grid gap-2 text-start text-xs sm:grid-cols-3">
+            {['دو ماهه — ۱۹۹ هزار تومان', 'شش ماهه — ۴۹۹ هزار تومان', 'یک‌ساله — ۷۹۹ هزار تومان'].map((t) => (
+              <span key={t} className="flex items-center gap-1.5 rounded-md border bg-secondary/50 px-3 py-2">
+                <Crown size={13} className="shrink-0 text-amber-500" /> {t}
+              </span>
+            ))}
+          </div>
+          <Button asChild className="mt-5 rounded-md">
+            <Link href="/panel/pricing">مشاهده و خرید بسته‌ها</Link>
+          </Button>
+        </PanelCard>
+      </div>
+    );
+  }
 
   const toggleSave = async (r: (typeof filtered)[number]) => {
     if (savedIds.has(r.id)) return; // حذف از لیست از خود CRM انجام می‌شود

@@ -7,9 +7,11 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Info } from 'lucide-react';
-import { useSaveBuyer, useSuggestedBuyers } from '@/lib/mock/hooks';
+import Link from 'next/link';
+import { Crown, Info, Lock } from 'lucide-react';
+import { useMyPackage, useSaveBuyer, useSuggestedBuyers } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 import { PanelCard, PanelPromoCards } from '@/components/panel/panel-parts';
 import { BuyerCard } from '@/components/panel/buyer-card';
 import { toFa } from '@/lib/format';
@@ -25,6 +27,8 @@ const TIER_LABEL: Record<SuggestedBuyer['tier'], string> = {
 export default function SuggestedBuyersPage() {
   const { data: buyers, isLoading } = useSuggestedBuyers();
   const saveBuyer = useSaveBuyer();
+  // گیت بسته (خواسته مالک): خریداران پیشنهادی ویژه بسته فعال است
+  const { data: myPackage } = useMyPackage();
   const { toast } = useToast();
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
 
@@ -81,31 +85,52 @@ export default function SuggestedBuyersPage() {
     <div className="mx-auto max-w-5xl space-y-4">
       <PanelPromoCards variant="compact" />
 
-      <PanelCard>
-        <h1 className="text-base font-extrabold sm:text-lg">خریداران پیشنهادی</h1>
-        <p className="mt-2 flex items-start gap-2 text-xs leading-6 text-muted-foreground">
-          <Info size={15} className="mt-0.5 shrink-0 text-sky-500" />
-          خریدارانی که با محصولات شما (دسته و نوع کالا) و حجم فروشتان تطبیق دارند — مثلاً اگر «پسته اکبری» می‌فروشید،
-          اول خریداران اکبریِ هم‌حجم شما، بعد بقیه خریداران پسته و در پایان خشکبار و کشاورزی مرتبط نمایش داده می‌شوند.
-        </p>
-      </PanelCard>
-
-      {isLoading ? (
-        <div className="grid gap-3 xl:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className={cn('h-44 animate-pulse rounded-lg border bg-card')} />
-          ))}
-        </div>
-      ) : (buyers ?? []).length === 0 ? (
-        <PanelCard className="py-10 text-center text-sm text-muted-foreground">
-          خریدار مرتبطی برای محصولات شما پیدا نشد.
+      {/* گیت بسته — رایگان = قفل */}
+      {myPackage && !myPackage.features.canSeeBuyers ? (
+        <PanelCard className="py-10 text-center">
+          <span className="mx-auto grid size-14 place-items-center rounded-full bg-amber-50 text-amber-500">
+            <Lock size={24} />
+          </span>
+          <p className="mt-3 text-sm font-extrabold">خریداران پیشنهادی ویژه بسته‌های اشتراک است</p>
+          <p className="mx-auto mt-2 max-w-md text-xs leading-6 text-muted-foreground">
+            خریدارانی که با محصولات و حجم فروش شما تطبیق دارند — با فعال کردن بسته، فهرست کامل آن‌ها (تطابق کامل،
+            همان محصول، دسته نزدیک) باز می‌شود.
+          </p>
+          <Button asChild size="sm" className="mt-4 rounded-md">
+            <Link href="/panel/pricing">
+              <Crown size={14} className="ms-1" /> مشاهده و خرید بسته‌ها
+            </Link>
+          </Button>
         </PanelCard>
       ) : (
-        <div className="space-y-6">
-          {section('exact', 'تطابق کامل — نوع کالا', 'خریدارانی که دقیقاً نوع کالای آگهی شما را با حجم متناسب می‌خواهند.')}
-          {section('same-product', 'همان محصول شما', 'خریداران همان محصول با هر نوع و حجمی.')}
-          {section('near-category', 'دسته‌های نزدیک', 'خریداران محصولات هم‌خانواده — فرصت پیشنهاد کالای جایگزین.')}
-        </div>
+        <>
+          <PanelCard>
+            <h1 className="text-base font-extrabold sm:text-lg">خریداران پیشنهادی</h1>
+            <p className="mt-2 flex items-start gap-2 text-xs leading-6 text-muted-foreground">
+              <Info size={15} className="mt-0.5 shrink-0 text-sky-500" />
+              خریدارانی که با محصولات شما (دسته و نوع کالا) و حجم فروشتان تطبیق دارند — مثلاً اگر «پسته اکبری» می‌فروشید،
+              اول خریداران اکبریِ هم‌حجم شما، بعد بقیه خریداران پسته و در پایان خشکبار و کشاورزی مرتبط نمایش داده می‌شوند.
+            </p>
+          </PanelCard>
+
+          {isLoading ? (
+            <div className="grid gap-3 xl:grid-cols-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className={cn('h-44 animate-pulse rounded-lg border bg-card')} />
+              ))}
+            </div>
+          ) : (buyers ?? []).length === 0 ? (
+            <PanelCard className="py-10 text-center text-sm text-muted-foreground">
+              خریدار مرتبطی برای محصولات شما پیدا نشد.
+            </PanelCard>
+          ) : (
+            <div className="space-y-6">
+              {section('exact', 'تطابق کامل — نوع کالا', 'خریدارانی که دقیقاً نوع کالای آگهی شما را با حجم متناسب می‌خواهند.')}
+              {section('same-product', 'همان محصول شما', 'خریداران همان محصول با هر نوع و حجمی.')}
+              {section('near-category', 'دسته‌های نزدیک', 'خریداران محصولات هم‌خانواده — فرصت پیشنهاد کالای جایگزین.')}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

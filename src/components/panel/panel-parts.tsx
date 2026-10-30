@@ -79,15 +79,15 @@ export function PanelEmptyState({
   );
 }
 
-/** ردیف کارت‌های ارتقا — بالای صفحات پنل (الگوی باسکول) — بدون پلن VIP: نردبان / احراز هویت / شارژ */
+/** ردیف کارت‌های ارتقا — بالای صفحات پنل (الگوی باسکول): بسته اشتراک / احراز هویت / شارژ */
 export function PanelPromoCards({ variant = 'full' }: { variant?: 'full' | 'compact' }) {
   if (variant === 'compact') {
     return (
       <div className="flex gap-3 overflow-x-auto pb-1 lg:hidden" aria-label="پیشنهادهای پنل">
         <PromoCard
           icon={TrendingUp}
-          title="بسته شارژ تبلیغاتی"
-          hint="نردبان یک‌ماهه، دیده‌شدن در صدر"
+          title="بسته‌های اشتراک"
+          hint="ثبت نامحدود + دسترسی به خریداران"
           href="/panel/pricing"
           tone="amber"
           compact
@@ -115,11 +115,11 @@ export function PanelPromoCards({ variant = 'full' }: { variant?: 'full' | 'comp
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       <PromoCard
         icon={TrendingUp}
-        title="محصول خود را با نردبان در صدر لیست ببینید."
-        hint="نردبان هر محصول برای یک ماه ۱۰۰ هزار تومان است و از شارژ کیف پول کسر می‌شود — بدون اشتراک و عضویت ویژه."
+        title="با بسته اشتراک، محصول نامحدود ثبت کنید و همه خریداران را ببینید."
+        hint="از ۱۹۹ هزار تومان در ماه — نشان فروشنده ویژه، ثبت نامحدود محصول و دسترسی کامل به خریداران."
         href="/panel/pricing"
         tone="amber"
-        action="بسته شارژ تبلیغاتی"
+        action="بسته‌های اشتراک"
       />
       <PromoCard
         icon={BadgeCheck}

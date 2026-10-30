@@ -254,9 +254,10 @@ export default function RegisterProductPage() {
 
   // ─── ظرفیت تکمیل — مودال «امکان ثبت محصول جدید را ندارید!» ───
   // هماهنگ با بک‌اند: فقط pending + confirmed ظرفیت می‌گیرند (رد شده و حذف
-  // شده نه — باگ ۲۸-۱۰: فرایت رد شده‌ها را هم می‌شمرد و زودتر بلاک می‌کرد)
+  // شده نه)؛ بسته فعال = نامحدود (capacity = -۱) و هرگز بلاک نمی‌شود
   const capacityFull = Boolean(
-    mine && mine.items.filter((p) => p.status === 'pending' || p.status === 'confirmed').length >= mine.capacity,
+    mine && mine.capacity !== -1 &&
+      mine.items.filter((p) => p.status === 'pending' || p.status === 'confirmed').length >= mine.capacity,
   );
 
   if (capacityFull && !done) {
@@ -267,11 +268,12 @@ export default function RegisterProductPage() {
             <TrendingUp size={28} className="rotate-180" />
           </span>
           <h1 className="mt-4 text-base font-extrabold">امکان ثبت محصول جدید را ندارید!</h1>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            برای ثبت محصولات بیشتر، ظرفیت ثبت محصول حساب خود را افزایش دهید.
+          <p className="mt-2 text-sm leading-7 text-muted-foreground">
+            ظرفیت بسته رایگان شما (۱۰ آگهی) تکمیل شده است. با خرید یکی از بسته‌های اشتراک ایمچ،
+            ثبت محصول برای شما نامحدود می‌شود.
           </p>
           <Button asChild className="mt-5 rounded-md">
-            <Link href="/panel/pricing">افزایش ظرفیت</Link>
+            <Link href="/panel/pricing">خرید بسته اشتراک — ثبت نامحدود محصول</Link>
           </Button>
         </PanelCard>
       </div>

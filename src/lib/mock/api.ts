@@ -1162,6 +1162,70 @@ export async function getMyChargeOrders(): Promise<MyChargeOrder[]> {
 
 export { AIMCH_CARD_NUMBER, AIMCH_CARD_OWNER, CHARGE_PACKAGES };
 
+// ─── بسته‌های اشتراک (عضویت ویژه — کارت به کارت + تأیید ادمین) ─────────────
+
+import { MEMBERSHIP_PLANS } from './data';
+import type { MembershipPlan, MyPackage, MyPackageOrder } from '@/lib/types';
+
+/** پلن‌های اشتراک + کارت واریز — عمومی (لاگین لازم نیست) */
+export async function getMembershipPlans(): Promise<{
+  plans: MembershipPlan[];
+  cardNumber: string;
+  cardOwner: string;
+  free: { productCapacity: number; canSeeBuyers: boolean; unlimitedBuyRequests: boolean };
+}> {
+  const raw = await apiFetch<{
+    plans: MembershipPlan[];
+    cardNumber: string;
+    cardOwner: string;
+    free: { productCapacity: number; canSeeBuyers: boolean; unlimitedBuyRequests: boolean };
+  }>('/packages/getPlans', {});
+  // fallback — سرور خام بود؛ منبع UI محلی
+  return {
+    ...raw,
+    plans: raw.plans?.length ? raw.plans : MEMBERSHIP_PLANS,
+  };
+}
+
+/** بسته فعال من + امکانات مؤثر (ظرفیت محصول، دسترسی خریداران) */
+export async function getMyPackage(): Promise<MyPackage> {
+  return apiFetch<MyPackage>('/packages/getMyPackage', {});
+}
+
+/** ارسال فیش خرید بسته — multipart (planKey + receipt)؛ عین شارژ کیف پول */
+export async function createPackageOrder(input: {
+  planKey: MembershipPlan['key'];
+  receiptDataUrl: string;
+}): Promise<{ ok: true; orderId: string }> {
+  const tokens = getTokens();
+  if (!tokens?.accessToken) {
+    throw new ApiError('برای خرید بسته ابتدا وارد حساب خود شوید.', 401, 'AUTH_REQUIRED');
+  }
+
+  const form = new FormData();
+  form.append('planKey', input.planKey);
+  form.append('receipt', dataUrlToBlob(input.receiptDataUrl));
+
+  const res = await fetch('/api/packages/createPackageOrder', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    body: form,
+  });
+  const json = (await res.json().catch(() => null)) as
+    | { status: true; data?: { orderId?: string }; message?: string }
+    | { status: false; message: string; code?: string }
+    | null;
+  if (!json) throw new ApiError('ارسال فیش ناموفق بود.', res.status, 'NETWORK');
+  if (json.status === false) throw new ApiError(json.message, res.status, json.code);
+  return { ok: true, orderId: String(json.data?.orderId ?? '') };
+}
+
+/** سفارش‌های بسته خودم — در انتظار/تایید/رد + دلیل رد + فیش */
+export async function getMyPackageOrders(): Promise<MyPackageOrder[]> {
+  const raw = await apiFetch<{ items: MyPackageOrder[] }>('/packages/getMyPackageOrders', {});
+  return raw.items;
+}
+
 // ─── نظرات فروشنده (عین «نظرات کاربران» باسکول) ────────────────────────────
 
 export interface SellerReviewRow {
