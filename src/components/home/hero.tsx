@@ -1,17 +1,27 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { ChevronsLeft } from 'lucide-react';
 
 /**
- * هیرو صفحه اصلی — همان متن و چیدمان باسکول (h1 + h2 + دکمه شروع معاملات).
+ * هیرو صفحه اصلی — مثل قبل (خواسته مالک): تصویر به‌عنوان پس‌زمینه بنر با
+ * پوشش تیره ملایم + متن سفید + دکمه سفید. همان پیام باسکول: h1 + h2 +
+ * دکمه شروع معاملات. ارتفاع مثل قبل: موبایل pt/pb-8، دسکتاپ py-16.
  * اندازه‌فونت موبایل دقیقاً باسکول: عنوان ۱۸px/۳۱px، زیرعنوان ۱۲px، دکمه ۱۸۴×۴۰ با متن ۱۲px.
  */
 export function Hero() {
   return (
     <section className="relative overflow-hidden bg-primary-deep text-white">
-      {/* تصویر پس‌زمینه + پوشش تیره ملایم (الگوی باسکول: تصویر دیده شود) */}
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-[url('/images/hero.webp')] bg-cover bg-center"
+      {/* تصویر پس‌زمینه (LCP صفحه اول) — next/image با priority تا در head preload
+          شود؛ CSS background دیر کشف می‌شود و LCP را عقب می‌اندازد (F5) */}
+      <Image
+        src="/images/hero.webp"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        // فایل محلی از قبل بهینه (۲۷KB webp) — پاس مستقیم بدون hop بهینه‌ساز
+        unoptimized
+        className="object-cover"
       />
       <div
         aria-hidden

@@ -141,3 +141,53 @@ export function LocationIconBuskool({ size = 20, ...props }: P) {
     </svg>
   );
 }
+
+/** آیکون ارسال پیام RTL — قانون جهت‌دارها در فارسی:
+ *  در چیدمان راست‌به‌چپ، آیکون ارسال باید به سمت بیرون (چپ) اشاره کند؛
+ *  یعنی نسخه آینه‌شده هواپیمای کاغذی انگلیسی (که به راست اشاره می‌کند).
+ *  مسیر عین آیکون ارسال باسکول است که افقی آینه شده است. */
+export function SendIconRtl({ size = 17, ...props }: P) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={(size * 12.766) / 13.347}
+      viewBox="0 0 13.347 12.766"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g transform="translate(13.347 0) scale(-1 1)">
+        <path
+          d="M2511.158-3909.893l12.347-5.929-12.347-5.837.235,4.51,10.029,1.327-10.029,1.477Z"
+          transform="translate(-2510.658 3922.159)"
+          fill="currentColor"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1"
+        />
+      </g>
+    </svg>
+  );
+}
+
+/** حباب گفتگوی پر (دکمه‌های «چت با فروشنده») — عین باسکول ۲۵×۲۵ */
+export function ChatBubbleIcon({ size = 25, ...props }: P) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 25 25"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M5.75 18.5C3.95507 18.5 2.5 17.0449 2.5 15.25V6.75C2.5 4.95507 3.95507 3.5 5.75 3.5H19.25C21.0449 3.5 22.5 4.95507 22.5 6.75V15.25C22.5 17.0449 21.0449 18.5 19.25 18.5H13.4648L8.07814 22.3173C7.62752 22.6366 7.00337 22.5301 6.68407 22.0795C6.56432 21.9105 6.5 21.7085 6.5 21.5016L6.4992 18.5H5.75Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}

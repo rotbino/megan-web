@@ -7,9 +7,12 @@
  */
 
 import { useState } from 'react';
-import { BadgeCheck, CalendarDays, MapPin, MessageSquare, Phone, Star } from 'lucide-react';
+import { BadgeCheck, CalendarDays, Loader2, MapPin, MessageSquare, Phone, Star } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { toFa, timeAgoFa } from '@/lib/format';
+import { useBuyRequestContact } from '@/lib/mock/hooks';
+import { toFa } from '@/lib/format';
+import { RelativeTime } from '@/components/shared/relative-time';
 import { cn } from '@/lib/utils';
 import type { BuyRequest } from '@/lib/types';
 
@@ -32,7 +35,20 @@ export function BuyerCard({
   relatedHint?: string;
 }) {
   const [revealed, setRevealed] = useState(false);
+  const [phone, setPhone] = useState<string | null>(null);
+  const contact = useBuyRequestContact();
   const rating = ratingOf(request.id);
+
+  const reveal = async () => {
+    if (phone) return;
+    try {
+      const data = await contact.mutateAsync(request.id);
+      setPhone(data.isSelf ? 'درخواست شماست' : data.phone);
+      setRevealed(true);
+    } catch {
+      /* خطا در toast سراسری نمی‌گذاریم — دکمه قابل تلاش مجدد */
+    }
+  };
 
   return (
     <article className="rounded-lg border bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
@@ -72,7 +88,7 @@ export function BuyerCard({
 
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1">
-          <CalendarDays size={13} /> {timeAgoFa(request.createdAt)}
+          <CalendarDays size={13} /> <RelativeTime date={request.createdAt} />
         </span>
         <span className="flex items-center gap-1">
           <MapPin size={13} /> {request.city}
@@ -89,11 +105,14 @@ export function BuyerCard({
         >
           {saved ? 'نشان شده' : 'نشان کردن'}
         </Button>
-        <Button type="button" size="sm" className="rounded-md text-xs" onClick={() => setRevealed(true)}>
-          <Phone size={14} /> {revealed ? toFa('09141234567') : 'تماس با خریدار'}
+        <Button type="button" size="sm" className="rounded-md text-xs" onClick={reveal} disabled={contact.isPending}>
+          {contact.isPending ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />}
+          {phone ? toFa(phone) : 'تماس با خریدار'}
         </Button>
-        <Button type="button" size="sm" variant="outline" className="rounded-md text-xs">
-          <MessageSquare size={14} /> چت با خریدار
+        <Button type="button" size="sm" variant="outline" className="rounded-md text-xs" asChild>
+          <Link href="/panel/messages">
+            <MessageSquare size={14} /> چت با خریدار
+          </Link>
         </Button>
       </div>
 

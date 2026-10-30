@@ -13,7 +13,10 @@ export function LatestProducts() {
   const items = data?.items ?? [];
 
   return (
-    <section aria-labelledby="latest-products" className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
+    <section
+      aria-labelledby="latest-products"
+      className="mx-auto max-w-7xl px-4 py-6 lg:px-6 nav-desktop:mt-6 nav-desktop:rounded-lg nav-desktop:border nav-desktop:border-border/70 nav-desktop:bg-card nav-desktop:shadow-sm"
+    >
       <div className="mb-3 flex h-10 items-center justify-between nav-desktop:mb-4">
         <h2 id="latest-products" className="text-base font-medium leading-7 nav-desktop:text-xl">جدیدترین محصولات</h2>
         <Link
@@ -31,13 +34,15 @@ export function LatestProducts() {
         </div>
       ) : (
         <div className="scroll-row">
-          {items.map((p) => (
+          {items.map((p, i) => (
             <Link
               key={p.id}
               href={`/product-view/${p.slug}/${p.categoryName}/${p.id}`}
               className="w-[124px] shrink-0 overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md nav-desktop:w-44"
             >
-              <ProductImage photos={p.photos} alt={p.productName} className="aspect-square w-full" iconSize={32} />
+              <div className="relative aspect-square">
+                <ProductImage photos={p.photos} thumbs={p.photoThumbs} alt={p.productName} className="object-cover" iconSize={32} priority={i === 0} />
+              </div>
               <div className="p-2">
                 <h3 className="line-clamp-1 text-xs font-bold leading-5 nav-desktop:text-[13px]">{p.productName}</h3>
                 <h4 className="mt-0.5 line-clamp-1 text-[11px] font-normal text-muted-foreground">{stockFa(p.stock, p.unit)}</h4>

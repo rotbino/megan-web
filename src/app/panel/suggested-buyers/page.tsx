@@ -8,7 +8,8 @@
 
 import { useMemo, useState } from 'react';
 import { Info } from 'lucide-react';
-import { useSuggestedBuyers } from '@/lib/mock/hooks';
+import { useSaveBuyer, useSuggestedBuyers } from '@/lib/mock/hooks';
+import { useToast } from '@/hooks/use-toast';
 import { PanelCard, PanelPromoCards } from '@/components/panel/panel-parts';
 import { BuyerCard } from '@/components/panel/buyer-card';
 import { toFa } from '@/lib/format';
@@ -23,6 +24,8 @@ const TIER_LABEL: Record<SuggestedBuyer['tier'], string> = {
 
 export default function SuggestedBuyersPage() {
   const { data: buyers, isLoading } = useSuggestedBuyers();
+  const saveBuyer = useSaveBuyer();
+  const { toast } = useToast();
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
 
   const groups = useMemo(() => {
@@ -31,13 +34,21 @@ export default function SuggestedBuyersPage() {
     return g;
   }, [buyers]);
 
-  const toggleSave = (id: number) => {
-    setSavedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const toggleSave = (buyer: SuggestedBuyer) => {
+    if (savedIds.has(buyer.buyRequest.id)) return;
+    saveBuyer.mutate(
+      {
+        targetUserId: buyer.buyRequest.myuserId,
+        listName: buyer.buyRequest.subcategoryName, // لیست به نام دسته کالا — الگوی باسکول
+      },
+      {
+        onSuccess: () => {
+          setSavedIds((prev) => new Set(prev).add(buyer.buyRequest.id));
+          toast({ description: 'خریدار به لیست نشان شده ها اضافه شد.' });
+        },
+        onError: (err) => toast({ description: err instanceof Error ? err.message : 'نشان کردن ناموفق بود.' }),
+      },
+    );
   };
 
   const section = (tier: SuggestedBuyer['tier'], title: string, hint: string) => {
@@ -56,7 +67,7 @@ export default function SuggestedBuyersPage() {
               key={b.buyRequest.id}
               request={b.buyRequest}
               saved={savedIds.has(b.buyRequest.id)}
-              onToggleSave={() => toggleSave(b.buyRequest.id)}
+              onToggleSave={() => toggleSave(b)}
               matchBadge={{ score: b.matchScore, label: TIER_LABEL[b.tier] }}
               relatedHint={`مرتبط با: ${b.relatedProduct}`}
             />

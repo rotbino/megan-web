@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { Headphones, Link2, Mail, Megaphone, Phone, UserRoundCheck } from 'lucide-react';
+import { ChevronLeft, Headphones, Link2, Mail, Megaphone, Phone, UserRoundCheck } from 'lucide-react';
 import { BrandLogo } from '@/components/shared/brand';
+import { POPULAR_SEARCHES, searchPath } from '@/lib/popular-searches';
 
 /** فوتر — همان ساختار باسکول: سه هدف، ستون‌های لینک، توضیح سئویی، تماس و کپی‌رایت */
 const goals = [
@@ -13,33 +14,32 @@ const footerCols = [
   {
     title: 'درباره ما',
     links: [
-      { label: 'درباره ایمچ', href: '#' },
-      { label: 'ایمچ چگونه کار می کند؟', href: '#' },
-      { label: 'تماس با ما و پشتیبانی', href: '#' },
-      { label: 'قوانین و مقررات', href: '#' },
+      { label: 'درباره ایمچ', href: '/help/about' },
+      { label: 'ایمچ چگونه کار می کند؟', href: '/help' },
+      { label: 'تماس با ما و پشتیبانی', href: '/panel/support' },
+      { label: 'قوانین و مقررات', href: '/help/rules' },
+      { label: 'پرداخت امن ایمچ', href: '/help/secure-payment' },
     ],
   },
   {
     title: 'فروشندگان',
     links: [
-      { label: 'نحوه ثبت محصول', href: '/panel/products/new' },
-      { label: 'انواع عضویت فروشندگان', href: '#' },
-      { label: 'احراز هویت حقیقی و حقوقی', href: '#' },
-      { label: 'چگونه بفروشیم', href: '#' },
+      { label: 'نحوه ثبت محصول', href: '/help/post-product' },
+      { label: 'خرید بسته شارژ تبلیغاتی', href: '/help/charge-package' },
+      { label: 'احراز هویت حقیقی و حقوقی', href: '/help/verify-account' },
+      { label: 'چگونه بفروشیم', href: '/help/become-seller' },
     ],
   },
   {
     title: 'خریداران',
     links: [
-      { label: 'نحوه احراز هویت', href: '#' },
-      { label: 'نحوه ثبت درخواست', href: '/#rfq' },
-      { label: 'چگونه بخریم', href: '#' },
+      { label: 'نحوه احراز هویت', href: '/help/verify-account' },
+      { label: 'نحوه ثبت درخواست', href: '/help/post-rfq' },
+      { label: 'چگونه بخریم', href: '/help/become-buyer' },
       { label: 'نمایش درخواست‌های خرید', href: '/buyAd-requests' },
     ],
   },
 ];
-
-const seoLinks = ['خرید پسته', 'قیمت زعفران', 'خرید خرما', 'کشمش عمده', 'برنج عمده', 'گردو عمده', 'قیمت برنج', 'میوه خشک', 'زرشک عمده', 'بادام عمده', 'خرید سیب'];
 
 export function Footer() {
   return (
@@ -83,18 +83,28 @@ export function Footer() {
         ))}
       </div>
 
-      {/* لینک‌های سئویی مثل باسکول */}
+      {/* لینک‌های سئویی مثل باسکول — هر عبارت به صفحه جستجوی اختصاصی خودش */}
       <div className="border-t">
         <div className="mx-auto max-w-7xl px-4 py-5 lg:px-6">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
             <Link2 size={12} /> پربازدیدترین بازارهای عمده
           </p>
-          <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-            {seoLinks.map((s) => (
+          <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+            {POPULAR_SEARCHES.map((s) => (
               <li key={s}>
-                <Link href="/product-list" className="hover:text-primary">{s}</Link>
+                <Link href={searchPath(s)} className="hover:text-primary">{s}</Link>
               </li>
             ))}
+            {/* ادامه — صفحه جستجوهای کاربران: پربازدیدترین و آخرین جستجوهای واقعی */}
+            <li className="font-bold">
+              <Link
+                href="/searches"
+                className="inline-flex items-center gap-0.5 text-primary hover:underline"
+              >
+                مشاهده جستجوهای کاربران
+                <ChevronLeft size={13} aria-hidden />
+              </Link>
+            </li>
           </ul>
         </div>
       </div>

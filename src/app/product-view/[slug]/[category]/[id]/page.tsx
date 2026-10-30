@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import {
   BadgeCheck,
   Eye,
+  Home,
   MapPin,
   Package,
   Phone,
@@ -19,19 +20,55 @@ import { ProductImage } from '@/components/shared/product-image';
 import { ProductPrice } from '@/components/shared/product-price';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { LadderBadge, OldAdBadge } from '@/components/shared/badges';
-import { ChatWidget } from '@/components/products/chat-widget';
+import { ChatDialog } from '@/components/products/chat-dialog';
 import { RelatedProducts } from '@/components/products/related-products';
+import { SellerRatingBadge } from '@/components/products/seller-rating-badge';
+import { SellerOnlineBadge } from '@/components/products/seller-online-badge';
+import { MobileContactBar } from '@/components/products/mobile-contact-bar';
+import { ArrowLeftIcon } from '@/components/shared/buskool-icons';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { products } from '@/lib/mock/data';
 import { stockFa, toFa } from '@/lib/format';
+import { apiBase, joinUrl } from '@/lib/api/client';
+import { SITE_URL } from '@/lib/site';
+import type { Product } from '@/lib/types';
 
 interface Props {
   params: Promise<{ slug: string; category: string; id: string }>;
 }
 
-async function getProduct(id: number) {
-  return products.find((p) => p.id === id) ?? null;
+/** SSR — دیتای زنده از بک‌اند مگان (عمومی، بدون توکن).
+ *  فالبک ماک حذف شد — آگهی فقط از دیتابیس واقعی می‌آید؛ نبود = ۴۰۴. */
+async function getProduct(id: number): Promise<Product | null> {
+  try {
+    const res = await fetch(joinUrl(apiBase(), '/products/getProductById'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+      // ISR سبک: صفحه هر ۶۰ ثانیه بازتولید می‌شود (سرعت + تازگی)
+      next: { revalidate: 60 },
+    });
+    const json = (await res.json()) as { status: boolean; data: Record<string, unknown> };
+    if (!json?.status || !json.data) return null;
+    const p = json.data as unknown as {
+      id: number; productName: string; slug: string; description: string;
+      stock: number; minSalePrice: number; minSaleAmount: number; unit: string;
+      categoryId: number; categoryName: string; subCategoryId: number; subCategoryName: string;
+      provinceId: number; provinceName: string; cityId: number; cityName: string;
+      myuserId: string; seller: { id: string; userName: string; firstName: string; lastName: string; activePakageType: number; isVerified: boolean };
+      isLadder: boolean; hasVideo: boolean; isOld: boolean; viewCount: number;
+      createdAt: string; updatedAt: string; photos: string[]; photoThumbs?: string[];
+    };
+    return {
+      ...p,
+      isElevated: false,
+      photoThumbs: p.photoThumbs ?? p.photos,
+      seller: { ...p.seller, activePakageType: 0 },
+    } as Product;
+  } catch {
+    // بک‌اند در دسترس نیست — دیتای ماک وجود ندارد؛ صفحه ۴۰۴ می‌شود
+    return null;
+  }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -63,29 +100,65 @@ export default async function ProductViewPage({ params }: Props) {
     <>
       <Header />
       <main className="flex-1">
+        <div className="mx-auto max-w-7xl px-4 pt-4 lg:px-6">
+          {/* ─── نوار ناوبری بالا (بردکرامب) — عین باسکول ─── */}
+          <nav aria-label="مسیر صفحه" className="no-scrollbar mb-3 flex h-9 items-center gap-1 overflow-x-auto text-[13px] md:text-sm">
+            <Link
+              href="/product-list"
+              className="flex shrink-0 items-center gap-1 whitespace-nowrap text-muted-foreground hover:text-primary"
+            >
+              <Home size={15} className="shrink-0" />
+              همه دسته ها
+            </Link>
+            <ArrowLeftIcon size={16} className="shrink-0 text-muted-foreground/60" />
+            <Link
+              href={`/product-list/category/${encodeURIComponent(product.categoryName)}`}
+              className="shrink-0 whitespace-nowrap text-muted-foreground hover:text-primary"
+            >
+              {product.categoryName}
+            </Link>
+            <ArrowLeftIcon size={16} className="shrink-0 text-muted-foreground/60" />
+            <Link
+              href={`/product-list/category/${encodeURIComponent(product.subCategoryName)}`}
+              className="shrink-0 whitespace-nowrap text-muted-foreground hover:text-primary"
+            >
+              {product.subCategoryName}
+            </Link>
+            <ArrowLeftIcon size={16} className="shrink-0 text-muted-foreground/60" />
+            <span className="shrink-0 whitespace-nowrap font-bold text-foreground" aria-current="page">
+              {product.productName}
+            </span>
+          </nav>
+        </div>
         <div
-          className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-6 lg:grid-cols-[1fr_360px] lg:px-6"
+          className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 pb-6 lg:grid-cols-[1fr_360px] lg:px-6"
         >
           {/* ستون اصلی */}
           <div className="space-y-6">
             <div className="grid gap-6 sm:grid-cols-[minmax(0,420px)_1fr]">
               <div className="space-y-3">
+              <div className="relative aspect-square w-full max-w-[420px] overflow-hidden rounded-md border">
                 <ProductImage
                   photos={product.photos}
                   alt={product.productName}
-                  className="aspect-square w-full rounded-md border"
+                  className="object-cover"
                   iconSize={96}
+                  priority
+                  sizes="(max-width: 640px) 100vw, 420px"
                 />
+              </div>
                 {product.photos.length > 1 && (
                   <div className="grid grid-cols-4 gap-2">
                     {product.photos.slice(0, 4).map((ph, i) => (
-                      <ProductImage
-                        key={i}
-                        photos={[ph]}
-                        alt={`${product.productName} — عکس ${toFa(i + 1)}`}
-                        className="aspect-square w-full rounded-md border"
-                        iconSize={20}
-                      />
+                      <div key={i} className="relative aspect-square overflow-hidden rounded-md border">
+                        <ProductImage
+                          photos={[ph]}
+                          thumbs={product.photoThumbs ? [product.photoThumbs[i] ?? ph] : undefined}
+                          alt={`${product.productName} — عکس ${toFa(i + 1)}`}
+                          className="object-cover"
+                          iconSize={20}
+                        />
+                      </div>
                     ))}
                   </div>
                 )}
@@ -129,11 +202,6 @@ export default async function ProductViewPage({ params }: Props) {
               </p>
             </section>
 
-            {/* چت با فروشنده */}
-            <ChatWidget
-              sellerName={`${product.seller.firstName} ${product.seller.lastName}`}
-              productName={product.productName}
-            />
           </div>
 
           {/* سایدبار فروشنده */}
@@ -144,8 +212,11 @@ export default async function ProductViewPage({ params }: Props) {
                   <Store size={22} />
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate font-bold">{product.seller.firstName} {product.seller.lastName}</p>
-                  <div className="mt-1 flex items-center gap-2">
+                  <p className="flex min-w-0 items-center gap-2 font-bold">
+                    <span className="truncate">{product.seller.firstName} {product.seller.lastName}</span>
+                    <SellerOnlineBadge userName={product.seller.userName} sellerId={product.myuserId} />
+                  </p>
+                  <div className="mt-1 flex flex-col items-start gap-1">
                     {product.seller.isVerified ? (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
                         <BadgeCheck size={13} /> احراز هویت شده
@@ -153,16 +224,31 @@ export default async function ProductViewPage({ params }: Props) {
                     ) : (
                       <span className="text-xs text-muted-foreground">بدون احراز هویت</span>
                     )}
+                    <SellerRatingBadge userName={product.seller.userName} />
                   </div>
                 </div>
               </div>
               <Separator className="my-4" />
-              <PhoneReveal sellerName={`${product.seller.firstName} ${product.seller.lastName}`}>
-                <Button className="h-11 w-full rounded-md text-sm font-medium">
-                  <Phone size={17} />
-                  شماره تماس
-                </Button>
-              </PhoneReveal>
+              {/* تماس + چت — افقی کنار هم (مثل باسکول؛ گویاتر از عمودی) */}
+              <div className="grid grid-cols-2 gap-2">
+                <PhoneReveal
+                  sellerName={`${product.seller.firstName} ${product.seller.lastName}`}
+                  productId={product.id}
+                >
+                  <Button className="h-11 w-full rounded-md text-sm font-medium">
+                    <Phone size={17} />
+                    شماره تماس
+                  </Button>
+                </PhoneReveal>
+                <ChatDialog
+                  productId={product.id}
+                  sellerUserName={product.seller.userName}
+                  sellerId={product.myuserId}
+                  sellerName={`${product.seller.firstName} ${product.seller.lastName}`}
+                  productName={product.productName}
+                  className="h-11 w-full rounded-md text-sm font-medium"
+                />
+              </div>
               <Button asChild variant="outline" className="mt-2 w-full rounded-md">
                 <Link href={`/profile/${product.seller.userName}`}>
                   <Store size={16} />
@@ -187,8 +273,48 @@ export default async function ProductViewPage({ params }: Props) {
         </div>
 
         <RelatedProducts product={product} />
+
+        {/* جای نوار فیکس موبایل (۷۲px بالای نوار پایین ۵۹px) تا محتوا زیرش نماند */}
+        <div className="h-[74px] nav-desktop:hidden" aria-hidden />
       </main>
+
+      {/* نوار فیکس چت/تماس موبایل — عین باسکول (fix-send-message-wrapper) */}
+      <MobileContactBar
+        productId={product.id}
+        sellerUserName={product.seller.userName}
+        sellerId={product.myuserId}
+        sellerName={`${product.seller.firstName} ${product.seller.lastName}`}
+        productName={product.productName}
+      />
+
       <Footer />
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'ایمچ', item: SITE_URL },
+            {
+              '@type': 'ListItem',
+              position: 2,
+              name: product.categoryName,
+              item: `${SITE_URL}/product-list/category/${encodeURIComponent(product.categoryName)}`,
+            },
+            {
+              '@type': 'ListItem',
+              position: 3,
+              name: product.subCategoryName,
+              item: `${SITE_URL}/product-list/category/${encodeURIComponent(product.subCategoryName)}`,
+            },
+            {
+              '@type': 'ListItem',
+              position: 4,
+              name: product.productName,
+              item: `${SITE_URL}/product-view/${product.slug}/${product.categoryName}/${product.id}`,
+            },
+          ],
+        }}
+      />
       <JsonLd
         data={{
           '@context': 'https://schema.org',

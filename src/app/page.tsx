@@ -23,7 +23,7 @@ export default function HomePage() {
         <CategoryCards />
         <LatestProducts />
         <LatestBuyRequests />
-        <div id="rfq" className="scroll-mt-20">
+        <div id="rfq" className="scroll-mt-20 mt-6">
           <RfqForm />
         </div>
         <RegisterBanner />
@@ -38,7 +38,7 @@ export default function HomePage() {
           description: 'بازار خرید و فروش عمده محصولات بدون واسطه',
           potentialAction: {
             '@type': 'SearchAction',
-            target: '/product-list?s={search_term_string}',
+            target: '/product-list/search/{search_term_string}',
             'query-input': 'required name=search_term_string',
           },
         }}

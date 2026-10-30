@@ -1,8 +1,10 @@
 import type { MetadataRoute } from 'next';
+import { SITE_URL } from '@/lib/site';
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: [{ userAgent: '*', allow: '/', disallow: ['/panel', '/api'] }],
-    sitemap: 'https://megan.example.com/sitemap.xml',
+    // پنل کاربر و پنل ادمین + API — ایندکس ممنوع (سئو فقط صفحات عمومی)
+    rules: [{ userAgent: '*', allow: '/', disallow: ['/panel', '/admin', '/api'] }],
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

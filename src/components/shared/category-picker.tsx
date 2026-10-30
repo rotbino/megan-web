@@ -76,7 +76,7 @@ export function CategoryPicker({
           aria-haspopup="dialog"
           aria-expanded={open}
         >
-          <LayoutGrid size={16} className="shrink-0 text-brand-orange" />
+          <LayoutGrid size={16} className="shrink-0 text-primary" />
           <span className="min-w-0 flex-1 truncate">{value ? value.categoryName : placeholder}</span>
         </button>
         {value && (

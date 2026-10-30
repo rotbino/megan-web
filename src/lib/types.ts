@@ -20,6 +20,8 @@ export interface User {
   activePakageType: PackageType;
   isVerified: boolean;
   businessDesc?: string;
+  /** «۱ روز در ایمچ» — کارت هویت پروفایل عمومی */
+  daysInImach?: number;
   createdAt: string;
 }
 
@@ -67,9 +69,10 @@ export interface Product {
   cityId: number;
   cityName: string;
 
-  myuserId: number;
+  /** ObjectId کاربر در بک‌اند مگان (رشته) — در دیتای ماک قدیمی عدد بود */
+  myuserId: string;
   seller: {
-    id: number;
+    id: string;
     userName: string;
     firstName: string;
     lastName: string;
@@ -77,19 +80,23 @@ export interface Product {
     isVerified: boolean;
   };
 
-  /** نردبان — آگهی نردبان‌شده بالای نتایج می‌آید (۱۰ هزار تومان در روز) */
+  /** نردبان — آگهی نردبان‌شده بالای نتایج می‌آید (۱۰۰ هزار تومان در ماه) */
   isLadder: boolean;
-  isElevated: boolean; // فروشنده ویژه باسکول — در ایمچ فعلاً بدون استفاده
+  isElevated: boolean; // فروشنده ویژه باسکول — در ایمچ بدون استفاده
   hasVideo: boolean;
   isOld: boolean;
   viewCount: number;
   createdAt: string;
   updatedAt: string;
   photos: string[];
+  /** تامبنیل‌های ۴۰۰px هم‌ترتیب با photos — برای کارت‌های لیست (سرعت) */
+  photoThumbs?: string[];
 
   /** فقط پنل — وضعیت بررسی آگهی (عمومی: همه تایید شده فرض می‌شوند) */
   status?: ProductStatus;
   features?: ProductFeature[];
+  /** دلایل رد — فقط آگهی‌های رد شده پنل */
+  rejectionReasons?: string[];
 }
 
 export interface BuyRequest {
@@ -99,7 +106,8 @@ export interface BuyRequest {
   subcategoryName: string; // نام محصول (مثل: نهال)
   requirementAmount: number;
   unit: string;
-  myuserId: number;
+  /** ObjectId مگان — در باسکول عدد بود؛ فقط کلید/ارجاع فرانت */
+  myuserId: string;
   firstName: string;
   lastName: string;
   city: string;
@@ -138,6 +146,22 @@ export interface ProductFeature {
  * { status, profile: {...}, user_info: {...} }
  * در فاز اتصال، فقط همین دو شیء از JSON بک‌اند پر می‌شود.
  */
+/**
+ * کاربر نشست فرانت — هویت نمایشی (نام/آواتار/نقش) از پروفایل واقعی بک‌اند.
+ * هدر، نوار پایین موبایل و منوها با «role» عوض می‌شوند؛ نقش در بک‌اند
+ * (is_seller/is_buyer) ماندگار است و با رادیوی ویرایش پروفایل/سوییچ پنل عوض می‌شود.
+ */
+export interface SessionUser {
+  phone: string;
+  userName: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+  role: 'seller' | 'buyer';
+  /** رمز پنل تعیین شده؟ false → بنر قرمز «رمز عبور تعیین کنید» فعال می‌ماند */
+  hasPassword: boolean;
+}
+
 export interface PanelProfile {
   profile: {
     description: string | null; // «درباره شما» — حداقل ۳ تا ۵ خط
@@ -149,15 +173,23 @@ export interface PanelProfile {
     isCompany: boolean;
     companyName: string;
     confirmed: boolean;
+    /** استان/شهر — فیلدهای اضافی فرم ویرایش پروفایل */
+    province?: string;
+    city?: string;
   };
   userInfo: {
-    id: number;
+    id: string;
     userName: string; // wbrstu2g1
     firstName: string;
     lastName: string;
     sex: string | null; // «آقا» / «خانم»
     province: string;
     city: string;
+    /** id عددی باسکول — برای پیش‌پر کردن فرم‌های ثبت آگهی/درخواست */
+    provinceId: number | null;
+    cityId: number | null;
+    avatarUrl: string | null;
+    phone: string;
     isVerified: boolean;
     isBuyer: boolean;
     isSeller: boolean;
@@ -165,11 +197,14 @@ export interface PanelProfile {
     productCount: number; // آگهی‌های فعال
     createdAt: string;
   };
+  /** تصاویر مربوطه/گواهی‌های کسب‌وکار — آپلودی همان کاربر (اسلات‌های User) */
+  gallery: Array<{ id: string; url: string; thumbUrl: string }>;
+  certificates: Array<{ id: string; url: string; thumbUrl: string }>;
 }
 
 /** لیست نشان‌شده — پاسخ سرویس: { lists: [{ id, name, cnt, saved }] } */
 export interface SavedList {
-  id: number; // 48288
+  id: string; // ObjectId
   name: string; // «سیب زمینی»
   cnt: number; // تعداد نشان‌شده‌ها
 }
@@ -185,14 +220,14 @@ export type SavedUserStatusKey =
   | 'priority_low'; // اولویت کم
 
 export interface SavedUserNote {
-  id: number;
+  id: string;
   text: string; // «یادم باشه زنگ بزنم»
   createdAt: string; // «۳ آبان ۱۴۰۵ , ۹:۵۲»
 }
 
 /** کاربر نشان‌شده در یک لیست (خریدار) */
 export interface SavedUserItem {
-  id: number;
+  id: string;
   name: string; // «مریم صابری»
   status: SavedUserStatusKey;
   notes: SavedUserNote[];
@@ -207,5 +242,84 @@ export interface SuggestedBuyer {
   buyRequest: BuyRequest;
   matchScore: number; // ۰..۱۰۰
   tier: 'exact' | 'same-product' | 'near-category'; // نوع کالا / همان محصول / دسته نزدیک
-  relatedProduct: string; // محصول فروشنده که این خریدار به آن مرتبط است
+  relatedProduct: string; // آگهی ملاک تطبیق
+}
+
+// ─────────────────────────────────────────────────────────────
+// پنل خریدار — منطبق بر MHTMLهای ارسالی (درخواستهای من،
+// فروشندگان پیشنهادی، نظرسنجی، معاملات پرداخت امن)
+// ─────────────────────────────────────────────────────────────
+
+/** وضعیت درخواست خرید — تب‌های «درخواستهای من» */
+export type BuyRequestStatus = 'confirmed' | 'pending' | 'rejected';
+
+/** درخواست خرید کاربر جاری — ردیف «درخواستهای من» */
+export interface MyBuyRequest {
+  id: number;
+  /** نام دسته انتخابی — مثل «میوه خشک» */
+  subcategoryName: string;
+  /** نوع کالای واردشده — مثل «قیسی» (خالی = خود دسته) */
+  productType: string;
+  /** میزان نیازمندی — کیلوگرم */
+  requirementAmount: number;
+  unit: string;
+  status: BuyRequestStatus;
+  /** هدف ثبت درخواست: قیمت + خرید سریع / فقط اطلاع از قیمت */
+  goal: 'price_and_buy' | 'price_only';
+  /** سابقه خرید عمده این کالا */
+  hasHistory: boolean;
+  createdAt: string;
+  /** دلایل رد — فقط رد شده */
+  rejectionReasons?: string[];
+}
+
+/** گروه فروشندگان پیشنهادی — کارت دسته در صفحه «پیشنهادی» خریدار */
+export interface SuggestedSellerGroup {
+  id: number;
+  /** نام دسته/کالا — مثل «سیب زمینی» */
+  categoryName: string;
+  /** تعداد فروشندگان هم‌کالا */
+  sellerCount: number;
+  /** مقصد کارت: لیست محصولات همان دسته */
+  href: string;
+}
+
+/** گزینه نظرسنجی */
+export type SurveyScore = 'excellent' | 'good' | 'average' | 'bad' | 'very_bad';
+
+// ─────────────────────────────────────────────────────────────
+// کیف پول — پرداخت کارت به کارت (جایگزین درگاه پرداخت)
+// ─────────────────────────────────────────────────────────────
+
+/** پکیج شارژ کیف پول — سه پکیج کارت به کارت */
+export interface ChargePackage {
+  key: 'p100' | 'p200' | 'p400';
+  amount: number; // مبلغ واریزی (تومان)
+  bonusPercent: number; // ۰ / ۱۰ / ۲۰ درصد شارژ اضافه
+  charge: number; // شارژ اعمالی نهایی = amount × (۱ + درصد)
+}
+
+/** تراکنش کیف پول — فقط اقلام قطعی‌شده (در انتظار/ردشده اینجا نیستند؛ تب کارت‌به‌کارت‌اند) */
+export interface WalletTransaction {
+  id: string;
+  title: string;
+  amount: number;
+  incoming: boolean; // واریز / کسر
+  at: string;
+  /** نوع تراکنش: card = شارژ کارت‌به‌کارت تأییدشده؛ ladder = نردبان؛ adjust = اصلاح ادمین (آینده: online) */
+  type: 'card' | 'ladder' | 'adjust';
+}
+
+/** فیش شارژ کارت‌به‌کارت کاربر — تب «کارت به کارت» کیف پول */
+export interface MyChargeOrder {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  packageKey: string;
+  amount: number; // مبلغ واریزی (تومان)
+  bonusPercent: number; // ۰/۱۰/۲۰ درصد شارژ اضافه
+  charge: number; // شارژ اعمالی نهایی پس از تأیید
+  rejectionReason?: string | null; // فقط وقتی رد شده — کاربر باید دلیل و راه‌حل را ببیند
+  reviewedAt?: string | null;
+  createdAt: string;
+  receipt: { url: string; thumbUrl?: string } | null;
 }

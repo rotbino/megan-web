@@ -1,22 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowRight, Loader2, Smartphone, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowRight, KeyRound, Loader2, Smartphone, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSeparator,
-  InputOTPSlot,
-} from '@/components/ui/input-otp';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
 import { useAuth } from '@/lib/mock/auth';
-import { useRequestOtp, useVerifyOtp } from '@/lib/mock/hooks';
+import { useLoginSession } from '@/lib/mock/hooks';
+import { flushPendingRfq, takeAfterAuthRedirect, PANEL_RFQ_DEST } from '@/lib/pending-rfq';
 
 /**
- * مودال ورود/ثبت‌نام — فقط با شماره موبایل + کد یک‌بارمصرف (الگوی باسکول).
+ * مودال ورود/ثبت‌نام — روش سشن: فقط با شماره موبایل، بدون پیامک
+ * (تا آمدن پنل پیامک — ساختار OTP در api.ts/hooks و InputOTP برای
+ * آن روز دست‌نخورده نگه داشته شده است).
+ *
+ * • کاربر بدون رمز → مستقیم وارد می‌شود (مثل دفعه اول).
+ * • کاربر رمزدار → PASSWORD_REQUIRED → مرحله رمز عبور نمایش داده می‌شود.
+ * • کاربر جدید → /register?step=info برای نام/استان/شهر.
+ *
  * موبایل: بات‌شیت پایین‌رونده (قانون کلی مودال‌های ایمچ) / دسکتاپ: مودال مرکزی.
  * کاربر لاگین‌نشیده قیمت‌ها را نمی‌بیند؛ همین مودال از دکمه «مشاهده قیمت» باز می‌شود.
  */
@@ -29,72 +32,104 @@ export function AuthModal({
   onClose: () => void;
   onLoggedIn: () => void;
 }) {
+  const router = useRouter();
   const { login } = useAuth();
-  const [step, setStep] = useState<'phone' | 'code'>('phone');
+  const [step, setStep] = useState<'phone' | 'password'>('phone');
   const [phone, setPhone] = useState('');
-  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const otpMutation = useRequestOtp();
-  const verifyMutation = useVerifyOtp();
+  const loginMutation = useLoginSession();
 
-  const sendCode = (e: React.FormEvent) => {
+  const handleSuccess = async (isNewUser: boolean, user: Parameters<typeof login>[0]) => {
+    login(user);
+    setStep('phone');
+    setPhone('');
+    setPassword('');
+    setError('');
+    // کاربر جدید → تکمیل اطلاعات (نام/استان/شهر) در صفحه ثبت‌نام؛
+    // درخواست معلق/مقصد پس از ورود می‌ماند تا بعد از تکمیل اجرا شود
+    if (isNewUser) {
+      onLoggedIn();
+      router.push('/register?step=info');
+      return;
+    }
+    // کاربر قبلی — نیت‌های معلق (درخواست خرید صفحه اول / مقصد بنر فروشگاه)
+    // همین حالا اجرا شوند؛ بدون نیت، همان صفحه فعلی می‌ماند (رفتار قبلی)
+    const flushed = await flushPendingRfq();
+    onLoggedIn();
+    if (flushed !== 'none') {
+      // submitted: درخواست ثبت شد → پنل خرید
+      // failed: شبکه خطا داد → کاربر در پنل لیست را می‌بیند و از همان‌جا دوباره ثبت می‌کند
+      router.push(PANEL_RFQ_DEST);
+      return;
+    }
+    const redirect = takeAfterAuthRedirect('');
+    if (redirect) router.push(redirect);
+  };
+
+  const sendPhone = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!/^09\d{9}$/.test(phone)) {
-      setError('شماره موبایل معتبر نیست (مثال: 09123456789)');
+      setError('شماره موبایل معتبر نیست (مثل 09123456789).');
       return;
     }
-    otpMutation.mutate(phone, { onSuccess: () => setStep('code') });
+    loginMutation.mutate(
+      { phone },
+      {
+        onSuccess: (res) => {
+          if (res.ok && res.user) handleSuccess(Boolean(res.isNewUser), res.user);
+          else if (res.requiresPassword) setStep('password'); // کاربر رمز تعیین کرده است
+        },
+        onError: (err) => setError(err instanceof Error ? err.message : 'ورود ناموفق بود.'),
+      },
+    );
   };
 
-  const verify = (value: string) => {
-    setCode(value);
+  const sendPassword = (e: React.FormEvent) => {
+    e.preventDefault();
     setError('');
-    if (value.length === 5) {
-      verifyMutation.mutate(
-        { phone, code: value },
-        {
-          onSuccess: (res) => {
-            if (res.ok) {
-              login({ phone, userName: res.userName ?? '' });
-              onLoggedIn();
-              setStep('phone');
-              setPhone('');
-              setCode('');
-            } else {
-              setError('کد وارد شده صحیح نیست. (در نمونه: هر کد ۵ رقمی)');
-            }
-          },
-        },
-      );
+    if (password.length < 6) {
+      setError('رمز عبور حداقل ۶ نویسه است.');
+      return;
     }
+    loginMutation.mutate(
+      { phone, password },
+      {
+        onSuccess: (res) => {
+          if (res.ok && res.user) handleSuccess(Boolean(res.isNewUser), res.user);
+          else if (res.requiresPassword) setError('رمز عبور وارد نشده است.');
+        },
+        onError: (err) => setError(err instanceof Error ? err.message : 'ورود ناموفق بود.'),
+      },
+    );
   };
 
   const reset = () => {
     setStep('phone');
     setPhone('');
-    setCode('');
+    setPassword('');
     setError('');
   };
 
-  const title = step === 'phone' ? 'ورود / ثبت‌نام' : 'کد تأیید';
+  const title = step === 'phone' ? 'ورود / ثبت‌نام' : 'رمز عبور';
   const subtitle =
     step === 'phone'
-      ? 'مشاهده قیمت‌ها فقط برای اعضای ایمچ امکان‌پذیر است.'
-      : `کد ۵ رقمی پیامک‌شده به ${phone} را وارد کنید.`;
+      ? 'ورود و ثبت‌نام ایمچ فقط با شماره موبایل انجام می‌شود.'
+      : `رمز عبور پنل خود را برای ${phone} وارد کنید.`;
 
   const body = (
     <div className="space-y-4 p-1">
       <div className="flex flex-col items-center gap-2 text-center">
         <span className="grid size-11 place-items-center rounded-md bg-primary/10 text-primary">
-          <Smartphone size={20} />
+          {step === 'phone' ? <Smartphone size={20} /> : <KeyRound size={20} />}
         </span>
         <p className="text-xs leading-5 text-muted-foreground">{subtitle}</p>
       </div>
 
       {step === 'phone' ? (
-        <form onSubmit={sendCode} className="space-y-4">
+        <form onSubmit={sendPhone} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="auth-phone">شماره موبایل</Label>
             <Input
@@ -103,45 +138,44 @@ export function AuthModal({
               inputMode="numeric"
               value={phone}
               onChange={(e) => setPhone(e.target.value.replace(/[^\d]/g, ''))}
-              placeholder="09123456789"
+              placeholder="0912…"
               maxLength={11}
-              className="rounded-md text-center font-mono tracking-widest"
+              className="font-num rounded-md text-center text-base tracking-widest"
               autoFocus={open}
             />
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
-          <Button type="submit" size="lg" className="w-full rounded-md" disabled={otpMutation.isPending}>
-            {otpMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : null}
-            {otpMutation.isPending ? 'در حال ارسال…' : 'دریافت کد تأیید'}
+          <Button type="submit" size="lg" className="w-full rounded-md" disabled={loginMutation.isPending}>
+            {loginMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : null}
+            {loginMutation.isPending ? 'در حال ورود…' : 'ورود به ایمچ'}
           </Button>
         </form>
       ) : (
-        <div className="space-y-4">
-          <div className="flex justify-center" dir="ltr">
-            <InputOTP maxLength={5} value={code} onChange={verify} disabled={verifyMutation.isPending}>
-              <InputOTPGroup>
-                <InputOTPSlot index={0} />
-                <InputOTPSlot index={1} />
-              </InputOTPGroup>
-              <InputOTPSeparator />
-              <InputOTPGroup>
-                <InputOTPSlot index={2} />
-                <InputOTPSlot index={3} />
-                <InputOTPSlot index={4} />
-              </InputOTPGroup>
-            </InputOTP>
+        <form onSubmit={sendPassword} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="auth-password">رمز عبور</Label>
+            <Input
+              id="auth-password"
+              type="password"
+              dir="ltr"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••"
+              maxLength={72}
+              className="rounded-md text-center"
+              autoFocus
+            />
           </div>
-          {verifyMutation.isPending && (
-            <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-              <Loader2 size={12} className="animate-spin" /> در حال بررسی کد…
-            </p>
-          )}
           {error && <p className="text-center text-xs text-destructive">{error}</p>}
-          <Button variant="ghost" size="sm" className="w-full gap-1 text-muted-foreground" onClick={reset}>
+          <Button type="submit" size="lg" className="w-full rounded-md" disabled={loginMutation.isPending}>
+            {loginMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : null}
+            {loginMutation.isPending ? 'در حال بررسی…' : 'ورود'}
+          </Button>
+          <Button variant="ghost" size="sm" className="w-full gap-1 text-muted-foreground" onClick={() => { setStep('phone'); setPassword(''); setError(''); }}>
             <ArrowRight size={14} />
             تغییر شماره موبایل
           </Button>
-        </div>
+        </form>
       )}
     </div>
   );

@@ -2,20 +2,24 @@
 
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
-import { useBuyRequests } from '@/lib/mock/hooks';
+import { useLatestBuyRequests } from '@/lib/mock/hooks';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toFa, timeAgoFa } from '@/lib/format';
+import { toFa } from '@/lib/format';
+import { RelativeTime } from '@/components/shared/relative-time';
 
 /**
  * «جدیدترین درخواست های خرید» — ردیف افقی مثل باسکول.
  * جمله کارت عین باسکول: «خریدار {مقدار} {واحد} {محصول} از نوع {نوع} هستم»
  */
 export function LatestBuyRequests() {
-  const { data, isLoading } = useBuyRequests();
+  const { data, isLoading } = useLatestBuyRequests();
   const items = (data ?? []).slice(0, 12);
 
   return (
-    <section aria-labelledby="latest-buyads" className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
+    <section
+      aria-labelledby="latest-buyads"
+      className="mx-auto max-w-7xl px-4 py-6 lg:px-6 nav-desktop:mt-6 nav-desktop:rounded-lg nav-desktop:border nav-desktop:border-border/70 nav-desktop:bg-card nav-desktop:shadow-sm"
+    >
       <div className="mb-3 flex h-10 items-center justify-between nav-desktop:mb-4">
         <h2 id="latest-buyads" className="text-base font-medium leading-7 nav-desktop:text-xl">جدیدترین درخواست های خرید</h2>
         <Link
@@ -46,7 +50,7 @@ export function LatestBuyRequests() {
                   </span>
                   <span className="text-xs font-bold">{r.firstName} {r.lastName}</span>
                 </div>
-                <span className="text-[11px] text-muted-foreground">{timeAgoFa(r.createdAt)}</span>
+                <span className="text-[11px] text-muted-foreground"><RelativeTime date={r.createdAt} /></span>
               </div>
               <p className="text-xs leading-6 text-muted-foreground">
                 خریدار <span className="font-bold text-foreground">{toFa(r.requirementAmount)} {r.unit}</span>{' '}

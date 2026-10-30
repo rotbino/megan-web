@@ -1,0 +1,1211 @@
+     1→/**
+     2→ * لایه API ایمچ — اتصال واقعی به بک‌اند مگان (NestJS :4000/api/v1).
+     3→ *
+     4→ * همه توابع خروجی هم‌شکل ماک قبلی دارند تا هوک‌ها و کامپوننت‌ها دست‌نخورده
+     5→ * بمانند. ماک آگهی/کاربر/درخواست/کیف پول حذف شده است — تنها ثابت‌های UI
+     6→ * (برچسب‌ها، پکیج‌ها، شماره کارت) از data.ts می‌آیند.
+     7→ */
+     8→
+     9→import { apiFetch, serverPost, setTokens, clearTokens, getTokens, ApiError } from '@/lib/api/client';
+    10→import type { BuyRequest, Category, City, PackageType, Product, ProductQuery, Province, SessionUser } from '@/lib/types';
+    11→
+    12→export interface Paged<T> {
+    13→  items: T[];
+    14→  total: number;
+    15→  page: number;
+    16→  pageCount: number;
+    17→}
+    18→
+    19→// ─── شکل پاسخ خام بک‌اند ───────────────────────────────────────────────────
+    20→
+    21→/** CategoryNode بک‌اند (snake_case) */
+    22→interface RawCategoryNode {
+    23→  id: number;
+    24→  category_name: string;
+    25→  slug: string;
+    26→  kind: string;
+    27→  unit: string;
+    28→  min: number;
+    29→  example: string | null;
+    30→  parent_id: number | null;
+    31→  score: number;
+    32→  children?: RawCategoryNode[];
+    33→}
+    34→
+    35→/** ProductDto بک‌اند — camelCase منطبق تایپ فرانت با دو استثنا */
+    36→interface RawProduct {
+    37→  id: number;
+    38→  productName: string;
+    39→  slug: string;
+    40→  description: string;
+    41→  stock: number;
+    42→  minSalePrice: number;
+    43→  minSaleAmount: number;
+    44→  unit: string;
+    45→  categoryId: number;
+    46→  categoryName: string;
+    47→  subCategoryId: number;
+    48→  subCategoryName: string;
+    49→  provinceId: number;
+    50→  provinceName: string;
+    51→  cityId: number;
+    52→  cityName: string;
+    53→  myuserId: string;
+    54→  seller: {
+    55→    id: string;
+    56→    userName: string;
+    57→    firstName: string;
+    58→    lastName: string;
+    59→    activePakageType: number;
+    60→    isVerified: boolean;
+    61→  };
+    62→  isLadder: boolean;
+    63→  isElevated: boolean;
+    64→  hasVideo: boolean;
+    65→  isOld: boolean;
+    66→  viewCount: number;
+    67→  createdAt: string;
+    68→  updatedAt: string;
+    69→  photos: string[];
+    70→  photoThumbs?: string[];
+    71→  status?: string;
+    72→  features?: Array<{ key: string; value: string }>;
+    73→  rejectionReasons?: string[];
+    74→}
+    75→
+    76→const toProduct = (p: RawProduct): Product => {
+    77→  const { status, ...rest } = p;
+    78→  return {
+    79→    ...rest,
+    80→    minSalePrice: p.minSalePrice ?? null,
+    81→    photoThumbs: p.photoThumbs ?? p.photos,
+    82→    seller: {
+    83→      ...p.seller,
+    84→      activePakageType: (p.seller.activePakageType ?? 0) as PackageType,
+    85→    },
+    86→    // اندپوینت‌های عمومی فقط آگهی confirmed برمی‌گردانند و status را
+    87→    // نمی‌فرستند — پیش‌فرض confirmed تا تب‌های «محصولات من» درست فیلتر شوند
+    88→    status: (status ?? 'confirmed') as Product['status'],
+    89→  };
+    90→};
+    91→
+    92→/** تصویر کارت دسته‌های ریشه — دارایی ثابت فرانت (webp بهینه) */
+    93→const ROOT_IMAGES: Record<number, string> = {
+    94→  76: '/images/categories/agriculture.webp',
+    95→  734: '/images/categories/building.webp',
+    96→  136: '/images/categories/metals.webp',
+    97→  924: '/images/categories/fashion.webp',
+    98→  996: '/images/categories/bags.webp',
+    99→  329: '/images/categories/machinery.webp',
+   100→  77: '/images/categories/food.webp',
+   101→  998: '/images/categories/cosmetics.webp',
+   102→  923: '/images/categories/electronics.webp',
+   103→  997: '/images/categories/sports.webp',
+   104→};
+   105→
+   106→const toCategory = (c: RawCategoryNode): Category => ({
+   107→  id: c.id,
+   108→  categoryName: c.category_name,
+   109→  slug: c.slug,
+   110→  unit: c.unit,
+   111→  min: c.min,
+   112→  example: c.example ?? undefined,
+   113→  parentId: c.parent_id,
+   114→  score: c.score,
+   115→  image: ROOT_IMAGES[c.id],
+   116→  children: (c.children ?? []).map(toCategory),
+   117→});
+   118→
+   119→// ─── جستجو و پیشنهادها ────────────────────────────────────────────────────
+   120→
+   121→export async function searchSuggestions(typedText: string): Promise<string[]> {
+   122→  try {
+   123→    return await apiFetch<string[]>('/products/searchSuggestions', { typedText }, { auth: false });
+   124→  } catch {
+   125→    return []; // جستجوی زنده هرگز نباید UX را بشکند
+   126→  }
+   127→}
+   128→
+   129→// ─── محصولات ───────────────────────────────────────────────────────────────
+   130→
+   131→export async function getProducts(query: ProductQuery = {}): Promise<Paged<Product>> {
+   132→  const raw = await apiFetch<{ items: RawProduct[]; total: number; page: number; pageCount: number }>(
+   133→    '/products/getProductList',
+   134→    {
+   135→      categorySlug: query.categorySlug,
+   136→      s: query.s,
+   137→      provinceId: query.provinceId,
+   138→      cityId: query.cityId,
+   139→      sort: query.sort,
+   140→      page: query.page,
+   141→    },
+   142→    { auth: false },
+   143→  );
+   144→  return { ...raw, items: raw.items.map(toProduct) };
+   145→}
+   146→
+   147→export async function getProduct(id: number): Promise<Product | null> {
+   148→  try {
+   149→    const raw = await apiFetch<RawProduct>('/products/getProductById', { id }, { auth: false });
+   150→    return toProduct(raw);
+   151→  } catch {
+   152→    return null; // 404 → صفحه not-found فرانت
+   153→  }
+   154→}
+   155→
+   156→export async function getRelatedProducts(product: Product, limit = 6): Promise<Product[]> {
+   157→  try {
+   158→    const raw = await apiFetch<RawProduct[]>(
+   159→      '/products/getRelatedProducts',
+   160→      { subCategoryId: product.subCategoryId, excludeId: product.id, limit },
+   161→      { auth: false },
+   162→    );
+   163→    return raw.map(toProduct);
+   164→  } catch {
+   165→    return [];
+   166→  }
+   167→}
+   168→
+   169→// ─── دسته‌بندی‌ها و مکان‌ها ────────────────────────────────────────────────
+   170→
+   171→export async function getCategoryTree(): Promise<Category[]> {
+   172→  const raw = await apiFetch<RawCategoryNode[]>('/categories/getAllCategories', {}, { auth: false });
+   173→  return raw.map(toCategory);
+   174→}
+   175→
+   176→// ─── SSR/ISR — فقط برای Server Components صفحات عمومی (F2) ──────────────────
+   177→// کش دادهٔ نکست با revalidate؛ در خطا null برمی‌گردند تا صفحه با کلاینت‌رندر ادامه دهد.
+   178→
+   179→export async function getProductsSSR(
+   180→  query: ProductQuery = {},
+   181→  revalidate = 60,
+   182→): Promise<Paged<Product> | null> {
+   183→  try {
+   184→    const raw = await serverPost<
+   185→      { items: RawProduct[]; total: number; page: number; pageCount: number }
+   186→    >(
+   187→      '/products/getProductList',
+   188→      {
+   189→        categorySlug: query.categorySlug,
+   190→        s: query.s,
+   191→        provinceId: query.provinceId,
+   192→        cityId: query.cityId,
+   193→        sort: query.sort,
+   194→        page: query.page,
+   195→      },
+   196→      revalidate,
+   197→    );
+   198→    return { ...raw, items: raw.items.map(toProduct) };
+   199→  } catch {
+   200→    return null; // بک‌اند خاموش/خطا → صفحه با رندر کلاینت ادامه می‌دهد
+   201→  }
+   202→}
+   203→
+   204→export async function getBuyRequestsSSR(
+   205→  opts: { s?: string; provinceId?: number; page?: number; perPage?: number } = {},
+   206→  revalidate = 60,
+   207→): Promise<Paged<BuyRequest> | null> {
+   208→  try {
+   209→    const raw = await serverPost<
+   210→      { items: RawBuyRequest[]; total: number; page: number; pageCount: number }
+   211→    >(
+   212→      '/buy-requests/getBuyRequestList',
+   213→      { s: opts.s, provinceId: opts.provinceId, page: opts.page, perPage: opts.perPage },
+   214→      revalidate,
+   215→    );
+   216→    return { ...raw, items: raw.items.map(toBuyRequest) };
+   217→  } catch {
+   218→    return null;
+   219→  }
+   220→}
+   221→
+   222→/** درخت دسته‌ها سمت سرور — برای نام دسته و مسیر BreadcrumbList */
+   223→export async function getCategoryTreeSSR(revalidate = 600): Promise<Category[] | null> {
+   224→  try {
+   225→    const raw = await serverPost<RawCategoryNode[]>('/categories/getAllCategories', {}, revalidate);
+   226→    return raw.map(toCategory);
+   227→  } catch {
+   228→    return null;
+   229→  }
+   230→}
+   231→
+   232→/** استان‌ها سمت سرور — داده پایه؛ در root layout به کلاینت seed می‌شود */
+   233→export async function getProvincesSSR(revalidate = 3600): Promise<Province[] | null> {
+   234→  try {
+   235→    const raw = await serverPost<Array<{ id: number; province_name: string }>>(
+   236→      '/locations/getAllProvinces',
+   237→      {},
+   238→      revalidate,
+   239→    );
+   240→    return raw.map((p) => ({ id: p.id, name: p.province_name }));
+   241→  } catch {
+   242→    return null;
+   243→  }
+   244→}
+   245→
+   246→export async function getProvinces(): Promise<Province[]> {
+   247→  const raw = await apiFetch<Array<{ id: number; province_name: string }>>(
+   248→    '/locations/getAllProvinces',
+   249→    {},
+   250→    { auth: false },
+   251→  );
+   252→  return raw.map((p) => ({ id: p.id, name: p.province_name }));
+   253→}
+   254→
+   255→export async function getCities(provinceId: number): Promise<City[]> {
+   256→  const raw = await apiFetch<Array<{ id: number; province_id: number; city_name: string }>>(
+   257→    '/locations/getCitiesByProvince',
+   258→    { province_id: provinceId },
+   259→    { auth: false },
+   260→  );
+   261→  return raw.map((c) => ({ id: c.id, name: c.city_name, provinceId: c.province_id }));
+   262→}
+   263→
+   264→// ─── درخواست‌های خرید (B7 — واقعی) ─────────────────────────────────────────
+   265→
+   266→/** RawBuyRequest بک‌اند — هم‌شکل تایپ فرانت با استثنای myuserId (رشته ObjectId) */
+   267→interface RawBuyRequest {
+   268→  id: number;
+   269→  name: string | null;
+   270→  categoryId: number;
+   271→  subcategoryName: string;
+   272→  requirementAmount: number;
+   273→  unit: string;
+   274→  myuserId: string;
+   275→  firstName: string;
+   276→  lastName: string;
+   277→  city: string;
+   278→  isVerified: boolean;
+   279→  createdAt: string;
+   280→}
+   281→
+   282→const toBuyRequest = (r: RawBuyRequest): BuyRequest => ({
+   283→  id: r.id,
+   284→  name: r.name,
+   285→  categoryId: r.categoryId,
+   286→  subcategoryName: r.subcategoryName,
+   287→  requirementAmount: r.requirementAmount,
+   288→  unit: r.unit,
+   289→  myuserId: r.myuserId,
+   290→  firstName: r.firstName,
+   291→  lastName: r.lastName,
+   292→  city: r.city,
+   293→  isVerified: r.isVerified,
+   294→  createdAt: r.createdAt,
+   295→});
+   296→
+   297→export async function getBuyRequests(
+   298→  opts: { s?: string; provinceId?: number; page?: number; perPage?: number } = {},
+   299→): Promise<Paged<BuyRequest>> {
+   300→  const raw = await apiFetch<{ items: RawBuyRequest[]; total: number; page: number; pageCount: number }>(
+   301→    '/buy-requests/getBuyRequestList',
+   302→    {
+   303→      s: opts.s,
+   304→      provinceId: opts.provinceId,
+   305→      page: opts.page,
+   306→      perPage: opts.perPage,
+   307→    },
+   308→    { auth: false },
+   309→  );
+   310→  return { ...raw, items: raw.items.map(toBuyRequest) };
+   311→}
+   312→
+   313→/** جدیدترین درخواست‌ها — سکشن صفحه اول (۴ تایی عین باسکول) */
+   314→export async function getLatestBuyRequests(): Promise<BuyRequest[]> {
+   315→  const raw = await apiFetch<RawBuyRequest[]>('/buy-requests/getLatestBuyRequests', {}, { auth: false });
+   316→  return raw.map(toBuyRequest);
+   317→}
+   318→
+   319→/** شماره تماس خریدار — نیازمند ورود (مدل Lead-gen باسکول) */
+   320→export async function getBuyRequestContact(id: number): Promise<{
+   321→  phone: string;
+   322→  firstName: string;
+   323→  lastName: string;
+   324→  isVerified: boolean;
+   325→  isSelf: boolean;
+   326→}> {
+   327→  return apiFetch(`/buy-requests/getBuyRequestContact`, { id });
+   328→}
+   329→
+   330→// ─── فروشنده‌ها ────────────────────────────────────────────────────────────
+   331→
+   332→export async function getSeller(userName: string) {
+   333→  const raw = await apiFetch<{
+   334→    user: {
+   335→      id: string;
+   336→      userName: string;
+   337→      firstName: string;
+   338→      lastName: string;
+   339→      sex: string | null;
+   340→      activePakageType: number;
+   341→      isVerified: boolean;
+   342→      businessDesc: string | null;
+   343→      avatarUrl: string | null;
+   344→      createdAt: string;
+   345→      online: boolean;
+   346→      lastSeenAt: string | null;
+   347→      provinceName: string | null;
+   348→      cityName: string | null;
+   349→      reviewSummary: { avg: number; count: number };
+   350→      responseRate: number | null;
+   351→      productCount: number;
+   352→      totalStock: number;
+   353→    };
+   354→    products: RawProduct[];
+   355→  }>('/products/getSeller', { userName }, { auth: false });
+   356→
+   357→  return {
+   358→    user: {
+   359→      ...raw.user,
+   360→      daysInImach: Math.max(
+   361→        1,
+   362→        Math.round((Date.now() - new Date(raw.user.createdAt || Date.now()).getTime()) / 86_400_000),
+   363→      ),
+   364→    },
+   365→    products: raw.products.map(toProduct),
+   366→  };
+   367→}
+   368→
+   369→// ─── فرم‌ها ────────────────────────────────────────────────────────────────
+   370→
+   371→export async function submitBuyRequest(input: {
+   372→  subCategoryId: number;
+   373→  productType?: string;
+   374→  amount: number;
+   375→}): Promise<{ ok: true; id: number }> {
+   376→  await apiFetch('/buy-requests/createBuyRequest', {
+   377→    subCategoryId: input.subCategoryId,
+   378→    name: input.productType || undefined,
+   379→    requirementAmount: input.amount,
+   380→  });
+   381→  return { ok: true, id: 0 };
+   382→}
+   383→
+   384→/** ارسال کد OTP واقعی — خطا با پیام فارسی بک‌اند؛ devCode فقط در محیط توسعه برمی‌گردد
+   385→ *  (فعلاً بدون پنل پیامک — ساختار برای آینده نگه داشته شده) */
+   386→export async function requestOtp(phone: string): Promise<{ ok: true; devCode?: string }> {
+   387→  const data = await apiFetch<{ devCode?: string }>('/auth/sendOtp', { phone }, { auth: false, retryOn401: false });
+   388→  return { ok: true, devCode: data.devCode };
+   389→}
+   390→
+   391→/** شکل user پاسخ getProfile — مبنای کاربر نشست و پروفایل پنل */
+   392→interface RawProfileUser {
+   393→  id: string;
+   394→  phone: string;
+   395→  user_name: string | null;
+   396→  first_name: string;
+   397→  last_name: string;
+   398→  sex: string | null;
+   399→  role: string;
+   400→  has_password: boolean;
+   401→  is_verified: boolean;
+   402→  is_buyer: boolean;
+   403→  is_seller: boolean;
+   404→  wallet_balance: number;
+   405→  avatar_url: string | null;
+   406→  business_desc: string | null;
+   407→  province_id: number | null;
+   408→  city_id: number | null;
+   409→  province: string | null;
+   410→  city: string | null;
+   411→  product_count: number;
+   412→  created_at: string;
+   413→  updated_at: string;
+   414→}
+   415→
+   416→/** تایید کد + ورود — توکن‌ها را ذخیره و کاربر نشست را برمی‌گرداند
+   417→ *  (ساختار برای پنل پیامک آینده — فعلاً فرانت از loginWithSession استفاده می‌کند) */
+   418→export async function verifyOtp(input: {
+   419→  phone: string;
+   420→  code: string;
+   421→}): Promise<{ ok: boolean; isNewUser?: boolean; user?: SessionUser }> {
+   422→  const data = await apiFetch<{
+   423→    isNewUser: boolean;
+   424→    accessToken: string;
+   425→    refreshToken: string;
+   426→  }>('/auth/verifyOtp', input, { auth: false, retryOn401: false });
+   427→
+   428→  setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+   429→
+   430→  // کاربر نشست — از پروفایل واقعی؛ اگر موقتاً نرسید، حداقلِ قابل‌نمایش
+   431→  let user: SessionUser = {
+   432→    phone: input.phone,
+   433→    userName: '',
+   434→    firstName: '',
+   435→    lastName: '',
+   436→    avatarUrl: null,
+   437→    role: 'buyer',
+   438→    hasPassword: false,
+   439→  };
+   440→  try {
+   441→    const profile = await apiFetch<{ user: RawProfileUser }>('/users/getProfile', {});
+   442→    user = mapSessionUser(profile.user);
+   443→  } catch {
+   444→    /* پروفایل اختیاری است — ورود موفق بوده */
+   445→  }
+   446→
+   447→  return { ok: true, isNewUser: data.isNewUser, user };
+   448→}
+   449→
+   450→/**
+   451→ * ورود روش سشن — فقط با شماره موبایل (بدون پیامک، تا آمدن پنل پیامک).
+   452→ * • کاربر بدون رمز → مستقیم وارد می‌شود (مثل دفعه اول).
+   453→ * • کاربر رمزدار → بک‌اند PASSWORD_REQUIRED می‌دهد؛ requiresPassword=true
+   454→ *   برمی‌گردد تا UI فیلد رمز را نشان دهد.
+   455→ * کاربر جدید → isNewUser برای هدایت به /register?step=info.
+   456→ */
+   457→export async function loginWithSession(input: {
+   458→  phone: string;
+   459→  password?: string;
+   460→}): Promise<{
+   461→  ok: boolean;
+   462→  requiresPassword?: boolean;
+   463→  isNewUser?: boolean;
+   464→  user?: SessionUser;
+   465→}> {
+   466→  let data: { isNewUser: boolean; hasPassword: boolean; accessToken: string; refreshToken: string };
+   467→  try {
+   468→    data = await apiFetch('/auth/login', input, { auth: false, retryOn401: false });
+   469→  } catch (err) {
+   470→    if (err instanceof ApiError && err.code === 'PASSWORD_REQUIRED') {
+   471→      return { ok: false, requiresPassword: true };
+   472→    }
+   473→    throw err;
+   474→  }
+   475→
+   476→  setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+   477→
+   478→  // کاربر نشست — از پروفایل واقعی؛ اگر موقتاً نرسید، حداقلِ قابل‌نمایش
+   479→  let user: SessionUser = {
+   480→    phone: input.phone,
+   481→    userName: '',
+   482→    firstName: '',
+   483→    lastName: '',
+   484→    avatarUrl: null,
+   485→    role: 'buyer',
+   486→    hasPassword: data.hasPassword,
+   487→  };
+   488→  try {
+   489→    const profile = await apiFetch<{ user: RawProfileUser }>('/users/getProfile', {});
+   490→    user = mapSessionUser(profile.user);
+   491→  } catch {
+   492→    /* پروفایل اختیاری است — ورود موفق بوده */
+   493→  }
+   494→
+   495→  return { ok: true, isNewUser: data.isNewUser, user };
+   496→}
+   497→
+   498→/** تعیین رمز پنل — از بنر قرمز پنل؛ تغییرهای بعدی currentPassword می‌خواهد */
+   499→export async function setPasswordRemote(input: {
+   500→  password: string;
+   501→  currentPassword?: string;
+   502→}): Promise<void> {
+   503→  await apiFetch('/auth/setPassword', input, { auth: true });
+   504→}
+   505→
+   506→/** نگاشت user بک‌اند → کاربر نشست فرانت */
+   507→export function mapSessionUser(u: RawProfileUser): SessionUser {
+   508→  return {
+   509→    phone: u.phone,
+   510→    userName: u.user_name ?? '',
+   511→    firstName: u.first_name ?? '',
+   512→    lastName: u.last_name ?? '',
+   513→    avatarUrl: u.avatar_url ?? null,
+   514→    // پیش‌فرض فروشنده (خواسته مالک) — فقط وقتی خودش خریدار را انتخاب کرده باشد
+   515→    // (is_buyer=true و is_seller=false) پنل خریدار باز می‌شود؛ انتخاب در بک‌اند ماندگار است.
+   516→    role: u.is_buyer && !u.is_seller ? 'buyer' : 'seller',
+   517→    hasPassword: Boolean(u.has_password),
+   518→  };
+   519→}
+   520→
+   521→/** کاربر نشست از پروفایل واقعی — null یعنی لاگین نیست؛ خطای شبکه reject می‌شود */
+   522→export async function fetchAuthUser(): Promise<SessionUser | null> {
+   523→  if (!getTokens()?.accessToken) return null;
+   524→  try {
+   525→    const profile = await apiFetch<{ user: RawProfileUser }>('/users/getProfile', {});
+   526→    return mapSessionUser(profile.user);
+   527→  } catch (err) {
+   528→    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) return null;
+   529→    throw err;
+   530→  }
+   531→}
+   532→
+   533→/** تغییر نقش فعال (فروشنده/خریدار) — ماندگار روی is_seller/is_buyer بک‌اند */
+   534→export async function updateUserRoleRemote(role: 'seller' | 'buyer'): Promise<void> {
+   535→  await apiFetch('/users/updateProfile', {
+   536→    is_seller: role === 'seller',
+   537→    is_buyer: role === 'buyer',
+   538→  });
+   539→}
+   540→
+   541→/** خروج — ابطال رفرش‌توکن + پاک‌سازی نشست */
+   542→export async function logoutRemote(): Promise<void> {
+   543→  const tokens = getTokens();
+   544→  if (tokens?.refreshToken) {
+   545→    try {
+   546→      await apiFetch('/auth/logout', { refreshToken: tokens.refreshToken }, { auth: true, retryOn401: false });
+   547→    } catch {
+   548→      /* خروج با توکن نامعتبر هم موفق است */
+   549→    }
+   550→  }
+   551→  clearTokens();
+   552→}
+   553→
+   554→// ─── پنل فروشنده ──────────────────────────────────────────────────────────
+   555→
+   556→import { PRODUCT_CAPACITY } from './data';
+   557→import { uploadImage, deleteImage } from '@/lib/api/client';
+   558→import type {
+   559→  PanelProfile,
+   560→  ProductStatus,
+   561→  SavedList,
+   562→  SavedUserItem,
+   563→  SavedUserNote,
+   564→  SuggestedBuyer,
+   565→} from '@/lib/types';
+   566→
+   567→/** پروفایل پنل — واقعی از بک‌اند */
+   568→export async function getPanelProfile(): Promise<PanelProfile> {
+   569→  const raw = await apiFetch<{
+   570→    user: RawProfileUser;
+   571→    profile: Record<string, unknown>;
+   572→    gallery?: Array<{ id: string; url: string; thumbUrl: string }>;
+   573→    certificates?: Array<{ id: string; url: string; thumbUrl: string }>;
+   574→  }>('/users/getProfile', {});
+   575→  const p = raw.profile as Partial<PanelProfile['profile']>;
+   576→
+   577→  return {
+   578→    gallery: raw.gallery ?? [],
+   579→    certificates: raw.certificates ?? [],
+   580→    profile: {
+   581→      description: (p.description as string) ?? raw.user.business_desc ?? null,
+   582→      activityDomain: (p.activityDomain as string) ?? null,
+   583→      humanResourceCount: (p.humanResourceCount as number) ?? null,
+   584→      profilePhoto: raw.user.avatar_url ?? (p.profilePhoto as string) ?? null,
+   585→      publicPhone: (p.publicPhone as string) ?? null,
+   586→      address: (p.address as string) ?? null,
+   587→      isCompany: (p.isCompany as boolean) ?? false,
+   588→      companyName: (p.companyName as string) ?? '',
+   589→      confirmed: raw.user.is_verified,
+   590→    },
+   591→    userInfo: {
+   592→      id: raw.user.id,
+   593→      userName: raw.user.user_name ?? '',
+   594→      firstName: raw.user.first_name,
+   595→      lastName: raw.user.last_name,
+   596→      sex: raw.user.sex,
+   597→      province: raw.user.province ?? '',
+   598→      city: raw.user.city ?? '',
+   599→      provinceId: raw.user.province_id ?? null,
+   600→      cityId: raw.user.city_id ?? null,
+   601→      avatarUrl: raw.user.avatar_url ?? null,
+   602→      phone: raw.user.phone,
+   603→      isVerified: raw.user.is_verified,
+   604→      isBuyer: raw.user.is_buyer,
+   605→      isSeller: raw.user.is_seller,
+   606→      walletBalance: raw.user.wallet_balance,
+   607→      productCount: raw.user.product_count,
+   608→      createdAt: (raw.user.created_at ?? '').slice(0, 10),
+   609→    },
+   610→  };
+   611→}
+   612→
+   613→/** ذخیره «ویرایش پروفایل» — واقعی؛ فیلدهای پایه (نام/مکان/نقش/آواتار) + کسب‌وکار */
+   614→export async function updatePanelProfile(
+   615→  input: Partial<PanelProfile['profile']> & {
+   616→    first_name?: string;
+   617→    last_name?: string;
+   618→    province_id?: number | null;
+   619→    city_id?: number | null;
+   620→    /** نقش فعال — روی is_seller/is_buyer بک‌اند ماندگار می‌شود */
+   621→    role?: 'seller' | 'buyer';
+   622→    avatar_url?: string;
+   623→  },
+   624→): Promise<{ ok: true }> {
+   625→  const body: Record<string, unknown> = {};
+   626→  if (input.first_name !== undefined) body.first_name = input.first_name;
+   627→  if (input.last_name !== undefined) body.last_name = input.last_name;
+   628→  if (input.province_id !== undefined) body.province_id = input.province_id;
+   629→  if (input.city_id !== undefined) body.city_id = input.city_id;
+   630→  if (input.role !== undefined) {
+   631→    body.is_seller = input.role === 'seller';
+   632→    body.is_buyer = input.role === 'buyer';
+   633→  }
+   634→  if (input.avatar_url !== undefined) body.avatar_url = input.avatar_url;
+   635→  if (input.description !== undefined) body.business_desc = input.description;
+   636→  await apiFetch('/users/updateProfile', {
+   637→    ...body,
+   638→    profile: {
+   639→      ...(input.activityDomain !== undefined ? { activityDomain: input.activityDomain } : {}),
+   640→      ...(input.humanResourceCount !== undefined ? { humanResourceCount: input.humanResourceCount } : {}),
+   641→      ...(input.publicPhone !== undefined ? { publicPhone: input.publicPhone } : {}),
+   642→      ...(input.address !== undefined ? { address: input.address } : {}),
+   643→      ...(input.isCompany !== undefined ? { isCompany: input.isCompany } : {}),
+   644→      ...(input.companyName !== undefined ? { companyName: input.companyName } : {}),
+   645→    },
+   646→  });
+   647→  return { ok: true };
+   648→}
+   649→
+   650→/** آگهی‌های «محصولات من» — واقعی */
+   651→export async function getMyProducts(): Promise<{
+   652→  items: Product[];
+   653→  counts: Record<ProductStatus, number>;
+   654→  capacity: number;
+   655→}> {
+   656→  const raw = await apiFetch<{
+   657→    items: RawProduct[];
+   658→    counts: Record<string, number>;
+   659→    capacity: number;
+   660→  }>('/products/getMyProducts', {});
+   661→  const counts: Record<ProductStatus, number> = {
+   662→    confirmed: raw.counts.confirmed ?? 0,
+   663→    pending: raw.counts.pending ?? 0,
+   664→    rejected: raw.counts.rejected ?? 0,
+   665→    deleted: raw.counts.deleted ?? 0,
+   666→  };
+   667→  return { items: raw.items.map(toProduct), counts, capacity: raw.capacity ?? PRODUCT_CAPACITY };
+   668→}
+   669→
+   670→/**
+   671→ * ثبت محصول جدید از ویزارد — واقعی:
+   672→ * ۱) createProduct → id عددی؛ ۲) آپلود هر عکس به گالری همان آگهی
+   673→ * (دکترین فایل: آپلود فقط بعد از وجود مدل — عین imach-back)
+   674→ *
+   675→ * آپلود عکس‌ها دیگر بی‌صدا گم نمی‌شوند — فایل‌های ناموفق برمی‌گردند تا
+   676→ * ویزارد به کاربر هشدار دهد و دکمه «تلاش دوباره» بدهد (خواسته مالک:
+   677→ * «تصویر در هیچ قسمتی ذخیره نمی‌شود» ریشه همین بی‌صدایی بود).
+   678→ */
+   679→export async function submitProduct(input: {
+   680→  productName: string;
+   681→  subCategoryId: number;
+   682→  provinceId: number;
+   683→  cityId: number;
+   684→  stock: number;
+   685→  minSaleAmount: number;
+   686→  minSalePrice: number;
+   687→  description: string;
+   688→  features: { key: string; value: string }[];
+   689→  photos?: File[];
+   690→}): Promise<{ ok: true; id: number; status: 'pending'; failedPhotos: File[] }> {
+   691→  const created = await apiFetch<{ id: number; status: string }>('/products/createProduct', {
+   692→    productName: input.productName,
+   693→    subCategoryId: input.subCategoryId,
+   694→    provinceId: input.provinceId,
+   695→    cityId: input.cityId,
+   696→    stock: input.stock,
+   697→    minSaleAmount: input.minSaleAmount,
+   698→    minSalePrice: input.minSalePrice,
+   699→    description: input.description,
+   700→    features: input.features,
+   701→  });
+   702→
+   703→  // آپلود عکس‌ها به گالری همین آگهی — ناموفق‌ها برای «تلاش دوباره» برمی‌گردند
+   704→  const failedPhotos: File[] = [];
+   705→  for (const file of (input.photos ?? []).slice(0, 4)) {
+   706→    try {
+   707→      await uploadImage(file, { model: 'Product', modelId: created.id, key: 'gallery', replace: false });
+   708→    } catch {
+   709→      failedPhotos.push(file);
+   710→    }
+   711→  }
+   712→
+   713→  return { ok: true, id: created.id, status: 'pending', failedPhotos };
+   714→}
+   715→
+   716→/**
+   717→ * تلاش دوباره آپلود عکس‌های ناموفقِ ثبت/ویرایش — به گالری همان آگهی.
+   718→ * خروجی: فایل‌هایی که باز هم ناموفق ماندند (اگر خالی بود همه رفتند).
+   719→ */
+   720→export async function retryProductPhotos(
+   721→  productId: number,
+   722→  files: File[],
+   723→): Promise<{ failed: File[] }> {
+   724→  const failed: File[] = [];
+   725→  for (const file of files.slice(0, 4)) {
+   726→    try {
+   727→      await uploadImage(file, { model: 'Product', modelId: productId, key: 'gallery', replace: false });
+   728→    } catch {
+   729→      failed.push(file);
+   730→    }
+   731→  }
+   732→  return { failed };
+   733→}
+   734→
+   735→/** حذف نرم آگهی — واقعی */
+   736→export async function deleteMyProduct(id: number): Promise<{ ok: true }> {
+   737→  await apiFetch('/products/deleteMyProduct', { id });
+   738→  return { ok: true };
+   739→}
+   740→
+   741→/** جزئیات کامل آگهی خودم برای پیش‌پر کردن فرم ویرایش — واقعی */
+   742→export async function getMyProductDetail(id: number): Promise<{
+   743→  product: Product;
+   744→  photoFiles: { id: string; url: string; thumbUrl: string }[];
+   745→}> {
+   746→  const raw = await apiFetch<RawProduct & { photoFiles: { id: string; url: string; thumbUrl: string }[] }>(
+   747→    '/products/getMyProductDetail',
+   748→    { id },
+   749→  );
+   750→  const { photoFiles, ...rest } = raw;
+   751→  return { product: toProduct(rest), photoFiles };
+   752→}
+   753→
+   754→/**
+   755→ * ویرایش آگهی خودم — واقعی:
+   756→ * ۱) updateMyProduct (دوباره «در انتظار تایید» مثل باسکول)؛
+   757→ * ۲) عکس‌های جدید آپلود می‌شوند؛ ۳) عکس‌های حذف‌شده پاک می‌شوند.
+   758→ * ناموفق‌های آپلود برمی‌گردند (نه بی‌صدایی) تا فرم هشدار/تلاش-دوباره بدهد.
+   759→ */
+   760→export async function updateMyProduct(input: {
+   761→  id: number;
+   762→  productName: string;
+   763→  subCategoryId: number;
+   764→  provinceId: number;
+   765→  cityId: number;
+   766→  stock: number;
+   767→  minSaleAmount: number;
+   768→  minSalePrice: number;
+   769→  description: string;
+   770→  features: { key: string; value: string }[];
+   771→  newPhotos?: File[];
+   772→  removedPhotoIds?: string[];
+   773→}): Promise<{ ok: true; id: number; status: 'pending'; failedPhotos: File[] }> {
+   774→  const updated = await apiFetch<{ id: number; status: string }>('/products/updateMyProduct', {
+   775→    id: input.id,
+   776→    productName: input.productName,
+   777→    subCategoryId: input.subCategoryId,
+   778→    provinceId: input.provinceId,
+   779→    cityId: input.cityId,
+   780→    stock: input.stock,
+   781→    minSaleAmount: input.minSaleAmount,
+   782→    minSalePrice: input.minSalePrice,
+   783→    description: input.description,
+   784→    features: input.features,
+   785→  });
+   786→
+   787→  // عکس‌های حذف‌شده — بهترین‌حال؛ خطا جریان ویرایش را نمی‌شکند
+   788→  for (const fileId of input.removedPhotoIds ?? []) {
+   789→    try {
+   790→      await deleteImage(fileId);
+   791→    } catch {
+   792→      /* ردیف DB منبع حقیقت است — عروسک دوره‌ای ادمین جمع می‌کند */
+   793→    }
+   794→  }
+   795→
+   796→  // عکس‌های جدید — ناموفق‌ها برمی‌گردند
+   797→  const failedPhotos: File[] = [];
+   798→  for (const file of (input.newPhotos ?? []).slice(0, 4)) {
+   799→    try {
+   800→      await uploadImage(file, { model: 'Product', modelId: input.id, key: 'gallery', replace: false });
+   801→    } catch {
+   802→      failedPhotos.push(file);
+   803→    }
+   804→  }
+   805→
+   806→  return { ok: true, id: updated.id, status: 'pending', failedPhotos };
+   807→}
+   808→
+   809→/** خرید نردبان یک‌ماهه — کسر واقعی از کیف پول */
+   810→export async function ladderProduct(productId: number): Promise<{ productId: number; expiresAt: string }> {
+   811→  return apiFetch<{ productId: number; expiresAt: string }>('/wallet/ladderProduct', { productId });
+   812→}
+   813→
+   814→// ─── نشان شده ها (B7 — واقعی) ──────────────────────────────────────────────
+   815→
+   816→export async function getSavedLists(): Promise<SavedList[]> {
+   817→  return apiFetch<SavedList[]>('/saved/getSavedLists', {});
+   818→}
+   819→
+   820→export async function getSavedListUsers(listId: string): Promise<SavedUserItem[] | null> {
+   821→  try {
+   822→    return await apiFetch<SavedUserItem[] | null>('/saved/getSavedListUsers', { listId });
+   823→  } catch (err) {
+   824→    if (err instanceof ApiError && err.status === 404) return null;
+   825→    throw err;
+   826→  }
+   827→}
+   828→
+   829→export async function createSavedList(name: string): Promise<SavedList> {
+   830→  return apiFetch<SavedList>('/saved/createSavedList', { name });
+   831→}
+   832→
+   833→export async function updateSavedList(listId: string, name: string): Promise<SavedList> {
+   834→  return apiFetch<SavedList>('/saved/updateSavedList', { listId, name });
+   835→}
+   836→
+   837→export async function deleteSavedList(listId: string): Promise<{ ok: true }> {
+   838→  await apiFetch('/saved/deleteSavedList', { listId });
+   839→  return { ok: true };
+   840→}
+   841→
+   842→/** «نشان کردن» خریدار — لیست مقصد یا نام لیست جدید (عین مودال باسکول) */
+   843→export async function saveBuyerToList(input: {
+   844→  targetUserId: string;
+   845→  listId?: string;
+   846→  listName?: string;
+   847→}): Promise<{ savedUserId: string; listId: string }> {
+   848→  return apiFetch('/saved/saveBuyerToList', input);
+   849→}
+   850→
+   851→export async function removeSavedUser(savedUserId: string): Promise<{ ok: true }> {
+   852→  await apiFetch('/saved/removeSavedUser', { savedUserId });
+   853→  return { ok: true };
+   854→}
+   855→
+   856→export async function setSavedUserStatus(
+   857→  savedUserId: string,
+   858→  status: SavedUserItem['status'],
+   859→): Promise<{ ok: true }> {
+   860→  await apiFetch('/saved/setSavedUserStatus', { savedUserId, status });
+   861→  return { ok: true };
+   862→}
+   863→
+   864→export async function addSavedUserNote(
+   865→  savedUserId: string,
+   866→  text: string,
+   867→): Promise<SavedUserNote> {
+   868→  return apiFetch<SavedUserNote>('/saved/addSavedUserNote', { savedUserId, text });
+   869→}
+   870→
+   871→export async function moveSavedUser(savedUserId: string, toListId: string): Promise<{ ok: true }> {
+   872→  await apiFetch('/saved/moveSavedUser', { savedUserId, toListId });
+   873→  return { ok: true };
+   874→}
+   875→
+   876→/** خریداران پیشنهادی — تطبیق درخواست‌ها با آگهی‌های من (B7 — واقعی) */
+   877→export async function getSuggestedBuyers(): Promise<SuggestedBuyer[]> {
+   878→  const raw = await apiFetch<
+   879→    Array<{
+   880→      buyRequest: RawBuyRequest;
+   881→      matchScore: number;
+   882→      tier: SuggestedBuyer['tier'];
+   883→      relatedProduct: string;
+   884→    }>
+   885→  >('/buy-requests/getSuggestedBuyers', {});
+   886→  return raw.map((s) => ({ ...s, buyRequest: toBuyRequest(s.buyRequest) }));
+   887→}
+   888→
+   889→
+   890→// ─── چت و پیام‌ها (B8 — واقعی) ─────────────────────────────────────────────
+   891→
+   892→export interface ChatMessage {
+   893→  id: string;
+   894→  threadId: string;
+   895→  senderId: string;
+   896→  text: string;
+   897→  readAt: string | null;
+   898→  createdAt: string;
+   899→}
+   900→
+   901→export interface ChatThreadInfo {
+   902→  id: string;
+   903→  /** آگهی زمینه — null یعنی گفتگوی مستقیم از پروفایل فروشنده */
+   904→  productId: number | null;
+   905→  /** نام آگهی زمینه — null برای گفتگوی مستقیم */
+   906→  productName: string | null;
+   907→  myId: string;
+   908→  myRole: 'buyer' | 'seller';
+   909→  counterpart: { id: string; firstName: string; lastName: string; userName: string; avatarUrl?: string | null };
+   910→  lastMessage: { text: string; at: string; senderId: string } | null;
+   911→  unreadCount: number;
+   912→  updatedAt: string;
+   913→}
+   914→
+   915→/** شروع/یافتن مکالمه — روی آگهی (productId) یا مستقیم با فروشنده (userName) */
+   916→export async function startChatThread(target: { productId?: number; userName?: string }): Promise<ChatThreadInfo> {
+   917→  return apiFetch<ChatThreadInfo>('/chat/startThread', target);
+   918→}
+   919→
+   920→/** ارسال پیام — بک‌اند push لحظه‌ای WS هم می‌فرستد */
+   921→export async function sendChatMessage(threadId: string, text: string): Promise<ChatMessage> {
+   922→  return apiFetch<ChatMessage>('/chat/sendMessage', { threadId, text });
+   923→}
+   924→
+   925→/** پیام‌های مکالمه — باز کردن یعنی خواندن */
+   926→export async function getChatThreadMessages(threadId: string): Promise<ChatMessage[]> {
+   927→  return apiFetch<ChatMessage[]>('/chat/getThreadMessages', { threadId });
+   928→}
+   929→
+   930→/** لیست مکالمات من + خوانده‌نشده */
+   931→export async function getConversations(): Promise<ChatThreadInfo[]> {
+   932→  return apiFetch<ChatThreadInfo[]>('/chat/getConversations', {});
+   933→}
+   934→
+   935→/** علامت خوانده‌شدن بدون واکشی */
+   936→export async function markChatThreadRead(threadId: string): Promise<{ read: number }> {
+   937→  return apiFetch<{ read: number }>('/chat/markThreadRead', { threadId });
+   938→}
+   939→
+   940→// ─── پیام‌های پشتیبانی (ادمین → کاربر) ─────────────────────────────────────
+   941→
+   942→/** شمار خوانده‌نشده — بج آیکون پیام هدر/فوتر موبایل (چت + پشتیبانی) */
+   943→export interface UnreadCounts {
+   944→  count: number;
+   945→  chat: number;
+   946→  support: number;
+   947→}
+   948→
+   949→/** POST /chat/unreadCount — ریز؛ بج همه صفحات هر ۳۰s و با هر push WS تازه می‌شود */
+   950→export async function getUnreadMessagesCount(): Promise<UnreadCounts> {
+   951→  return apiFetch<UnreadCounts>('/chat/unreadCount', {});
+   952→}
+   953→
+   954→export interface AdminInboxMessage {
+   955→  id: string;
+   956→  text: string;
+   957→  adminUsername: string;
+   958→  readAt: string | null;
+   959→  createdAt: string;
+   960→}
+   961→
+   962→export interface AdminInbox {
+   963→  /** صعودی — قدیمی → جدید (۵۰ پیام آخر) */
+   964→  items: AdminInboxMessage[];
+   965→  total: number;
+   966→  unread: number;
+   967→}
+   968→
+   969→/** پیام‌های «پشتیبانی ایمچ» من — ارسال مستقیم ادمین (یک‌طرفه) */
+   970→export async function getMyAdminMessages(): Promise<AdminInbox> {
+   971→  return apiFetch<AdminInbox>('/chat/getMyAdminMessages', {});
+   972→}
+   973→
+   974→/** باز کردن مکالمه پشتیبانی = خواندن همه پیام‌های خوانده‌نشده */
+   975→export async function markAdminMessagesRead(): Promise<{ read: number }> {
+   976→  return apiFetch<{ read: number }>('/chat/markMyAdminMessagesRead', {});
+   977→}
+   978→
+   979→// ─── احراز هویت اسناد (B6 — واقعی) ────────────────────────────────────────
+   980→
+   981→export interface VerificationDoc {
+   982→  id: string;
+   983→  fieldKey: string;
+   984→  url: string;
+   985→  thumbUrl: string | null;
+   986→  createdAt: string;
+   987→}
+   988→
+   989→export interface MyVerification {
+   990→  /** none | pending | approved | rejected */
+   991→  status: 'none' | 'pending' | 'approved' | 'rejected';
+   992→  submittedAt?: string;
+   993→  reviewedAt?: string | null;
+   994→  rejectionReason?: string | null;
+   995→  docs: Partial<Record<'nationalCard' | 'selfie', VerificationDoc | null>>;
+   996→}
+   997→
+   998→/** وضعیت احراز هویت کاربر جاری + مدارک ارسالی */
+   999→export async function getMyVerification(): Promise<MyVerification> {
+  1000→  return apiFetch<MyVerification>('/verification/getMyVerification', {});
+  1001→}
+  1002→
+  1003→/**
+  1004→ * ارسال مدارک — یک درخواست multipart با کارت ملی + سلفی (عین باسکول).
+  1005→ * بک‌اند سفارش را اتمیک می‌سازد؛ در خطا هیچ فایلی جامانده نمی‌ماند.
+  1006→ */
+  1007→export async function submitVerification(input: {
+  1008→  nationalCard: File;
+  1009→  selfie: File;
+  1010→}): Promise<MyVerification> {
+  1011→  const tokens = getTokens();
+  1012→  if (!tokens?.accessToken) {
+  1013→    throw new ApiError('برای ارسال مدارک ابتدا وارد حساب خود شوید.', 401, 'AUTH_REQUIRED');
+  1014→  }
+  1015→
+  1016→  const form = new FormData();
+  1017→  form.append('nationalCard', input.nationalCard);
+  1018→  form.append('selfie', input.selfie);
+  1019→
+  1020→  const res = await fetch('/api/verification/submitVerification', {
+  1021→    method: 'POST',
+  1022→    headers: { Authorization: `Bearer ${tokens.accessToken}` },
+  1023→    body: form,
+  1024→  });
+  1025→  const json = (await res.json().catch(() => null)) as
+  1026→    | { status: true; data: MyVerification; message?: string }
+  1027→    | { status: false; message: string; code?: string }
+  1028→    | null;
+  1029→  if (!json) throw new ApiError('ارسال مدارک ناموفق بود.', res.status, 'NETWORK');
+  1030→  if (json.status === false) throw new ApiError(json.message, res.status, json.code);
+  1031→  return json.data;
+  1032→}
+  1033→
+  1034→// ─── پنل خریدار ────────────────────────────────────────────────────────────
+  1035→
+  1036→import type { BuyRequestStatus, MyBuyRequest, SuggestedSellerGroup } from '@/lib/types';
+  1037→
+  1038→export async function getMyBuyRequests(): Promise<{
+  1039→  items: MyBuyRequest[];
+  1040→  counts: Record<BuyRequestStatus, number>;
+  1041→}> {
+  1042→  const raw = await apiFetch<{
+  1043→    items: MyBuyRequest[];
+  1044→    counts: Record<string, number>;
+  1045→  }>('/buy-requests/getMyBuyRequests', {});
+  1046→  const counts: Record<BuyRequestStatus, number> = {
+  1047→    confirmed: raw.counts.confirmed ?? 0,
+  1048→    pending: raw.counts.pending ?? 0,
+  1049→    rejected: raw.counts.rejected ?? 0,
+  1050→  };
+  1051→  return { items: raw.items, counts };
+  1052→}
+  1053→
+  1054→export async function submitPanelBuyRequest(input: {
+  1055→  subCategoryId: number;
+  1056→  productType: string;
+  1057→  requirementAmount: number;
+  1058→  goal: 'price_and_buy' | 'price_only';
+  1059→  hasHistory: boolean;
+  1060→}): Promise<{ ok: true; id: number; status: 'pending' }> {
+  1061→  const data = await apiFetch<{ id: number; status: string }>('/buy-requests/createBuyRequest', {
+  1062→    subCategoryId: input.subCategoryId,
+  1063→    name: input.productType || undefined,
+  1064→    requirementAmount: input.requirementAmount,
+  1065→    goal: input.goal,
+  1066→    hasHistory: input.hasHistory,
+  1067→  });
+  1068→  return { ok: true, id: data.id, status: 'pending' };
+  1069→}
+  1070→
+  1071→export async function deleteMyBuyRequest(id: number): Promise<{ ok: true }> {
+  1072→  await apiFetch('/buy-requests/deleteMyBuyRequest', { id });
+  1073→  return { ok: true };
+  1074→}
+  1075→
+  1076→/** ویرایش درخواست «در انتظار تایید» خودم — نوع/میزان/هدف */
+  1077→export async function updateMyBuyRequest(input: {
+  1078→  id: number;
+  1079→  productType: string;
+  1080→  requirementAmount: number;
+  1081→  goal: 'price_and_buy' | 'price_only';
+  1082→}): Promise<{ ok: true }> {
+  1083→  await apiFetch('/buy-requests/updateMyBuyRequest', {
+  1084→    id: input.id,
+  1085→    name: input.productType || undefined,
+  1086→    requirementAmount: input.requirementAmount,
+  1087→    goal: input.goal,
+  1088→  });
+  1089→  return { ok: true };
+  1090→}
+  1091→
+  1092→/** فروشندگان پیشنهادی — واقعی از بک‌اند (گروه دسته‌ای بر اساس درخواست‌های من) */
+  1093→export async function getSuggestedSellerGroups(): Promise<SuggestedSellerGroup[]> {
+  1094→  return apiFetch<SuggestedSellerGroup[]>('/buy-requests/getSuggestedSellers', {});
+  1095→}
+  1096→
+  1097→// ─── کیف پول (B9 — واقعی) ──────────────────────────────────────────────────
+  1098→
+  1099→import {
+  1100→  AIMCH_CARD_NUMBER,
+  1101→  AIMCH_CARD_OWNER,
+  1102→  CHARGE_PACKAGES,
+  1103→} from './data';
+  1104→import type { ChargePackage, MyChargeOrder, WalletTransaction } from '@/lib/types';
+  1105→
+  1106→/** ارسال فیش شارژ کارت‌به‌کارت — واقعی: multipart (packageKey + receipt) */
+  1107→export async function submitChargeRequest(input: {
+  1108→  packageKey: ChargePackage['key'];
+  1109→  receiptDataUrl: string;
+  1110→}): Promise<{ ok: true; transactionId: string }> {
+  1111→  const tokens = getTokens();
+  1112→  if (!tokens?.accessToken) {
+  1113→    throw new ApiError('برای شارژ کیف پول ابتدا وارد حساب خود شوید.', 401, 'AUTH_REQUIRED');
+  1114→  }
+  1115→
+  1116→  // dataURL → Blob (فرم صفحه همان dataURL را می‌دهد)
+  1117→  const form = new FormData();
+  1118→  form.append('packageKey', input.packageKey);
+  1119→  form.append('receipt', dataUrlToBlob(input.receiptDataUrl));
+  1120→
+  1121→  const res = await fetch('/api/wallet/createChargeOrder', {
+  1122→    method: 'POST',
+  1123→    headers: { Authorization: `Bearer ${tokens.accessToken}` },
+  1124→    body: form,
+  1125→  });
+  1126→  const json = (await res.json().catch(() => null)) as
+  1127→    | { status: true; data?: { id?: number }; message?: string }
+  1128→    | { status: false; message: string; code?: string }
+  1129→    | null;
+  1130→  if (!json) throw new ApiError('ارسال فیش ناموفق بود.', res.status, 'NETWORK');
+  1131→  if (json.status === false) throw new ApiError(json.message, res.status, json.code);
+  1132→  return { ok: true, transactionId: String(json.data?.id ?? '') };
+  1133→}
+  1134→
+  1135→/** dataURL → Blob برای فرم multipart */
+  1136→function dataUrlToBlob(dataUrl: string): Blob {
+  1137→  const [head, body] = dataUrl.split(',');
+  1138→  const mime = /data:(.*?)(;|$)/.exec(head)?.[1] || 'image/jpeg';
+  1139→  const bin = atob(body);
+  1140→  const arr = new Uint8Array(bin.length);
+  1141→  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  1142→  return new Blob([arr], { type: mime });
+  1143→}
+  1144→
+  1145→/** تراکنش‌های قطعی‌شده — فقط شارژ کارت‌به‌کارت «تأییدشده» + نردبان + اصلاح ادمین */
+  1146→export async function getWalletTransactions(): Promise<WalletTransaction[]> {
+  1147→  const raw = await apiFetch<{ items: Array<Omit<WalletTransaction, 'at'> & { at: string }> }>(
+  1148→    '/wallet/getWalletTransactions',
+  1149→    {},
+  1150→  );
+  1151→  return raw.items.map((t) => ({
+  1152→    ...t,
+  1153→    at: t.at,
+  1154→  }));
+  1155→}
+  1156→
+  1157→/** فیش‌های کارت‌به‌کارت خودم — در انتظار/تأیید/رد + دلیل رد (تب «کارت به کارت») */
+  1158→export async function getMyChargeOrders(): Promise<MyChargeOrder[]> {
+  1159→  const raw = await apiFetch<{ items: MyChargeOrder[] }>('/wallet/getMyChargeOrders', {});
+  1160→  return raw.items;
+  1161→}
+  1162→
+  1163→export { AIMCH_CARD_NUMBER, AIMCH_CARD_OWNER, CHARGE_PACKAGES };
+  1164→
+  1165→// ─── نظرات فروشنده (عین «نظرات کاربران» باسکول) ────────────────────────────
+  1166→
+  1167→export interface SellerReviewRow {
+  1168→  id: string;
+  1169→  rating: number;
+  1170→  text: string;
+  1171→  author: { userName: string; firstName: string; lastName: string; avatarUrl?: string | null };
+  1172→  createdAt: string;
+  1173→  updatedAt: string;
+  1174→}
+  1175→
+  1176→export interface SellerReviewsPage {
+  1177→  summary: {
+  1178→    avg: number;
+  1179→    count: number;
+  1180→    distribution: Array<{ rating: number; count: number }>;
+  1181→  };
+  1182→  items: SellerReviewRow[];
+  1183→  total: number;
+  1184→  page: number;
+  1185→  perPage: number;
+  1186→  pageCount: number;
+  1187→  myReview: SellerReviewRow | null;
+  1188→}
+  1189→
+  1190→/** نظرات فروشنده + خلاصه امتیاز — عمومی (مهمان هم) */
+  1191→export async function getSellerReviews(userName: string, page = 1, perPage = 10): Promise<SellerReviewsPage> {
+  1192→  return apiFetch<SellerReviewsPage>('/reviews/getSellerReviews', { userName, page, perPage }, { auth: false });
+  1193→}
+  1194→
+  1195→/** ثبت/ویرایش نظر من درباره فروشنده (upsert) */
+  1196→export async function addSellerReview(input: { userName: string; rating: number; text: string }): Promise<SellerReviewRow> {
+  1197→  return apiFetch<SellerReviewRow>('/reviews/addSellerReview', input);
+  1198→}
+  1199→
+  1200→/** شماره تماس فروشنده — با آگهی (id) یا پروفایل (userName) */
+  1201→export async function getSellerPhone(target: { id?: number; userName?: string }): Promise<{
+  1202→  sellerId: string;
+  1203→  phone: string;
+  1204→  firstName: string;
+  1205→  lastName: string;
+  1206→  userName: string;
+  1207→  callLogged: boolean;
+  1208→}> {
+  1209→  return apiFetch('/products/getSellerPhone', target);
+  1210→}
+  1211→

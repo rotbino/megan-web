@@ -2,18 +2,21 @@
 
 /**
  * محصولات من — تب‌های وضعیت (تایید شده/در انتظار تایید/حذف شده/رد شده) عین باسکول.
- * ردیف آگهی + دکمه نردبان (مودال پرداخت: آنلاین/کیف پول) + دلایل رد شدن + حالت خالی.
+ * ردیف آگهی + دکمه نردبان (پرداخت واقعی از کیف پول — wallet/ladderProduct)
+ * + دلایل رد شدن + حالت خالی + ویرایش (فرم کامل) + حذف واقعی.
+ * تب فعال از ?tab= می‌آید (لینک عمقی صفحه موفقیت ثبت: tab=pending).
  */
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertTriangle, Eye, ImageIcon, Pencil, Trash2, TrendingUp, Wallet } from 'lucide-react';
-import { useMyProducts } from '@/lib/mock/hooks';
+import { useDeleteMyProduct, useLadderProduct, useMyProducts, usePanelProfile } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
-import { REJECTION_REASONS } from '@/lib/mock/data';
+import { LADDER_MONTHLY_PRICE, MIN_CHARGE, REJECTION_REASONS } from '@/lib/mock/data';
 import { priceFa, stockFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { Product, ProductStatus } from '@/lib/types';
@@ -39,23 +42,46 @@ const STATUS_LABEL: Record<ProductStatus, string> = {
   deleted: 'حذف شده',
 };
 
-const LADDER_DAILY_PRICE = 10_000;
+const LADDER_LABEL = 'یک ماه';
 
-export default function MyProductsPage() {
+function isTabKey(v: string | null): v is ProductStatus {
+  return v === 'confirmed' || v === 'pending' || v === 'rejected' || v === 'deleted';
+}
+
+function MyProductsPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { data, isLoading } = useMyProducts();
+  const { data: profile } = usePanelProfile();
   const { toast } = useToast();
-  const [tab, setTab] = useState<ProductStatus>('confirmed');
+  const remove = useDeleteMyProduct();
+  const ladder = useLadderProduct();
+
+  const tabParam = searchParams.get('tab');
+  const [tab, setTab] = useState<ProductStatus>(isTabKey(tabParam) ? tabParam : 'confirmed');
+  // لینک عمقی ?tab=pending (دکمه موفقیت ثبت) — الگوی «تنظیم state هنگام رندر»
+  // برای همگام‌سازی با URL بدون effect (مثل فرم‌های دیگر ایمچ)
+  const [lastParam, setLastParam] = useState<string | null>(tabParam);
+  if (tabParam !== lastParam) {
+    setLastParam(tabParam);
+    if (isTabKey(tabParam)) setTab(tabParam);
+  }
+
   const [ladderProduct, setLadderProduct] = useState<Product | null>(null);
-  const [ladderDays, setLadderDays] = useState(3);
-  const [payMethod, setPayMethod] = useState<'online' | 'wallet'>('online');
-  const [removed, setRemoved] = useState<Set<number>>(new Set());
 
   if (isLoading || !data) {
     return <div className="h-64 animate-pulse rounded-lg border bg-card" />;
   }
 
-  const items = data.items.filter((p) => p.status === tab && !removed.has(p.id));
-  const ladderTotal = ladderDays * LADDER_DAILY_PRICE;
+  const items = data.items.filter((p) => p.status === tab);
+  const balance = profile?.userInfo.walletBalance ?? 0;
+  const canPayLadder = balance >= LADDER_MONTHLY_PRICE;
+
+  const changeTab = (key: ProductStatus) => {
+    setTab(key);
+    // آدرس هم‌گام شود — refresh/back دقیقاً همان تب را نشان می‌دهد
+    router.replace(`/panel/products?tab=${key}`, { scroll: false });
+  };
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
@@ -68,19 +94,19 @@ export default function MyProductsPage() {
       {/* تب‌ها */}
       <div className="flex gap-2 overflow-x-auto pb-1">
         {TABS.map(({ key, label }) => {
-          const count = data.items.filter((p) => p.status === key && !(key === 'deleted' && removed.has(p.id))).length;
+          const count = data.items.filter((p) => p.status === key).length;
           const active = tab === key;
           return (
             <button
               key={key}
               type="button"
-              onClick={() => setTab(key)}
+              onClick={() => changeTab(key)}
               className={cn(
                 'flex shrink-0 items-center gap-1.5 rounded-md border px-3.5 py-2 text-xs font-bold transition-colors',
                 active ? 'border-primary bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:border-primary/40',
               )}
             >
-              {label} <span className={cn('rounded-full px-1.5 py-0.5 text-[10px]', active ? 'bg-primary-foreground/20' : 'bg-secondary')}>({toFa(count)})</span>
+              {label} <span className={cn('font-num rounded-full px-1.5 py-0.5 text-[10px]', active ? 'bg-primary-foreground/20' : 'bg-secondary')}>({toFa(count)})</span>
             </button>
           );
         })}
@@ -119,7 +145,7 @@ export default function MyProductsPage() {
               <div className="flex gap-3">
                 <div className="relative size-20 shrink-0 overflow-hidden rounded-md border bg-secondary sm:size-24">
                   {p.photos[0] ? (
-                    <img src={p.photos[0]} alt={p.productName} className="size-full object-cover" />
+                    <img src={(p.photoThumbs && p.photoThumbs[0]) ?? p.photos[0]} alt={p.productName} className="size-full object-cover" />
                   ) : (
                     <span className="grid size-full place-items-center text-muted-foreground/40">
                       <ImageIcon size={26} />
@@ -140,12 +166,26 @@ export default function MyProductsPage() {
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     {p.categoryName} ← {p.subCategoryName} | {p.provinceName}، {p.cityName}
                   </p>
+                  {/* دلایل اختصاصی رد همین آگهی — از بازبینی ادمین */}
+                  {p.status === 'rejected' && p.rejectionReasons && p.rejectionReasons.length > 0 && (
+                    <div className="mt-2 rounded-md border border-red-200 bg-red-50/60 px-3 py-2">
+                      <p className="text-[11px] font-extrabold text-red-600">دلیل رد این آگهی:</p>
+                      <ul className="mt-1 space-y-1">
+                        {p.rejectionReasons.map((r) => (
+                          <li key={r} className="flex items-start gap-1.5 text-[11px] leading-5 text-red-700/90">
+                            <span className="mt-1.5 size-1 shrink-0 rounded-full bg-red-400" aria-hidden />
+                            {r}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
                     <span>
                       موجودی: <b>{stockFa(p.stock, p.unit)}</b>
                     </span>
                     <span>
-                      حداقل فروش: <b>{stockFa(p.minSaleAmount, p.unit)}</b>
+                      حداقل سفارش: <b>{stockFa(p.minSaleAmount, p.unit)}</b>
                     </span>
                     <span>
                       کف قیمت: <b>{priceFa(p.minSalePrice)}</b>
@@ -162,24 +202,31 @@ export default function MyProductsPage() {
                   size="sm"
                   className="rounded-md text-xs"
                   disabled={p.status !== 'confirmed'}
-                  onClick={() => {
-                    setLadderProduct(p);
-                    setLadderDays(3);
-                  }}
+                  onClick={() => setLadderProduct(p)}
                 >
                   <TrendingUp size={14} /> نردبان
                 </Button>
-                <Button size="sm" variant="outline" className="rounded-md text-xs">
-                  <Pencil size={14} /> ویرایش
+                <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
+                  <Link href={`/panel/products/edit/${p.id}`}>
+                    <Pencil size={14} /> ویرایش
+                  </Link>
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="rounded-md text-xs text-red-500 hover:bg-red-50 hover:text-red-600"
-                  onClick={() => setRemoved((prev) => new Set(prev).add(p.id))}
-                >
-                  <Trash2 size={14} /> حذف
-                </Button>
+                {p.status !== 'deleted' && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="rounded-md text-xs text-red-500 hover:bg-red-50 hover:text-red-600"
+                    disabled={remove.isPending}
+                    onClick={() =>
+                      remove.mutate(p.id, {
+                        onSuccess: () => toast({ description: `آگهی «${p.productName}» حذف شد.` }),
+                        onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
+                      })
+                    }
+                  >
+                    <Trash2 size={14} /> حذف
+                  </Button>
+                )}
               </div>
             </article>
           ))}
@@ -189,15 +236,15 @@ export default function MyProductsPage() {
       {/* ظرفیت ثبت */}
       <PanelCard className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
-          ظرفیت ثبت محصول: <b className="text-foreground">{toFa(data.items.filter((p) => !removed.has(p.id)).length)}</b> از{' '}
-          {toFa(data.capacity)} آگهی رایگان
+          ظرفیت ثبت محصول: <b className="font-num text-foreground">{toFa(data.items.filter((p) => p.status !== 'deleted').length)}</b> از{' '}
+          <span className="font-num">{toFa(data.capacity)}</span> آگهی رایگان
         </p>
         <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
           <Link href="/panel/pricing">افزایش ظرفیت</Link>
         </Button>
       </PanelCard>
 
-      {/* مودال پرداخت نردبان — عین باسکول */}
+      {/* مودال نردبان — یک‌ماهه، پرداخت واقعی از کیف پول */}
       <Dialog open={Boolean(ladderProduct)} onOpenChange={(o) => !o && setLadderProduct(null)}>
         <DialogContent className="rounded-lg sm:max-w-md">
           <DialogHeader>
@@ -207,82 +254,67 @@ export default function MyProductsPage() {
           <div className="space-y-4 text-sm">
             <div className="rounded-md bg-secondary/70 p-3">
               <p className="text-xs text-muted-foreground">هزینه نردبان این محصول</p>
-              <p className="mt-1 text-base font-extrabold">
-                {priceFa(ladderTotal)} <span className="text-xs font-normal text-muted-foreground">تومان</span>
+              <p className="font-num mt-1 text-base font-extrabold">
+                {priceFa(LADDER_MONTHLY_PRICE)}
               </p>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                {ladderProduct?.productName} — {toFa(ladderDays)} روز × {priceFa(LADDER_DAILY_PRICE)} تومان
+                {ladderProduct?.productName} — {LADDER_LABEL} (۳۰ روز)
               </p>
             </div>
 
-            <div>
-              <p className="mb-2 text-xs font-bold">مدت نردبان</p>
-              <div className="flex gap-2">
-                {[1, 3, 7].map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setLadderDays(d)}
-                    className={cn(
-                      'flex-1 rounded-md border py-2 text-xs font-bold transition-colors',
-                      ladderDays === d ? 'border-primary bg-primary text-primary-foreground' : 'bg-card hover:border-primary/40',
-                    )}
-                  >
-                    {toFa(d)} روز
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="mb-2 text-xs font-bold">روش های پرداخت</p>
-              <div className="space-y-2">
-                {(
-                  [
-                    { key: 'online', label: 'پرداخت آنلاین', icon: TrendingUp },
-                    { key: 'wallet', label: 'کیف پول (موجودی: ۰ تومان)', icon: Wallet },
-                  ] as const
-                ).map(({ key, label, icon: Icon }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setPayMethod(key)}
-                    className={cn(
-                      'flex w-full items-center gap-2 rounded-md border px-3 py-2.5 text-xs font-bold transition-colors',
-                      payMethod === key ? 'border-primary bg-primary/5 text-primary' : 'hover:border-primary/40',
-                    )}
-                  >
-                    <Icon size={15} />
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <p className="rounded-md bg-primary/5 p-3 text-[11px] leading-5 text-primary">
+              نردبان هر محصول برای یک ماه {priceFa(LADDER_MONTHLY_PRICE)} است و هزینه آن از شارژ کیف پول شما کسر می‌شود؛
+              بنابراین حداقل شارژ کیف پول {priceFa(MIN_CHARGE)} می‌باشد.
+            </p>
 
             <div className="flex items-center justify-between rounded-md border p-3">
-              <span className="text-xs text-muted-foreground">هزینه قابل پرداخت</span>
-              <span className="text-sm font-extrabold">
-                {priceFa(ladderTotal)} <span className="text-xs font-normal text-muted-foreground">تومان</span>
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Wallet size={14} /> موجودی کیف پول
+              </span>
+              <span className="font-num text-sm font-extrabold">
+                {priceFa(balance)}
               </span>
             </div>
 
-            <Button
-              className="w-full rounded-md"
-              onClick={() => {
-                setLadderProduct(null);
-                toast({
-                  description:
-                    payMethod === 'online'
-                      ? 'در حال انتقال به درگاه پرداخت… (نمونه)'
-                      : 'موجودی کیف پول کافی نیست — شارژ کنید. (نمونه)',
-                });
-              }}
-            >
-              {payMethod === 'online' ? 'پرداخت آنلاین' : 'پرداخت از کیف پول'}
-            </Button>
+            {canPayLadder ? (
+              <Button
+                className="w-full rounded-md"
+                disabled={ladder.isPending}
+                onClick={() =>
+                  ladder.mutate(ladderProduct!.id, {
+                    onSuccess: () => {
+                      toast({
+                        description: `نردبان «${ladderProduct?.productName}» برای یک ماه فعال شد — ${priceFa(LADDER_MONTHLY_PRICE)} از کیف پول کسر شد.`,
+                      });
+                      setLadderProduct(null);
+                    },
+                    onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
+                  })
+                }
+              >
+                {ladder.isPending ? 'در حال پرداخت…' : 'پرداخت از کیف پول'}
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <p className="rounded-md bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-700">
+                  موجودی کیف پول برای نردبان کافی نیست — حداقل {priceFa(MIN_CHARGE)} شارژ کنید.
+                </p>
+                <Button asChild className="w-full rounded-md">
+                  <Link href="/panel/wallet">شارژ کیف پول (کارت به کارت)</Link>
+                </Button>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function MyProductsPage() {
+  return (
+    <Suspense>
+      <MyProductsPageInner />
+    </Suspense>
   );
 }

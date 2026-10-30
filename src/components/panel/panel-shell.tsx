@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { LogIn, Loader2 } from 'lucide-react';
 import { PanelSidebar } from '@/components/panel/panel-sidebar';
+import { PasswordBanner } from '@/components/panel/password-banner';
 import { usePanelProfile } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
 import { Button } from '@/components/ui/button';
@@ -68,7 +69,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   }, [drawerOpen]);
 
   return (
-    <div className="min-h-screen bg-[#f2f3f7]">
+    <div className="min-h-screen bg-background">
       {/* سایدبار دسکتاپ — ستون ثابت راست */}
       <aside
         className={cn(
@@ -99,6 +100,9 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
         {/* لوگوی SVG برند */}
         <img src="/logo-short.svg" alt="ایمچ" width={80} height={28} className="h-6 w-auto" />
       </header>
+
+      {/* بنر قرمز «رمز عبور تعیین کنید» — تا تعیین رمز در همه صفحات پنل می‌ماند */}
+      <PasswordBanner />
 
       {/* دراور موبایل */}
       {drawerOpen && (

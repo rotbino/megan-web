@@ -14,17 +14,19 @@ import type { Product } from '@/lib/types';
  * دسکتاپ: کارت عمودی در گرید.
  * قیمت فقط برای اعضا: لاگین‌نشده دکمه «مشاهده قیمت» (فرم ورود) می‌بیند (ProductPrice).
  */
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
   const href = `/product-view/${product.slug}/${product.categoryName}/${product.id}`;
 
   return (
     <article className="group flex overflow-hidden rounded-md border bg-card transition-shadow hover:shadow-md md:flex-col">
-      <Link href={href} className="relative block w-28 shrink-0 md:w-full" aria-label={product.productName}>
+      <Link href={href} className="relative block h-28 w-28 shrink-0 md:h-auto md:w-full md:aspect-[4/3]" aria-label={product.productName}>
         <ProductImage
           photos={product.photos}
+          thumbs={product.photoThumbs}
           alt={product.productName}
           className="h-full w-full object-cover md:aspect-[4/3] md:h-auto"
           iconSize={48}
+          priority={priority}
         />
         {product.isLadder && (
           <span className="absolute start-1.5 top-1.5 md:start-2 md:top-2">

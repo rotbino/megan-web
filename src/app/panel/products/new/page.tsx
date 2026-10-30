@@ -7,7 +7,7 @@
  * قواعد دقیق باسکول: حداکثر ۴ تصویر jpeg/jpg زیر ۵ مگ، بالای ۲۰ کیلوبایت و ...
  */
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -20,7 +20,8 @@ import {
   Trash2,
   TrendingUp,
 } from 'lucide-react';
-import { useCities, useMyProducts, useProvinces, useSubmitProduct } from '@/lib/mock/hooks';
+import { useCities, useMyProducts, usePanelProfile, useProvinces, useSubmitProduct } from '@/lib/mock/hooks';
+import { retryProductPhotos } from '@/lib/mock/api';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,51 +31,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ProductStepper } from '@/components/panel/product-form/stepper';
 import { CategoryCascade } from '@/components/panel/product-form/category-cascade';
 import { PanelCard } from '@/components/panel/panel-parts';
+import { UnitInput } from '@/components/shared/unit-input';
 import { PRODUCT_FEATURE_KEYS } from '@/lib/mock/data';
+import { optimizeProductImage } from '@/lib/image-optimize';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { Category, ProductFeature } from '@/lib/types';
 
-// ─── ورودی عددی با جداکننده هزارگان (فونت FaNum ارقام را فارسی نشان می‌دهد) ──
-
-function NumericInput({
-  value,
-  onChange,
-  placeholder,
-  suffix,
-  id,
-  invalid,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  suffix?: string;
-  id?: string;
-  invalid?: boolean;
-}) {
-  return (
-    <div className="relative">
-      <Input
-        id={id}
-        dir="ltr"
-        inputMode="numeric"
-        autoComplete="off"
-        className={cn('text-start pe-14', invalid && 'border-red-400 focus-visible:ring-red-300')}
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => {
-          const digits = e.target.value.replace(/[^\d]/g, '').slice(0, 12);
-          onChange(digits ? Number(digits).toLocaleString('en-US') : '');
-        }}
-      />
-      {suffix && (
-        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[11px] text-muted-foreground">
-          {suffix}
-        </span>
-      )}
-    </div>
-  );
-}
+// ─── ورودی عددی — از این پس همه‌جا UnitInput (وسط‌چین + بادکنک تبدیل واحد) ──
 
 const num = (v: string) => Number(v.replace(/[^\d]/g, '')) || 0;
 
@@ -87,7 +51,7 @@ interface Draft {
   stock: string;
   minSaleAmount: string;
   minSalePrice: string;
-  photos: { id: number; url: string }[];
+  photos: { id: number; url: string; file: File }[];
   description: string;
   features: ProductFeature[];
 }
@@ -110,15 +74,19 @@ const IMAGE_RULES = [
   'فقط تصاویر مرتبط با محصول را بارگذاری کنید.',
   'از درج شماره تماس یا لوگو بر روی تصاویر خودداری کنید.',
   'حداکثر مجاز به انتخاب ۴ تصویر هستید.',
-  'حجم هر تصویر باید کمتر از 5 مگابایت باشد.',
   'تصویر از نوع jpeg یا jpg باشد.',
+  'تصاویر بزرگ خودکار به عرض حداکثر ۱۲۰۰ پیکسل و حجم ۵۰۰ کیلوبایت بهینه می‌شوند.',
 ];
+
+/** سقف توضیحات محصول (خواسته مالک: ۳۰۰۰ نویسه) */
+const DESCRIPTION_MAX = 3000;
 
 export default function RegisterProductPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { data: mine } = useMyProducts();
   const { data: provinces } = useProvinces();
+  const { data: profile } = usePanelProfile();
   const submit = useSubmitProduct();
 
   const [step, setStep] = useState(0);
@@ -127,8 +95,29 @@ export default function RegisterProductPage() {
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  // عکس‌هایی که ثبت محصول موفق بود ولی آپلودشان شکست خورد — برای هشدار/تلاش-دوباره
+  const [failedPhotos, setFailedPhotos] = useState<File[]>([]);
+  const [retryingPhotos, setRetryingPhotos] = useState(false);
+  const [createdId, setCreatedId] = useState<number | null>(null);
 
   const { data: cities } = useCities(num(draft.provinceId) || undefined);
+
+  // ─── پیش‌پر کردن استان/شهر از پروفایل کاربر (خواسته مالک) ───
+  // الگوی تنظیم state هنگام رندر (مثل فرم ویرایش پروفایل) — فقط وقتی
+  // کاربر خودش چیزی انتخاب نکرده؛ هر وقت خواست عوض می‌کند.
+  if (draft.provinceId === '' && draft.cityId === '' && profile?.userInfo.provinceId != null) {
+    const pid = profile.userInfo.provinceId;
+    const cid = profile.userInfo.cityId;
+    setDraft((d) =>
+      d.provinceId || d.cityId
+        ? d
+        : {
+            ...d,
+            provinceId: String(pid),
+            ...(cid != null ? { cityId: String(cid) } : {}),
+          },
+    );
+  }
 
   const patch = (p: Partial<Draft>) => setDraft((d) => ({ ...d, ...p }));
 
@@ -176,7 +165,7 @@ export default function RegisterProductPage() {
       return;
     }
     try {
-      await submit.mutateAsync({
+      const result = await submit.mutateAsync({
         productName: `${draft.leaf!.categoryName} ${draft.productType.trim()}`,
         subCategoryId: draft.leaf!.id,
         provinceId: num(draft.provinceId),
@@ -186,11 +175,30 @@ export default function RegisterProductPage() {
         minSalePrice: num(draft.minSalePrice),
         description: draft.description,
         features: draft.features.filter((f) => f.key && f.value.trim()),
-        photosCount: draft.photos.length,
+        photos: draft.photos.map((p) => p.file),
       });
+      setFailedPhotos(result.failedPhotos);
+      setCreatedId(result.id);
       setDone(true);
-    } catch {
-      toast({ description: 'خطا در ثبت محصول — دوباره تلاش کنید.' });
+    } catch (err) {
+      toast({ description: err instanceof Error && err.message ? err.message : 'خطا در ثبت محصول — دوباره تلاش کنید.' });
+    }
+  };
+
+  // ─── تلاش دوباره عکس‌های ناموفق — محصول ثبت شده، فقط عکس‌ها مانده ───
+  const retryPhotos = async () => {
+    if (createdId == null || failedPhotos.length === 0) return;
+    setRetryingPhotos(true);
+    try {
+      const { failed } = await retryProductPhotos(createdId, failedPhotos);
+      setFailedPhotos(failed);
+      if (failed.length === 0) {
+        toast({ description: 'تصاویر محصول با موفقیت ذخیره شدند.' });
+      } else {
+        toast({ description: 'باز هم ذخیره نشد — دوباره تلاش کنید یا بعداً از ویرایش آگهی عکس بگذارید.' });
+      }
+    } finally {
+      setRetryingPhotos(false);
     }
   };
 
@@ -198,7 +206,6 @@ export default function RegisterProductPage() {
   const addFiles = (files: FileList | null) => {
     if (!files) return;
     let rejected = '';
-    const readers: Promise<{ id: number; url: string }>[] = [];
     const slots = 4 - draft.photos.length;
     Array.from(files)
       .slice(0, Math.max(0, slots))
@@ -207,26 +214,37 @@ export default function RegisterProductPage() {
           rejected = 'تصویر از نوع jpeg یا jpg باشد.';
           return;
         }
-        if (file.size > 5 * 1024 * 1024) {
-          rejected = 'حجم تصویر بالاست، باید کمتر از 5 مگابایت باشد.';
+        if (file.size > 15 * 1024 * 1024) {
+          rejected = 'حجم تصویر بسیار بالا است (بیش از ۱۵ مگابایت).';
           return;
         }
-        if (file.size < 20 * 1024) {
-          rejected = 'حجم تصویر پایین است، باید بیشتر از 20 کیلوبایت باشد.';
-          return;
-        }
-        readers.push(
-          new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve({ id: Date.now() + Math.random(), url: String(reader.result) });
-            reader.readAsDataURL(file);
-          }),
-        );
       });
-    void Promise.all(readers).then((loaded) => {
-      setDraft((d) => ({ ...d, photos: [...d.photos, ...loaded].slice(0, 4) }));
-    });
-    setError(rejected);
+    if (rejected) {
+      setError(rejected);
+      return;
+    }
+
+    // بهینه‌سازی سمت کلاینت (عرض ≤۱۲۰۰، حجم ≤۵۰۰KB) بعد پیش‌نمایش محلی
+    void (async () => {
+      const loaded: Draft['photos'] = [];
+      for (const file of Array.from(files).slice(0, Math.max(0, slots))) {
+        try {
+          const optimized = await optimizeProductImage(file);
+          const url = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.readAsDataURL(optimized);
+          });
+          loaded.push({ id: Date.now() + Math.random(), url, file: optimized });
+        } catch {
+          rejected = 'خواندن یکی از تصاویر ممکن نشد.';
+        }
+      }
+      if (loaded.length > 0) {
+        setDraft((d) => ({ ...d, photos: [...d.photos, ...loaded].slice(0, 4) }));
+      }
+      if (rejected) setError(rejected);
+    })();
   };
 
   const featureOptions = (currentKey: string) =>
@@ -235,7 +253,11 @@ export default function RegisterProductPage() {
   const descLen = draft.description.trim().length;
 
   // ─── ظرفیت تکمیل — مودال «امکان ثبت محصول جدید را ندارید!» ───
-  const capacityFull = Boolean(mine && mine.items.length >= mine.capacity);
+  // هماهنگ با بک‌اند: فقط pending + confirmed ظرفیت می‌گیرند (رد شده و حذف
+  // شده نه — باگ ۲۸-۱۰: فرایت رد شده‌ها را هم می‌شمرد و زودتر بلاک می‌کرد)
+  const capacityFull = Boolean(
+    mine && mine.items.filter((p) => p.status === 'pending' || p.status === 'confirmed').length >= mine.capacity,
+  );
 
   if (capacityFull && !done) {
     return (
@@ -269,6 +291,27 @@ export default function RegisterProductPage() {
             آگهی «{draft.leaf?.categoryName} {draft.productType}» ثبت شد و پس از بررسی کارشناسان ایمچ، در «محصولات من»
             و نتایج بازار منتشر می‌شود.
           </p>
+
+          {/* هشدار عکس‌های ذخیره‌نشده — دیگر بی‌صدا گم نمی‌شوند */}
+          {failedPhotos.length > 0 && (
+            <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-right">
+              <p className="text-sm font-bold text-amber-800">
+                ذخیره {failedPhotos.length.toLocaleString('fa-IR')} تصویر از {draft.photos.length.toLocaleString('fa-IR')} تصویر ناموفق بود
+              </p>
+              <p className="mt-1 text-xs leading-5 text-amber-700">
+                آگهی ثبت شد اما تصاویر ذخیره نشدند — اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.
+              </p>
+              <Button
+                size="sm"
+                className="mt-2 rounded-md"
+                disabled={retryingPhotos}
+                onClick={() => void retryPhotos()}
+              >
+                {retryingPhotos ? 'در حال تلاش…' : 'تلاش دوباره ذخیره تصاویر'}
+              </Button>
+            </div>
+          )}
+
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             <Button
               variant="outline"
@@ -278,12 +321,14 @@ export default function RegisterProductPage() {
                 setStep(0);
                 setMaxReached(0);
                 setDone(false);
+                setFailedPhotos([]);
+                setCreatedId(null);
               }}
             >
               <RotateCcw size={15} /> ثبت محصول دیگر
             </Button>
-            <Button className="rounded-md" onClick={() => router.push('/panel/products')}>
-              مشاهده محصولات من
+            <Button className="rounded-md" onClick={() => router.push('/panel/products?tab=pending')}>
+              مشاهده محصول در لیست محصولات
             </Button>
           </div>
         </PanelCard>
@@ -364,44 +409,44 @@ export default function RegisterProductPage() {
 
       {/* ─── مرحله ۳: موجودی و قیمت ─── */}
       {step === 2 && (
-        <PanelCard className="space-y-5">
-          <div className="space-y-2">
+        <PanelCard className="space-y-6">
+          <div className="space-y-2.5">
             <Label htmlFor="stock">
               میزان موجودی محصول <span className="text-muted-foreground">({leaf?.unit ?? 'کیلوگرم'})</span>{' '}
               <span className="text-red-500">*</span>
             </Label>
-            <NumericInput
+            <UnitInput
               id="stock"
+              kind="weight"
               value={draft.stock}
-              onChange={(v) => patch({ stock: v })}
-              placeholder="مثلا: 50,000"
-              suffix={leaf?.unit ?? 'کیلوگرم'}
+              onValueChange={(v) => patch({ stock: v })}
+              unit={leaf?.unit ?? 'کیلوگرم'}
             />
             <p className="text-[11px] text-muted-foreground">مقیاس عمده — مقیاس‌های خرده‌فروشی قابل قبول نیستند.</p>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <Label htmlFor="min-amount">
-              حداقل میزان فروش <span className="text-muted-foreground">({leaf?.unit ?? 'کیلوگرم'})</span>{' '}
+              حداقل سفارش <span className="text-muted-foreground">({leaf?.unit ?? 'کیلوگرم'})</span>{' '}
               <span className="text-red-500">*</span>
             </Label>
-            <NumericInput
+            <UnitInput
               id="min-amount"
+              kind="weight"
               value={draft.minSaleAmount}
-              onChange={(v) => patch({ minSaleAmount: v })}
-              placeholder="مثلا: 25,000"
-              suffix={leaf?.unit ?? 'کیلوگرم'}
+              onValueChange={(v) => patch({ minSaleAmount: v })}
+              unit={leaf?.unit ?? 'کیلوگرم'}
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <Label htmlFor="price">
               حداقل قیمت محصول <span className="text-muted-foreground">(تومان)</span> <span className="text-red-500">*</span>
             </Label>
-            <NumericInput
+            <UnitInput
               id="price"
+              kind="price"
               value={draft.minSalePrice}
-              onChange={(v) => patch({ minSalePrice: v })}
-              placeholder="مثلا: 15,000"
-              suffix={`هر ${leaf?.unit ?? 'کیلوگرم'}`}
+              onValueChange={(v) => patch({ minSalePrice: v })}
+              unit={`هر ${leaf?.unit ?? 'کیلوگرم'}`}
               invalid={Boolean(draft.minSalePrice) && num(draft.minSalePrice) < 1000}
             />
             {Boolean(draft.minSalePrice) && num(draft.minSalePrice) < 1000 && (
@@ -430,8 +475,8 @@ export default function RegisterProductPage() {
             <span className="grid size-12 place-items-center rounded-full bg-white text-primary shadow-sm">
               <ImagePlus size={22} />
             </span>
-            <p className="mt-3 text-sm font-bold">تصویر را اینجا رها کنید</p>
-            <p className="mt-1 text-xs text-muted-foreground">یا کلیک کنید</p>
+            <p className="mt-3 text-sm font-bold">انتخاب تصویر</p>
+            <p className="mt-1 text-xs text-muted-foreground">کلیک کنید — یا تصویر را همین‌جا رها کنید</p>
           </div>
           <input
             ref={fileRef}
@@ -487,14 +532,19 @@ export default function RegisterProductPage() {
           <Textarea
             id="description"
             dir="rtl"
-            rows={9}
+            rows={18}
             value={draft.description}
-            onChange={(e) => patch({ description: e.target.value })}
-            className="resize-none text-sm leading-7"
+            onChange={(e) => {
+              if (e.target.value.length <= DESCRIPTION_MAX) patch({ description: e.target.value });
+            }}
+            className="min-h-72 resize-none text-sm leading-8 md:min-h-80"
             placeholder="کیفیت، بسته‌بندی، شرایط ارسال و هر نکته‌ای که خریدار عمده باید بداند…"
+            maxLength={DESCRIPTION_MAX}
           />
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-muted-foreground">{toFa(descLen)} حرف</span>
+            <span className="font-num text-muted-foreground">
+              {toFa(descLen)} / {toFa(DESCRIPTION_MAX)} نویسه
+            </span>
             <span
               className={cn(
                 'rounded-full px-2.5 py-0.5 font-bold',
@@ -511,12 +561,13 @@ export default function RegisterProductPage() {
       {step === 5 && (
         <PanelCard className="space-y-4">
           <p className="text-sm leading-6 text-muted-foreground">
-            ویژگی‌های محصول خود را با انتخاب «جزئیات» و نوشتن توضیح آن ثبت کنید — مثل: بسته‌بندی / کیسه ۵۰ کیلویی.
+            ویژگی‌های محصول خود را با انتخاب «ویژگی» و نوشتن توضیح آن ثبت کنید — مثل: بسته‌بندی / کیسه ۵۰ کیلویی.
+            (اختیاری است — تا {toFa(PRODUCT_FEATURE_KEYS.length)} ویژگی می‌توانید اضافه کنید.)
           </p>
 
           {draft.features.length === 0 && (
             <div className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
-              هنوز جزئیاتی اضافه نشده است.
+              هنوز ویژگی‌ای اضافه نشده است (اختیاری).
             </div>
           )}
 
@@ -563,14 +614,17 @@ export default function RegisterProductPage() {
             </div>
           ))}
 
-          {draft.features.length < 5 && (
+          {draft.features.length < PRODUCT_FEATURE_KEYS.length && (
             <Button
               type="button"
               variant="outline"
               className="w-full rounded-md border-dashed"
               onClick={() => patch({ features: [...draft.features, { key: '', value: '' }] })}
             >
-              <Plus size={15} /> افزودن جزئیات بیشتر
+              <Plus size={15} /> افزودن ویژگی بیشتر
+              <span className="text-[10px] font-normal text-muted-foreground">
+                ({toFa(draft.features.length)} از {toFa(PRODUCT_FEATURE_KEYS.length)})
+              </span>
             </Button>
           )}
         </PanelCard>
