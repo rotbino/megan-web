@@ -6,6 +6,7 @@ import { Footer } from '@/components/layout/footer';
 import { ProductListing } from '@/components/products/product-listing';
 import { CategoryFilter } from '@/components/products/category-filter';
 import { JsonLd } from '@/components/shared/json-ld';
+import { CategoryViewPing } from '@/components/shared/category-view-ping';
 import { getCategoryTreeSSR, getProductsSSR } from '@/lib/mock/api';
 import { findCategoryPath } from '@/lib/categories';
 import { SITE_URL } from '@/lib/site';
@@ -101,6 +102,8 @@ export default async function CategoryPage({ params }: Props) {
           initialData={initial ?? undefined}
           sidebar={<CategoryFilter tree={tree} path={path} />}
         />
+        {/* ثبت انتخاب دسته در فعالیت‌ها (پنل ادمین — خواسته مالک ۳۰-۱۰) */}
+        <CategoryViewPing categoryName={cat.categoryName} />
       </main>
       <Footer />
       <JsonLd data={breadcrumbLd} />

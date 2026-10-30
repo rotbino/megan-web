@@ -55,7 +55,7 @@ const STEPS = [
     icon: TrendingUp,
     title: 'نردبان کردن محصولات',
     body: 'اعمال نردبان محصولات شما را به بالای لیست آن دسته منتقل می‌کند و به عنوان اولین محصولات به خریداران نمایش داده می‌شوند که باعث افزایش فروش می‌شود. تنها قابلیت تبلیغاتی ایمچ، نردبان یک‌ماهه است که هزینه آن از شارژ کیف پول شما کسر می‌شود.',
-    link: { href: '/help/charge-package', label: 'بسته شارژ تبلیغاتی و فواید نردبان' },
+    link: { href: '/help/charge-package', label: 'بسته های اشتراک ویژه و نردبان' },
   },
   {
     icon: BookOpenCheck,
@@ -144,7 +144,7 @@ export default function BecomeSellerPage() {
         </Button>
         <Button asChild size="sm" variant="outline" className="rounded-md">
           <Link href="/help/charge-package">
-            <TrendingUp size={15} className="ms-1" /> بسته شارژ تبلیغاتی
+            <TrendingUp size={15} className="ms-1" /> بسته های اشتراک ویژه و نردبان
           </Link>
         </Button>
       </div>

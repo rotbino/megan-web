@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { MapPin, Package } from 'lucide-react';
-import { LadderBadge, VerifiedBadge } from '@/components/shared/badges';
+import { LadderBadge, PremiumSellerBadge, VerifiedBadge } from '@/components/shared/badges';
 import { ProductImage } from '@/components/shared/product-image';
 import { ProductPrice } from '@/components/shared/product-price';
 import { stockFa } from '@/lib/format';
@@ -56,10 +56,12 @@ export function ProductCard({ product, priority = false }: { product: Product; p
           </span>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-1.5">
           {product.seller.isVerified ? <VerifiedBadge /> : (
             <span className="text-[11px] text-muted-foreground">بدون احراز هویت</span>
           )}
+          {/* فروشنده ویژه — بسته اشتراک فعال (سورت بالاتر از عادی — ۳۰-۱۰) */}
+          {product.isElevated && <PremiumSellerBadge compact />}
         </div>
 
         <div className="mt-auto pt-1">

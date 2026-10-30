@@ -10,7 +10,7 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AlertTriangle, Eye, ImageIcon, Pencil, Trash2, TrendingUp, Wallet } from 'lucide-react';
+import { AlertTriangle, BarChart3, Eye, ImageIcon, Pencil, Trash2, TrendingUp, Wallet } from 'lucide-react';
 import { useDeleteMyProduct, useLadderProduct, useMyProducts, usePanelProfile } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -88,7 +88,7 @@ function MyProductsPageInner() {
       {/* نکته نردبان — عین باسکول */}
       <div className="flex items-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-4 py-3 text-xs leading-5 text-primary">
         <TrendingUp size={16} className="shrink-0" />
-        با استفاده از نردبان، محصول شما در صدر لیست محصولات قرار می‌گیرد.
+        با استفاده از نردبان، محصول شما در صدر لیست محصولات — حتی بالاتر از آگهی‌های ویژه — قرار می‌گیرد.
       </div>
 
       {/* تب‌ها */}
@@ -205,6 +205,11 @@ function MyProductsPageInner() {
                   onClick={() => setLadderProduct(p)}
                 >
                   <TrendingUp size={14} /> نردبان
+                </Button>
+                <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
+                  <Link href={`/panel/products/stats/${p.id}`} title={`آمار «${p.productName}» — چه کسانی دیدند، تماس زدند و ذخیره کردند`}>
+                    <BarChart3 size={14} /> آمار
+                  </Link>
                 </Button>
                 <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
                   <Link href={`/panel/products/edit/${p.id}`}>

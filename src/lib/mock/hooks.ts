@@ -554,3 +554,71 @@ export function useAddSellerReview() {
     },
   });
 }
+
+// ─── علاقه‌مندی‌ها — نشان آگهی + ذخیره فروشنده (۳۰-۱۰) ──────────────────────
+
+/** آگهی‌های نشان‌شده من — شناسه‌ها برای وضعیت اولیه دکمه‌ها */
+export function useMyProductFavoriteIds(enabled: boolean) {
+  return useQuery({
+    queryKey: ['favorite-product-ids'] as const,
+    queryFn: api.getMyProductFavoriteIds,
+    enabled,
+    staleTime: 120_000,
+  });
+}
+
+/** نشان/حذف نشان آگهی — invalidate فهرست علاقه‌مندی‌ها */
+export function useToggleProductFavorite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.toggleProductFavorite,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['favorite-product-ids'] });
+      void queryClient.invalidateQueries({ queryKey: ['my-favorites'] });
+    },
+  });
+}
+
+/** آیا این فروشنده ذخیره شده؟ (دکمه پروفایل) */
+export function useIsSellerSaved(userName: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['seller-saved', userName] as const,
+    queryFn: () => api.isSellerSaved(userName),
+    enabled: enabled && Boolean(userName),
+    staleTime: 120_000,
+  });
+}
+
+/** ذخیره/حذف فروشنده */
+export function useToggleSellerFavorite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.toggleSellerFavorite,
+    onSuccess: (_d, userName) => {
+      void queryClient.invalidateQueries({ queryKey: ['seller-saved', userName] });
+      void queryClient.invalidateQueries({ queryKey: ['my-favorites'] });
+    },
+  });
+}
+
+/** آگهی‌ها + فروشندگان ذخیره‌شده من — صفحه علاقه‌مندی‌ها */
+export function useMyFavorites(enabled: boolean) {
+  return useQuery({
+    queryKey: ['my-favorites'] as const,
+    queryFn: api.getMyFavorites,
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+// ─── آمار آگهی (۳۰-۱۰) ──────────────────────────────────────────────────────
+
+/** آمار کامل آگهی من — صفحه آمار پنل */
+export function useMyProductStats(productId: number, enabled: boolean) {
+  return useQuery({
+    queryKey: ['product-stats', productId] as const,
+    queryFn: () => api.getMyProductStats(productId),
+    enabled: enabled && Number.isFinite(productId) && productId > 0,
+    staleTime: 30_000,
+  });
+}

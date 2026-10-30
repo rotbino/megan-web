@@ -163,6 +163,75 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
 
   const clearCategory = () => router.push('/product-list');
 
+  // ─── چیپ‌های فیلتر فعال — نوار مرتب‌سازی (خواسته مالک ۳۰-۱۰) ────────────
+  // هر فیلتر انتخاب‌شده به‌صورت دکمه آبی کمرنگ با آیکون بستن می‌آید؛
+  // همیشه فقط «آخرین سطح» نمایش داده می‌شود:
+  //  • دسته: فقط خود دسته فعال (نه زنجیره اجداد)
+  //  • مکان: شهر انتخاب شده → فقط شهر؛ وگرنه فقط استان
+  const provinceName = provinces.find((p) => p.id === provinceId)?.name;
+  const cityName = cityId ? cities.find((c) => c.id === cityId)?.name : undefined;
+
+  /** حذف جستجو — مسیر-محور (?s= یا /search/[q]) یا محلی */
+  const removeSearch = () => {
+    if (searchQuery || s) router.replace('/product-list');
+    setS('');
+  };
+
+  const chips = (
+    <>
+      {categoryName && (
+        <button
+          type="button"
+          onClick={clearCategory}
+          aria-label={`حذف فیلتر دسته ${categoryName}`}
+          title="حذف فیلتر دسته"
+          className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
+        >
+          <span className="truncate">{categoryName}</span>
+          <X size={13} className="shrink-0" aria-hidden />
+        </button>
+      )}
+      {s && (
+        <button
+          type="button"
+          onClick={removeSearch}
+          aria-label="حذف جستجو"
+          title="حذف جستجو"
+          className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
+        >
+          <Search size={12} className="shrink-0" aria-hidden />
+          <span className="truncate">«{s}»</span>
+          <X size={13} className="shrink-0" aria-hidden />
+        </button>
+      )}
+      {cityName ? (
+        <button
+          type="button"
+          onClick={() => setCityId(undefined)}
+          aria-label="حذف فیلتر شهر"
+          title="حذف فیلتر شهر"
+          className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
+        >
+          <MapPin size={12} className="shrink-0" aria-hidden />
+          <span className="truncate">{cityName}</span>
+          <X size={13} className="shrink-0" aria-hidden />
+        </button>
+      ) : provinceName ? (
+        <button
+          type="button"
+          onClick={() => { setProvinceId(undefined); setCityId(undefined); }}
+          aria-label="حذف فیلتر استان"
+          title="حذف فیلتر استان"
+          className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
+        >
+          <MapPin size={12} className="shrink-0" aria-hidden />
+          <span className="truncate">{provinceName}</span>
+          <X size={13} className="shrink-0" aria-hidden />
+        </button>
+      ) : null}
+    </>
+  );
+
   // ─── سایدبار دسکتاپ (بدون تغییر) ──────────────────────────────
   // سایدبار فیلتر — دسکتاپ؛ بخش دسته‌ها سرور-رندر (prop)، مکان کلاینت
   const filterContent = (
@@ -230,19 +299,12 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
 
       {/* لیست */}
       <div className="min-w-0 space-y-4">
-        {/* نوار بالا — دسکتاپ */}
+        {/* نوار بالا — دسکتاپ: چیپ فیلترهای فعال + مرتب‌سازی */}
         <div className="hidden flex-wrap items-center justify-between gap-3 rounded-md border bg-card p-3 lg:flex">
-          <div className="flex min-w-0 items-center gap-2 text-sm">
-            {s && (
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-secondary px-2.5 py-1 text-xs font-semibold">
-                <Search size={12} />
-                «{s}»
-                <button type="button" onClick={() => router.replace('/product-list')} aria-label="حذف جستجو" className="text-muted-foreground hover:text-destructive">×</button>
-              </span>
-            )}
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-sm">
+            {chips}
             <span className="truncate text-muted-foreground">
               {data ? <b className="text-foreground">{toFa(data.total)}</b> : '—'} آگهی عمده
-              {categoryName && <> در «{categoryName}»</>}
             </span>
           </div>
           <div className="flex items-center gap-1.5 text-sm">
@@ -263,7 +325,7 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
           </div>
         </div>
 
-        {/* نوار فیلتر و مرتب‌سازی — موبایل (الگوی باسکول/دیوار: دسته ها، مرتب سازی، فیلتر فعال) */}
+        {/* نوار فیلتر و مرتب‌سازی — موبایل (الگوی باسکول/دیوار: دسته ها، مرتب سازی، فیلترهای فعال) */}
         <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto border-b border-border/70 px-4 pb-2.5 lg:hidden">
           <button
             type="button"
@@ -281,28 +343,7 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
             <ArrowDownWideNarrow size={14} className="text-muted-foreground" />
             مرتب سازی
           </button>
-          {categoryName && (
-            <button
-              type="button"
-              onClick={clearCategory}
-              aria-label={`حذف فیلتر دسته ${categoryName}`}
-              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-primary/45 bg-primary/5 px-3 py-2 text-xs font-bold text-primary"
-            >
-              {categoryName}
-              <X size={13} />
-            </button>
-          )}
-          {s && (
-            <button
-              type="button"
-              onClick={() => router.replace('/product-list')}
-              aria-label="حذف جستجو"
-              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-primary/45 bg-primary/5 px-3 py-2 text-xs font-bold text-primary"
-            >
-              «{s}»
-              <X size={13} />
-            </button>
-          )}
+          {chips}
         </div>
 
         {/* گرید */}

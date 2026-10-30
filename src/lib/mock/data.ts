@@ -94,11 +94,11 @@ export const CHARGE_PACKAGES: ChargePackage[] = [
   { key: 'p400', amount: 400_000, bonusPercent: 20, charge: 480_000 },
 ];
 
-/** حداقل شارژ کیف پول — برابر هزینه نردبان یک‌ماهه */
-export const MIN_CHARGE = 100_000;
+/** حداقل شارژ کیف پول — برابر هزینه نردبان یک‌ماهه (۵۰ هزار) */
+export const MIN_CHARGE = 50_000;
 
-/** نردبان هر محصول برای یک ماه — از کیف پول کسر می‌شود */
-export const LADDER_MONTHLY_PRICE = 100_000;
+/** نردبان هر آگهی برای یک ماه — ۵۰ هزار تومان، از کیف پول کسر می‌شود */
+export const LADDER_MONTHLY_PRICE = 50_000;
 
 /** شماره کارت برای واریز کارت به کارت — به نام مالک سایت (سعید یوسفی) */
 export const AIMCH_CARD_NUMBER = '6037-9975-1234-5678';

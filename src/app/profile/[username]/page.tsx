@@ -20,6 +20,7 @@ import { SellerReviews } from '@/components/products/seller-reviews';
 import { ProductCard } from '@/components/products/product-card';
 import { ShareBox } from '@/components/shared/share-box';
 import { RatingStars } from '@/components/shared/rating-stars';
+import { SaveSellerButton } from '@/components/shared/save-seller-button';
 import { apiBase } from '@/lib/api/client';
 import { SITE_URL } from '@/lib/site';
 import { stockFa, toFa } from '@/lib/format';
@@ -229,7 +230,7 @@ export default async function ProfilePage({ params }: Props) {
                           className="group relative block aspect-square overflow-hidden rounded-md border bg-secondary"
                           title="مشاهده تصویر کامل"
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          { }
                           <img
                             src={g.thumbUrl ?? g.url}
                             alt={`تصویر مربوطه ${i + 1}`}
@@ -259,7 +260,7 @@ export default async function ProfilePage({ params }: Props) {
                           className="group relative block aspect-square overflow-hidden rounded-md border bg-secondary"
                           title="مشاهده گواهی کامل"
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          { }
                           <img
                             src={c.thumbUrl ?? c.url}
                             alt={`گواهی ${i + 1}`}
@@ -313,6 +314,10 @@ export default async function ProfilePage({ params }: Props) {
                 عضویت از{' '}
                 {new Intl.DateTimeFormat('fa-IR', { dateStyle: 'long' }).format(new Date(user.createdAt))}
               </p>
+              {/* ذخیره صفحه اختصاصی فروشنده — خواسته مالک ۳۰-۱۰ */}
+              <div className="mt-3">
+                <SaveSellerButton userName={user.userName} sellerName={name} />
+              </div>
             </div>
 
             <ShareBox url={`${SITE_URL}/profile/${user.userName}`} />

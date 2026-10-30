@@ -11,8 +11,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ChevronDown,
   ChevronLeft,
+  ChevronRight,
   Loader2,
   Network,
+  Package,
   Pencil,
   Plus,
   Search,
@@ -20,9 +22,12 @@ import {
 } from 'lucide-react';
 import {
   deleteAdminCategory,
+  deleteAdminGood,
   fetchAdminCategoryTree,
+  fetchAdminGoods,
   upsertCategory,
   type AdminCategoryNode,
+  type AdminGood,
 } from '@/lib/admin/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,7 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { toFa } from '@/lib/format';
+import { dateFa, toFa } from '@/lib/format';
 
 // ─── ردیف تخت درخت ──────────────────────────────────────────────────────────
 
@@ -246,6 +251,30 @@ export default function AdminCategoriesPage() {
   const [deleteTarget, setDeleteTarget] = useState<AdminCategoryNode | null>(null);
   const [deleteError, setDeleteError] = useState('');
 
+  // ─── تب انواع کالا (Good) — جدول جدا از درخت (خواسته مالک ۳۰-۱۰) ────────
+  const [tab, setTab] = useState<'categories' | 'goods'>('categories');
+  const [goodSearch, setGoodSearch] = useState('');
+  const [goodPage, setGoodPage] = useState(1);
+  const [goodDelete, setGoodDelete] = useState<AdminGood | null>(null);
+  const [goodDeleteError, setGoodDeleteError] = useState('');
+
+  const goodsQuery = useQuery({
+    queryKey: ['admin-goods', goodSearch, goodPage],
+    queryFn: () => fetchAdminGoods({ q: goodSearch.trim() || undefined, page: goodPage, perPage: 20 }),
+    enabled: tab === 'goods',
+  });
+
+  const removeGood = useMutation({
+    mutationFn: (id: number) => deleteAdminGood(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-goods'] });
+      toast({ description: 'نوع کالا حذف شد.' });
+      setGoodDelete(null);
+      setGoodDeleteError('');
+    },
+    onError: (err: Error) => setGoodDeleteError(err.message),
+  });
+
   const rows = useMemo(() => {
     if (!tree) return [] as FlatRow[];
     const q = search.trim();
@@ -323,17 +352,186 @@ export default function AdminCategoriesPage() {
             <Network size={18} />
           </span>
           <div>
-            <h1 className="text-base font-extrabold">مدیریت دسته‌بندی‌ها</h1>
+            <h1 className="text-base font-extrabold">مدیریت دسته‌بندی‌ها و انواع کالا</h1>
             <p className="text-[11px] text-muted-foreground">
-              درخت سه‌سطحی + نوع کالا — تغییر نام بلافاصله روی همه آگهی‌ها اعمال می‌شود (join)
+              درخت سه‌سطحی دسته‌ها + انواع کالای کاربران — تغییر نام بلافاصله روی همه آگهی‌ها اعمال می‌شود (join)
             </p>
           </div>
         </div>
-        <Button className="rounded-md" onClick={() => openCreate(null)}>
-          <Plus size={16} /> دسته ریشه جدید
-        </Button>
+        {tab === 'categories' && (
+          <Button className="rounded-md" onClick={() => openCreate(null)}>
+            <Plus size={16} /> دسته ریشه جدید
+          </Button>
+        )}
       </div>
 
+      {/* تب‌ها — دسته‌ها | انواع کالا */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setTab('categories')}
+          className={cn(
+            'flex shrink-0 items-center gap-1.5 rounded-md border px-3.5 py-2 text-xs font-bold transition-colors',
+            tab === 'categories'
+              ? 'border-primary bg-primary text-primary-foreground'
+              : 'bg-card text-muted-foreground hover:border-primary/40',
+          )}
+        >
+          <Network size={14} /> دسته‌بندی‌ها
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('goods')}
+          className={cn(
+            'flex shrink-0 items-center gap-1.5 rounded-md border px-3.5 py-2 text-xs font-bold transition-colors',
+            tab === 'goods'
+              ? 'border-primary bg-primary text-primary-foreground'
+              : 'bg-card text-muted-foreground hover:border-primary/40',
+          )}
+        >
+          <Package size={14} /> انواع کالا {goodsQuery.data ? `(${toFa(goodsQuery.data.total)})` : ''}
+        </button>
+      </div>
+
+      {tab === 'goods' ? (
+        <>
+          {/* جستجوی نوع کالا */}
+          <div className="relative">
+            <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
+            <Input
+              value={goodSearch}
+              onChange={(e) => {
+                setGoodSearch(e.target.value);
+                setGoodPage(1);
+              }}
+              placeholder="جستجوی نام نوع کالا…"
+              className="rounded-md pe-9"
+            />
+          </div>
+
+          {/* جدول انواع کالا */}
+          <div className="overflow-hidden rounded-lg border bg-card">
+            {goodsQuery.isLoading ? (
+              <div className="space-y-2 p-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-11 rounded-md" />
+                ))}
+              </div>
+            ) : !goodsQuery.data || goodsQuery.data.items.length === 0 ? (
+              <p className="p-10 text-center text-sm text-muted-foreground">
+                {goodSearch.trim() ? 'نوع کالایی با این نام پیدا نشد.' : 'هنوز نوع کالایی توسط کاربران وارد نشده است.'}
+              </p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-secondary/40 text-[11px] text-muted-foreground">
+                    <th className="px-3 py-2.5 text-right font-medium">نام نوع</th>
+                    <th className="px-2 py-2.5 text-right font-medium">مسیر دسته</th>
+                    <th className="hidden px-2 py-2.5 text-right font-medium sm:table-cell">دفعات استفاده</th>
+                    <th className="hidden px-2 py-2.5 text-right font-medium md:table-cell">درخواست فعال</th>
+                    <th className="hidden px-2 py-2.5 text-right font-medium lg:table-cell">تاریخ ایجاد</th>
+                    <th className="px-3 py-2.5 text-left font-medium">عملیات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {goodsQuery.data.items.map((g) => (
+                    <tr key={g.id} className="border-b last:border-0 hover:bg-secondary/30">
+                      <td className="px-3 py-2.5">
+                        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold text-muted-foreground">نوع کالا</span>
+                        <span className="ms-2 font-bold">{g.name}</span>
+                      </td>
+                      <td className="px-2 py-2.5 text-xs text-muted-foreground">{g.categoryPath}</td>
+                      <td className="hidden px-2 py-2.5 text-xs tabular-nums sm:table-cell">{toFa(g.usageCount)}</td>
+                      <td className="hidden px-2 py-2.5 text-xs tabular-nums text-muted-foreground md:table-cell">
+                        {g.requestCount > 0 ? toFa(g.requestCount) : '—'}
+                      </td>
+                      <td className="hidden px-2 py-2.5 text-xs text-muted-foreground lg:table-cell">{dateFa(g.createdAt)}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setGoodDeleteError('');
+                              setGoodDelete(g);
+                            }}
+                            title="حذف"
+                            className="grid size-7 place-items-center rounded-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* صفحه‌بندی انواع کالا */}
+          {goodsQuery.data && goodsQuery.data.pageCount > 1 && (
+            <div className="flex items-center justify-center gap-1">
+              <Button
+                variant="outline"
+                size="icon-sm"
+                disabled={goodPage <= 1}
+                onClick={() => setGoodPage((p) => p - 1)}
+                aria-label="صفحه قبل"
+              >
+                <ChevronRight size={16} />
+              </Button>
+              <span className="font-num px-2 text-xs text-muted-foreground">
+                {toFa(goodPage)} از {toFa(goodsQuery.data.pageCount)}
+              </span>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                disabled={goodPage >= goodsQuery.data.pageCount}
+                onClick={() => setGoodPage((p) => p + 1)}
+                aria-label="صفحه بعد"
+              >
+                <ChevronLeft size={16} />
+              </Button>
+            </div>
+          )}
+
+          <p className="text-[11px] leading-5 text-muted-foreground">
+            «نوع کالا» ورودی آزاد کاربران است (مثل: اکبری، فندقی) و جدولی جدا از دسته‌بندی‌ها دارد؛
+            در سایدبار و فیلتر لیست محصولات هرگز نمایش داده نمی‌شود. حذف فقط زمانی ممکن است که درخواستی به آن ارجاع نداشته باشد.
+          </p>
+
+          {/* دیالوگ حذف نوع کالا */}
+          {goodDelete ? (
+            <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="حذف نوع کالا">
+              <button type="button" aria-label="بستن" className="absolute inset-0 bg-black/40" onClick={() => setGoodDelete(null)} />
+              <div className="relative w-full max-w-sm space-y-4 rounded-xl border bg-card p-6 shadow-lg">
+                <h2 className="text-sm font-extrabold">حذف نوع کالای «{goodDelete.name}»</h2>
+                <p className="text-xs leading-6 text-muted-foreground">
+                  این عملیات قابل بازگشت نیست. نوع کالایی که درخواستی به آن ارجاع دارد حذف نمی‌شود.
+                </p>
+                {goodDeleteError && (
+                  <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs leading-5 text-destructive">{goodDeleteError}</p>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    className="flex-1 rounded-md"
+                    disabled={removeGood.isPending}
+                    onClick={() => removeGood.mutate(goodDelete.id)}
+                  >
+                    {removeGood.isPending ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={15} />}
+                    حذف قطعی
+                  </Button>
+                  <Button variant="outline" className="rounded-md" onClick={() => setGoodDelete(null)}>
+                    انصراف
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <>
       {/* جستجو */}
       <div className="relative">
         <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
@@ -373,7 +571,6 @@ export default function AdminCategoriesPage() {
             <tbody>
               {rows.map(({ node, depth, hasChildren }) => {
                 const open = expanded.has(node.id) || !!search.trim();
-                const isType = node.kind === 'PRODUCT_TYPE';
                 return (
                   <tr key={node.id} className="border-b last:border-0 hover:bg-secondary/30">
                     <td className="px-3 py-2.5">
@@ -390,14 +587,7 @@ export default function AdminCategoriesPage() {
                         ) : (
                           <span className="inline-block size-6 shrink-0" aria-hidden />
                         )}
-                        <span className={cn('truncate', isType ? 'font-normal text-muted-foreground' : 'font-bold')}>
-                          {node.categoryName}
-                        </span>
-                        {isType ? (
-                          <span className="shrink-0 rounded-full bg-secondary px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
-                            نوع کالا
-                          </span>
-                        ) : null}
+                        <span className="truncate font-bold">{node.categoryName}</span>
                       </div>
                     </td>
                     <td className="hidden px-2 py-2.5 text-xs text-muted-foreground md:table-cell">{node.unit || '—'}</td>
@@ -415,7 +605,7 @@ export default function AdminCategoriesPage() {
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center justify-end gap-1">
-                        {!isType && depth < 2 ? (
+                        {depth < 2 ? (
                           <button
                             type="button"
                             onClick={() => openCreate(node)}
@@ -455,9 +645,10 @@ export default function AdminCategoriesPage() {
       </div>
 
       <p className="text-[11px] leading-5 text-muted-foreground">
-        حذف دسته فقط زمانی ممکن است که فرزند یا ارجاعی (آگهی/درخواست خرید) نداشته باشد؛
-        «نوع کالا»ها فرزندان کاربر-ساختهٔ برگ‌ها هستند و از فرم درخواست خرید ساخته می‌شوند.
+        حذف دسته فقط زمانی ممکن است که فرزند یا ارجاعی (آگهی/درخواست خرید) نداشته باشد.
       </p>
+        </>
+      )}
 
       <CategoryDialog
         open={dialog.open}

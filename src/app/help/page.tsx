@@ -25,7 +25,7 @@ import { HelpAccordion } from './help-accordion';
 export const metadata: Metadata = {
   title: 'راهنما | ایمچ چگونه کار می کند؟',
   description:
-    'راهنمای جامع ایمچ: حساب کاربری، ثبت نام و ورود، فروش محصول، ثبت درخواست خرید، احراز هویت، بسته شارژ تبلیغاتی و نردبان، پرسش‌های متداول خریداران و فروشندگان.',
+    'راهنمای جامع ایمچ: حساب کاربری، ثبت نام و ورود، فروش محصول، ثبت درخواست خرید، احراز هویت، بسته های اشتراک ویژه و نردبان، پرسش‌های متداول خریداران و فروشندگان.',
   alternates: { canonical: '/help' },
 };
 
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
 const GUIDE_CARDS = [
   { icon: UserRound, title: 'حساب کاربری', hint: 'راهنمای ورود و ثبت نام در ایمچ', href: '/help/verify-account' },
   { icon: PackagePlus, title: 'فروش محصول', hint: 'راهنمای فروشندگان ایمچ', href: '/help/become-seller' },
-  { icon: Megaphone, title: 'خدمات تبلیغاتی', hint: 'راهنمای بسته شارژ و نردبان', href: '/help/charge-package' },
+  { icon: Megaphone, title: 'اشتراک ویژه و نردبان', hint: 'راهنمای بسته های اشتراک و نردبان آگهی', href: '/help/charge-package' },
   { icon: ShoppingCart, title: 'خرید محصول', hint: 'راهنمای خریداران ایمچ', href: '/help/become-buyer' },
 ];
 
@@ -101,7 +101,7 @@ const FAQS = [
 const SERVICES = [
   { icon: Scale, label: 'مطالب بیشتر: قوانین و مقررات در ایمچ', href: '/help/rules' },
   { icon: CreditCard, label: 'پرداخت امن در ایمچ', href: '/help/secure-payment' },
-  { icon: TrendingUp, label: 'خدمات تبلیغاتی و نردبان', href: '/help/charge-package' },
+  { icon: TrendingUp, label: 'بسته های اشتراک ویژه و نردبان', href: '/help/charge-package' },
 ];
 
 export default function HelpPage() {

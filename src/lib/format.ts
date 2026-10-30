@@ -50,3 +50,14 @@ export function relativeFa(days: number): string {
   d.setDate(d.getDate() - days);
   return timeAgoFa(d.toISOString());
 }
+
+/** تاریخ + ساعت شمسی: «۳۰ مهر ۱۴۰۵، ۱۴:۲۵» — جدول‌های آمار */
+export function dateTimeFa(iso: string): string {
+  return new Intl.DateTimeFormat('fa-IR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(iso));
+}

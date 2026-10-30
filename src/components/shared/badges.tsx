@@ -1,7 +1,7 @@
-import { BadgeCheck, TrendingUp, AlertTriangle, Clock3 } from 'lucide-react';
+import { BadgeCheck, Crown, TrendingUp, AlertTriangle, Clock3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-/** نشان «نردبان» — آگهی نردبان‌شده بالای نتایج می‌آید (۱۰ هزار تومان در روز) */
+/** نشان «نردبان» — آگهی نردبان‌شده بالای نتایج می‌آید (۵۰ هزار تومان در ماه) */
 export function LadderBadge({ className, compact = false }: { className?: string; compact?: boolean }) {
   return (
     <span
@@ -12,6 +12,21 @@ export function LadderBadge({ className, compact = false }: { className?: string
     >
       <TrendingUp size={12} strokeWidth={2.4} />
       {!compact && 'نردبان'}
+    </span>
+  );
+}
+
+/** نشان «فروشنده ویژه» — دارای بسته اشتراک فعال (سورت بالاتر از عادی) */
+export function PremiumSellerBadge({ className, compact = false }: { className?: string; compact?: boolean }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-sm bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200',
+        className,
+      )}
+    >
+      <Crown size={12} strokeWidth={2.4} />
+      {!compact && 'فروشنده ویژه'}
     </span>
   );
 }
