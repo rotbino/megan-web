@@ -3,6 +3,7 @@ import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/toaster";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { PresenceProvider } from "@/components/shared/presence-provider";
+import { PageViewPing } from "@/components/shared/page-view-ping";
 import { BaseDataProvider } from "@/lib/base-data";
 import { getCategoryTreeSSR, getProvincesSSR } from "@/lib/mock/api";
 import { SITE_URL } from "@/lib/site";
@@ -99,6 +100,7 @@ export default async function RootLayout({
             <div className="flex min-h-screen flex-col">{children}</div>
             <MobileBottomNav />
             <PresenceProvider />
+            <PageViewPing />
             <Toaster />
           </BaseDataProvider>
         </Providers>

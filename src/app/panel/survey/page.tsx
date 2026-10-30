@@ -10,7 +10,7 @@
  * ادمین (نظرسنجی‌ها) دیده می‌شوند.
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Loader2, Pencil, ScrollText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -42,7 +42,6 @@ export default function SurveyPage() {
   const [score, setScore] = useState<SurveyScore | null>(null);
   const [note, setNote] = useState('');
   const [done, setDone] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
 
   // پاسخ قبلی من — فرم را برای ویرایش پر می‌کند
   const { data: mine } = useQuery({
@@ -50,16 +49,17 @@ export default function SurveyPage() {
     queryFn: () => apiFetch<MySurvey | null>('/survey/getMine', {}),
   });
 
-  useEffect(() => {
-    if (!hydrated && mine !== undefined) {
-      setHydrated(true);
-      if (mine) {
-        setScore(mine.score);
-        setNote(mine.note ?? '');
-        setDone(true);
-      }
+  // پیش‌پر کردن فرم با پاسخ قبلی — الگوی «تنظیم state در زمان رندر»
+  // (بدون effect؛ مثل بقیه فرم‌های ایمچ — sync با سرور بدون cascade)
+  const [hydratedWith, setHydratedWith] = useState<unknown>(null);
+  if (mine !== undefined && hydratedWith !== mine) {
+    setHydratedWith(mine);
+    if (mine) {
+      setScore(mine.score);
+      setNote(mine.note ?? '');
+      setDone(true);
     }
-  }, [mine, hydrated]);
+  }
 
   const submit = useMutation({
     mutationFn: () =>

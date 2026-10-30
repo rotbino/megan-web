@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
+  Activity,
   BadgeCheck,
   Boxes,
   ClipboardList,
@@ -56,6 +57,7 @@ const NAV = [
   { href: '/admin/chats', label: 'چت‌های کاربران', Icon: MessagesSquare, superOnly: false },
   { href: '/admin/calls', label: 'گزارش تماس‌ها', Icon: PhoneCall, superOnly: false },
   { href: '/admin/users', label: 'کاربران', Icon: Users, superOnly: false },
+  { href: '/admin/activities', label: 'فعالیت کاربران', Icon: Activity, superOnly: false },
   { href: '/admin/surveys', label: 'نظرسنجی‌ها', Icon: MessageSquareText, superOnly: false },
   { href: '/admin/reviews', label: 'نظرات فروشندگان', Icon: Star, superOnly: false },
   { href: '/admin/products', label: 'آگهی‌ها', Icon: Boxes, superOnly: false },

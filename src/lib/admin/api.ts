@@ -30,12 +30,12 @@ export interface AdminStats {
 
 // ─── فاز A2 — اطلاعات پایه ───────────────────────────────────────────────────
 
-/** نود درخت دسته (ادمین) — عین AdminCategoryNode بک‌اند */
+/** نود درخت دسته (ادمین) — عین AdminCategoryNode بک‌اند.
+ *  نوع کالا (Good) دیگر نود درخت نیست — AdminGood جداگانه است. */
 export interface AdminCategoryNode {
   id: number;
   categoryName: string;
   slug: string;
-  kind: string; // CATEGORY | PRODUCT_TYPE
   unit: string;
   min: number;
   example: string | null;
@@ -46,6 +46,26 @@ export interface AdminCategoryNode {
   productCount: number;
   requestCount: number;
   children: AdminCategoryNode[];
+}
+
+/** نوع کالا (Good) — ورودی آزاد کاربران، جداشده از درخت دسته (خواسته مالک ۳۰-۱۰) */
+export interface AdminGood {
+  id: number;
+  name: string;
+  categoryId: number;
+  categoryName: string;
+  /** مسیر دسته مثل «کشاورزی ← خشکبار ← پسته» */
+  categoryPath: string;
+  usageCount: number;
+  requestCount: number;
+  createdAt: string;
+}
+
+export interface AdminGoodsPage {
+  items: AdminGood[];
+  total: number;
+  page: number;
+  pageCount: number;
 }
 
 export interface AdminCategoryInput {
@@ -213,6 +233,20 @@ export async function upsertCategory(input: AdminCategoryInput): Promise<AdminCa
 /** حذف دسته — فقط بدون فرزند و بدون ارجاع */
 export async function deleteAdminCategory(id: number): Promise<{ id: number; deleted: boolean }> {
   return adminFetch<{ id: number; deleted: boolean }>('/admin/base-data/deleteCategory', { id });
+}
+
+/** انواع کالا (Good) — فهرست + حذف (تب «انواع کالا») */
+export async function fetchAdminGoods(params: {
+  categoryId?: number;
+  q?: string;
+  page?: number;
+  perPage?: number;
+} = {}): Promise<AdminGoodsPage> {
+  return adminFetch<AdminGoodsPage>('/admin/base-data/getGoods', params as Record<string, unknown>);
+}
+
+export async function deleteAdminGood(id: number): Promise<{ id: number; deleted: boolean }> {
+  return adminFetch<{ id: number; deleted: boolean }>('/admin/base-data/deleteGood', { id });
 }
 
 /** استان‌ها + شهرها (provinceId داده شود فقط آن استان) */
@@ -1091,4 +1125,57 @@ export async function fetchAdminReviewList(filters: AdminReviewListFilters = {})
 /** حذف یک نظر (کش پروفایل فروشنده همان لحظه می‌شکند) */
 export async function deleteAdminReview(id: string): Promise<{ id: string }> {
   return adminFetch<{ id: string }>('/admin/reviews/deleteReview', { id });
+}
+
+// ─── فعالیت کاربران (خواسته مالک ۳۰-۱۰) ─────────────────────────────────────
+
+export type AdminActivityType = 'search' | 'category_view' | 'page_view';
+
+/** یک رویداد فعالیت — عین DTO بک‌اند */
+export interface AdminActivityItem {
+  id: string;
+  type: AdminActivityType;
+  q: string | null;
+  categoryId: number | null;
+  categoryName: string | null;
+  path: string | null;
+  isGuest: boolean;
+  sessionId: string | null;
+  user: { id: string; firstName: string; lastName: string; userName: string; phone: string } | null;
+  createdAt: string;
+}
+
+export interface AdminActivityList {
+  items: AdminActivityItem[];
+  total: number;
+  page: number;
+  pageCount: number;
+}
+
+export interface AdminActivityStats {
+  total: number;
+  today: number;
+  uniqueToday: number;
+  types: { search: number; category_view: number; page_view: number };
+  topSearches: Array<{ q: string; count: number }>;
+  topCategories: Array<{ categoryName: string; count: number }>;
+  topPages: Array<{ path: string; count: number }>;
+}
+
+export interface AdminActivityFilters {
+  type?: AdminActivityType;
+  q?: string;
+  userId?: string;
+  page?: number;
+  perPage?: number;
+}
+
+/** فهرست فعالیت‌ها با فیلتر نوع/متن + صفحه‌بندی */
+export async function fetchAdminActivities(filters: AdminActivityFilters = {}): Promise<AdminActivityList> {
+  return adminFetch<AdminActivityList>('/admin/activities/list', filters as unknown as Record<string, unknown>);
+}
+
+/** آمار فعالیت‌ها — شمارنده‌ها + پربازدیدها */
+export async function fetchAdminActivityStats(): Promise<AdminActivityStats> {
+  return adminFetch<AdminActivityStats>('/admin/activities/stats', {});
 }

@@ -18,12 +18,12 @@ export interface Paged<T> {
 
 // ─── شکل پاسخ خام بک‌اند ───────────────────────────────────────────────────
 
-/** CategoryNode بک‌اند (snake_case) */
+/** CategoryNode بک‌اند (snake_case) — نوع کالا (Good) جدول جدا دارد و در
+ *  این درخت نیست (خواسته مالک ۳۰-۱۰) */
 interface RawCategoryNode {
   id: number;
   category_name: string;
   slug: string;
-  kind: string;
   unit: string;
   min: number;
   example: string | null;
@@ -1271,4 +1271,106 @@ export async function getSellerPhone(target: { id?: number; userName?: string })
   callLogged: boolean;
 }> {
   return apiFetch('/products/getSellerPhone', target);
+}
+
+// ─── علاقه‌مندی‌ها — نشان آگهی + ذخیره فروشنده (خواسته مالک ۳۰-۱۰) ─────────
+
+/** نشان/حذف نشان آگهی */
+export async function toggleProductFavorite(productId: number): Promise<{ saved: boolean }> {
+  return apiFetch<{ saved: boolean }>('/favorites/toggleProduct', { productId });
+}
+
+/** ذخیره/حذف صفحه اختصاصی فروشنده */
+export async function toggleSellerFavorite(userName: string): Promise<{ saved: boolean }> {
+  return apiFetch<{ saved: boolean }>('/favorites/toggleSeller', { userName });
+}
+
+/** شناسه آگهی‌های نشان‌شده من — وضعیت اولیه دکمه‌های ذخیره */
+export async function getMyProductFavoriteIds(): Promise<number[]> {
+  return apiFetch<number[]>('/favorites/getMyProductFavoriteIds', {});
+}
+
+/** آیا این فروشنده را ذخیره کرده‌ام؟ */
+export async function isSellerSaved(userName: string): Promise<boolean> {
+  const r = await apiFetch<{ saved: boolean }>('/favorites/isSellerSaved', { userName });
+  return r.saved;
+}
+
+/** فروشنده ذخیره‌شده — کارت سبک برای صفحه علاقه‌مندی‌ها */
+export interface FavoriteSellerCard {
+  userName: string;
+  firstName: string;
+  lastName: string;
+  isVerified: boolean;
+  isPremium: boolean;
+  avatarUrl: string | null;
+  productCount: number;
+  provinceName: string | null;
+  cityName: string | null;
+  savedAt: string;
+}
+
+/** آگهی‌ها + فروشندگان ذخیره‌شده من */
+export async function getMyFavorites(): Promise<{ products: Product[]; sellers: FavoriteSellerCard[] }> {
+  return apiFetch<{ products: Product[]; sellers: FavoriteSellerCard[] }>('/favorites/getMyFavorites', {});
+}
+
+// ─── آمار آگهی (خواسته مالک ۳۰-۱۰) ──────────────────────────────────────────
+
+/** ثبت بازدید واقعی مرورگر — ping سبک از صفحه آگهی (شمارنده دقیق).
+ *  توکن اگر باشد ضمیمه می‌شود (بیننده واردشده شناسایی شود)؛ نبودش مهمان است. */
+export function reportProductView(productId: number, sessionId: string): Promise<{ counted: boolean }> {
+  return apiFetch<{ counted: boolean }>('/products/reportView', { id: productId, sessionId });
+}
+
+/** هویت بیننده/تماس‌گیرنده/ذخیره‌کننده — فقط با اشتراک ویژه مالک */
+export interface StatsIdentity {
+  firstName: string;
+  lastName: string;
+  userName: string;
+  phone: string;
+}
+
+export interface ProductStatsViewersRow {
+  isGuest: boolean;
+  views: number;
+  firstAt: string;
+  lastAt: string;
+  user: StatsIdentity | null;
+}
+
+export interface ProductStatsCallersRow {
+  at: string;
+  user: StatsIdentity | null;
+}
+
+export interface ProductStatsSaversRow {
+  at: string;
+  user: StatsIdentity | null;
+}
+
+export interface MyProductStats {
+  product: {
+    id: number;
+    productName: string;
+    status: string;
+    viewCount: number;
+    createdAt: string;
+  };
+  canSeeIdentity: boolean;
+  totals: {
+    views: number;
+    uniqueViewers: number;
+    contactClicks: number;
+    saves: number;
+  };
+  daily: Array<{ date: string; count: number }>;
+  viewers: ProductStatsViewersRow[];
+  callers: ProductStatsCallersRow[];
+  savers: ProductStatsSaversRow[];
+}
+
+/** آمار کامل آگهی من — چه کسانی دیدند/تماس زدند/ذخیره کردند */
+export async function getMyProductStats(productId: number): Promise<MyProductStats> {
+  return apiFetch<MyProductStats>('/products/getMyProductStats', { id: productId });
 }

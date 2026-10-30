@@ -25,7 +25,7 @@ const footerCols = [
     title: 'فروشندگان',
     links: [
       { label: 'نحوه ثبت محصول', href: '/help/post-product' },
-      { label: 'خرید بسته شارژ تبلیغاتی', href: '/help/charge-package' },
+      { label: 'بسته های اشتراک ویژه و نردبان', href: '/help/charge-package' },
       { label: 'احراز هویت حقیقی و حقوقی', href: '/help/verify-account' },
       { label: 'چگونه بفروشیم', href: '/help/become-seller' },
     ],

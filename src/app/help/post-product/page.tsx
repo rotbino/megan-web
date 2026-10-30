@@ -153,7 +153,7 @@ export default function PostProductPage() {
           </Button>
           <Button asChild size="sm" variant="outline" className="rounded-md">
             <Link href="/help/charge-package">
-              بسته شارژ تبلیغاتی <ArrowLeft size={13} />
+              بسته های اشتراک ویژه و نردبان <ArrowLeft size={13} />
             </Link>
           </Button>
         </div>

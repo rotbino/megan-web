@@ -20,6 +20,8 @@ import { ProductImage } from '@/components/shared/product-image';
 import { ProductPrice } from '@/components/shared/product-price';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { LadderBadge, OldAdBadge } from '@/components/shared/badges';
+import { SaveProductButton } from '@/components/shared/save-product-button';
+import { ProductViewPing } from '@/components/shared/product-view-ping';
 import { ChatDialog } from '@/components/products/chat-dialog';
 import { RelatedProducts } from '@/components/products/related-products';
 import { SellerRatingBadge } from '@/components/products/seller-rating-badge';
@@ -99,6 +101,7 @@ export default async function ProductViewPage({ params }: Props) {
   return (
     <>
       <Header />
+      <ProductViewPing productId={product.id} />
       <main className="flex-1">
         <div className="mx-auto max-w-7xl px-4 pt-4 lg:px-6">
           {/* ─── نوار ناوبری بالا (بردکرامب) — عین باسکول ─── */}
@@ -187,9 +190,14 @@ export default async function ProductViewPage({ params }: Props) {
 
                 <ProductPrice product={product} variant="page" />
 
-                <p className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1"><Eye size={13} /> {toFa(product.viewCount)} بازدید</span>
-                  <span className="inline-flex items-center gap-1"><Share2 size={13} /> اشتراک‌گذاری آگهی</span>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Eye size={13} /> {toFa(product.viewCount)} بازدید
+                  </p>
+                  <SaveProductButton productId={product.id} />
+                </div>
+                <p className="flex items-center justify-end text-xs text-muted-foreground">
+                  <Share2 size={13} /> اشتراک‌گذاری آگهی
                 </p>
               </div>
             </div>
