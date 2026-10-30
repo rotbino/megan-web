@@ -9,7 +9,7 @@
  *   isLadder ↔ is_ladder (نردبان آگهی — ۱۰ هزار تومان در روز)
  */
 
-export type PackageType = 0 | 1 | 2 | 3; // باسکول: ۰=رایگان ۱=عادی ۲=ویژه ۳=ویژه+ — در ایمچ فعلاً بدون کاربرد
+export type PackageType = 0 | 1 | 2 | 3; // ۰=رایگان ۱=دوماهه ۲=شش‌ماهه ۳=یک‌ساله (فعال — انقضا لحاظ می‌شود)
 
 export interface User {
   id: number;
@@ -320,6 +320,52 @@ export interface MyChargeOrder {
   charge: number; // شارژ اعمالی نهایی پس از تأیید
   rejectionReason?: string | null; // فقط وقتی رد شده — کاربر باید دلیل و راه‌حل را ببیند
   reviewedAt?: string | null;
+  createdAt: string;
+  receipt: { url: string; thumbUrl?: string } | null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// بسته‌های اشتراک (عضویت ویژه — کارت به کارت + تأیید ادمین)
+// ─────────────────────────────────────────────────────────────
+
+/** پلن اشتراک — ۲/۶/۱۲ ماهه؛ قیمت‌ها حدود یک‌بیستم باسکول */
+export interface MembershipPlan {
+  key: 'p2m' | 'p6m' | 'p12m';
+  months: number;
+  amount: number; // تومان
+  title: string; // «دو ماهه»
+  pakageType: 1 | 2 | 3;
+  bestSeller?: boolean;
+}
+
+/** بسته فعال من + امکانات مؤثر — تک منبع گیت‌های سمت کلاینت */
+export interface MyPackage {
+  /** ۰=رایگان ۱=دوماهه ۲=شش‌ماهه ۳=یک‌ساله (مؤثر — انقضا لحاظ شده) */
+  pakageType: PackageType;
+  isActive: boolean;
+  expiresAt: string | null;
+  daysLeft: number | null;
+  /** تعداد فیش‌های در انتظار بررسی */
+  pendingCount: number;
+  features: {
+    /** -۱ = نامحدود */
+    productCapacity: number;
+    canSeeBuyers: boolean;
+    unlimitedBuyRequests: boolean;
+  };
+}
+
+/** سفارش خرید بسته خودم — در انتظار/تایید/رد + دلیل رد + فیش */
+export interface MyPackageOrder {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  planKey: string;
+  months: number;
+  amount: number;
+  rejectionReason?: string | null;
+  reviewedAt?: string | null;
+  startsAt?: string | null;
+  expiresAt?: string | null;
   createdAt: string;
   receipt: { url: string; thumbUrl?: string } | null;
 }

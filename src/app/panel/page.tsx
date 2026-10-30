@@ -59,7 +59,7 @@ const SELLER_ACCOUNT_MENU = [
   { href: '/panel/wallet', label: 'تاریخچه تراکنش‌ها', icon: History },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
-  { href: '/panel/pricing', label: 'بسته شارژ تبلیغاتی', icon: TrendingUp },
+  { href: '/panel/pricing', label: 'بسته‌های اشتراک', icon: TrendingUp },
   { href: '/panel/products', label: 'محصولات من', icon: Package },
   { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
 ] as const;

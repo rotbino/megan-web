@@ -6,11 +6,43 @@
  * دیتابیس واقعی (بک‌اند مگان) می‌آیند — مسیرشان src/lib/mock/api.ts است.
  */
 
-import type { ChargePackage, SavedUserStatusKey } from '@/lib/types';
+import type { ChargePackage, MembershipPlan, SavedUserStatusKey } from '@/lib/types';
 
 // ─── آگهی‌ها ─────────────────────────────────────────────────────────────────
 
-export const PRODUCT_CAPACITY = 5;
+/** ظرفیت بسته رایگان — قبلاً ۵؛ حالا ۱۰ (خواسته مالک). بسته فعال = نامحدود (-۱ از بک‌اند). */
+export const PRODUCT_CAPACITY = 10;
+
+// ─── بسته‌های اشتراک (عضویت ویژه) ──────────────────────────────────────────
+
+/** پلن‌های اشتراک — منبع UI؛ سرور /packages/getPlans همان را برمی‌گرداند.
+ *  قیمت‌ها حدود یک‌بیستم نمونه باسکول (خواسته مالک). */
+export const MEMBERSHIP_PLANS: MembershipPlan[] = [
+  { key: 'p2m', months: 2, amount: 199_000, title: 'دو ماهه', pakageType: 1 },
+  { key: 'p6m', months: 6, amount: 499_000, title: 'شش ماهه', pakageType: 2, bestSeller: true },
+  { key: 'p12m', months: 12, amount: 799_000, title: 'یک‌ساله', pakageType: 3 },
+];
+
+/** امکانات بسته رایگانِ همیشگی — قابل مقایسه با بسته‌های پولی (خواسته مالک) */
+export const FREE_PACKAGE = {
+  title: 'رایگان (همیشگی)',
+  price: 0,
+  features: {
+    productCapacity: PRODUCT_CAPACITY, // ثبت تا ۱۰ محصول
+    canSeeBuyers: false, // خریداران دیده نمی‌شود
+    unlimitedBuyRequests: true, // ثبت درخواست خرید نامحدود
+  },
+} as const;
+
+/** قابلیت‌های مشترک همه بسته‌های پولی — ردیف‌های کارت قیمت */
+export const PAID_PLAN_FEATURES = [
+  'ثبت تعداد نامحدود محصول',
+  'دسترسی نامحدود به همه خریداران',
+  'ثبت درخواست خرید نامحدود',
+  'درج نشان فروشنده ویژه روی محصولات و پروفایل',
+  'نمایش محصولات بالاتر از رقبا',
+  'اولویت بررسی و پشتیبانی ویژه',
+] as const;
 
 /** دلایل رد شدن آگهی — عین جعبه باسکول */
 export const REJECTION_REASONS = [

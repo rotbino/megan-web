@@ -22,7 +22,7 @@ function FullTree({ tree, activeSlug }: { tree: Category[]; activeSlug?: string 
     <nav className="max-h-96 space-y-0.5 overflow-y-auto pe-1 text-sm">
       <Link
         href="/product-list"
-        className={cn('block rounded-lg px-2.5 py-1.5', !activeSlug ? 'bg-accent font-bold text-accent-foreground' : 'text-muted-foreground hover:bg-secondary')}
+        className={cn('block rounded-lg px-2.5 py-1.5', !activeSlug ? 'font-bold text-primary' : 'text-muted-foreground hover:bg-secondary')}
       >
         همه دسته‌ها
       </Link>
@@ -30,7 +30,7 @@ function FullTree({ tree, activeSlug }: { tree: Category[]; activeSlug?: string 
         <div key={root.id}>
           <Link
             href={`/product-list/category/${root.slug}`}
-            className={cn('block rounded-lg px-2.5 py-1.5', activeSlug === root.slug ? 'bg-accent font-bold text-accent-foreground' : 'font-medium hover:bg-secondary')}
+            className={cn('block rounded-lg px-2.5 py-1.5', activeSlug === root.slug ? 'font-bold text-primary' : 'font-medium hover:bg-secondary')}
           >
             {root.categoryName}
           </Link>
@@ -38,7 +38,7 @@ function FullTree({ tree, activeSlug }: { tree: Category[]; activeSlug?: string 
             <div key={l2.id}>
               <Link
                 href={`/product-list/category/${l2.slug}`}
-                className={cn('block rounded-lg ps-5 pe-2.5 py-1.5 text-[13px]', activeSlug === l2.slug ? 'bg-accent font-bold text-accent-foreground' : 'text-muted-foreground hover:bg-secondary')}
+                className={cn('block rounded-lg ps-5 pe-2.5 py-1.5 text-[13px]', activeSlug === l2.slug ? 'font-bold text-primary' : 'text-muted-foreground hover:bg-secondary')}
               >
                 {l2.categoryName}
               </Link>
@@ -46,7 +46,7 @@ function FullTree({ tree, activeSlug }: { tree: Category[]; activeSlug?: string 
                 <Link
                   key={l3.id}
                   href={`/product-list/category/${l3.slug}`}
-                  className={cn('block rounded-lg ps-8 pe-2.5 py-1.5 text-xs', activeSlug === l3.slug ? 'bg-accent font-bold text-accent-foreground' : 'text-muted-foreground/80 hover:bg-secondary')}
+                  className={cn('block rounded-lg ps-8 pe-2.5 py-1.5 text-xs', activeSlug === l3.slug ? 'font-bold text-primary' : 'text-muted-foreground/80 hover:bg-secondary')}
                 >
                   {l3.categoryName}
                 </Link>
@@ -109,7 +109,7 @@ export function CategoryFilter({ tree, path }: { tree: Category[]; path?: Catego
                 className={cn(
                   'flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5',
                   active
-                    ? 'bg-accent font-bold text-accent-foreground'
+                    ? 'font-bold text-primary'
                     : 'text-muted-foreground hover:bg-secondary',
                 )}
               >

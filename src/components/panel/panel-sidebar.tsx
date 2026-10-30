@@ -60,7 +60,7 @@ export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel/profile', label: 'پروفایل', icon: UserRound },
   { href: '/panel/profile/edit', label: 'ویرایش پروفایل', icon: Pencil },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
-  { href: '/panel/pricing', label: 'بسته شارژ تبلیغاتی', icon: TrendingUp },
+  { href: '/panel/pricing', label: 'بسته‌های اشتراک', icon: TrendingUp },
   { href: '/help', label: 'راهنما', icon: HelpCircle },
   { href: '/panel/support', label: 'پشتیبانی', icon: LifeBuoy },
   { href: '/panel/survey', label: 'نظرسنجی', icon: ScrollText },
@@ -106,6 +106,20 @@ export function PanelSidebar({
   const fullName = profile ? `${profile.userInfo.firstName} ${profile.userInfo.lastName}` : 'کاربر ایمچ';
   const city = profile ? `${profile.userInfo.province} - ${profile.userInfo.city}` : '';
   const wallet = profile?.userInfo.walletBalance ?? 0;
+
+  // فقط یک آیتم فعال: طولانی‌ترین مسیرِ منطبق برمی‌گرد (ثبت محصول در
+  // /panel/products/new نباید «محصولات من» را هم روشن کند — باگ ۳۰-۱۰)
+  const matchScore = (href: string, exact?: boolean) =>
+    exact
+      ? pathname === href
+        ? href.length
+        : -1
+      : pathname === href || pathname.startsWith(`${href}/`)
+        ? href.length
+        : -1;
+  const bestHref =
+    nav.find((item) => nav.every((o) => matchScore(item.href, item.exact) >= matchScore(o.href, o.exact)))?.href ??
+    null;
 
   return (
     <div className="flex h-full flex-col border-e border-border bg-card text-foreground">
@@ -255,10 +269,11 @@ export function PanelSidebar({
           </div>
         )}
 
-        {/* منو */}
+        {/* منو — فقط یک آیتم فعال: طولانی‌ترین مسیرِ منطبق (باگ ۳۰-۱۰:
+            ثبت محصول در /panel/products/new «محصولات من» را هم روشن می‌کرد) */}
         <nav aria-label="منوی پنل" className="mt-4 flex-1 space-y-0.5 px-3">
-          {nav.map(({ href, label, icon: Icon, exact }) => {
-            const active = exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+          {nav.map(({ href, label, icon: Icon }) => {
+            const active = bestHref === href;
             const showUnread = label === 'پیام ها';
             return (
               <Link
@@ -268,8 +283,9 @@ export function PanelSidebar({
                 title={label}
                 className={cn(
                   'relative flex h-11 items-center gap-3 rounded-md px-3 text-sm transition-colors',
+                  // مینیمال (خواسته مالک): بدون پس‌زمینه و بدون نوار رنگی — فقط فونت پررنگ
                   active
-                    ? 'bg-primary/10 font-bold text-primary before:absolute before:inset-y-1.5 before:right-0 before:w-[3px] before:rounded-full before:bg-primary'
+                    ? 'font-bold text-primary'
                     : 'text-muted-foreground hover:bg-secondary/70 hover:text-foreground',
                   collapsed && 'justify-center px-0',
                 )}
