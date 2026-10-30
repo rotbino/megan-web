@@ -99,7 +99,7 @@ export default async function CategoryPage({ params }: Props) {
           categorySlug={decoded}
           categoryName={cat.categoryName}
           initialData={initial ?? undefined}
-          sidebar={<CategoryFilter tree={tree} activeSlug={decoded} />}
+          sidebar={<CategoryFilter tree={tree} path={path} />}
         />
       </main>
       <Footer />

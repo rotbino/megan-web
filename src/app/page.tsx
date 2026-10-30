@@ -38,7 +38,7 @@ export default function HomePage() {
           description: 'بازار خرید و فروش عمده محصولات بدون واسطه',
           potentialAction: {
             '@type': 'SearchAction',
-            target: '/product-list?s={search_term_string}',
+            target: '/product-list/search/{search_term_string}',
             'query-input': 'required name=search_term_string',
           },
         }}

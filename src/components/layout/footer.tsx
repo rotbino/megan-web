@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { Headphones, Link2, Mail, Megaphone, Phone, UserRoundCheck } from 'lucide-react';
+import { ChevronLeft, Headphones, Link2, Mail, Megaphone, Phone, UserRoundCheck } from 'lucide-react';
 import { BrandLogo } from '@/components/shared/brand';
+import { POPULAR_SEARCHES, searchPath } from '@/lib/popular-searches';
 
 /** فوتر — همان ساختار باسکول: سه هدف، ستون‌های لینک، توضیح سئویی، تماس و کپی‌رایت */
 const goals = [
@@ -39,8 +40,6 @@ const footerCols = [
     ],
   },
 ];
-
-const seoLinks = ['خرید پسته', 'قیمت زعفران', 'خرید خرما', 'کشمش عمده', 'برنج عمده', 'گردو عمده', 'قیمت برنج', 'میوه خشک', 'زرشک عمده', 'بادام عمده', 'خرید سیب'];
 
 export function Footer() {
   return (
@@ -84,18 +83,28 @@ export function Footer() {
         ))}
       </div>
 
-      {/* لینک‌های سئویی مثل باسکول */}
+      {/* لینک‌های سئویی مثل باسکول — هر عبارت به صفحه جستجوی اختصاصی خودش */}
       <div className="border-t">
         <div className="mx-auto max-w-7xl px-4 py-5 lg:px-6">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
             <Link2 size={12} /> پربازدیدترین بازارهای عمده
           </p>
-          <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-            {seoLinks.map((s) => (
+          <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+            {POPULAR_SEARCHES.map((s) => (
               <li key={s}>
-                <Link href="/product-list" className="hover:text-primary">{s}</Link>
+                <Link href={searchPath(s)} className="hover:text-primary">{s}</Link>
               </li>
             ))}
+            {/* ادامه — صفحه جستجوهای کاربران: پربازدیدترین و آخرین جستجوهای واقعی */}
+            <li className="font-bold">
+              <Link
+                href="/searches"
+                className="inline-flex items-center gap-0.5 text-primary hover:underline"
+              >
+                مشاهده جستجوهای کاربران
+                <ChevronLeft size={13} aria-hidden />
+              </Link>
+            </li>
           </ul>
         </div>
       </div>

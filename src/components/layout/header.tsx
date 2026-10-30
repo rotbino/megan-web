@@ -72,7 +72,9 @@ export function Header() {
     if (!value) return;
     setFocused(false);
     setQ('');
-    router.push(`/product-list?s=${encodeURIComponent(value)}`);
+    // جستجو به مسیر سئو-پسند می‌رود — هر جستجوی کاربر URL اختصاصی و
+    // ایندکس‌پذیر می‌گیرد (/product-list/search/{q} با کنونیکال اختصاصی)
+    router.push(`/product-list/search/${encodeURIComponent(value)}`);
   };
 
   const closeMega = () => {

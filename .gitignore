@@ -49,6 +49,9 @@ dev.out.log
 test
 prompt
 
+# search log store (SEO — جستجوهای کاربران)
+.data
+
 server.log
 # Skills directory
 /skills/

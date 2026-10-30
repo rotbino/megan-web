@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { apiBase, joinUrl } from '@/lib/api/client';
+import { POPULAR_SEARCHES } from '@/lib/popular-searches';
 import { SITE_URL } from '@/lib/site';
 
 const BASE = SITE_URL;
@@ -37,6 +38,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/`, changeFrequency: 'daily', priority: 1 },
     { url: `${BASE}/product-list`, changeFrequency: 'hourly', priority: 0.9 },
     { url: `${BASE}/buyAd-requests`, changeFrequency: 'hourly', priority: 0.8 },
+    { url: `${BASE}/searches`, changeFrequency: 'hourly', priority: 0.8 },
     { url: `${BASE}/help`, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE}/help/secure-payment`, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${BASE}/register`, changeFrequency: 'monthly', priority: 0.3 },
@@ -85,5 +87,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.4,
   }));
 
-  return [...staticPages, ...categoryPages, ...productPages, ...profilePages];
+  // صفحات جستجوی پربازدید — هر عبارت یک URL ایندکس‌پذیر اختصاصی (long-tail سئو)
+  const searchPages: MetadataRoute.Sitemap = POPULAR_SEARCHES.map((q) => ({
+    url: `${BASE}/product-list/search/${encodeURIComponent(q)}`,
+    changeFrequency: 'daily' as const,
+    priority: 0.7,
+  }));
+
+  return [...staticPages, ...searchPages, ...categoryPages, ...productPages, ...profilePages];
 }

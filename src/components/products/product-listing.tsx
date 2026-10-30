@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/products/product-card';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
 import { useCities, useCategoryTree, useProducts, useProvinces } from '@/lib/mock/hooks';
+import { findCategoryPath } from '@/lib/categories';
 import type { Paged } from '@/lib/mock/api';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -48,19 +49,28 @@ function SearchBridge({ onS }: { onS: (v: string) => void }) {
   return null;
 }
 
+/**
+ * جستجوی مسیر-محور — صفحه /product-list/search/[q] مقدار را از prop سرور
+ * می‌گیرد (نه از ?s=)؛ جستجوی دوباره از هدر هم به همان مسیر ناوبری می‌کند.
+ */
+
 interface ProductListingInnerProps {
   categorySlug?: string;
   /** نام دسته فعال — از صفحه سروری می‌آید (بدون نیاز به درخت کلاینت) */
   categoryName?: string;
+  /** عبارت جستجو از مسیر سئو (/product-list/search/[q]) — منبع حقیقت prop سرور است */
+  searchQuery?: string;
   /** دیتای اولیه SSR (صفحه ۱، مرتبط‌ترین، بدون فیلتر مکان) — فقط برای همان کوئری seed می‌شود */
   initialData?: Paged<Product>;
   /** سایدبار سرور-رندر (CategoryFilter) — از مرز کلاینت خارج است (F5) */
   sidebar?: ReactNode;
 }
 
-function ProductListingInner({ categorySlug, categoryName, initialData, sidebar }: ProductListingInnerProps) {
+function ProductListingInner({ categorySlug, categoryName, searchQuery, initialData, sidebar }: ProductListingInnerProps) {
   const router = useRouter();
-  const [s, setS] = useState('');
+  /** جستجوی پایه — از prop مسیر (صفحه جستجو) یا خالی (لیست/دسته‌بندی) */
+  const baseS = searchQuery ?? '';
+  const [s, setS] = useState(baseS);
 
   const [sort, setSort] = useState<SortKey>('related');
   const [page, setPage] = useState(1);
@@ -75,6 +85,15 @@ function ProductListingInner({ categorySlug, categoryName, initialData, sidebar 
   const { data: provinces = [] } = useProvinces();
   const { data: cities = [] } = useCities(provinceId);
 
+  // ناوبری بین صفحات جستجو (q جدید از هدر) — همگام‌سازی s با prop سرور
+  // (الگوی تنظیم state در زمان رندر — بدون افکت)
+  const [lastBaseS, setLastBaseS] = useState(baseS);
+  if (lastBaseS !== baseS) {
+    setLastBaseS(baseS);
+    setS(baseS);
+    setPage(1);
+  }
+
   // با تغییر فیلترها به صفحه ۱ برگرد (الگوی تنظیم state در زمان رندر — بدون افکت)
   const filterKey = `${categorySlug ?? ''}|${s}|${provinceId ?? ''}|${cityId ?? ''}|${sort}`;
   const [lastFilterKey, setLastFilterKey] = useState(filterKey);
@@ -88,9 +107,10 @@ function ProductListingInner({ categorySlug, categoryName, initialData, sidebar 
     [categorySlug, s, provinceId, cityId, sort, page],
   );
 
-  // seed فقط وقتی کوئری فعال عین کوئری پیش‌فرض اولیه باشد (تطبیق ساخت‌یافته — بدون JSON.stringify)
+  // seed فقط وقتی کوئری فعال عین کوئری پیش‌فرض اولیه باشد (تطبیق ساخت‌یافته — بدون JSON.stringify)؛
+  // در صفحه جستجو initialData با همان s=q پخته شده است
   const isDefaultQuery =
-    page === 1 && sort === 'related' && !provinceId && !cityId && (!s || s === '');
+    page === 1 && sort === 'related' && !provinceId && !cityId && s === baseS;
   const { data, isFetching, isLoading } = useProducts(query, isDefaultQuery ? initialData : undefined);
   const items = data?.items ?? [];
 
@@ -106,6 +126,25 @@ function ProductListingInner({ categorySlug, categoryName, initialData, sidebar 
   // ─── موبایل: انتخاب دسته سلسله‌مراتبی ─────────────────────────
   const sheetLevel = catStack[catStack.length - 1];
   const sheetItems = sheetLevel ? (sheetLevel.children ?? []) : tree;
+
+  /**
+   * باز کردن بات‌شیت دسته‌ها — روی صفحه دسته، پشته تا سطح دسته فعال
+   * پیش‌تنظیم می‌شود (نه از ریشه) تا هم‌ترازهای/فرزندان همان دسته دیده شوند؛
+   * برای برگ، یک سطح عقب‌تر (هم‌ترازهای خودش) — عین رفتار باسکول.
+   */
+  const openCategoriesSheet = () => {
+    if (categorySlug) {
+      const p = findCategoryPath(tree, categorySlug);
+      if (p?.length) {
+        const cur = p[p.length - 1];
+        setCatStack(cur.children?.length ? p : p.slice(0, -1));
+        setSheet('categories');
+        return;
+      }
+    }
+    setCatStack([]);
+    setSheet('categories');
+  };
 
   const selectCategory = (c: Category) => {
     if (c.children?.length) {
@@ -177,10 +216,13 @@ function ProductListingInner({ categorySlug, categoryName, initialData, sidebar 
 
   return (
     <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-4 lg:grid-cols-[260px_1fr] lg:px-6 lg:py-6">
-      {/* پل جستجو — فقط همین ناحیه در رندر ایستا به CSR می‌افتد (نامرئی) */}
-      <Suspense>
-        <SearchBridge onS={setS} />
-      </Suspense>
+      {/* پل جستجو — فقط همین ناحیه در رندر ایستا به CSR می‌افتد (نامرئی)؛
+          در صفحه جستجوی مسیر-محور لازم نیست (s از prop سرور می‌آید) */}
+      {!searchQuery && (
+        <Suspense>
+          <SearchBridge onS={setS} />
+        </Suspense>
+      )}
       {/* سایدبار فیلتر — دسکتاپ */}
       <aside className="hidden space-y-5 lg:block" aria-label="فیلترها">
         {filterContent}
@@ -225,7 +267,7 @@ function ProductListingInner({ categorySlug, categoryName, initialData, sidebar 
         <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto border-b border-border/70 px-4 pb-2.5 lg:hidden">
           <button
             type="button"
-            onClick={() => setSheet('categories')}
+            onClick={openCategoriesSheet}
             className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground/85 transition-colors hover:border-foreground/30"
           >
             <List size={14} className="text-muted-foreground" />
@@ -313,6 +355,17 @@ function ProductListingInner({ categorySlug, categoryName, initialData, sidebar 
         onBack={catStack.length ? () => setCatStack((st) => st.slice(0, -1)) : undefined}
         title={sheetLevel ? sheetLevel.categoryName : 'همه دسته ها'}
       >
+        {/* میان‌بر: مشاهده همه محصولات دسته فعال (مثل باسکول) */}
+        {categoryName && categorySlug && (
+          <Link
+            href={`/product-list/category/${encodeURIComponent(categorySlug)}`}
+            onClick={closeSheets}
+            className="mb-1 flex items-center justify-between gap-2 rounded-lg bg-primary/5 px-3 py-3 text-sm font-bold text-primary transition-colors hover:bg-primary/10"
+          >
+            مشاهده همه محصولات {categoryName}
+            <ChevronLeft size={16} aria-hidden />
+          </Link>
+        )}
         <ul>
           {sheetItems.map((c) => (
             <li key={c.id}>
@@ -358,11 +411,13 @@ function ProductListingInner({ categorySlug, categoryName, initialData, sidebar 
 export function ProductListing({
   categorySlug,
   categoryName,
+  searchQuery,
   initialData,
   sidebar,
 }: {
   categorySlug?: string;
   categoryName?: string;
+  searchQuery?: string;
   initialData?: Paged<Product>;
   sidebar?: ReactNode;
 }) {
@@ -372,6 +427,7 @@ export function ProductListing({
     <ProductListingInner
       categorySlug={categorySlug}
       categoryName={categoryName}
+      searchQuery={searchQuery}
       initialData={initialData}
       sidebar={sidebar}
     />
