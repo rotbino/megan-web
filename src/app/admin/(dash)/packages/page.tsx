@@ -23,6 +23,7 @@ import {
   Plus,
   Sparkles,
   Trash2,
+  Users,
   X,
 } from 'lucide-react';
 import {
@@ -33,6 +34,7 @@ import {
   fetchAdminPlans,
   reviewAdminPackageOrder,
   setAdminCampaignDiscount,
+  setAdminCampaignPurchaseCount,
   upsertAdminCampaign,
   upsertAdminPlan,
   type AdminCampaignInput,
@@ -734,6 +736,8 @@ function CampaignsTab() {
   const [editing, setEditing] = useState<AdminCampaignInput | null>(null);
   const [discountTarget, setDiscountTarget] = useState<AdminCampaignRow | null>(null);
   const [manualPercent, setManualPercent] = useState('');
+  const [countTarget, setCountTarget] = useState<AdminCampaignRow | null>(null);
+  const [manualCount, setManualCount] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-campaigns'],
@@ -777,6 +781,29 @@ function CampaignsTab() {
     onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
   });
 
+  const setCount = useMutation({
+    mutationFn: (input: { id: string; manualPurchaseCount: number | null }) =>
+      setAdminCampaignPurchaseCount(input.id, input.manualPurchaseCount),
+    onSuccess: (d) => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-campaigns'] });
+      const spot =
+        d.currentTier && d.currentTier.to != null
+          ? ` — تخفیف ${toFa(d.currentTier.percent)}٪ فقط برای ${toFa(d.currentTier.spotsLeft ?? 0)} نفر دیگر`
+          : d.currentTier
+            ? ` — از نفر ${toFa(d.currentTier.from)} به بعد: ${toFa(d.currentTier.percent)}٪ تا پایان`
+            : '';
+      toast({
+        description:
+          d.manualPurchaseCount == null
+            ? `شمار خریداران به حالت واقعی برگشت (${toFa(d.purchaseCount)} نفر).${spot}`
+            : `${toFa(d.effectiveCount)} نفر خریدن نمایش داده می‌شود.${spot}`,
+      });
+      setCountTarget(null);
+      setManualCount('');
+    },
+    onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
+  });
+
   const items = data?.items ?? [];
 
   return (
@@ -795,6 +822,8 @@ function CampaignsTab() {
               description: '',
               type: 'time',
               discountPercent: 50,
+              finalPercent: 30,
+              manualPurchaseCount: null,
               isActive: true,
               tiers: [{ from: 1, to: 10, percent: 70 }],
             })
@@ -861,7 +890,7 @@ function CampaignsTab() {
                         {c.description}
                       </p>
                     )}
-                    {/* پله‌های کمپین تعدادی */}
+                    {/* پله‌های کمپین تعدادی + پله عمومی پس از پله‌ها */}
                     {c.type === 'quantity' && c.tiers.length > 0 && (
                       <div className="mt-1.5 flex flex-wrap gap-1">
                         {c.tiers.map((t, i) => (
@@ -874,30 +903,74 @@ function CampaignsTab() {
                               : `${toFa(t.from)}${t.from === t.to ? '' : `–${toFa(t.to)}`}: ${toFa(t.percent)}٪`}
                           </span>
                         ))}
+                        {c.finalPercent != null && (
+                          <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[9.5px] font-bold text-white">
+                            بعد از نفر آخر: {toFa(c.finalPercent)}٪ تا پایان
+                          </span>
+                        )}
                       </div>
                     )}
                     <p className="mt-1.5 text-[11px] text-muted-foreground">
-                      جذب: <b className="text-foreground">{toFa(c.purchaseCount)}</b> خرید ثبت‌شده
+                      جذب واقعی: <b className="text-foreground">{toFa(c.purchaseCount)}</b> خرید ثبت‌شده
+                      {c.manualPurchaseCount != null && (
+                        <span className="text-amber-600"> · شمار دستی: {toFa(c.manualPurchaseCount)}</span>
+                      )}
                       {c.manualDiscountPercent != null && (
                         <span className="text-red-600"> · درصد دستی: {toFa(c.manualDiscountPercent)}٪</span>
                       )}
                     </p>
+
+                    {/* گزارش زنده پله جاری — عین چیزی که کاربر در صفحه بسته‌ها می‌بیند
+                        (خواسته مالک ۳۱-۱۰: «بنویسه ۹ نفر خریدن و تخفیف ۷۰٪ فقط یک نفر جا داره») */}
+                    {c.running && c.type === 'quantity' && c.currentTier && (
+                      <p className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md bg-red-50 px-2.5 py-2 text-[11.5px] font-bold text-red-800 ring-1 ring-red-100">
+                        <Users size={13} className="shrink-0 text-red-600" />
+                        {toFa(c.effectiveCount)} نفر خریدند
+                        <span className="text-red-400">·</span>
+                        {c.currentTier.to != null ? (
+                          <>
+                            تخفیف {toFa(c.currentTier.percent)}٪ فقط برای{' '}
+                            <span className="text-red-600">{toFa(c.currentTier.spotsLeft ?? 0)} نفر دیگر</span> مانده
+                          </>
+                        ) : (
+                          <>
+                            از نفر {toFa(c.currentTier.from)} به بعد تا پایان:{' '}
+                            <span className="text-red-600">{toFa(c.currentTier.percent)}٪ تخفیف</span>
+                          </>
+                        )}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
                   {c.running && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 rounded-[10px] text-[11.5px]"
-                      onClick={() => {
-                        setDiscountTarget(c);
-                        setManualPercent(c.manualDiscountPercent == null ? '' : String(c.manualDiscountPercent));
-                      }}
-                    >
-                      <CalendarClock size={13} /> درصد جاری
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 rounded-[10px] text-[11.5px]"
+                        onClick={() => {
+                          setDiscountTarget(c);
+                          setManualPercent(c.manualDiscountPercent == null ? '' : String(c.manualDiscountPercent));
+                        }}
+                      >
+                        <CalendarClock size={13} /> درصد جاری
+                      </Button>
+                      {c.type === 'quantity' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-[10px] text-[11.5px]"
+                          onClick={() => {
+                            setCountTarget(c);
+                            setManualCount(c.manualPurchaseCount == null ? '' : String(c.manualPurchaseCount));
+                          }}
+                        >
+                          <Users size={13} /> شمار خریداران
+                        </Button>
+                      )}
+                    </>
                   )}
                   <Button
                     size="sm"
@@ -911,6 +984,8 @@ function CampaignsTab() {
                         type: c.type,
                         discountPercent: c.discountPercent,
                         manualDiscountPercent: c.manualDiscountPercent,
+                        finalPercent: c.finalPercent,
+                        manualPurchaseCount: c.manualPurchaseCount,
                         startsAt: c.startsAt,
                         endsAt: c.endsAt,
                         isActive: c.isActive,
@@ -988,6 +1063,72 @@ function CampaignsTab() {
             >
               {setDiscount.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
               ثبت درصد
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* دیالوگ تغییر سریع شمار خریداران — دستی/نمایشی (خواسته مالک ۳۱-۱۰:
+          «بتونم الکی ست کنم چند نفر خریدن تا صفحه کمپین فوریت بسازه») */}
+      <Dialog open={Boolean(countTarget)} onOpenChange={(v) => { if (!v) { setCountTarget(null); setManualCount(''); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>شمار خریداران «{countTarget?.title}»</DialogTitle>
+            <DialogDescription>
+              عددی که به‌عنوان «چند نفر خریدن» به کاربران نمایش داده می‌شود. خالی بگذارید تا فقط شمار واقعی خریدها
+              ملاک باشد. مثال: پله ۱ تا ۱۰ با ۷۰٪ و عدد ۹ → «۹ نفر خریدند، تخفیف ۷۰٪ فقط برای ۱ نفر دیگر».
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label className="text-[12px]">تعداد خریداران (دستی/نمایشی)</Label>
+            <Input
+              dir="ltr"
+              type="number"
+              min={0}
+              max={1000000}
+              value={manualCount}
+              onChange={(e) => setManualCount(e.target.value)}
+              placeholder="خالی = فقط شمار واقعی"
+              className="h-9 rounded-md"
+            />
+            {countTarget && (
+              <p className="text-[10.5px] leading-5 text-muted-foreground">
+                خرید واقعی ثبت‌شده: <b className="text-foreground">{toFa(countTarget.purchaseCount)}</b> نفر
+                {countTarget.currentTier && countTarget.currentTier.to != null && (
+                  <>
+                    {' '}— پله جاری: نفر {toFa(countTarget.currentTier.from)} تا {toFa(countTarget.currentTier.to ?? 0)}{' '}
+                    با {toFa(countTarget.currentTier.percent)}٪
+                  </>
+                )}
+              </p>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 rounded-lg"
+              disabled={setCount.isPending}
+              onClick={() => countTarget && setCount.mutate({ id: countTarget.id, manualPurchaseCount: null })}
+            >
+              فقط واقعی
+            </Button>
+            <Button
+              size="sm"
+              className="h-9 rounded-lg"
+              disabled={
+                setCount.isPending ||
+                manualCount === '' ||
+                Number(manualCount) < 0 ||
+                !Number.isFinite(Number(manualCount))
+              }
+              onClick={() =>
+                countTarget &&
+                setCount.mutate({ id: countTarget.id, manualPurchaseCount: Math.max(0, Math.round(Number(manualCount))) })
+              }
+            >
+              {setCount.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+              ثبت تعداد
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1082,6 +1223,23 @@ function CampaignEditDialog({
                   />
                 </div>
               )}
+              {form.type === 'quantity' && (
+                <div className="space-y-1.5">
+                  <Label className="text-[12px]">تخفیف عمومی بعد از پله‌ها (٪)</Label>
+                  <Input
+                    dir="ltr"
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={form.finalPercent ?? ''}
+                    onChange={(e) =>
+                      setForm({ ...form, finalPercent: e.target.value === '' ? null : Number(e.target.value) })
+                    }
+                    placeholder="مثلاً 30"
+                    className="h-9 rounded-md"
+                  />
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label className="text-[12px]">شروع</Label>
                 <Input
@@ -1109,7 +1267,7 @@ function CampaignEditDialog({
               کمپین فعال باشد
             </label>
 
-            {/* پله‌های کمپین تعدادی */}
+            {/* پله‌های کمپین تعدادی + تخفیف عمومی بعد از پله‌ها */}
             {form.type === 'quantity' && (
               <div className="space-y-2 rounded-md border border-dashed border-red-200 bg-red-50/30 p-3">
                 <div className="flex items-center justify-between">
@@ -1186,9 +1344,31 @@ function CampaignEditDialog({
                   </div>
                 ))}
                 <p className="text-[10px] leading-5 text-red-900/70">
-                  مثال: نفر ۱ تا ۱۰ → ۷۰٪ | ۱۱ تا ۴۰ → ۵۰٪ | ۴۱ تا ۱۴۰ → ۳۰٪ | ۱۴۱ تا ∞ → ۳۰٪. آخرین پله با «تا» خالی
-                  یعنی تا پایان کمپین.
+                  مثال: نفر ۱ تا ۱۰ → ۷۰٪ | ۱۱ تا ۴۰ → ۵۰٪ | ۴۱ تا ۱۴۰ → ۳۰٪. «تخفیف عمومی بعد از پله‌ها» از نفر
+                  بعدِ آخرین پله شروع می‌شود و تا پایان کمپین معتبر می‌ماند — اگر خالی بگذارید، بعد از اتمام پله‌ها
+                  تخفیف تمام می‌شود.
                 </p>
+
+                {/* شمار دستی/نمایشی خریداران — فوریت‌سازی (خواسته مالک ۳۱-۱۰) */}
+                <div className="space-y-1.5 rounded-md border border-amber-200 bg-amber-50/50 p-2.5">
+                  <Label className="text-[12px] text-amber-800">شمار دستی خریداران (نمایشی)</Label>
+                  <Input
+                    dir="ltr"
+                    type="number"
+                    min={0}
+                    max={1000000}
+                    value={form.manualPurchaseCount ?? ''}
+                    onChange={(e) =>
+                      setForm({ ...form, manualPurchaseCount: e.target.value === '' ? null : Math.max(0, Number(e.target.value)) })
+                    }
+                    placeholder="خالی = فقط شمار واقعی خریدها"
+                    className="h-8 rounded-md"
+                  />
+                  <p className="text-[10px] leading-5 text-amber-800/80">
+                    عددی که به‌عنوان «چند نفر خریدن» نمایش داده می‌شود (بیشینهٔ واقعی/دستی ملاک است). مثال: پله ۱ تا ۱۰
+                    با ۷۰٪ و عدد ۹ → «۹ نفر خریدند، تخفیف ۷۰٪ فقط برای ۱ نفر دیگر».
+                  </p>
+                </div>
               </div>
             )}
           </div>

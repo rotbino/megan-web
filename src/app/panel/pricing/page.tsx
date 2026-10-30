@@ -1,16 +1,15 @@
 'use client';
 
 /**
- * بسته‌های اشتراک ایمچ — کمپین‌محور (خواسته مالک ۳۱-۱۰):
- *  • بنر کمپین فعال (عنوان + شعار/توضیح + درصد + تاریخ پایان + پیشرفت تعدادی)
- *    بالای بسته‌ها — «جشنواره آغاز فعالیت ایمچ» و هر کمپین دیگری که ادمین بسازد.
- *  • قیمت پایه از جدول Plan (ادمین تعریف/ویرایش می‌کند) + تخفیف جاری کمپین →
- *    قیمت پایه خط‌خورده + بج درصد + قیمت نهایی.
- *  • بسته رایگانِ همیشگی + بسته‌های پولی با ویژگی‌های قابل تنظیم ادمین.
- *  • پرداخت کارت به کارت + فیش → تأیید ادمین → بسته فعال/تمدید می‌شود.
- *    اگر بسته فعال دارید، خرید جدید «رزرو» است و از تاریخ انقضای فعلی تمدید
- *    می‌شود — مالکان فعلی از جشنواره‌ها محروم نمی‌شوند (خواسته مالک).
- *  • نردبان (۵۰هزار/ماه تا ۴ ماه از کیف پول) جدا از اشتراک باقی است.
+ * بسته‌های اشتراک ایمچ — کمپین‌محور (بازطراحی ۳۱-۱۰ به درخواست مالک):
+ *  • گرید auto-fit — اگر ادمین بسته‌ای را از دید خارج کند، بقیه کارت‌ها
+ *    عرض صفحه دسکتاپ را کامل پر می‌کنند.
+ *  • کارت خلوتر: قیمت اصلی بالا با فونت بزرگ و رنگ غلیظ (با تخفیف خط‌خورده)،
+ *    قیمت نهایی با همان وضوح زیرش، بج درصد بزرگ، بدون «تومان در ماه».
+ *  • امکانات هر بسته با فونت بزرگ‌تر (به‌خصوص دسکتاپ).
+ *  • نردبان از این صفحه حذف شد — فقط در کیف پول (جدا بودن دو مفهوم).
+ *  • پرداخت کارت به کارت + فیش → تأیید ادمین؛ خرید در حین بسته فعال =
+ *    رزرو با امتداد از انقضای فعلی (مالکان فعلی محروم نمی‌شوند).
  */
 
 import { useRef, useState } from 'react';
@@ -30,7 +29,7 @@ import {
   ReceiptText,
   ShieldCheck,
   Sparkles,
-  TrendingUp,
+  Users,
   X,
   XCircle,
 } from 'lucide-react';
@@ -59,7 +58,7 @@ import {
 } from '@/lib/mock/data';
 import { dateFa, priceFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { MembershipPlan, MyPackageOrder, SalesCampaignInfo } from '@/lib/types';
+import type { CampaignTier, MembershipPlan, MyPackageOrder, SalesCampaignInfo } from '@/lib/types';
 
 /** ردیف امکانات بسته رایگان — ✓ دارد یا ✗ ندارد (قابل مقایسه با پولی‌ها) */
 const FREE_ROWS: Array<{ label: string; included: boolean }> = [
@@ -79,6 +78,21 @@ function tierProgress(campaign: SalesCampaignInfo): number {
   const size = t.to - t.from + 1;
   if (size <= 0) return 100;
   return Math.min(100, Math.round((t.boughtInTier / size) * 100));
+}
+
+/** پله‌های نمایشی بنر — پله‌های تعریف‌شده + پله عمومی «تا پایان کمپین»
+ *  (خواسته مالک ۳۱-۱۰: بعد از نفر آخرِ پله‌ها هم تخفیف عمومی ادامه دارد). */
+function displayTiers(campaign: SalesCampaignInfo): CampaignTier[] {
+  const tiers = [...campaign.tiers];
+  const last = tiers[tiers.length - 1];
+  if (
+    campaign.finalPercent != null &&
+    last != null &&
+    last.to != null
+  ) {
+    tiers.push({ from: last.to + 1, to: null, percent: campaign.finalPercent });
+  }
+  return tiers;
 }
 
 /** بنر کمپین فعال — عنوان + شعار + درصد + پایان + پیشرفت تعدادی (خواسته مالک ۳۱-۱۰) */
@@ -118,39 +132,51 @@ function CampaignBanner({ campaign }: { campaign: SalesCampaignInfo }) {
             </p>
           )}
 
-          {/* کمپین تعدادی — پیشرفت پله جاری + تخفیف بازه بعدی */}
+          {/* کمپین تعدادی — گزارش زنده: چند نفر خریدن + چند جا مانده (خواسته مالک ۳۱-۱۰) */}
           {campaign.type === 'quantity' && campaign.currentTier && (
-            <div className="mt-3 max-w-lg">
-              <div className="flex items-center justify-between text-[11px] font-bold text-red-800">
-                <span>
-                  {toFa(campaign.currentTier.boughtInTier)} نفر از{' '}
-                  {campaign.currentTier.to == null
-                    ? 'ظرفیت بازه فعلی'
-                    : `${toFa(campaign.currentTier.to - campaign.currentTier.from + 1)} نفر`}
-                  این بازه خرید کردند
-                </span>
-                <span>تخفیف فعلی: {toFa(campaign.currentTier.percent)}٪</span>
-              </div>
-              <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white">
-                <div
-                  className="h-full rounded-full bg-red-500 transition-all"
-                  style={{ width: `${tierProgress(campaign)}%` }}
-                />
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {campaign.tiers.map((t, i) => (
+            <div className="mt-3 max-w-xl">
+              {campaign.currentTier.to != null ? (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[12.5px] font-extrabold text-red-800">
+                    <span className="flex items-center gap-1.5">
+                      <Users size={15} className="text-red-600" />
+                      {toFa(campaign.purchaseCount)} نفر خریدند
+                    </span>
+                    <span>
+                      تخفیف {toFa(campaign.currentTier.percent)}٪ فقط برای{' '}
+                      <span className="text-red-600">{toFa(campaign.currentTier.spotsLeft ?? 0)} نفر دیگر</span>
+                      مانده
+                    </span>
+                  </div>
+                  <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white">
+                    <div
+                      className="h-full rounded-full bg-red-500 transition-all"
+                      style={{ width: `${tierProgress(campaign)}%` }}
+                    />
+                  </div>
+                </>
+              ) : (
+                <p className="flex items-center gap-1.5 text-[12.5px] font-extrabold text-red-800">
+                  <Users size={15} className="text-red-600" />
+                  {toFa(campaign.purchaseCount)} نفر خریدند — از نفر{' '}
+                  {toFa(campaign.currentTier.from)} به بعد تا پایان کمپین:{' '}
+                  <span className="text-red-600">{toFa(campaign.currentTier.percent)}٪ تخفیف</span>
+                </p>
+              )}
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {displayTiers(campaign).map((t, i) => (
                   <span
                     key={i}
                     className={cn(
-                      'rounded-full px-2 py-0.5 text-[10px] font-bold',
+                      'rounded-full px-2.5 py-1 text-[11px] font-bold',
                       campaign.currentTier && t.from === campaign.currentTier.from
                         ? 'bg-red-600 text-white'
                         : 'bg-white text-red-700/80 ring-1 ring-red-200',
                     )}
                   >
                     {t.to == null
-                      ? `نفر ${toFa(t.from)} به بعد ${toFa(t.percent)}٪`
-                      : `${toFa(t.from)}${t.from === t.to ? '' : ` تا ${toFa(t.to)}`} نفر اول${i === 0 ? '' : 'ِ بعدی'} ${toFa(t.percent)}٪`}
+                      ? `بعد از نفر ${toFa(t.from - 1)}: ${toFa(t.percent)}٪ تا پایان کمپین`
+                      : `نفر ${toFa(t.from)}${t.from === t.to ? '' : ` تا ${toFa(t.to)}`}: ${toFa(t.percent)}٪`}
                   </span>
                 ))}
               </div>
@@ -225,7 +251,7 @@ export default function PricingPage() {
   const planTitle = (t: number) => (t === 1 ? 'دو ماهه' : t === 2 ? 'شش ماهه' : 'یک‌ساله');
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4">
+    <div className="mx-auto max-w-[1400px] space-y-5">
       {/* بنر کمپین فعال — بالای بسته‌ها (خواسته مالک ۳۱-۱۰) */}
       {campaign && campaign.discountPercent > 0 && <CampaignBanner campaign={campaign} />}
 
@@ -270,28 +296,33 @@ export default function PricingPage() {
         </div>
       </PanelCard>
 
-      {/* کارت‌های بسته — رایگان + پولی‌ها (از جدول Plan ادمین) */}
+      {/* کارت‌های بسته — رایگان + پولی‌ها (از جدول Plan ادمین).
+          گرید auto-fit: با حذف/مخفی شدن هر بسته، بقیه کارت‌ها عرض صفحه را
+          کامل پر می‌کنند (خواسته مالک ۳۱-۱۰). */}
       {plansLoading ? (
         <div className="h-40 animate-pulse rounded-xl border bg-card" />
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div
+          className="grid items-stretch gap-4 lg:gap-5"
+          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))' }}
+        >
           {/* ── رایگان ── */}
-          <div className="relative flex flex-col rounded-xl border bg-card p-5">
-            <p className="text-center text-sm font-extrabold">{FREE_PACKAGE.title}</p>
-            <p className="mt-3 text-center">
-              <span className="text-xl font-black text-primary">رایگان</span>
-              <span className="ms-1 text-[11px] text-muted-foreground">برای همیشه</span>
+          <div className="relative flex flex-col rounded-xl border bg-card p-6">
+            <p className="text-center text-[15px] font-extrabold">{FREE_PACKAGE.title}</p>
+            <p className="mt-4 text-center">
+              <span className="font-num text-[26px] font-black text-primary">رایگان</span>
+              <span className="ms-1.5 text-xs text-muted-foreground">برای همیشه</span>
             </p>
-            <Button asChild variant="outline" size="sm" className="mx-auto mt-4 w-full rounded-md text-xs">
+            <Button asChild variant="outline" size="sm" className="mx-auto mt-5 w-full rounded-md text-xs">
               <Link href="/panel">{myPackage?.isActive ? 'بسته جایگزین رایگان' : 'بسته فعلی شما'}</Link>
             </Button>
-            <ul className="mt-5 flex-1 space-y-2.5">
+            <ul className="mt-6 flex-1 space-y-3 border-t pt-5">
               {FREE_ROWS.map((f) => (
-                <li key={f.label} className="flex items-start gap-1.5 text-[11.5px] leading-5">
+                <li key={f.label} className="flex items-start gap-2 text-[12.5px] leading-6 lg:text-[13.5px]">
                   {f.included ? (
-                    <Check size={14} className="mt-0.5 shrink-0 text-emerald-600" />
+                    <Check size={16} className="mt-1 shrink-0 text-emerald-600" />
                   ) : (
-                    <X size={14} className="mt-0.5 shrink-0 text-red-400" />
+                    <X size={16} className="mt-1 shrink-0 text-red-400" />
                   )}
                   <span className={cn(!f.included && 'text-muted-foreground/80')}>{f.label}</span>
                 </li>
@@ -299,7 +330,7 @@ export default function PricingPage() {
             </ul>
           </div>
 
-          {/* ── پولی‌ها — قیمت پایه + تخفیف کمپین جاری ── */}
+          {/* ── پولی‌ها — قیمت اصلی (بالا/غلیظ/خط‌خورده) + قیمت نهایی (خواسته مالک ۳۱-۱۰) ── */}
           {plans.map((p) => {
             const active = myPackage?.isActive && myPackage.pakageType === p.pakageType;
             const percent = p.discountPercent ?? 0;
@@ -309,56 +340,69 @@ export default function PricingPage() {
               <div
                 key={p.key}
                 className={cn(
-                  'relative flex flex-col rounded-xl border p-5',
+                  'relative flex flex-col rounded-xl border p-6',
                   p.bestSeller ? 'border-amber-300 shadow-md' : 'bg-card',
                 )}
               >
                 {p.bestSeller && (
-                  <span className="absolute -top-2.5 right-4 inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] font-bold text-white">
-                    <Sparkles size={11} /> پرفروش‌ترین
+                  <span className="absolute -top-3 right-5 inline-flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold text-white">
+                    <Sparkles size={12} /> پرفروش‌ترین
                   </span>
                 )}
                 {active && (
-                  <span className="absolute -top-2.5 left-4 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-0.5 text-[10px] font-bold text-white">
-                    <BadgeCheck size={11} /> فعال شما
+                  <span className="absolute -top-3 left-5 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-bold text-white">
+                    <BadgeCheck size={12} /> فعال شما
                   </span>
                 )}
-                <p className="text-center text-sm font-extrabold">اشتراک {p.title}</p>
-                <p className="mt-3 text-center">
+                <p className="text-center text-[15px] font-extrabold">اشتراک {p.title}</p>
+
+                {/* بلوک قیمت — بج درصد بزرگ + قیمت اصلی خط‌خورده + قیمت نهایی */}
+                <div className="mt-4 flex flex-col items-center gap-1.5">
                   {percent > 0 && (
-                    <span className="font-num me-1.5 text-sm text-muted-foreground line-through decoration-red-500/70 decoration-2">
-                      {priceFa(p.amount)}
+                    <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-4 py-1.5 text-[17px] font-black text-white shadow-sm">
+                      <Percent size={16} strokeWidth={2.8} /> {toFa(percent)}٪ تخفیف
                     </span>
                   )}
-                  <span className="font-num text-xl font-black">{priceFa(finalAmount)}</span>
-                </p>
-                <p className="mt-1 text-center text-[10px] text-muted-foreground">
-                  {priceFa(Math.round(finalAmount / p.months))} در ماه
-                  {percent > 0 && (
-                    <span className="ms-1.5 rounded-full bg-red-600 px-1.5 py-0.5 text-[9px] font-extrabold text-white">
-                      {toFa(percent)}٪ تخفیف
+                  <p className="mt-1 flex items-baseline gap-1.5">
+                    <span
+                      className={cn(
+                        'font-num text-[24px] font-black leading-none sm:text-[27px]',
+                        percent > 0 && 'text-neutral-800 line-through decoration-red-600 decoration-[3px]',
+                      )}
+                    >
+                      {toFa(p.amount)}
                     </span>
+                    <span className="text-xs text-muted-foreground">تومان</span>
+                  </p>
+                  {percent > 0 && (
+                    <p className="mt-1 flex items-baseline gap-1.5">
+                      <span className="font-num text-[26px] font-black leading-none text-emerald-600 sm:text-[30px]">
+                        {toFa(finalAmount)}
+                      </span>
+                      <span className="text-xs font-bold text-emerald-700/80">تومان</span>
+                    </p>
                   )}
-                </p>
+                </div>
+
                 <Button
                   size="sm"
                   className={cn(
-                    'mx-auto mt-4 w-full rounded-md text-xs',
+                    'mx-auto mt-5 w-full rounded-md text-xs',
                     p.bestSeller && 'bg-amber-500 hover:bg-amber-600',
                   )}
                   onClick={() => setBuying(p)}
                 >
                   <CreditCard size={14} className="ms-1" /> انتخاب و پرداخت
                 </Button>
-                <ul className="mt-5 flex-1 space-y-2.5">
+                <ul className="mt-6 flex-1 space-y-3 border-t pt-5">
                   {features.map((f) => (
-                    <li key={f} className="flex items-start gap-1.5 text-[11.5px] leading-5">
-                      <Check size={14} className="mt-0.5 shrink-0 text-emerald-600" />
+                    <li key={f} className="flex items-start gap-2 text-[12.5px] leading-6 lg:text-[13.5px]">
+                      <Check size={16} className="mt-1 shrink-0 text-emerald-600" />
                       {f}
                     </li>
                   ))}
-                  <li className="flex items-start gap-1.5 text-[11.5px] leading-5">
-                    <InfinityIcon size={14} className="mt-0.5 shrink-0 text-emerald-600" />
+                  <li className="flex items-start gap-2 text-[12.5px] leading-6 lg:text-[13.5px]">
+                    <InfinityIcon size={16} className="mt-1 shrink-0 text-emerald-600" />
                     تمدید خودکار اعتبار با خرید مجدد (امتداد از انقضای فعلی)
                   </li>
                 </ul>
@@ -367,32 +411,6 @@ export default function PricingPage() {
           })}
         </div>
       )}
-
-      {/* نردبان — جدا از اشتراک */}
-      <PanelCard className="space-y-3">
-        <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
-            <TrendingUp size={20} />
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-extrabold">نردبان آگهی — جدا از بسته‌های اشتراک</p>
-            <p className="mt-1 text-xs leading-6 text-muted-foreground">
-              نردبان یعنی قرار گرفتن آگهی در صدر محصولات، حتی بالاتر از آگهی‌های ویژه. هزینه آن به‌صورت جداگانه از کیف
-              پول پرداخت می‌شود و به اشتراک ربطی ندارد؛ پس از آگهی‌های نردبانی و ویژه، بقیه آگهی‌ها بر اساس جدیدترین
-              به‌روزرسانی نمایش داده می‌شوند. این امکان به‌ویژه برای فروشندگانی که تعداد کالای کمی دارند به‌صرفه‌تر و
-              مؤثرتر است. برای فعال کردن، از «محصولات من» روی دکمه «نردبان» آگهی مورد نظر بزنید.
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
-            <Link href="/panel/products">نردبان از محصولات من</Link>
-          </Button>
-          <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
-            <Link href="/panel/wallet">شارژ کیف پول (کارت به کارت)</Link>
-          </Button>
-        </div>
-      </PanelCard>
 
       {/* سفارش‌های من */}
       <PanelCard>
@@ -451,13 +469,16 @@ export default function PricingPage() {
 
                 {/* مبلغ + کارت */}
                 <div className="rounded-lg bg-secondary/60 p-3">
-                  <p className="text-xs">
-                    ۱) مبلغ <b className="text-foreground">{buying && priceFa(buying.finalAmount ?? buying.amount)}</b> را
-                    به کارت زیر واریز کنید:
+                  <p className="text-xs leading-6">
+                    ۱) مبلغ{' '}
+                    <b className="font-num text-[15px] font-black text-foreground">
+                      {buying && toFa(buying.finalAmount ?? buying.amount)} تومان
+                    </b>{' '}
+                    را به کارت زیر واریز کنید:
                     {buying && (buying.discountPercent ?? 0) > 0 && (
-                      <span className="ms-1 text-[10px] text-red-600">
+                      <span className="ms-1 text-[10.5px] text-red-600">
                         (با {toFa(buying.discountPercent ?? 0)}٪ تخفیف{' '}
-                        <span className="line-through">{priceFa(buying.amount)}</span>)
+                        <span className="line-through">{toFa(buying.amount)}</span>)
                       </span>
                     )}
                   </p>

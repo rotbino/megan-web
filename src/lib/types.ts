@@ -370,9 +370,19 @@ export interface SalesCampaignInfo {
   /** درصد جاری — در تعدادی از پله/override دستی */
   discountPercent: number;
   endsAt: string | null;
+  /** شمار مؤثر خریداران (بیشینهٔ واقعی/دستی) — عدد نمایشی کاربر */
   purchaseCount: number;
-  currentTier: { from: number; to: number | null; percent: number; boughtInTier: number } | null;
+  currentTier: {
+    from: number;
+    to: number | null;
+    percent: number;
+    boughtInTier: number;
+    /** جاهای باقی‌مانده همین پله — null = بی‌پایان (تا پایان کمپین) */
+    spotsLeft: number | null;
+  } | null;
   tiers: CampaignTier[];
+  /** درصد عمومی پس از اتمام پله‌های محدود — تا پایان کمپین (خواسته مالک ۳۱-۱۰) */
+  finalPercent: number | null;
 }
 
 /** بسته فعال من + امکانات مؤثر — تک منبع گیت‌های سمت کلاینت */

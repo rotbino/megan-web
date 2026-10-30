@@ -934,6 +934,15 @@ export interface AdminPlanInput {
 }
 
 /** کمپین فروش — زمانی/تعدادی (خواسته مالک ۳۱-۱۰) */
+export interface AdminCampaignTierReport {
+  from: number;
+  to: number | null;
+  percent: number;
+  boughtInTier: number;
+  /** جاهای باقی‌مانده همین پله — null = بی‌پایان (تا پایان کمپین) */
+  spotsLeft: number | null;
+}
+
 export interface AdminCampaignRow {
   id: string;
   title: string;
@@ -941,6 +950,10 @@ export interface AdminCampaignRow {
   type: 'time' | 'quantity';
   discountPercent: number;
   manualDiscountPercent: number | null;
+  /** درصد عمومی پس از اتمام پله‌های محدود — تا پایان کمپین */
+  finalPercent: number | null;
+  /** شمار دستی/نمایشی خریداران — مؤثر = max(واقعی، دستی) */
+  manualPurchaseCount: number | null;
   startsAt: string;
   endsAt: string | null;
   isActive: boolean;
@@ -948,8 +961,12 @@ export interface AdminCampaignRow {
   running: boolean;
   /** درصد جاری مؤثر (روی صفحه بسته‌ها همین اعمال می‌شود) */
   currentPercent: number;
-  /** شمار خریدهای ثبت‌شده در این کمپین */
+  /** شمار واقعی خریدهای ثبت‌شده */
   purchaseCount: number;
+  /** شمار مؤثر = بیشینهٔ واقعی/دستی — عدد نمایشی صفحه بسته‌ها */
+  effectiveCount: number;
+  /** گزارش پله جاری — عین چیزی که کاربر می‌بیند */
+  currentTier: AdminCampaignTierReport | null;
   tiers: Array<{ from: number; to: number | null; percent: number }>;
   createdAt: string;
 }
@@ -961,6 +978,10 @@ export interface AdminCampaignInput {
   type: 'time' | 'quantity';
   discountPercent: number;
   manualDiscountPercent?: number | null;
+  /** درصد عمومی پس از اتمام پله‌های محدود — تا پایان کمپین */
+  finalPercent?: number | null;
+  /** شمار دستی/نمایشی خریداران */
+  manualPurchaseCount?: number | null;
   startsAt?: string;
   endsAt?: string | null;
   isActive: boolean;
@@ -1000,6 +1021,22 @@ export async function deleteAdminCampaign(id: string): Promise<{ id: string }> {
 /** تغییر سریع درصد تخفیف جاری کمپین (null = خودکار پله‌ای) */
 export async function setAdminCampaignDiscount(id: string, manualDiscountPercent: number | null): Promise<{ id: string; manualDiscountPercent: number | null; currentPercent: number }> {
   return adminFetch('/admin/packages/setCampaignDiscount', { id, manualDiscountPercent });
+}
+
+/** تغییر سریع شمار دستی/نمایشی خریداران (null = فقط شمار واقعی) —
+ *  خواسته مالک ۳۱-۱۰: «الکی ست کنم چند نفر خریدن تا فوریت بسازم». */
+export async function setAdminCampaignPurchaseCount(
+  id: string,
+  manualPurchaseCount: number | null,
+): Promise<{
+  id: string;
+  manualPurchaseCount: number | null;
+  purchaseCount: number;
+  effectiveCount: number;
+  currentPercent: number;
+  currentTier: AdminCampaignTierReport | null;
+}> {
+  return adminFetch('/admin/packages/setCampaignPurchaseCount', { id, manualPurchaseCount });
 }
 
 // ─── صف احراز هویت (A5 — نمای صف) ───────────────────────────────────────────

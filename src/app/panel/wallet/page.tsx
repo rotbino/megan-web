@@ -14,6 +14,7 @@
  */
 
 import { useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import {
   CheckCircle2,
   Coins,
@@ -45,6 +46,8 @@ import {
   CUSTOM_CHARGE_MAX,
   CUSTOM_CHARGE_MIN,
   CUSTOM_CHARGE_TIER2_AT,
+  LADDER_MAX_MONTHS,
+  LADDER_MONTHLY_PRICE,
   MIN_CHARGE,
   customBonusPercent,
 } from '@/lib/mock/data';
@@ -387,6 +390,34 @@ export default function WalletPage() {
             </Button>
           </>
         )}
+      </PanelCard>
+
+      {/* نردبان آگهی — تبلیغ جدا از شارژ (خواسته مالک ۳۱-۱۰: این مفهوم فقط
+          در کیف پول بماند تا با بسته‌های اشتراک قاطی نشود) */}
+      <PanelCard className="space-y-3">
+        <div className="flex items-start gap-3">
+          <span className="grid size-11 shrink-0 place-items-center rounded-md bg-amber-500/10 text-amber-600">
+            <TrendingUp size={20} />
+          </span>
+          <div className="min-w-0">
+            <p className="flex flex-wrap items-center gap-2 text-sm font-extrabold">
+              نردبان آگهی
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10.5px] font-bold text-amber-700">
+                {priceFa(LADDER_MONTHLY_PRICE)} / ماه — تا {toFa(LADDER_MAX_MONTHS)} ماه
+              </span>
+            </p>
+            <p className="mt-1.5 text-xs leading-6 text-muted-foreground">
+              نردبان یعنی قرار گرفتن آگهی در صدر محصولات، حتی بالاتر از آگهی‌های ویژه. هزینه آن جداگانه و از همین کیف
+              پول پرداخت می‌شود؛ برای فعال کردن، از «محصولات من» روی دکمه «نردبان» آگهی مورد نظر بزنید. اگر موجودی
+              کافی ندارید، ابتدا یکی از پکیج‌های شارژ بالا را فعال کنید.
+            </p>
+          </div>
+        </div>
+        <div>
+          <Button asChild size="sm" className="rounded-md text-xs">
+            <Link href="/panel/products">نردبان آگهی از «محصولات من»</Link>
+          </Button>
+        </div>
       </PanelCard>
 
       {/* تاریخچه — دو تب: تراکنش‌های قطعی / فیش‌های کارت به کارت */}
