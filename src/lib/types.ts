@@ -291,12 +291,21 @@ export type SurveyScore = 'excellent' | 'good' | 'average' | 'bad' | 'very_bad';
 // کیف پول — پرداخت کارت به کارت (جایگزین درگاه پرداخت)
 // ─────────────────────────────────────────────────────────────
 
-/** پکیج شارژ کیف پول — سه پکیج کارت به کارت */
+/** پکیج شارژ کیف پول — سه پکیج کارت به کارت + «سایر» (مبلغ دلخواه) */
 export interface ChargePackage {
-  key: 'p100' | 'p200' | 'p400';
+  key: 'p100' | 'p200' | 'p400' | 'custom';
   amount: number; // مبلغ واریزی (تومان)
-  bonusPercent: number; // ۰ / ۱۰ / ۲۰ درصد شارژ اضافه
+  bonusPercent: number; // درصد شارژ اضافه (دلخواه: ۳۰ یا ۵۰)
   charge: number; // شارژ اعمالی نهایی = amount × (۱ + درصد)
+}
+
+/** قواعد شارژ دلخواه (دکمه «سایر») — از getWallet بک‌اند هم می‌آید */
+export interface CustomChargeRules {
+  min: number; // حداقل ۴۰۰ هزار
+  max: number;
+  tier2At: number; // آستانه ۵۰٪ (بالای ۱ میلیون)
+  tier1Percent: number; // ۳۰٪
+  tier2Percent: number; // ۵۰٪
 }
 
 /** تراکنش کیف پول — فقط اقلام قطعی‌شده (در انتظار/ردشده اینجا نیستند؛ تب کارت‌به‌کارت‌اند) */
@@ -328,14 +337,42 @@ export interface MyChargeOrder {
 // بسته‌های اشتراک (عضویت ویژه — کارت به کارت + تأیید ادمین)
 // ─────────────────────────────────────────────────────────────
 
-/** پلن اشتراک — ۲/۶/۱۲ ماهه؛ قیمت‌ها حدود یک‌بیستم باسکول */
+/** پلن اشتراک — از جدول Plan بک‌اند (ادمین تعریف/ویرایش می‌کند) */
 export interface MembershipPlan {
-  key: 'p2m' | 'p6m' | 'p12m';
+  key: string;
   months: number;
-  amount: number; // تومان
+  amount: number; // قیمت پایه قبل از تخفیف (تومان)
   title: string; // «دو ماهه»
   pakageType: 1 | 2 | 3;
   bestSeller?: boolean;
+  /** ویژگی‌های بسته — ردیف‌های کارت قیمت (از ادمین) */
+  features?: string[];
+  /** درصد تخفیف جاری کمپین — ۰ = بدون کمپین */
+  discountPercent?: number;
+  /** قیمت نهایی قابل پرداخت = amount × (۱ − تخفیف) */
+  finalAmount?: number;
+  sortOrder?: number;
+}
+
+/** پله کمپین تعدادی — «۱۰ نفر اول ۷۰٪» */
+export interface CampaignTier {
+  from: number;
+  to: number | null; // null = تا پایان کمپین
+  percent: number;
+}
+
+/** کمپین فروش فعال — بنر بالای بسته‌ها (خواسته مالک ۳۱-۱۰) */
+export interface SalesCampaignInfo {
+  id: string;
+  title: string;
+  description: string | null;
+  type: 'time' | 'quantity';
+  /** درصد جاری — در تعدادی از پله/override دستی */
+  discountPercent: number;
+  endsAt: string | null;
+  purchaseCount: number;
+  currentTier: { from: number; to: number | null; percent: number; boughtInTier: number } | null;
+  tiers: CampaignTier[];
 }
 
 /** بسته فعال من + امکانات مؤثر — تک منبع گیت‌های سمت کلاینت */
@@ -344,7 +381,13 @@ export interface MyPackage {
   pakageType: PackageType;
   isActive: boolean;
   expiresAt: string | null;
+  /** شروع دوره جاری — مبنای نمودار دایره‌ای «ایمچ من» */
+  startedAt?: string | null;
+  /** کل روزهای دوره جاری (کل دایره) */
+  totalDays?: number | null;
   daysLeft: number | null;
+  /** عنوان بسته جاری از جدول Plan — «اشتراک شش ماهه» */
+  planTitle?: string | null;
   /** تعداد فیش‌های در انتظار بررسی */
   pendingCount: number;
   features: {
@@ -362,6 +405,12 @@ export interface MyPackageOrder {
   planKey: string;
   months: number;
   amount: number;
+  /** قیمت پایه قبل از تخفیف (snapshot — نمایش خط‌خورده) */
+  baseAmount?: number;
+  /** درصد تخفیف کمپین لحظه خرید */
+  discountPercent?: number;
+  /** عنوان کمپین لحظه خرید */
+  campaignTitle?: string | null;
   rejectionReason?: string | null;
   reviewedAt?: string | null;
   startsAt?: string | null;

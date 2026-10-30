@@ -28,9 +28,11 @@ export function ProductCard({ product, priority = false }: { product: Product; p
           iconSize={48}
           priority={priority}
         />
-        {product.isLadder && (
-          <span className="absolute start-1.5 top-1.5 md:start-2 md:top-2">
-            <LadderBadge compact />
+        {/* نشان‌های قرمز روی تصویر (خواسته مالک ۳۱-۱۰ — batch روی عکس) */}
+        {(product.isLadder || product.isElevated) && (
+          <span className="absolute start-1.5 top-1.5 flex flex-col items-start gap-1 md:start-2 md:top-2">
+            {product.isLadder && <LadderBadge compact />}
+            {product.isElevated && <PremiumSellerBadge compact />}
           </span>
         )}
         {product.hasVideo && (
@@ -60,8 +62,6 @@ export function ProductCard({ product, priority = false }: { product: Product; p
           {product.seller.isVerified ? <VerifiedBadge /> : (
             <span className="text-[11px] text-muted-foreground">بدون احراز هویت</span>
           )}
-          {/* فروشنده ویژه — بسته اشتراک فعال (سورت بالاتر از عادی — ۳۰-۱۰) */}
-          {product.isElevated && <PremiumSellerBadge compact />}
         </div>
 
         <div className="mt-auto pt-1">

@@ -15,12 +15,13 @@ export const PRODUCT_CAPACITY = 10;
 
 // ─── بسته‌های اشتراک (عضویت ویژه) ──────────────────────────────────────────
 
-/** پلن‌های اشتراک — منبع UI؛ سرور /packages/getPlans همان را برمی‌گرداند.
- *  قیمت‌ها حدود یک‌بیستم نمونه باسکول (خواسته مالک). */
+/** پلن‌های اشتراک — فقط fallback وقتی سرور خاموش است؛ منبع حقیقت جدول Plan
+ *  بک‌اند است (ادمین تعریف/ویرایش می‌کند — خواسته مالک ۳۱-۱۰).
+ *  قیمت پایه دوبرابر + کمپین ۵۰٪ = قیمت قبلی (خواسته مالک). */
 export const MEMBERSHIP_PLANS: MembershipPlan[] = [
-  { key: 'p2m', months: 2, amount: 199_000, title: 'دو ماهه', pakageType: 1 },
-  { key: 'p6m', months: 6, amount: 499_000, title: 'شش ماهه', pakageType: 2, bestSeller: true },
-  { key: 'p12m', months: 12, amount: 799_000, title: 'یک‌ساله', pakageType: 3 },
+  { key: 'p2m', months: 2, amount: 398_000, title: 'دو ماهه', pakageType: 1, discountPercent: 0, finalAmount: 398_000 },
+  { key: 'p6m', months: 6, amount: 998_000, title: 'شش ماهه', pakageType: 2, bestSeller: true, discountPercent: 0, finalAmount: 998_000 },
+  { key: 'p12m', months: 12, amount: 1_598_000, title: 'یک‌ساله', pakageType: 3, discountPercent: 0, finalAmount: 1_598_000 },
 ];
 
 /** امکانات بسته رایگانِ همیشگی — قابل مقایسه با بسته‌های پولی (خواسته مالک) */
@@ -87,18 +88,39 @@ export const BUY_REQUEST_REJECTION_REASONS = [
 
 // ─── کیف پول — کارت به کارت (بدون درگاه؛ فیش → تایید ادمین) ─────────────────
 
-/** پکیج‌های شارژ: ۱۰۰ هزار / ۲۰۰ هزار (+۱۰٪) / ۴۰۰ هزار (+۲۰٪) */
+/** پکیج‌های شارژ: ۱۰۰ هزار / ۲۰۰ هزار (+۱۰٪) / ۴۰۰ هزار (+۲۰٪) + «سایر» */
 export const CHARGE_PACKAGES: ChargePackage[] = [
   { key: 'p100', amount: 100_000, bonusPercent: 0, charge: 100_000 },
   { key: 'p200', amount: 200_000, bonusPercent: 10, charge: 220_000 },
   { key: 'p400', amount: 400_000, bonusPercent: 20, charge: 480_000 },
 ];
 
-/** حداقل شارژ کیف پول — برابر هزینه نردبان یک‌ماهه (۵۰ هزار) */
+/** شارژ دلخواه (دکمه «سایر» — خواسته مالک ۳۱-۱۰):
+ *  حداقل ۴۰۰ هزار؛ ۳۰٪ شارژ اضافه تا ۱ میلیون و ۵۰٪ بالاتر. */
+export const CUSTOM_CHARGE_MIN = 400_000;
+export const CUSTOM_CHARGE_MAX = 100_000_000;
+export const CUSTOM_CHARGE_TIER2_AT = 1_000_000;
+export const CUSTOM_CHARGE_TIER1_PERCENT = 30;
+export const CUSTOM_CHARGE_TIER2_PERCENT = 50;
+
+/** درصد شارژ اضافه مبلغ دلخواه — ۳۰٪ تا ۱ میلیون، ۵۰٪ بالاتر */
+export function customBonusPercent(amount: number): number {
+  return amount > CUSTOM_CHARGE_TIER2_AT ? CUSTOM_CHARGE_TIER2_PERCENT : CUSTOM_CHARGE_TIER1_PERCENT;
+}
+
+/** حداقل شارژ پکیجی — برابر هزینه نردبان یک‌ماهه (۵۰ هزار) */
 export const MIN_CHARGE = 50_000;
 
-/** نردبان هر آگهی برای یک ماه — ۵۰ هزار تومان، از کیف پول کسر می‌شود */
+/** نردبان هر آگهی برای یک ماه — ۵۰ هزار تومان، از کیف پول کسر می‌شود.
+ *  حداکثر ۴ ماه (خواسته مالک ۳۱-۱۰). */
 export const LADDER_MONTHLY_PRICE = 50_000;
+export const LADDER_MAX_MONTHS = 4;
+
+/** برچسب فارسی تعداد ماه نردبان */
+export function ladderMonthsLabel(months: number): string {
+  const n = Math.min(12, Math.max(1, Math.round(months)));
+  return n === 1 ? 'یک‌ماهه' : n === 2 ? 'دو ماهه' : n === 3 ? 'سه ماهه' : 'چهار ماهه';
+}
 
 /** شماره کارت برای واریز کارت به کارت — به نام مالک سایت (سعید یوسفی) */
 export const AIMCH_CARD_NUMBER = '6037-9975-1234-5678';

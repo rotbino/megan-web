@@ -806,9 +806,15 @@ export async function updateMyProduct(input: {
   return { ok: true, id: updated.id, status: 'pending', failedPhotos };
 }
 
-/** خرید نردبان یک‌ماهه — کسر واقعی از کیف پول */
-export async function ladderProduct(productId: number): Promise<{ productId: number; expiresAt: string }> {
-  return apiFetch<{ productId: number; expiresAt: string }>('/wallet/ladderProduct', { productId });
+/** خرید نردبان ۱ تا ۴ ماه — کسر واقعی از کیف پول (خواسته مالک ۳۱-۱۰) */
+export async function ladderProduct(input: {
+  productId: number;
+  months?: number;
+}): Promise<{ productId: number; productName: string; months: number; expiresAt: string; balance: number }> {
+  return apiFetch<{ productId: number; productName: string; months: number; expiresAt: string; balance: number }>(
+    '/wallet/ladderProduct',
+    { productId: input.productId, months: input.months ?? 1 },
+  );
 }
 
 // ─── نشان شده ها (B7 — واقعی) ──────────────────────────────────────────────
@@ -1103,10 +1109,13 @@ import {
 } from './data';
 import type { ChargePackage, MyChargeOrder, WalletTransaction } from '@/lib/types';
 
-/** ارسال فیش شارژ کارت‌به‌کارت — واقعی: multipart (packageKey + receipt) */
+/** ارسال فیش شارژ کارت‌به‌کارت — واقعی: multipart (packageKey [+ amount] + receipt).
+ *  packageKey='custom' + amount = شارژ دلخواه (دکمه «سایر»). */
 export async function submitChargeRequest(input: {
   packageKey: ChargePackage['key'];
   receiptDataUrl: string;
+  /** فقط برای «سایر» — مبلغ دلخواه (تومان) */
+  amount?: number;
 }): Promise<{ ok: true; transactionId: string }> {
   const tokens = getTokens();
   if (!tokens?.accessToken) {
@@ -1116,6 +1125,9 @@ export async function submitChargeRequest(input: {
   // dataURL → Blob (فرم صفحه همان dataURL را می‌دهد)
   const form = new FormData();
   form.append('packageKey', input.packageKey);
+  if (input.packageKey === 'custom') {
+    form.append('amount', String(Math.round(input.amount ?? 0)));
+  }
   form.append('receipt', dataUrlToBlob(input.receiptDataUrl));
 
   const res = await fetch('/api/wallet/createChargeOrder', {
@@ -1165,25 +1177,35 @@ export { AIMCH_CARD_NUMBER, AIMCH_CARD_OWNER, CHARGE_PACKAGES };
 // ─── بسته‌های اشتراک (عضویت ویژه — کارت به کارت + تأیید ادمین) ─────────────
 
 import { MEMBERSHIP_PLANS } from './data';
-import type { MembershipPlan, MyPackage, MyPackageOrder } from '@/lib/types';
+import type { MembershipPlan, MyPackage, MyPackageOrder, SalesCampaignInfo } from '@/lib/types';
 
-/** پلن‌های اشتراک + کارت واریز — عمومی (لاگین لازم نیست) */
+/** پلن‌های اشتراک + کمپین جاری + کارت واریز — عمومی (لاگین لازم نیست).
+ *  منبع حقیقت: جدول Plan بک‌اند — ادمین قیمت/ویژگی‌ها را تعیین می‌کند. */
 export async function getMembershipPlans(): Promise<{
   plans: MembershipPlan[];
+  campaign: SalesCampaignInfo | null;
   cardNumber: string;
   cardOwner: string;
   free: { productCapacity: number; canSeeBuyers: boolean; unlimitedBuyRequests: boolean };
 }> {
   const raw = await apiFetch<{
     plans: MembershipPlan[];
+    campaign: SalesCampaignInfo | null;
     cardNumber: string;
     cardOwner: string;
     free: { productCapacity: number; canSeeBuyers: boolean; unlimitedBuyRequests: boolean };
   }>('/packages/getPlans', {});
-  // fallback — سرور خام بود؛ منبع UI محلی
+  // fallback — سرور خام بود؛ منبع UI محلی (بدون کمپین)
   return {
     ...raw,
-    plans: raw.plans?.length ? raw.plans : MEMBERSHIP_PLANS,
+    plans: raw.plans?.length
+      ? raw.plans.map((p) => ({
+          ...p,
+          discountPercent: p.discountPercent ?? 0,
+          finalAmount: p.finalAmount ?? p.amount,
+        }))
+      : MEMBERSHIP_PLANS,
+    campaign: raw.campaign ?? null,
   };
 }
 

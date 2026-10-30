@@ -2,7 +2,8 @@
 
 /**
  * کیف پول — پرداخت کارت به کارت (جایگزین درگاه پرداخت، خواسته کاربر):
- * ۱) انتخاب یکی از ۳ پکیج: ۱۰۰ هزار / ۲۰۰ هزار (۱۰٪ شارژ اضافه) / ۴۰۰ هزار (۲۰٪ شارژ اضافه)
+ * ۱) انتخاب یکی از ۳ پکیج یا «سایر» (مبلغ دلخواه — خواسته مالک ۳۱-۱۰):
+ *    حداقل ۴۰۰ هزار؛ ۳۰٪ شارژ اضافه تا ۱ میلیون و ۵۰٪ بالاتر.
  * ۲) واریز مبلغ به کارت + بارگذاری تصویر فیش
  * ۳) ارسال فیش برای ادمین → پس از تایید در پنل ادمین، شارژ اعمال می‌شود
  *
@@ -12,7 +13,7 @@
  *  • فیش ردشده هرگز به تراکنش‌ها نمی‌رود؛ کاربر دلیل و کار بعدی را اینجا می‌بیند.
  */
 
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   CheckCircle2,
   Coins,
@@ -20,6 +21,7 @@ import {
   CreditCard,
   Hourglass,
   ImagePlus,
+  PencilRuler,
   ReceiptText,
   TrendingDown,
   TrendingUp,
@@ -33,9 +35,19 @@ import {
 } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PanelCard } from '@/components/panel/panel-parts';
-import { AIMCH_CARD_NUMBER, AIMCH_CARD_OWNER, CHARGE_PACKAGES, MIN_CHARGE } from '@/lib/mock/data';
+import {
+  AIMCH_CARD_NUMBER,
+  AIMCH_CARD_OWNER,
+  CHARGE_PACKAGES,
+  CUSTOM_CHARGE_MAX,
+  CUSTOM_CHARGE_MIN,
+  CUSTOM_CHARGE_TIER2_AT,
+  MIN_CHARGE,
+  customBonusPercent,
+} from '@/lib/mock/data';
 import { dateFa, priceFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { ChargePackage, MyChargeOrder, WalletTransaction } from '@/lib/types';
@@ -48,12 +60,40 @@ export default function WalletPage() {
   const { toast } = useToast();
 
   const [pkgKey, setPkgKey] = useState<ChargePackage['key']>('p200');
+  const [customAmount, setCustomAmount] = useState('');
   const [receipt, setReceipt] = useState<{ url: string; name: string } | null>(null);
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState<{ amount: number; charge: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const pkg = CHARGE_PACKAGES.find((p) => p.key === pkgKey)!;
+  const isCustom = pkgKey === 'custom';
+  const customNum = useMemo(() => {
+    const en = customAmount.replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+    const n = Math.round(Number(en.replace(/[^\d]/g, '')));
+    return Number.isFinite(n) ? n : 0;
+  }, [customAmount]);
+
+  const fixedPkg = CHARGE_PACKAGES.find((p) => p.key === pkgKey);
+
+  /** پکیج مؤثر — برای «سایر» از مبلغ واردشده محاسبه می‌شود */
+  const pkg: { amount: number; bonusPercent: number; charge: number } | null = isCustom
+    ? customNum >= CUSTOM_CHARGE_MIN
+      ? {
+          amount: customNum,
+          bonusPercent: customBonusPercent(customNum),
+          charge: Math.round(customNum * (1 + customBonusPercent(customNum) / 100)),
+        }
+      : null
+    : fixedPkg
+      ? { amount: fixedPkg.amount, bonusPercent: fixedPkg.bonusPercent, charge: fixedPkg.charge }
+      : null;
+
   const balance = profile?.userInfo.walletBalance ?? 0;
+  const customError =
+    isCustom && customNum > 0 && customNum < CUSTOM_CHARGE_MIN
+      ? `حداقل مبلغ شارژ دلخواه ${priceFa(CUSTOM_CHARGE_MIN)} تومان است.`
+      : isCustom && customNum > CUSTOM_CHARGE_MAX
+        ? `حداکثر مبلغ شارژ دلخواه ${priceFa(CUSTOM_CHARGE_MAX)} تومان است.`
+        : null;
 
   const copyCard = async () => {
     try {
@@ -85,12 +125,25 @@ export default function WalletPage() {
       toast({ description: 'ابتدا تصویر فیش واریزی را بارگذاری کنید.' });
       return;
     }
+    if (!pkg) {
+      toast({
+        description:
+          customError ?? 'مبلغ دلخواه را وارد کنید.',
+        variant: 'destructive',
+      });
+      return;
+    }
     try {
-      await submitCharge.mutateAsync({ packageKey: pkgKey, receiptDataUrl: receipt.url });
-      setSent(true);
+      await submitCharge.mutateAsync({
+        packageKey: pkgKey,
+        receiptDataUrl: receipt.url,
+        ...(isCustom ? { amount: customNum } : {}),
+      });
+      setSent({ amount: pkg.amount, charge: pkg.charge });
       setReceipt(null);
-    } catch {
-      toast({ description: 'خطا در ارسال فیش — دوباره تلاش کنید.' });
+      setCustomAmount('');
+    } catch (err) {
+      toast({ description: err instanceof Error ? err.message : 'خطا در ارسال فیش — دوباره تلاش کنید.', variant: 'destructive' });
     }
   };
 
@@ -110,7 +163,7 @@ export default function WalletPage() {
           </div>
         </div>
         <p className="text-[11px] leading-5 text-muted-foreground">
-          حداقل شارژ کیف پول {priceFa(MIN_CHARGE)} است — برابر هزینه نردبان یک‌ماهه هر محصول.
+          حداقل شارژ پکیجی {priceFa(MIN_CHARGE)} است؛ برای شارژ دلخواه (سایر) حداقل {priceFa(CUSTOM_CHARGE_MIN)}.
         </p>
       </PanelCard>
 
@@ -121,13 +174,13 @@ export default function WalletPage() {
             <CreditCard size={19} className="text-primary" /> شارژ کیف پول — کارت به کارت
           </h1>
           <p className="mt-2 text-xs leading-6 text-muted-foreground">
-            یکی از پکیج‌های شارژ را انتخاب کنید، مبلغ را کارت به کارت کنید و تصویر فیش را برای ما بفرستید؛
-            پس از تایید ادمین، شارژ به کیف پول شما اعمال می‌شود.
+            یکی از پکیج‌های شارژ را انتخاب کنید یا با «سایر» مبلغ دلخواه خود را وارد کنید؛ مبلغ را کارت به کارت کنید و
+            تصویر فیش را برای ما بفرستید. پس از تایید ادمین، شارژ (با احتساب درصد اضافه) به کیف پول شما اعمال می‌شود.
           </p>
         </div>
 
-        {/* پکیج‌ها */}
-        <div className="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="پکیج‌های شارژ">
+        {/* پکیج‌ها + سایر */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" role="radiogroup" aria-label="پکیج‌های شارژ">
           {CHARGE_PACKAGES.map((p) => (
             <button
               key={p.key}
@@ -136,7 +189,7 @@ export default function WalletPage() {
               aria-checked={pkgKey === p.key}
               onClick={() => {
                 setPkgKey(p.key);
-                setSent(false);
+                setSent(null);
               }}
               className={cn(
                 'relative flex flex-col items-center rounded-lg border-2 p-4 text-center transition-colors',
@@ -160,16 +213,91 @@ export default function WalletPage() {
               </span>
             </button>
           ))}
+
+          {/* سایر — مبلغ دلخواه (خواسته مالک ۳۱-۱۰) */}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={isCustom}
+            onClick={() => {
+              setPkgKey('custom');
+              setSent(null);
+            }}
+            className={cn(
+              'relative flex flex-col items-center rounded-lg border-2 p-4 text-center transition-colors',
+              isCustom ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/40',
+            )}
+          >
+            <span className="absolute -top-2.5 right-3 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white">
+              تا {toFa(50)}٪ شارژ اضافه
+            </span>
+            <span className="flex items-center gap-1.5 text-sm font-extrabold">
+              <PencilRuler size={15} className="text-primary" /> سایر
+            </span>
+            <span className="mt-1 text-[11px] text-muted-foreground">مبلغ دلخواه شما</span>
+            <span
+              className={cn(
+                'mt-2 rounded-full px-2.5 py-1 text-[11px] font-bold',
+                isCustom ? 'bg-emerald-50 text-emerald-600' : 'bg-secondary text-muted-foreground',
+              )}
+            >
+              از {priceFa(CUSTOM_CHARGE_MIN)} تومان
+            </span>
+          </button>
         </div>
+
+        {/* مبلغ دلخواه — فقط با «سایر» */}
+        {isCustom && (
+          <div className="space-y-2.5 rounded-lg border border-dashed border-primary/40 bg-primary/[0.03] p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold">مبلغ دلخواه:</span>
+              <div className="relative w-44">
+                <Input
+                  dir="ltr"
+                  inputMode="numeric"
+                  value={customAmount ? customNum.toLocaleString('fa-IR') : ''}
+                  onChange={(e) => {
+                    const en = e.target.value.replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+                    const digits = en.replace(/[^\d]/g, '').slice(0, 11);
+                    setCustomAmount(digits);
+                  }}
+                  placeholder="مثلاً ۵۰۰٬۰۰۰"
+                  className="h-9 rounded-md pe-12 text-center font-num"
+                  aria-label="مبلغ دلخواه شارژ (تومان)"
+                />
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[10px] text-muted-foreground">
+                  تومان
+                </span>
+              </div>
+            </div>
+            <p className="text-[11px] leading-5 text-muted-foreground">
+              از {priceFa(CUSTOM_CHARGE_MIN)} تا {priceFa(CUSTOM_CHARGE_TIER2_AT)} تومان →{' '}
+              <b className="text-emerald-600">{toFa(30)}٪ شارژ اضافه</b>؛ بیش از {priceFa(CUSTOM_CHARGE_TIER2_AT)} تومان →{' '}
+              <b className="text-emerald-600">{toFa(50)}٪ شارژ اضافه</b>.
+            </p>
+            {customError ? (
+              <p className="rounded-md bg-red-50 px-2.5 py-1.5 text-[11px] font-bold text-red-600">{customError}</p>
+            ) : pkg ? (
+              <p className="rounded-md bg-emerald-50 px-2.5 py-1.5 text-[11px] leading-5 text-emerald-700">
+                با واریز <b>{priceFa(pkg.amount)}</b> تومان، <b>{priceFa(pkg.charge)}</b> تومان به کیف پول شما شارژ می‌شود
+                ({toFa(pkg.bonusPercent)}٪ شارژ اضافه).
+              </p>
+            ) : (
+              <p className="rounded-md bg-secondary px-2.5 py-1.5 text-[11px] text-muted-foreground">
+                مبلغ دلخواه خود را وارد کنید تا شارژ اضافه محاسبه شود.
+              </p>
+            )}
+          </div>
+        )}
 
         {sent ? (
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-center">
             <p className="text-sm font-extrabold text-emerald-700">فیش شما با موفقیت ارسال شد.</p>
             <p className="mt-1.5 text-xs leading-6 text-emerald-700/90">
               وضعیت فیش را در تب <span className="font-bold">«کارت به کارت»</span> در پایین همین صفحه دنبال کنید؛
-              پس از بررسی و تایید ادمین، {priceFa(pkg.charge)} به کیف پول اضافه شده و در تراکنش‌ها ثبت می‌شود.
+              پس از بررسی و تایید ادمین، {priceFa(sent.charge)} به کیف پول اضافه شده و در تراکنش‌ها ثبت می‌شود.
             </p>
-            <Button variant="outline" size="sm" className="mt-3 rounded-md" onClick={() => setSent(false)}>
+            <Button variant="outline" size="sm" className="mt-3 rounded-md" onClick={() => setSent(null)}>
               شارژ مجدد
             </Button>
           </div>
@@ -182,7 +310,8 @@ export default function WalletPage() {
                 <li className="flex items-start gap-2">
                   <StepNo n={1} />
                   <span>
-                    مبلغ <span className="font-bold text-foreground">{priceFa(pkg.amount)}</span> را به کارت زیر واریز کنید:
+                    مبلغ{' '}
+                    <span className="font-bold text-foreground">{pkg ? priceFa(pkg.amount) : '—'}</span> را به کارت زیر واریز کنید:
                   </span>
                 </li>
               </ol>
@@ -205,8 +334,8 @@ export default function WalletPage() {
                   <span>
                     فیش برای ادمین ارسال می‌شود؛ پس از تایید،{' '}
                     <span className="font-bold text-foreground">
-                      {priceFa(pkg.charge)}
-                      {pkg.bonusPercent > 0 && ` (${toFa(pkg.bonusPercent)}٪ شارژ اضافه)`}
+                      {pkg ? priceFa(pkg.charge) : '—'}
+                      {pkg && pkg.bonusPercent > 0 && ` (${toFa(pkg.bonusPercent)}٪ شارژ اضافه)`}
                     </span>{' '}
                     به کیف پول شما اضافه می‌شود.
                   </span>
@@ -253,7 +382,7 @@ export default function WalletPage() {
               />
             </div>
 
-            <Button className="w-full rounded-md" onClick={() => void sendReceipt()} disabled={submitCharge.isPending}>
+            <Button className="w-full rounded-md" onClick={() => void sendReceipt()} disabled={submitCharge.isPending || !pkg}>
               {submitCharge.isPending ? 'در حال ارسال فیش…' : 'ارسال فیش برای تایید ادمین'}
             </Button>
           </>

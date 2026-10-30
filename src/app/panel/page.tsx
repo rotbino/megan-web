@@ -14,6 +14,7 @@ import {
   BarChart3,
   Bookmark,
   Coins,
+  Crown,
   FileText,
   History,
   LogOut,
@@ -27,7 +28,7 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
-import { useMyBuyRequests, useMyProducts, usePanelProfile, useSavedLists, useUpdatePanelProfile } from '@/lib/mock/hooks';
+import { useMyBuyRequests, useMyPackage, useMyProducts, usePanelProfile, useSavedLists, useUpdatePanelProfile } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -35,7 +36,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { PanelCard, QuickStat } from '@/components/panel/panel-parts';
 import { AccountLinks } from '@/components/panel/account-links';
-import { toFa } from '@/lib/format';
+import { toFa, dateFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { PanelProfile } from '@/lib/types';
 
@@ -52,6 +53,75 @@ function completionOf(pf: PanelProfile['profile'], isVerified: boolean) {
   const pct = Math.round((checks.filter(Boolean).length / checks.length) * 100);
   const label = pct >= 85 ? 'عالی' : pct >= 55 ? 'متوسط' : 'ضعیف';
   return { pct, label };
+}
+
+/**
+ * نمودار دایره‌ای «ویژه بودن» (خواسته مالک ۳۱-۱۰):
+ * کل دایره = کل روزهای دوره بسته (مثلاً ۶۰ روز برای دو ماهه)؛
+ * کمان رنگی = روزهای باقی‌مانده اعتبار ویژه.
+ */
+function VipDonut({ daysLeft, totalDays, size = 104 }: { daysLeft: number; totalDays: number; size?: number }) {
+  const stroke = 9;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const ratio = totalDays > 0 ? Math.min(1, Math.max(0, daysLeft / totalDays)) : 0;
+  const offset = c * (1 - ratio);
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      role="img"
+      aria-label={`اعتبار ویژه: ${toFa(daysLeft)} روز از ${toFa(totalDays)} روز باقی مانده`}
+      className="shrink-0"
+    >
+      {/* مسیر کم‌رنگ = کل دوره */}
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={stroke}
+        className="text-red-100"
+      />
+      {/* کمان قرمز = روزهای باقی‌مانده */}
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={offset}
+        transform={`rotate(-90 ${size / 2} ${size / 2})}`}
+        className="text-red-600 transition-[stroke-dashoffset] duration-700"
+      />
+      {/* شمارنده مرکز */}
+      <text
+        x="50%"
+        y="47%"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        className="fill-foreground font-num"
+        style={{ fontSize: size * 0.26, fontWeight: 800 }}
+      >
+        {toFa(daysLeft)}
+      </text>
+      <text
+        x="50%"
+        y="66%"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        className="fill-muted-foreground"
+        style={{ fontSize: size * 0.13, fontWeight: 700 }}
+      >
+        روز مانده
+      </text>
+    </svg>
+  );
 }
 
 const SELLER_ACCOUNT_MENU = [
@@ -79,6 +149,7 @@ export default function PanelDashboard() {
   const { data: saved } = useSavedLists();
   const { data: mine } = useMyProducts();
   const { data: myRequests } = useMyBuyRequests();
+  const { data: myPackage } = useMyPackage();
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const aboutMutation = useUpdatePanelProfile();
@@ -171,6 +242,46 @@ export default function PanelDashboard() {
           </p>
         </Link>
       </PanelCard>
+
+      {/* وضعیت ویژه بودن — نمودار دایره‌ای روزهای باقی‌مانده (خواسته مالک ۳۱-۱۰) */}
+      {myPackage?.isActive ? (
+        <PanelCard className="flex flex-wrap items-center gap-4">
+          <VipDonut
+            daysLeft={myPackage.daysLeft ?? 0}
+            totalDays={myPackage.totalDays ?? myPackage.daysLeft ?? 1}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="flex flex-wrap items-center gap-2 text-sm font-extrabold">
+              <Crown size={16} className="text-red-600" />
+              اشتراک ویژه {myPackage.planTitle ?? (myPackage.pakageType === 1 ? 'دو ماهه' : myPackage.pakageType === 2 ? 'شش ماهه' : 'یک‌ساله')}
+              <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">کاربر ویژه</span>
+            </p>
+            <p className="mt-1.5 text-xs leading-6 text-muted-foreground">
+              {toFa(myPackage.daysLeft ?? 0)} روز از {toFa(myPackage.totalDays ?? myPackage.daysLeft ?? 0)} روز اعتبار شما
+              باقی مانده است{myPackage.expiresAt && <> — اعتبار تا {dateFa(myPackage.expiresAt)}</>}.
+            </p>
+            <Button asChild size="sm" variant="outline" className="mt-2.5 rounded-md text-xs">
+              <Link href="/panel/pricing">تمدید / خرید بسته جدید (رزرو)</Link>
+            </Button>
+          </div>
+        </PanelCard>
+      ) : (
+        <PanelCard className="flex flex-wrap items-center gap-4">
+          <span className="grid size-[104px] shrink-0 place-items-center rounded-full bg-secondary text-muted-foreground">
+            <Crown size={34} className="opacity-50" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-extrabold">حساب شما رایگان است</p>
+            <p className="mt-1.5 text-xs leading-6 text-muted-foreground">
+              با ارتقا به اشتراک ویژه، ثبت نامحدود محصول، دسترسی به همه خریداران، نشان فروشنده ویژه و نمایش بالاتر
+              از رقبا را داشته باشید.
+            </p>
+            <Button asChild size="sm" className="mt-2.5 rounded-md text-xs">
+              <Link href="/panel/pricing">مشاهده بسته‌ها و ارتقا به ویژه</Link>
+            </Button>
+          </div>
+        </PanelCard>
+      )}
 
       {/* میان‌برهای آماری */}
       {isBuyer ? (

@@ -10,10 +10,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   ChevronLeft,
   ChevronRight,
+  Crown,
   Loader2,
   Megaphone,
   MessageSquare,
@@ -25,7 +26,6 @@ import {
 } from 'lucide-react';
 import {
   fetchAdminUsers,
-  setAdminUserActive,
   type AdminUserRow,
 } from '@/lib/admin/api';
 import { PresenceDot } from '@/components/shared/presence-dot';
@@ -37,13 +37,14 @@ import { cn } from '@/lib/utils';
 import { priceFa, timeAgoFa, toFa } from '@/lib/format';
 import { SendMessageDialog, type MessageTarget } from './message-dialog';
 
-type FilterKey = 'all' | 'online' | 'offline' | 'sellers' | 'unverified' | 'inactive';
+type FilterKey = 'all' | 'online' | 'offline' | 'sellers' | 'special' | 'unverified' | 'inactive';
 
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: 'all', label: 'همه' },
   { key: 'online', label: 'آنلاین' },
   { key: 'offline', label: 'آفلاین' },
   { key: 'sellers', label: 'فروشندگان' },
+  { key: 'special', label: 'کاربران ویژه' },
   { key: 'unverified', label: 'احرازنشده' },
   { key: 'inactive', label: 'غیرفعال' },
 ];
@@ -56,6 +57,8 @@ function filterPayload(key: FilterKey): Record<string, unknown> {
       return { online: false };
     case 'sellers':
       return { seller: true };
+    case 'special':
+      return { special: true };
     case 'unverified':
       return { verified: false };
     case 'inactive':
@@ -65,12 +68,17 @@ function filterPayload(key: FilterKey): Record<string, unknown> {
   }
 }
 
-/** چیپ نقش‌ها — خریدار/فروشنده/ادمین */
+/** چیپ نقش‌ها — خریدار/فروشنده/ادمین/ویژه (خواسته مالک ۳۱-۱۰: فیلتر ویژه‌ها) */
 function RoleChips({ user }: { user: AdminUserRow }) {
   return (
     <span className="flex flex-wrap justify-end gap-1 lg:justify-start">
       {user.role === 'ADMIN' && (
         <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-600">ادمین</span>
+      )}
+      {user.is_special && (
+        <span className="inline-flex items-center gap-0.5 rounded-full bg-red-600 px-1.5 py-0.5 text-[9px] font-bold text-white" title={user.package_expires_at ? `کاربر ویژه تا ${user.package_expires_at.slice(0, 10)}` : 'کاربر ویژه'}>
+          <Crown size={9} /> ویژه
+        </span>
       )}
       {user.is_seller && (
         <span className="rounded-full bg-primary-soft px-1.5 py-0.5 text-[9px] font-bold text-primary">فروشنده</span>
@@ -99,7 +107,6 @@ function VerifyChip({ user }: { user: AdminUserRow }) {
 
 export default function AdminUsersPage() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -139,21 +146,11 @@ export default function AdminUsersPage() {
     refetchInterval: 30_000,
   });
 
-  const toggleActive = useMutation({
-    mutationFn: (input: { id: string; active: boolean }) => setAdminUserActive(input.id, input.active),
-    onSuccess: (_d, input) => {
-      void queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      toast({
-        description: input.active
-          ? 'حساب کاربر فعال شد.'
-          : 'حساب کاربر غیرفعال شد — ورود مسدود، نشست‌ها باطل و محتوایش از لیست‌های عمومی پنهان است.',
-      });
-    },
-    onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
-  });
-
   const items = data?.items ?? [];
   const pageCount = data?.pageCount ?? 1;
+
+  // حذف toggleActive از این صفحه — غیرفعال‌سازی فقط در صفحه جزئیات کاربر با
+  // دکمه کم‌رنگ انجام می‌شود (خواسته مالک ۳۱-۱۰)
 
   // ─── انتخاب چندتایی ──────────────────────────────────────────────
   const toggleSelect = (id: string) => {
@@ -340,15 +337,6 @@ export default function AdminUsersPage() {
                       >
                         جزئیات
                       </Link>
-                      <Button
-                        size="sm"
-                        variant={u.is_active ? 'outline' : 'default'}
-                        className="h-7 rounded-[10px] px-2.5 text-[11px]"
-                        disabled={toggleActive.isPending}
-                        onClick={() => toggleActive.mutate({ id: u.id, active: !u.is_active })}
-                      >
-                        {u.is_active ? 'غیرفعال' : 'فعال'}
-                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -447,7 +435,9 @@ export default function AdminUsersPage() {
 
       {/* پانوشت راهنما */}
       <p className="text-center text-[10.5px] leading-6 text-muted-foreground">
-        غیرفعال‌سازی حساب = حذف نرم: ورود مسدود، نشست‌ها باطل و محتوا از لیست‌های عمومی پنهان می‌شود؛ داده‌های کاربر حذف نمی‌شوند.
+        غیرفعال‌سازی حساب (حذف نرم) و سایر عملیات هر کاربر از صفحه «جزئیات» انجام می‌شود؛ نشان
+        <Crown size={10} className="mx-1 inline text-red-600" />
+        ویژه یعنی بسته اشتراک فعال دارد.
       </p>
 
       {/* نوار ارسال گروهی — چسبیده به پایین وقتی کاربری انتخاب شده */}

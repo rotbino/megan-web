@@ -19,7 +19,7 @@ import { JsonLd } from '@/components/shared/json-ld';
 import { ProductImage } from '@/components/shared/product-image';
 import { ProductPrice } from '@/components/shared/product-price';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
-import { LadderBadge, OldAdBadge } from '@/components/shared/badges';
+import { LadderBadge, OldAdBadge, PremiumSellerBadge } from '@/components/shared/badges';
 import { SaveProductButton } from '@/components/shared/save-product-button';
 import { ProductViewPing } from '@/components/shared/product-view-ping';
 import { ChatDialog } from '@/components/products/chat-dialog';
@@ -58,14 +58,14 @@ async function getProduct(id: number): Promise<Product | null> {
       categoryId: number; categoryName: string; subCategoryId: number; subCategoryName: string;
       provinceId: number; provinceName: string; cityId: number; cityName: string;
       myuserId: string; seller: { id: string; userName: string; firstName: string; lastName: string; activePakageType: number; isVerified: boolean };
-      isLadder: boolean; hasVideo: boolean; isOld: boolean; viewCount: number;
+      isLadder: boolean; isElevated?: boolean; hasVideo: boolean; isOld: boolean; viewCount: number;
       createdAt: string; updatedAt: string; photos: string[]; photoThumbs?: string[];
     };
     return {
       ...p,
-      isElevated: false,
+      isElevated: p.isElevated ?? false,
       photoThumbs: p.photoThumbs ?? p.photos,
-      seller: { ...p.seller, activePakageType: 0 },
+      seller: { ...p.seller, activePakageType: p.seller.activePakageType ?? 0 },
     } as Product;
   } catch {
     // بک‌اند در دسترس نیست — دیتای ماک وجود ندارد؛ صفحه ۴۰۴ می‌شود
@@ -149,6 +149,13 @@ export default async function ProductViewPage({ params }: Props) {
                   priority
                   sizes="(max-width: 640px) 100vw, 420px"
                 />
+                {/* نشان‌های قرمز روی تصویر اصلی — عین کارت لیست (خواسته مالک ۳۱-۱۰) */}
+                {(product.isLadder || product.isElevated) && (
+                  <span className="absolute start-2 top-2 flex flex-col items-start gap-1.5">
+                    {product.isLadder && <LadderBadge />}
+                    {product.isElevated && <PremiumSellerBadge />}
+                  </span>
+                )}
               </div>
                 {product.photos.length > 1 && (
                   <div className="grid grid-cols-4 gap-2">
@@ -169,7 +176,8 @@ export default async function ProductViewPage({ params }: Props) {
 
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  {product.isLadder && <LadderBadge />}
+                  {product.isLadder && <LadderBadge className="px-2 py-1 text-xs" />}
+                  {product.isElevated && <PremiumSellerBadge className="px-2 py-1 text-xs" />}
                   {product.isOld && <OldAdBadge />}
                 </div>
                 <h1 className="text-xl font-bold leading-8 sm:text-2xl">

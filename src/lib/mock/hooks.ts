@@ -485,6 +485,15 @@ export function useSubmitChargeRequest() {
 
 // ─── بسته‌های اشتراک (عضویت ویژه) ─────────────────────────────────────
 
+/** پلن‌های اشتراک + کمپین جاری — عمومی (صفحه قیمت‌ها) */
+export function useMembershipPlans() {
+  return useQuery({
+    queryKey: ['membership-plans'],
+    queryFn: api.getMembershipPlans,
+    staleTime: 60_000,
+  });
+}
+
 /** بسته فعال من — تک منبع گیت‌های سمت کلاینت (خریداران، ظرفیت و ...) */
 export function useMyPackage(enabled = true) {
   return useQuery({

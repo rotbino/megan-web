@@ -1,0 +1,889 @@
+     1→// ─────────────────────────────────────────────────────────────────────────────
+     2→// Megan (iMach) — Prisma schema on MongoDB Atlas
+     3→//
+     4→// اصول:
+     5→//  • نام فیلدها در دیتابیس snake_case عین باسکول (product_name, min_sale_price,
+     6→//    province_id …) تا داده‌های کراول‌شده از باسکول بدون تبدیل اینزرت شوند.
+     7→//  • داده‌های پایه (Category/Province/City/Product) id عددی باسکول دارند
+     8→//    (پسته=44، اصفهان=4، شهر بابک=230) — Prisma روی مونگو id صریح عددی را
+     9→//    پشتیبانی می‌کند؛ شمارنده جدول Counter برای id محصولات جدید.
+    10→//  • تصاویر هر مدل از طریق جدول چندریختی File مدیریت می‌شوند (دکترین
+    11→//    imach-back): fieldKey اسلات را تعیین می‌کند، ردیف staged قبل از چسبیدن
+    12→//    به مدل توسط reaper حذف می‌شود و replace اول آپلود می‌کند بعد قبلی را
+    13→//    پاک می‌کند — هیچ فایل سرگردانی روی حافظه گران نمی‌ماند.
+    14→//  • TTL ایندکس در Prisma پشتیبانی نمی‌شود → پاک‌سازی OTP/RefreshToken با
+    15→//    reaper دوره‌ای درون پروسه انجام می‌شود.
+    16→// ─────────────────────────────────────────────────────────────────────────────
+    17→
+    18→generator client {
+    19→  provider = "prisma-client-js"
+    20→}
+    21→
+    22→datasource db {
+    23→  provider = "mongodb"
+    24→  url      = env("DATABASE_URL")
+    25→}
+    26→
+    27→// ─── Users & Auth ────────────────────────────────────────────────────────────
+    28→
+    29→model User {
+    30→  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+    31→  /// شماره موبایل — تنها راه ورود (روش سشن؛ OTP برای آینده پنل پیامک)
+    32→  phone     String   @unique
+    33→  /// رمز عبور اختیاری پنل — تا تعیین نشود، ورود فقط با موبایل ممکن است
+    34→  /// (scrypt؛ خالی = کاربر هنوز رمز تعیین نکرده — بنر قرمز پنل فعال می‌ماند)
+    35→  passwordHash String? @map("password_hash")
+    36→  /// شناسه عمومی پروفایل مثل باسکول (wbrstu2g1) — هنگام ثبت‌نام تولید می‌شود
+    37→  userName  String   @unique @map("user_name")
+    38→  firstName String   @default("") @map("first_name")
+    39→  lastName  String   @default("") @map("last_name")
+    40→  /// «آقا» / «خانم» — مثل باسکول
+    41→  sex       String?
+    42→  role      String   @default("USER") // USER | ADMIN
+    43→  /// احراز هویت (کارت ملی + سلفی) — جریان ادمین
+    44→  isVerified   Boolean @default(false) @map("is_verified")
+    45→  /// نقش فعال پنل — پیش‌فرض فروشنده (خواسته مالک)؛ با سوییچ پنل عوض می‌شود
+    46→  /// و همان انتخاب ماندگار است (is_buyer=true و is_seller=false → پنل خریدار)
+    47→  isBuyer      Boolean @default(false) @map("is_buyer")
+    48→  isSeller     Boolean @default(true) @map("is_seller")
+    49→  /// غیرفعال توسط ادمین (A3) — ورود مسدود و محتوا از لیست‌های عمومی پنهان
+    50→  /// می‌شود؛ داده‌ها حذف نمی‌شوند (حذف نرم، نه سخت)
+    51→  isActive     Boolean  @default(true) @map("is_active")
+    52→  lastLoginAt  DateTime? @map("last_login_at")
+    53→  /// آخرین نبض حضور — heartbeat/WS آن را تازه می‌کند؛ «آنلاین» یعنی
+    54→  /// تازه‌تر از پنجره ~۹۰ ثانیه (grace برای پرش شبکه). ایندکس desc برای
+    55→  /// شمار/فیلتر آنلاین‌ها در پنل ادمین.
+    56→  lastSeenAt   DateTime? @map("last_seen_at")
+    57→  /// مهر خروج صریح — بستن صفحه (بیکن leave)، لاگ‌اوت یا قطع آخرین سوکت.
+    58→  /// «آنلاین» = lastSeenAt تازه «و» offlineAt نداشتن؛ هر touch این فیلد را
+    59→  /// null می‌کند و هر خروج واقعی هر دو مهر را به «اکنون» می‌زند — خروج
+    60→  /// بدون انتظار برای پیرشدن پنجره ۹۰ثانیه‌ای فوری دیده می‌شود.
+    61→  offlineAt    DateTime? @map("offline_at")
+    62→  /// مهر زمان ابطال همه نشست‌ها (لاگ‌اوت سمت سرور) — توکن‌هایی که
+    63→  /// iat قبل از آن باشند رد می‌شوند؛ null یعنی هیچ ابطالی ثبت نشده
+    64→  sessionsRevokedAt DateTime? @map("sessions_revoked_at")
+    65→  walletBalance Int     @default(0) @map("wallet_balance") // تومان
+    66→  avatarUrl    String? @map("avatar_url")
+    67→  businessDesc String? @map("business_desc")
+    68→  /// مکان پیش‌فرض کاربر — ثبت‌نام/فرم‌ها با آن پیش‌پر می‌شوند (id عددی باسکول)
+    69→  provinceId   Int?    @map("province_id")
+    70→  cityId       Int?    @map("city_id")
+    71→  /// پروفایل کسب‌وکار embedded — فیلدهای myuser_profiles باسکول
+    72→  profile    Json?
+    73→
+    74→  /// بسته فعال — عین active_pakage_type باسکول:
+    75→  /// ۰=رایگان ۱=دوماهه ۲=شش‌ماهه ۳=یک‌ساله. انقضای گذشته عملاً رایگان است
+    76→  /// (effectivePakageType در پکیج‌سرویس محاسبه می‌شود؛ فیلد دست‌نخورده می‌ماند
+    77→  /// تا سابقه پس از تمدید دوباره زنده شود).
+    78→  activePakageType Int        @default(0) @map("active_pakage_type")
+    79→  /// انقضای بسته فعال — null یعنی هیچ بسته‌ای خریداری نشده
+    80→  packageExpiresAt DateTime?  @map("package_expires_at")
+    81→
+    82→  files        File[]         @relation("FileOwner")
+    83→  products     Product[]      @relation("ProductOwner")
+    84→  refreshTokens RefreshToken[]
+    85→  verificationOrders VerificationOrder[] @relation("VerificationOwner")
+    86→  buyRequests  BuyRequest[]   @relation("BuyRequestOwner")
+    87→  chargeOrders ChargeOrder[]  @relation("ChargeOrderOwner")
+    88→  ladderOrders LadderOrder[]  @relation("LadderOrderOwner")
+    89→  savedLists   SavedList[]    @relation("SavedListOwner")
+    90→  savedTargets SavedUser[]    @relation("SavedTarget")
+    91→  chatThreadsAsSeller ChatThread[] @relation("ChatThreadSeller")
+    92→  chatThreadsAsBuyer  ChatThread[] @relation("ChatThreadBuyer")
+    93→  /// گزارش تماس — تماس‌گیرنده (شماره طرف را دیده/زنگ زده)
+    94→  callsMade     CallLog[]      @relation("CallCaller")
+    95→  /// گزارش تماس — دریافت‌کننده (صاحب شماره)
+    96→  callsReceived CallLog[]      @relation("CallCallee")
+    97→  pushSubscriptions  PushSubscription[] @relation("PushOwner")
+    98→  walletAdjustments  WalletAdjustment[] @relation("WalletAdjustmentOwner")
+    99→  /// پیام‌های مستقیم پشتیبانی (ادمین → کاربر) — یک‌طرفه با خوانده‌شدن
+   100→  adminMessages   AdminMessage[] @relation("AdminMessageOwner")
+   101→  /// نظراتی که درباره این کاربر (به‌عنوان فروشنده) نوشته شده
+   102→  reviewsReceived SellerReview[] @relation("ReviewSeller")
+   103→  /// نظراتی که این کاربر درباره فروشندگان نوشته
+   104→  reviewsWritten SellerReview[] @relation("ReviewAuthor")
+   105→  /// سفارش‌های خرید بسته اشتراک این کاربر (کارت‌به‌کارت + فیش)
+   106→  packageOrders  PackageOrder[] @relation("PackageOrderOwner")
+   107→  /// پاسخ نظرسنجی عملکرد ایمچ (یکی؛ userId یکتا)
+   108→  surveyResponse  SurveyResponse? @relation("SurveyOwner")
+   109→  /// آگهی‌هایی که این کاربر نشان کرده (علاقه‌مندی‌ها — ۳۰-۱۰)
+   110→  favoriteProducts FavoriteProduct[] @relation("FavoriteProductOwner")
+   111→  /// فروشنده‌هایی که این کاربر ذخیره کرده
+   112→  favoriteSellers  FavoriteSeller[]  @relation("FavoriteSellerOwner")
+   113→  /// کاربرانی که این فروشنده را ذخیره کرده‌اند
+   114→  favoritedBy      FavoriteSeller[]  @relation("FavoriteSellerTarget")
+   115→
+   116→  createdAt DateTime @default(now()) @map("created_at")
+   117→  updatedAt DateTime @updatedAt @map("updated_at")
+   118→
+   119→  @@index([lastSeenAt(sort: Desc)])
+   120→}
+   121→
+   122→/// درخواست احراز هویت اسناد — کارت ملی + سلفی؛ بررسی و تأیید توسط ادمین.
+   123→/// مدارک از جدول File (relatedModel=Verification, fieldKey=nationalCard|selfie)
+   124→/// به سفارش می‌چسبند — دکترین ضد-فایل-سرگردان imach-back (بخش ۵ سند).
+   125→model VerificationOrder {
+   126→  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+   127→  userId    String   @map("user_id") @db.ObjectId
+   128→  user      User     @relation("VerificationOwner", fields: [userId], references: [id], onDelete: Cascade)
+   129→
+   130→  /// pending | approved | rejected
+   131→  status         String   @default("pending")
+   132→  rejectionReason String? @map("rejection_reason")
+   133→  /// کاربر ادمین بررسی‌کننده
+   134→  reviewedBy String?   @map("reviewed_by") @db.ObjectId
+   135→  reviewedAt DateTime? @map("reviewed_at")
+   136→
+   137→  createdAt DateTime @default(now()) @map("created_at")
+   138→  updatedAt DateTime @updatedAt @map("updated_at")
+   139→
+   140→  @@index([userId, status])
+   141→  @@index([status, createdAt(sort: Desc)])
+   142→}
+   143→
+   144→/// کد OTP — هش sha256، عمر ۲ دقیقه، پاک‌سازی دوره‌ای توسط reaper
+   145→model OtpCode {
+   146→  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+   147→  phone     String
+   148→  codeHash  String   @map("code_hash")
+   149→  expiresAt DateTime @map("expires_at")
+   150→  /// شمارش تلاش‌های اشتباه (بعد از ۵ بار کد باطل می‌شود)
+   151→  attempts  Int      @default(0)
+   152→  createdAt DateTime @default(now()) @map("created_at")
+   153→
+   154→  @@index([phone, createdAt(sort: Desc)])
+   155→  @@index([expiresAt])
+   156→}
+   157→
+   158→/// رفرش‌توکن چرخشی — فقط هش sha256 ذخیره می‌شود
+   159→model RefreshToken {
+   160→  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+   161→  tokenHash String    @unique @map("token_hash")
+   162→  userId    String    @map("user_id") @db.ObjectId
+   163→  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+   164→
+   165→  expiresAt DateTime  @map("expires_at")
+   166→  revokedAt DateTime? @map("revoked_at")
+   167→  createdAt DateTime  @default(now()) @map("created_at")
+   168→
+   169→  @@index([userId])
+   170→  @@index([expiresAt])
+   171→}
+   172→
+   173→/// کاربر پنل ادمین — جدایی کامل از User عادی (فولدر src/admin در API و
+   174→/// src/app/admin در فرانت). ورود با نام کاربری + رمز (scrypt).
+   175→/// SUPER_ADMIN می‌تواند ادمین بسازد/غیرفعال کند (فاز A5).
+   176→model AdminUser {
+   177→  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+   178→  /// نام کاربری ورود پنل ادمین — می‌تواند شماره موبایل باشد
+   179→  username     String   @unique
+   180→  passwordHash String   @map("password_hash")
+   181→  name         String   @default("مدیر سیستم")
+   182→  /// SUPER_ADMIN | ADMIN (نقش‌های ریزتر در فازهای بعد)
+   183→  role         String   @default("ADMIN")
+   184→  isActive     Boolean  @default(true) @map("is_active")
+   185→  lastLoginAt  DateTime? @map("last_login_at")
+   186→
+   187→  /// لاگ عملیات‌های این ادمین (AdminAction — فاز A5)
+   188→  actions      AdminAction[] @relation("AdminActionActor")
+   189→
+   190→  createdAt DateTime @default(now()) @map("created_at")
+   191→  updatedAt DateTime @updatedAt @map("updated_at")
+   192→}
+   193→
+   194→/// لاگ عملیات ادمین (فاز A5) — ثبت خودکار هر mutation ادمین توسط
+   195→/// AdminActionInterceptor (کی عملیات را انجام داده، روی چه هدفی، با چه خلاصه‌ای).
+   196→/// فقط شناسه ادمین ذخیره می‌شود؛ نام/نقش هنگام خواندن join می‌شود (اصل نرمال‌سازی).
+   197→model AdminAction {
+   198→  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+   199→  adminId   String    @map("admin_id") @db.ObjectId
+   200→  admin     AdminUser @relation("AdminActionActor", fields: [adminId], references: [id])
+   201→
+   202→  /// مسیر عملیات — مثل admin/products/reviewProduct
+   203→  action     String
+   204→  /// نوع هدف — product | user | buy_request | charge_order | base_data | admin
+   205→  targetType String?   @map("target_type")
+   206→  /// شناسه هدف (اگر از body قابل استخراج باشد)
+   207→  targetId   String?   @map("target_id")
+   208→  /// خلاصه body — بدون فیلدهای حساس (رمز…) و رشته‌های بلند
+   209→  payload    Json?
+   210→  /// پیام موفقیت عملیات (از پاسخ یکنواخت API)
+   211→  message    String?
+   212→
+   213→  createdAt DateTime  @default(now()) @map("created_at")
+   214→
+   215→  @@index([adminId, createdAt(sort: Desc)])
+   216→  @@index([createdAt(sort: Desc)])
+   217→  @@index([action])
+   218→}
+   219→
+   220→/// اشتراک وب‌پوش مرورگر (B10) — endpoint یکتای هر مرورگر/دستگاه؛
+   221→/// ۴۱۰/۴۰۴ از سرویس پوش = اشتراک منقضی → حذف خودکار موقع ارسال
+   222→model PushSubscription {
+   223→  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+   224→  userId    String   @map("user_id") @db.ObjectId
+   225→  user      User     @relation("PushOwner", fields: [userId], references: [id], onDelete: Cascade)
+   226→  /// endpoint سرویس پوش مرورگر — سراسری یکتا (upsert بر اساس همین)
+   227→  endpoint  String   @unique
+   228→  /// کلیدهای رمز‌گذاری اشتراک (RFC 8291)
+   229→  p256dh    String
+   230→  auth      String
+   231→  userAgent String?  @map("user_agent")
+   232→
+   233→  createdAt DateTime @default(now()) @map("created_at")
+   234→
+   235→  @@index([userId])
+   236→}
+   237→
+   238→/// شمارنده id عددی (الگوی کلاسیک مونگو) — seq با increment اتمیک بالا می‌رود
+   239→model Counter {
+   240→  id  String @id @map("_id") // مثل "product"
+   241→  seq Int    @default(0)
+   242→}
+   243→
+   244→// ─── داده‌های پایه باسکول (id عددی باسکول) ──────────────────────────────────
+   245→
+   246→/// درخت دسته سه‌سطحی — id/parent_id عددی باسکول
+   247→model Category {
+   248→  id           Int     @id @map("_id") // پسته=44
+   249→  parentId     Int?    @map("parent_id")
+   250→  categoryName String  @map("category_name")
+   251→  slug         String
+   252→  /// واحد فروش پیش‌فرض (کیلوگرم)
+   253→  unit         String  @default("")
+   254→  /// حداقل سفارش پیش‌فرض
+   255→  min          Int     @default(0)
+   256→  /// نمونه ورودی «نوع {دسته} خود را وارد کنید» (مثل: اکبری)
+   257→  example      String?
+   258→  score        Int     @default(0)
+   259→
+   260→  @@index([parentId, score])
+   261→  @@index([slug])
+   262→}
+   263→
+   264→/// ─── نوع کالا (Good) — جداشده از درخت Category (خواسته مالک ۳۰-۱۰) ────────
+   265→/// قبلاً «نوع کالا» به‌صورت نود PRODUCT_TYPE زیر دسته برگ در همان جدول
+   266→/// Category ذخیره می‌شد و در سایدبار/فیلتر لیست محصولات ظاهر می‌شد؛ اشتباه
+   267→/// بود — نوع کالا ورودی آزاد کاربران است، نه دسته. حالا جدول جدا دارد:
+   268→///  • در هیچ ناوبری دسته‌ای (سایدبار/مگامنو/کشکید) دیده نمی‌شود؛
+   269→///  • هنگام ثبت/ویرایش درخواست خرید idempotent ساخته/بازمصرف می‌شود؛
+   270→///  • برای تطبیق «خریداران پیشنهادی» و آمار استفاده می‌شود.
+   271→model Good {
+   272→  /// id عددی از Counter('good') — مهاجرت: همان id نودهای PRODUCT_TYPE قدیمی
+   273→  id          Int      @id @map("_id")
+   274→  /// نام نوع — مثل «اکبری» (یکتا به‌ازای دسته)
+   275→  name        String
+   276→  /// دسته برگ که این نوع به آن تعلق دارد
+   277→  categoryId  Int      @map("category_id")
+   278→  /// اولین کاربری که این نوع را وارد کرد — برای آمار/پاکسازی
+   279→  createdById String?  @map("created_by_id") @db.ObjectId
+   280→  /// دفعات استفاده در درخواست‌های خرید
+   281→  usageCount  Int      @default(0) @map("usage_count")
+   282→
+   283→  createdAt DateTime @default(now()) @map("created_at")
+   284→  updatedAt DateTime @updatedAt @map("updated_at")
+   285→
+   286→  @@unique([categoryId, name])
+   287→  @@index([categoryId])
+   288→  @@index([name])
+   289→}
+   290→
+   291→/// ─── لوکیشن درختی واحد ───────────────────────────────────────────────────────
+   292→/// به‌جای دو جدول جداگانهٔ استان/شهر، یک کالکشن واحد با ساختار درختی:
+   293→///   province ← city ← region ← neighborhood …
+   294→/// «فقط یک جدول لوکیشن که فقط تایپش متفاوت باشه» — خواستهٔ مالک؛ سطح‌های
+   295→/// آینده (منطقه/محله) بدون مهاجرت، فقط با type جدید + parent_id اضافه می‌شوند.
+   296→///
+   297→/// ⚠️ چرا id رشتهٔ ترکیبی است؟ چون id های عددی باسکول در دو فضای جدا هستند و
+   298→/// برخورد عددی دارند (شهر ۴ = بستان‌آبادِ آذربایجان شرقی، استان ۴ = اصفهان) —
+   299→/// یعنی «عدد + نوع» با هم یکتا هستند. کلید یکتا: «province:4» / «city:230».
+   300→/// عدد خام باسکول در buskolId حفظ می‌شود و در API ها همان id عددی برمی‌گردد؛
+   301→/// آگهی‌ها/درخواست‌ها به همان اعداد خام اشاره می‌کنند (بدون تغییر).
+   302→model Location {
+   303→  /// کلید یکتای سراسری — «province:4» | «city:230» | «region:…"
+   304→  id        String  @id @map("_id")
+   305→  /// id عددی باسکول در نوع خودش — یکتا فقط با هم type
+   306→  buskolId  Int     @map("buskool_id")
+   307→  /// province | city | region | neighborhood
+   308→  type      String
+   309→  /// کلید گره والد («province:4») — null یعنی ریشه (استان)
+   310→  parentId  String? @map("parent_id")
+   311→  /// نام فارسی
+   312→  name      String
+   313→  enName    String? @map("en_name")
+   314→  latitude  Float?
+   315→  longitude Float?
+   316→  /// فعال/غیرفعال (A2) — مکان غیرفعال از لیست‌های عمومی پنهان می‌شود و
+   317→  /// ثبت آگهی/درخواست جدید روی آن ممکن نیست؛ آگهی‌های قدیمی نامشان را همچنان resolve می‌کنند
+   318→  isActive  Boolean @default(true) @map("is_active")
+   319→
+   320→  @@unique([type, buskolId])
+   321→  @@index([type, parentId])
+   322→  @@index([type, name])
+   323→}
+   324→
+   325→// ─── Files (دکترین imach-back) ───────────────────────────────────────────────
+   326→
+   327→/// جدول چندریختی File — تصویر/پیوست هر مدلی با fieldKey مشخص می‌شود:
+   328→///   User.avatar · Product.gallery · (آینده: ChargeOrder.receipt, Verification.docs)
+   329→/// ردیف staged (relatedId=null) اگر تا TTL به مدلی نچسبد → reaper حذفش می‌کند.
+   330→/// ⚠️ relatedId رشته ساده است (نه ObjectId) — چندریختی: id کاربر ObjectId است
+   331→/// اما id محصول عدد باسکول؛ هر دو به شکل رشته ذخیره/کوئری می‌شوند.
+   332→model File {
+   333→  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+   334→  ownerId     String   @map("owner_id") @db.ObjectId
+   335→  owner       User     @relation("FileOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+   336→  /// نام مدل مقصد — فقط مقادیر RELATED_MODELS سرویس
+   337→  relatedModel String  @map("related_model")
+   338→  /// id مدل مقصد (رشته) — null یعنی staged
+   339→  relatedId   String?  @map("related_id")
+   340→  /// اسلات: avatar | gallery | receipt | …
+   341→  fieldKey    String   @map("field_key")
+   342→  /// توضیح اختیاری
+   343→  description String?
+   344→  /// نام فایل اصلی (فقط نمایش)
+   345→  name        String
+   346→  mimeType    String   @map("mime_type")
+   347→  /// حجم فایل اصلی بعد از فشرده‌سازی (بایت)
+   348→  size        Int
+   349→  /// URL عمومی مستقیم — بدون توکن، از CDN
+   350→  url         String
+   351→  thumbUrl    String?  @map("thumb_url")
+   352→  /// کلید ذخیره‌سازی فایل اصلی (دستگیره حذف/تعویض پروایدر) — null برای URL خارجی
+   353→  storageKey  String?  @map("storage_key")
+   354→  thumbStorageKey String? @map("thumb_storage_key")
+   355→  /// متادیتا (ابعاد، حجم اصلی، …)
+   356→  metadata    Json?
+   357→
+   358→  createdAt DateTime @default(now()) @map("created_at")
+   359→  updatedAt DateTime @updatedAt @map("updated_at")
+   360→
+   361→  @@index([relatedModel, relatedId, fieldKey])
+   362→  @@index([ownerId])
+   363→  @@index([relatedModel, relatedId])
+   364→  @@index([createdAt])
+   365→}
+   366→
+   367→// ─── Products (آگهی — عین ساختار باسکول) ─────────────────────────────────────
+   368→
+   369→model Product {
+   370→  /// id عددی (باسکول برای seed، Counter برای جدید)
+   371→  id            Int     @id @map("_id")
+   372→  productName   String  @map("product_name")
+   373→  /// slug سئوپذیر — خرید-عمده-{نام}-{id}
+   374→  slug          String
+   375→  description   String
+   376→
+   377→  /// دسته پدر (خشکبار=45)
+   378→  categoryId    Int     @map("category_id")
+   379→  /// دسته برگ (پسته=44)
+   380→  subCategoryId Int     @map("sub_category_id")
+   381→  /// واحد فروش دسته (کیلوگرم) — denorm
+   382→  unit          String
+   383→
+   384→  provinceId    Int     @map("province_id")
+   385→  cityId        Int     @map("city_id")
+   386→
+   387→  /// موجودی آماده فروش
+   388→  stock         Int
+   389→  /// حداقل میزان فروش در هر معامله
+   390→  minSaleAmount Int     @map("min_sale_amount")
+   391→  /// کف قیمت هر واحد (تومان) — 0 یعنی «تماس بگیرید»
+   392→  minSalePrice  Int     @map("min_sale_price")
+   393→
+   394→  /// جزئیات نهایی مرحله ۶ ویزارد — [{key, value}]
+   395→  features      Json?
+   396→  status        String  @default("pending") // pending | confirmed | rejected | deleted
+   397→  /// دلایل رد — آرایه رشته
+   398→  rejectionReasons Json? @map("rejection_reasons")
+   399→
+   400→  /// نردبان — آگهی نردبان‌شده بالای «مرتبط‌ترین» (۵۰هزار/ماه)
+   401→  isLadder        Boolean   @default(false) @map("is_ladder")
+   402→  ladderExpiresAt DateTime? @map("ladder_expires_at")
+   403→
+   404→  /// آگهیِ فروشنده ویژه (بسته اشتراک فعال) — سورت «مرتبط‌ترین»:
+   405→  /// نردبان اول → ویژه → جدیدترین (خواسته مالک ۳۰-۱۰)؛ نگهداری با reaper
+   406→  isElevated      Boolean   @default(false) @map("is_elevated")
+   407→
+   408→  hasVideo   Boolean @default(false) @map("has_video")
+   409→  isOld      Boolean @default(false) @map("is_old")
+   410→  viewCount  Int     @default(0) @map("view_count")
+   411→
+   412→  userId String @map("user_id") @db.ObjectId
+   413→  user   User   @relation("ProductOwner", fields: [userId], references: [id], onDelete: Cascade)
+   414→
+   415→  // ⚠️ ساختار درست داده: هیچ مشخصات کاربر/نام نمایشی داخل رکورد تکرار نمی‌شود.
+   416→  // رابطه یک‌به‌چند User↔Product فقط با user_id برقرار است؛ نام فروشنده/دسته/
+   417→  // مکان در لحظه خواندن با join (Prisma include + کش‌های base) ساخته می‌شود.
+   418→  // (فقط «unit» عمداً می‌ماند: اسنپ‌شات واحدِ آگهی در لحظه ثبت — جزو داده‌ی خود آگهی است.)
+   419→
+   420→  createdAt DateTime @default(now()) @map("created_at")
+   421→  updatedAt DateTime @updatedAt @map("updated_at")
+   422→
+   423→  chatThreads  ChatThread[]  @relation("ChatThreadProduct")
+   424→  ladderOrders LadderOrder[] @relation("LadderProduct")
+   425→  callLogs     CallLog[]     @relation("CallLogProduct")
+   426→  favoriteProducts FavoriteProduct[] @relation("FavoriteProductProduct")
+   427→  productViews    ProductView[]     @relation("ProductViewProduct")
+   428→
+   429→  /// سورت «مرتبط‌ترین» = نردبان اول، بعد ویژه، بعد جدیدترین (خواسته مالک ۳۰-۱۰)
+   430→  @@index([status, isLadder, isElevated, updatedAt(sort: Desc)])
+   431→  @@index([subCategoryId, status])
+   432→  @@index([provinceId, cityId, status])
+   433→  @@index([userId, status])
+   434→  @@index([slug])
+   435→}
+   436→
+   437→// ─── درخواست‌های خرید (RFQ) — عین ساختار get_buyAd_list باسکول ───────────────
+   438→
+   439→/// درخواست خرید — جمله کارت باسکول: «خریدار {requirementAmount} {unit}
+   440→/// {categoryName} از نوع {name} هستم». ⚠️ نام‌گذاری عین باسکول:
+   441→///   name = «نوع محصول» (پاجوش پیارم) — به‌زودی به نود PRODUCT_TYPE ارجاع
+   442→///   categoryId = دسته برگ (نهال) — در پاسخ باسکول subcategory_name
+   443→model BuyRequest {
+   444→  /// id عددی باسکول برای seed؛ Counter برای درخواست‌های جدید
+   445→  id                Int     @id @map("_id")
+   446→  /// «نوع محصول» مثل: پاجوش پیارم — در باسکول nullable
+   447→  name              String?
+   448→  description       String?
+   449→
+   450→  /// دسته برگ (بهداشت شخصی=1035)
+   451→  categoryId        Int     @map("category_id")
+   452→  /// نوع کالای انتخابی — ارجاع به جدول Good (جداشده از Category، ۳۰-۱۰)
+   453→  goodId            Int?    @map("good_id")
+   454→
+   455→  /// میزان نیازمندی (۶۰۰ عدد / ۱۰٬۰۰۰ کیلوگرم)
+   456→  requirementAmount Int     @map("requirement_amount")
+   457→  /// واحد سفارش — از واحد دسته
+   458→  unit              String  @default("کیلوگرم")
+   459→
+   460→  provinceId        Int?    @map("province_id")
+   461→  cityId            Int?    @map("city_id")
+   462→
+   463→  /// هدف: price_and_buy (قیمت + خرید) | price_only (فقط اطلاع از قیمت)
+   464→  goal              String  @default("price_and_buy")
+   465→  /// سابقه خرید عمده این کالا از قبل
+   466→  hasHistory        Boolean @default(false) @map("has_history")
+   467→
+   468→  /// pending | confirmed | rejected | deleted — تب‌های «درخواستهای من»
+   469→  status            String  @default("pending")
+   470→  rejectionReason   String? @map("rejection_reason")
+   471→
+   472→  userId String @map("user_id") @db.ObjectId
+   473→  user   User   @relation("BuyRequestOwner", fields: [userId], references: [id], onDelete: Cascade)
+   474→
+   475→  // ⚠️ ساختار درست داده: نام دسته/مکان و مشخصات خریدار در رکورد نیست —
+   476→  // در لحظه خواندن با join (درخت دسته کش‌شده + کالکشن Location + User) ساخته می‌شود.
+   477→
+   478→  createdAt DateTime @default(now()) @map("created_at")
+   479→  updatedAt DateTime @updatedAt @map("updated_at")
+   480→
+   481→  @@index([status, createdAt(sort: Desc)])
+   482→  @@index([categoryId, status])
+   483→  @@index([userId, status])
+   484→}
+   485→
+   486→// ─── CRM نشان‌شده‌ها — عین پنل باسکول (SavedList/SavedUser/Note) ────────────
+   487→
+   488→/// لیست نشان‌شده‌ها — نام آزاد مثل «سیب زمینی»؛ یکتا به‌ازای کاربر
+   489→model SavedList {
+   490→  id     String @id @default(auto()) @map("_id") @db.ObjectId
+   491→  userId String @map("user_id") @db.ObjectId
+   492→  user   User   @relation("SavedListOwner", fields: [userId], references: [id], onDelete: Cascade)
+   493→
+   494→  name      String
+   495→  savedUsers SavedUser[]
+   496→
+   497→  createdAt DateTime @default(now()) @map("created_at")
+   498→  updatedAt DateTime @updatedAt @map("updated_at")
+   499→
+   500→  @@unique([userId, name])
+   501→}
+   502→
+   503→/// خریدار نشان‌شده در یک لیست — وضعیت ۷گانه CRM باسکول
+   504→model SavedUser {
+   505→  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+   506→  savedListId String    @map("saved_list_id") @db.ObjectId
+   507→  savedList   SavedList @relation(fields: [savedListId], references: [id], onDelete: Cascade)
+   508→
+   509→  /// خریدار نشان‌شده
+   510→  targetUserId String @map("target_user_id") @db.ObjectId
+   511→  targetUser   User   @relation("SavedTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+   512→
+   513→  /// following | not_needed | unresponsive | out_of_stock |
+   514→  /// priority_high | priority_medium | priority_low
+   515→  status      String  @default("following")
+   516→  notes       SavedUserNote[]
+   517→
+   518→  createdAt DateTime @default(now()) @map("created_at")
+   519→  updatedAt DateTime @updatedAt @map("updated_at")
+   520→
+   521→  @@unique([savedListId, targetUserId])
+   522→  @@index([targetUserId])
+   523→}
+   524→
+   525→/// یادداشت زمان‌دار روی خریدار نشان‌شده — «یادم باشه زنگ بزنم»
+   526→model SavedUserNote {
+   527→  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+   528→  savedUserId String    @map("saved_user_id") @db.ObjectId
+   529→  savedUser   SavedUser @relation(fields: [savedUserId], references: [id], onDelete: Cascade)
+   530→
+   531→  text        String
+   532→
+   533→  createdAt DateTime @default(now()) @map("created_at")
+   534→
+   535→  @@index([savedUserId, createdAt(sort: Desc)])
+   536→}
+   537→
+   538→// ─── چت و پیام‌ها (B8) ───────────────────────────────────────────────────────
+   539→
+   540→// ─── کیف پول و نردبان (B9) ───────────────────────────────────────────────────
+   541→
+   542→/// سفارش شارژ کیف پول — کارت‌به‌کارت (جایگزین درگاه پرداخت): کاربر یکی از ۳
+   543→/// پکیج را به کارت ایمچ واریز می‌کند و تصویر فیش را می‌فرستد؛ ادمین تأیید/رد
+   544→/// می‌کند و شارژ (با احتساب درصد اضافه) به موجودی اضافه می‌شود.
+   545→/// فیش در جدول File (relatedModel=ChargeOrder, fieldKey=receipt) — دکترین
+   546→/// ضد-فایل-سرگردان imach-back: اسلات تک‌فایلی با replace + جبران در خطا.
+   547→model ChargeOrder {
+   548→  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+   549→  userId    String   @map("user_id") @db.ObjectId
+   550→  user      User     @relation("ChargeOrderOwner", fields: [userId], references: [id], onDelete: Cascade)
+   551→
+   552→  /// کلید پکیج — p100 | p200 | p400
+   553→  packageKey   String  @map("package_key")
+   554→  /// مبلغ واریزی کارت‌به‌کارت (تومان)
+   555→  amount       Int
+   556→  /// درصد شارژ اضافه (۰ | ۱۰ | ۲۰)
+   557→  bonusPercent Int     @map("bonus_percent")
+   558→  /// اعتبار افزوده به کیف پول پس از تأیید (با احتساب شارژ اضافه)
+   559→  charge       Int
+   560→
+   561→  /// pending | approved | rejected
+   562→  status         String   @default("pending")
+   563→  rejectionReason String? @map("rejection_reason")
+   564→  /// کاربر ادمین بررسی‌کننده
+   565→  reviewedBy String?   @map("reviewed_by") @db.ObjectId
+   566→  reviewedAt DateTime? @map("reviewed_at")
+   567→
+   568→  createdAt DateTime @default(now()) @map("created_at")
+   569→  updatedAt DateTime @updatedAt @map("updated_at")
+   570→
+   571→  @@index([status, createdAt(sort: Desc)])
+   572→  @@index([userId, createdAt(sort: Desc)])
+   573→}
+   574→
+   575→/// سفارش خرید بسته اشتراک (عین ChargeOrder ولی برای اشتراک، نه شارژ کیف پول):
+   576→/// کاربر مبلغ پلن را کارت‌به‌کارت می‌کند + فیش را می‌فرستد → ادمین تأیید می‌کند
+   577→/// → activePakageType کاربر روی پلن تنظیم و packageExpiresAt تمدید می‌شود.
+   578→/// امکانات بسته: ثبت نامحدود محصول، دسترسی به خریداران، نشان فروشنده ویژه.
+   579→model PackageOrder {
+   580→  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+   581→  userId    String   @map("user_id") @db.ObjectId
+   582→  user      User     @relation("PackageOrderOwner", fields: [userId], references: [id], onDelete: Cascade)
+   583→
+   584→  /// کلید پلن — p2m | p6m | p12m
+   585→  planKey   String  @map("plan_key")
+   586→  /// مدت پلن (ماه) — ۲ | ۶ | ۱۲
+   587→  months    Int
+   588→  /// مبلغ واریزی کارت‌به‌کارت (تومان)
+   589→  amount    Int
+   590→
+   591→  /// pending | approved | rejected
+   592→  status         String  @default("pending")
+   593→  rejectionReason String? @map("rejection_reason")
+   594→  /// کاربر ادمین بررسی‌کننده
+   595→  reviewedBy String?   @map("reviewed_by") @db.ObjectId
+   596→  reviewedAt DateTime? @map("reviewed_at")
+   597→  /// بازه اعتبار اعمال‌شده پس از تأیید (startsAt = مبنا یا انقضای زنده قبلی)
+   598→  startsAt  DateTime? @map("starts_at")
+   599→  expiresAt DateTime? @map("expires_at")
+   600→
+   601→  createdAt DateTime @default(now()) @map("created_at")
+   602→  updatedAt DateTime @updatedAt @map("updated_at")
+   603→
+   604→  @@index([status, createdAt(sort: Desc)])
+   605→  @@index([userId, createdAt(sort: Desc)])
+   606→}
+   607→
+   608→/// اصلاح دستی کیف پول توسط ادمین (فاز A3) — شارژ یا کسر با دلیل.
+   609→/// در تاریخچه تراکنش‌های کاربر با عنوان «اصلاح کیف پول» دیده می‌شود؛
+   610→/// موجودیت بعدیِ ثبت (balanceAfter) مرور حساب را ممکن می‌کند.
+   611→model WalletAdjustment {
+   612→  id     String @id @default(auto()) @map("_id") @db.ObjectId
+   613→  userId String @map("user_id") @db.ObjectId
+   614→  user   User   @relation("WalletAdjustmentOwner", fields: [userId], references: [id], onDelete: Cascade)
+   615→
+   616→  /// مثبت = شارژ دستی؛ منفی = کسر (تومان)
+   617→  amount    Int
+   618→  /// دلیل — به کاربر نمایش داده می‌شود
+   619→  reason    String
+   620→  /// کاربر ادمین انجام‌دهنده
+   621→  adminId   String @map("admin_id") @db.ObjectId
+   622→  /// موجودی پس از اعمال — برای مرور حساب
+   623→  balanceAfter Int @map("balance_after")
+   624→
+   625→  createdAt DateTime @default(now()) @map("created_at")
+   626→
+   627→  @@index([userId, createdAt(sort: Desc)])
+   628→}
+   629→
+   630→/// نردبان آگهی — تنها قابلیت تبلیغاتی مگان (۱۰۰هزار تومان/ماه؛ بدون VIP و
+   631→/// «فروشنده ویژه» — خواسته مالک). هزینه لحظه خرید از کیف پول کسر می‌شود؛
+   632→/// is_ladder + ladder_expires_at روی خود آگهی denorm می‌شوند و سورت
+   633→/// «مرتبط‌ترین» نردبان‌های زنده را صدر می‌گذارد. تمدید = امتداد از انقضای
+   634→/// فعلی. انقضا با فیلتر زنده لیست + reaper دوره‌ای ماژول wallet غیرفعال می‌شود.
+   635→model LadderOrder {
+   636→  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+   637→  productId Int
+   638→  product   Product  @relation("LadderProduct", fields: [productId], references: [id])
+   639→  userId    String   @map("user_id") @db.ObjectId
+   640→  user      User     @relation("LadderOrderOwner", fields: [userId], references: [id], onDelete: Cascade)
+   641→
+   642→  /// مبلغ پرداختی از کیف پول (تومان) — ثابت ۱۰۰هزار
+   643→  amount    Int
+   644→  startsAt  DateTime @map("starts_at")
+   645→  expiresAt DateTime @map("expires_at")
+   646→
+   647→  createdAt DateTime @default(now()) @map("created_at")
+   648→  updatedAt DateTime @updatedAt @map("updated_at")
+   649→
+   650→  @@index([productId])
+   651→  @@index([userId, createdAt(sort: Desc)])
+   652→  @@index([expiresAt])
+   653→}
+   654→
+   655→/// مکالمه روی آگهی — خریدار ↔ فروشنده برای یک محصول مشخص (عین باسکول).
+   656→/// یک مکالمه به‌ازای هر خریدار روی هر آگهی؛ فروشنده = مالک آگهی (denorm).
+   657→model ChatThread {
+   658→  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+   659→  /// آگهی زمینه مکالمه — null یعنی گفتگوی مستقیم از پروفایل فروشنده
+   660→  /// (عین «ارسال پیام» باسکول در پروفایل؛ بدون آگهی خاص).
+   661→  productId Int?
+   662→  product   Product? @relation("ChatThreadProduct", fields: [productId], references: [id])
+   663→
+   664→  sellerId  String   @map("seller_id") @db.ObjectId
+   665→  seller    User     @relation("ChatThreadSeller", fields: [sellerId], references: [id])
+   666→  buyerId   String   @map("buyer_id") @db.ObjectId
+   667→  buyer     User     @relation("ChatThreadBuyer", fields: [buyerId], references: [id])
+   668→
+   669→  /// برای سورت لیست مکالمات بدون join آخرین پیام
+   670→  lastMessageAt DateTime? @map("last_message_at")
+   671→
+   672→  createdAt DateTime @default(now()) @map("created_at")
+   673→  updatedAt DateTime @updatedAt @map("updated_at")
+   674→
+   675→  messages ChatMessage[]
+   676→
+   677→  /// با productId=null مونگو null را مقدار می‌شمارد → حداکثر یک گفتگوی
+   678→  /// مستقیم بین هر خریدار↔فروشنده؛ با productId همان یک مکالمه روی آگهی.
+   679→  @@unique([sellerId, buyerId, productId])
+   680→  @@index([sellerId, lastMessageAt(sort: Desc)])
+   681→  @@index([buyerId, lastMessageAt(sort: Desc)])
+   682→}
+   683→
+   684→/// پیام — متن ساده در v1 (بدون فایل)؛ خوانده‌شدن با readAt
+   685→model ChatMessage {
+   686→  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+   687→  threadId  String     @map("thread_id") @db.ObjectId
+   688→  thread    ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+   689→
+   690→  /// فرستنده — عضو مکالمه اعتبارسنجی می‌شود
+   691→  senderId  String     @map("sender_id") @db.ObjectId
+   692→  text      String
+   693→  readAt    DateTime?  @map("read_at")
+   694→
+   695→  createdAt DateTime   @default(now()) @map("created_at")
+   696→
+   697→  @@index([threadId, createdAt(sort: Desc)])
+   698→  @@index([threadId, readAt])
+   699→}
+   700→
+   701→/// پیام مستقیم پشتیبانی (ادمین → کاربر) — یک‌طرفه برای اطلاع‌رسانی/حذف نرم
+   702→/// اعلان‌ها. هر ردیف = یک پیام برای «یک» کاربر؛ ارسال گروهی/همه ردیف‌های
+   703→/// جدا می‌سازد تا خوانده‌شدن per-user دقیق بماند (الگوی denorm باسکول).
+   704→/// user-side: مکالمه سنجاق‌شده «پشتیبانی ایمچ» در /panel/messages.
+   705→model AdminMessage {
+   706→  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+   707→  userId String  @map("user_id") @db.ObjectId
+   708→  user   User    @relation("AdminMessageOwner", fields: [userId], references: [id], onDelete: Cascade)
+   709→
+   710→  /// نام کاربری ادمین فرستنده (نمایشی) — AdminUser جداست؛ username کافی است
+   711→  adminUsername String @map("admin_username")
+   712→  /// متن پیام — ساده در v1 (بدون فایل/عنوان)
+   713→  text    String
+   714→
+   715→  /// null = خوانده‌نشده — با باز کردن مکالمه پشتیبانی توسط کاربر پر می‌شود
+   716→  readAt  DateTime? @map("read_at")
+   717→
+   718→  createdAt DateTime @default(now()) @map("created_at")
+   719→
+   720→  @@index([userId, createdAt(sort: Desc)])
+   721→  @@index([readAt, createdAt(sort: Desc)])
+   722→}
+   723→
+   724→/// گزارش تماس کاربر-به-کاربر (A6).
+   725→/// چرا: در مدل MVP ایمچ کاربران را خودمان در دیتابیس می‌ریزیم؛ خریدار
+   726→/// شماره فروشنده را می‌بیند و بیرون سایت زنگ می‌زند. تنها سیگنال قابل
+   727→/// ثبتِ وب، لحظه‌ی «آشکارسازی شماره» است — همان لحظه ثبت می‌شود تا
+   728→/// ادمین بداند چه کسی با چه کسی در حال معامله است و حجم تماس‌ها چقدر است.
+   729→model CallLog {
+   730→  id String @id @default(auto()) @map("_id") @db.ObjectId
+   731→
+   732→  /// تماس‌گیرنده — کسی که شماره را دید
+   733→  callerId String @map("caller_id") @db.ObjectId
+   734→  caller   User   @relation("CallCaller", fields: [callerId], references: [id])
+   735→
+   736→  /// دریافت‌کننده — صاحب شماره
+   737→  calleeId String @map("callee_id") @db.ObjectId
+   738→  callee   User   @relation("CallCallee", fields: [calleeId], references: [id])
+   739→
+   740→  /// زمینه آشکارسازی شماره — صفحه آگهی / پروفایل / چت
+   741→  source    String   @default("product") // product | profile | chat
+   742→  productId Int?     @map("product_id")
+   743→  product   Product? @relation("CallLogProduct", fields: [productId], references: [id])
+   744→
+   745→  createdAt DateTime @default(now()) @map("created_at")
+   746→
+   747→  @@index([calleeId, createdAt(sort: Desc)])
+   748→  @@index([callerId, createdAt(sort: Desc)])
+   749→  @@index([createdAt(sort: Desc)])
+   750→}
+   751→
+   752→/// نظر کاربران درباره فروشنده (عین «نظرات کاربران» باسکول در پروفایل):
+   753→/// امتیاز ۱..۵ + متن؛ هر کاربر حداکثر یک نظر برای هر فروشنده (upsert) —
+   754→/// ویرایش نظر خودش آزاد است. خودفروشی نظر (نظر درباره خود) ممنوع.
+   755→model SellerReview {
+   756→  id String @id @default(auto()) @map("_id") @db.ObjectId
+   757→
+   758→  /// فروشنده‌ای که نظر درباره‌اش است
+   759→  sellerId String @map("seller_id") @db.ObjectId
+   760→  seller   User   @relation("ReviewSeller", fields: [sellerId], references: [id])
+   761→
+   762→  /// نویسنده نظر
+   763→  authorId String @map("author_id") @db.ObjectId
+   764→  author   User   @relation("ReviewAuthor", fields: [authorId], references: [id])
+   765→
+   766→  /// ۱ تا ۵ ستاره
+   767→  rating Int
+   768→  /// متن نظر — حداکثر ~۱۰۰۰ نویسه
+   769→  text   String
+   770→
+   771→  createdAt DateTime @default(now()) @map("created_at")
+   772→  updatedAt DateTime @updatedAt @map("updated_at")
+   773→
+   774→  @@unique([authorId, sellerId])
+   775→  @@index([sellerId, createdAt(sort: Desc)])
+   776→}
+   777→
+   778→/// نظرسنجی عملکرد ایمچ (عین نظرسنجی باسکول): امتیاز ۵گانه + متن دلخواه.
+   779→/// هر کاربر حداکثر یک پاسخ (userId یکتا) — ثبت مجدد یعنی ویرایش نظر خودش.
+   780→/// پنل ادمین فهرست/آمار/حذف دارد (ماژول admin-surveys).
+   781→model SurveyResponse {
+   782→  id String @id @default(auto()) @map("_id") @db.ObjectId
+   783→
+   784→  user   User   @relation("SurveyOwner", fields: [userId], references: [id], onDelete: Cascade)
+   785→  userId String @unique @map("user_id") @db.ObjectId
+   786→
+   787→  /// excellent | good | average | bad | very_bad (۵گانه نظرسنجی)
+   788→  score String
+   789→  /// متن دلخواه — حداکثر ۱۰۰۰ نویسه
+   790→  note  String?
+   791→
+   792→  createdAt DateTime @default(now()) @map("created_at")
+   793→  updatedAt DateTime @updatedAt @map("updated_at")
+   794→
+   795→  @@index([score])
+   796→}
+   797→
+   798→// ─── فعالیت کاربران (خواسته مالک ۳۰-۱۰) ─────────────────────────────────────
+   799→// جدول توسعه‌پذیر: فعلاً جستجوها / انتخاب دسته از سایدبار / بازدید صفحات لاگ
+   800→// می‌شود؛ فعالیت‌های آینده (کلیک تماس، ذخیره و …) فقط با type جدید اضافه
+   801→// می‌شوند — بدون مهاجرت. مهمان‌ها با sessionId مرورگر دنبال می‌شوند.
+   802→
+   803→/// هر ردیف یک رویداد فعالیت است — هرگز آپدیت نمی‌شود (append-only)
+   804→model ActivityLog {
+   805→  id String @id @default(auto()) @map("_id") @db.ObjectId
+   806→
+   807→  /// search | category_view | page_view
+   808→  type String
+   809→  /// کاربر واردشده — مهمان = null
+   810→  userId    String? @map("user_id") @db.ObjectId
+   811→  /// نشست مرورگر مهمان — uuid در localStorage فرانت (تجمیع بازدید مهمان)
+   812→  sessionId String? @map("session_id")
+   813→
+   814→  /// متن جستجو (type=search)
+   815→  q String?
+   816→  /// دسته انتخاب‌شده از سایدبار (type=category_view) — نام + id در صورت resolve
+   817→  categoryId   Int?    @map("category_id")
+   818→  categoryName String? @map("category_name")
+   819→  /// مسیر صفحه (type=page_view)
+   820→  path     String?
+   821→  userAgent String? @map("user_agent")
+   822→
+   823→  createdAt DateTime @default(now()) @map("created_at")
+   824→
+   825→  @@index([type, createdAt(sort: Desc)])
+   826→  @@index([userId, createdAt(sort: Desc)])
+   827→  @@index([q])
+   828→  @@index([categoryName])
+   829→}
+   830→
+   831→// ─── علاقه‌مندی‌ها (خواسته مالک ۳۰-۱۰) ────────────────────────────────────────
+   832→// دو موجودیت مستقل:
+   833→//  • FavoriteProduct — «نشان کردن» آگهی برای کاربر (دکمه ذخیره صفحه آگهی)
+   834→//  • FavoriteSeller  — ذخیره صفحه اختصاصی فروشنده (دکمه ذخیره پروفایل)
+   835→// آمار آگهی (چه کسانی ذخیره کردند) از همین جدول‌ها خوانده می‌شود.
+   836→
+   837→model FavoriteProduct {
+   838→  id      String @id @default(auto()) @map("_id") @db.ObjectId
+   839→  user    User   @relation("FavoriteProductOwner", fields: [userId], references: [id], onDelete: Cascade)
+   840→  userId  String @map("user_id") @db.ObjectId
+   841→
+   842→  /// آگهی نشان‌شده
+   843→  productId Int
+   844→  product   Product @relation("FavoriteProductProduct", fields: [productId], references: [id], onDelete: Cascade)
+   845→
+   846→  createdAt DateTime @default(now()) @map("created_at")
+   847→
+   848→  @@unique([userId, productId])
+   849→  @@index([productId, createdAt(sort: Desc)])
+   850→}
+   851→
+   852→model FavoriteSeller {
+   853→  id      String @id @default(auto()) @map("_id") @db.ObjectId
+   854→  user    User   @relation("FavoriteSellerOwner", fields: [userId], references: [id], onDelete: Cascade)
+   855→  userId  String @map("user_id") @db.ObjectId
+   856→
+   857→  /// فروشنده ذخیره‌شده
+   858→  sellerId String @map("seller_id") @db.ObjectId
+   859→  seller   User   @relation("FavoriteSellerTarget", fields: [sellerId], references: [id], onDelete: Cascade)
+   860→
+   861→  createdAt DateTime @default(now()) @map("created_at")
+   862→
+   863→  @@unique([userId, sellerId])
+   864→  @@index([sellerId, createdAt(sort: Desc)])
+   865→}
+   866→
+   867→// ─── آمار آگهی (خواسته مالک ۳۰-۱۰) ───────────────────────────────────────────
+   868→// چه کسانی آگهی را دیدند و چه تاریخی — تک‌رکورد به‌ازای هر بازدید واقعی مرورگر
+   869→// (ping سمت کلاینت، نه SSR — خزنده‌ها شمرده نمی‌شوند). «چه کسی تماس زد» از
+   870→// CallLog موجود و «چه کسی ذخیره کرد» از FavoriteProduct خوانده می‌شود.
+   871→
+   872→model ProductView {
+   873→  id String @id @default(auto()) @map("_id") @db.ObjectId
+   874→
+   875→  /// آگیی که دیده شد
+   876→  productId Int
+   877→  product   Product @relation("ProductViewProduct", fields: [productId], references: [id], onDelete: Cascade)
+   878→
+   879→  /// بیننده واردشده — مهمان = null
+   880→  viewerId   String? @map("viewer_id") @db.ObjectId
+   881→  /// نشست مرورگر مهمان (تجمیع بازدیدهای مهمان)
+   882→  sessionId  String? @map("session_id")
+   883→
+   884→  createdAt DateTime @default(now()) @map("created_at")
+   885→
+   886→  @@index([productId, createdAt(sort: Desc)])
+   887→  @@index([productId, viewerId])
+   888→}
+   889→

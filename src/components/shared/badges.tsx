@@ -1,32 +1,37 @@
 import { BadgeCheck, Crown, TrendingUp, AlertTriangle, Clock3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-/** نشان «نردبان» — آگهی نردبان‌شده بالای نتایج می‌آید (۵۰ هزار تومان در ماه) */
+/**
+ * نشان‌های آگهی — نردبان و ویژه از ۳۱-۱۰ قرمز پررنگ شدند (خواسته مالک:
+ * «با رنگ قرمز بهتره باشه که مشخص تره») و روی تصویر کارت می‌نشینند (batch).
+ */
+
+/** نشان «نردبان» — قرمز توپر؛ روی تصویر کارت و جزئیات آگهی */
 export function LadderBadge({ className, compact = false }: { className?: string; compact?: boolean }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-sm bg-ladder-soft px-1.5 py-0.5 text-[11px] font-bold text-ladder ring-1 ring-ladder/25',
+        'inline-flex items-center gap-1 rounded-sm bg-red-600 px-1.5 py-0.5 text-[11px] font-bold text-white shadow-sm ring-1 ring-red-700/30',
         className,
       )}
     >
-      <TrendingUp size={12} strokeWidth={2.4} />
+      <TrendingUp size={12} strokeWidth={2.6} />
       {!compact && 'نردبان'}
     </span>
   );
 }
 
-/** نشان «فروشنده ویژه» — دارای بسته اشتراک فعال (سورت بالاتر از عادی) */
+/** نشان «فروشنده ویژه» — قرمز توپر (خواسته مالک ۳۱-۱۰: مشخص‌تر روی لیست آگهی‌ها) */
 export function PremiumSellerBadge({ className, compact = false }: { className?: string; compact?: boolean }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-sm bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200',
+        'inline-flex items-center gap-1 rounded-sm bg-red-600 px-1.5 py-0.5 text-[11px] font-bold text-white shadow-sm ring-1 ring-red-700/30',
         className,
       )}
     >
-      <Crown size={12} strokeWidth={2.4} />
-      {!compact && 'فروشنده ویژه'}
+      <Crown size={12} strokeWidth={2.6} />
+      {!compact && 'ویژه'}
     </span>
   );
 }

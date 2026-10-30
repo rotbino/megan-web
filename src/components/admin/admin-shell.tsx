@@ -51,52 +51,98 @@ import {
 import { adminChangePassword, adminLogout, fetchAdminMe, type AdminProfile } from '@/lib/admin/api';
 import { cn } from '@/lib/utils';
 
-/** منوی پنل — همه فازها (A1-A5) فعال‌اند؛ «ادمین‌ها» فقط برای مدیر ارشد */
-const NAV = [
-  { href: '/admin', label: 'داشبورد', Icon: LayoutDashboard, superOnly: false },
-  { href: '/admin/chats', label: 'چت‌های کاربران', Icon: MessagesSquare, superOnly: false },
-  { href: '/admin/calls', label: 'گزارش تماس‌ها', Icon: PhoneCall, superOnly: false },
-  { href: '/admin/users', label: 'کاربران', Icon: Users, superOnly: false },
-  { href: '/admin/activities', label: 'فعالیت کاربران', Icon: Activity, superOnly: false },
-  { href: '/admin/surveys', label: 'نظرسنجی‌ها', Icon: MessageSquareText, superOnly: false },
-  { href: '/admin/reviews', label: 'نظرات فروشندگان', Icon: Star, superOnly: false },
-  { href: '/admin/products', label: 'آگهی‌ها', Icon: Boxes, superOnly: false },
-  { href: '/admin/buy-requests', label: 'درخواست‌های خرید', Icon: ClipboardList, superOnly: false },
-  { href: '/admin/charges', label: 'شارژها', Icon: Coins, superOnly: false },
-  { href: '/admin/packages', label: 'بسته‌های اشتراک', Icon: Crown, superOnly: false },
-  { href: '/admin/verifications', label: 'احراز هویت', Icon: BadgeCheck, superOnly: false },
-  { href: '/admin/categories', label: 'دسته‌بندی‌ها', Icon: Network, superOnly: false },
-  { href: '/admin/locations', label: 'مکان‌ها', Icon: MapPin, superOnly: false },
-  { href: '/admin/logs', label: 'لاگ عملیات', Icon: ScrollText, superOnly: false },
-  { href: '/admin/admins', label: 'ادمین‌ها', Icon: UserCog, superOnly: true },
-  { href: '/admin/settings', label: 'تنظیمات', Icon: Settings, superOnly: false },
-] as const;
+/** منوی پنل — دسته‌بندی‌شده تا خلوت شود (خواسته مالک ۳۱-۱۰):
+ *  هر گروه = یک سرشاخه کوچک + آیتم‌هایش؛ «ادمین‌ها» فقط برای مدیر ارشد. */
+interface NavItem {
+  href: string;
+  label: string;
+  Icon: typeof LayoutDashboard;
+  superOnly: boolean;
+}
+
+const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
+  {
+    title: 'کاربران و ارتباطات',
+    items: [
+      { href: '/admin/users', label: 'کاربران', Icon: Users, superOnly: false },
+      { href: '/admin/activities', label: 'فعالیت کاربران', Icon: Activity, superOnly: false },
+      { href: '/admin/chats', label: 'چت‌های کاربران', Icon: MessagesSquare, superOnly: false },
+      { href: '/admin/calls', label: 'گزارش تماس‌ها', Icon: PhoneCall, superOnly: false },
+      { href: '/admin/surveys', label: 'نظرسنجی‌ها', Icon: MessageSquareText, superOnly: false },
+    ],
+  },
+  {
+    title: 'بازار و محتوا',
+    items: [
+      { href: '/admin/products', label: 'آگهی‌ها', Icon: Boxes, superOnly: false },
+      { href: '/admin/buy-requests', label: 'درخواست‌های خرید', Icon: ClipboardList, superOnly: false },
+      { href: '/admin/reviews', label: 'نظرات فروشندگان', Icon: Star, superOnly: false },
+      { href: '/admin/verifications', label: 'احراز هویت', Icon: BadgeCheck, superOnly: false },
+    ],
+  },
+  {
+    title: 'مالی و فروش',
+    items: [
+      { href: '/admin/charges', label: 'شارژها', Icon: Coins, superOnly: false },
+      { href: '/admin/packages', label: 'بسته‌ها و کمپین‌ها', Icon: Crown, superOnly: false },
+    ],
+  },
+  {
+    title: 'اطلاعات پایه',
+    items: [
+      { href: '/admin/categories', label: 'دسته‌بندی‌ها', Icon: Network, superOnly: false },
+      { href: '/admin/locations', label: 'مکان‌ها', Icon: MapPin, superOnly: false },
+    ],
+  },
+  {
+    title: 'سیستم',
+    items: [
+      { href: '/admin/logs', label: 'لاگ عملیات', Icon: ScrollText, superOnly: false },
+      { href: '/admin/admins', label: 'ادمین‌ها', Icon: UserCog, superOnly: true },
+      { href: '/admin/settings', label: 'تنظیمات', Icon: Settings, superOnly: false },
+    ],
+  },
+];
 
 function SidebarNav({ onNavigate, superAdmin }: { onNavigate?: () => void; superAdmin?: boolean }) {
   const pathname = usePathname() ?? '/admin';
+  const isActive = (href: string) =>
+    href === '/admin' ? pathname === '/admin' : pathname === href || pathname.startsWith(`${href}/`);
+
+  const renderItem = ({ href, label, Icon, superOnly }: NavItem) => {
+    if (superOnly && !superAdmin) return null; // فقط مدیر ارشد
+    const active = isActive(href);
+    return (
+      <Link
+        key={label}
+        href={href}
+        onClick={onNavigate}
+        aria-current={active ? 'page' : undefined}
+        className={cn(
+          'relative flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors',
+          active
+            ? 'bg-primary/10 font-bold text-primary before:absolute before:inset-y-1.5 before:right-0 before:w-[3px] before:rounded-full before:bg-primary'
+            : 'font-normal text-muted-foreground hover:bg-secondary/70 hover:text-foreground',
+        )}
+      >
+        <Icon size={18} className={cn('shrink-0', active ? 'text-primary' : 'text-muted-foreground/70')} />
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+      </Link>
+    );
+  };
+
   return (
     <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-2" aria-label="منوی مدیریت">
-      {NAV.map(({ href, label, Icon, superOnly }) => {
-        if (superOnly && !superAdmin) return null; // فقط مدیر ارشد
-        const active = href === '/admin' ? pathname === '/admin' : pathname === href || pathname.startsWith(`${href}/`);
-        return (
-          <Link
-            key={label}
-            href={href}
-            onClick={onNavigate}
-            aria-current={active ? 'page' : undefined}
-            className={cn(
-              'relative flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] transition-colors',
-              active
-                ? 'bg-primary/10 font-bold text-primary before:absolute before:inset-y-1.5 before:right-0 before:w-[3px] before:rounded-full before:bg-primary'
-                : 'font-normal text-muted-foreground hover:bg-secondary/70 hover:text-foreground',
-            )}
-          >
-            <Icon size={18} className={cn('shrink-0', active ? 'text-primary' : 'text-muted-foreground/70')} />
-            <span className="min-w-0 flex-1 truncate">{label}</span>
-          </Link>
-        );
-      })}
+      {/* داشبورد — تک‌آیتم بالا */}
+      {renderItem({ href: '/admin', label: 'داشبورد', Icon: LayoutDashboard, superOnly: false })}
+      {NAV_GROUPS.map((group) => (
+        <div key={group.title} className="mt-1">
+          <p className="px-3 pb-1 pt-2.5 text-[10px] font-extrabold tracking-wide text-muted-foreground/70">
+            {group.title}
+          </p>
+          <div className="flex flex-col gap-0.5">{group.items.map(renderItem)}</div>
+        </div>
+      ))}
     </nav>
   );
 }

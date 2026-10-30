@@ -1,0 +1,694 @@
+     1→'use client';
+     2→
+     3→/**
+     4→ * جزئیات کاربر (فاز A3) — پروفایل + آمار + آگهی‌ها + کیف پول + احراز هویت.
+     5→ *
+     6→ * عملیات: فعال/غیرفعال (حذف نرم)، نقش خریدار/فروشنده، شارژ/کسر دستی
+     7→ * کیف پول با دلیل (WalletAdjustment)، بازبینی مدارک احراز (تأیید/رد).
+     8→ */
+     9→
+    10→import { useState } from 'react';
+    11→import Link from 'next/link';
+    12→import { useParams } from 'next/navigation';
+    13→import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+    14→import {
+    15→  ArrowRight,
+    16→  BadgeCheck,
+    17→  Boxes,
+    18→  Loader2,
+    19→  Minus,
+    20→  Plus,
+    21→  Receipt,
+    22→  ShieldCheck,
+    23→  UserRound,
+    24→  Wallet,
+    25→} from 'lucide-react';
+    26→import {
+    27→  creditAdminUserWallet,
+    28→  fetchAdminUserDetail,
+    29→  reviewAdminVerification,
+    30→  setAdminUserActive,
+    31→  setAdminUserRoles,
+    32→} from '@/lib/admin/api';
+    33→import { UserMessagesTab } from './messages-tab';
+    34→import { PresenceDot } from '@/components/shared/presence-dot';
+    35→import { Button } from '@/components/ui/button';
+    36→import { Input } from '@/components/ui/input';
+    37→import { Label } from '@/components/ui/label';
+    38→import { Skeleton } from '@/components/ui/skeleton';
+    39→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    40→import { Textarea } from '@/components/ui/textarea';
+    41→import { useToast } from '@/hooks/use-toast';
+    42→import { cn } from '@/lib/utils';
+    43→import { dateFa, priceFa, timeAgoFa, toFa } from '@/lib/format';
+    44→
+    45→type TabKey = 'overview' | 'products' | 'wallet' | 'verification';
+    46→
+    47→const STATUS_LABEL: Record<string, string> = {
+    48→  confirmed: 'تأییدشده',
+    49→  pending: 'در انتظار تأیید',
+    50→  rejected: 'رد شده',
+    51→  deleted: 'حذف‌شده',
+    52→};
+    53→
+    54→/** جعبه آمار کوچک */
+    55→function Stat({ label, value }: { label: string; value: string }) {
+    56→  return (
+    57→    <div className="rounded-[10px] bg-secondary/60 px-3 py-2.5">
+    58→      <span className="block text-[10px] text-muted-foreground">{label}</span>
+    59→      <b className="text-[13px]">{value}</b>
+    60→    </div>
+    61→  );
+    62→}
+    63→
+    64→/** دیالوگ اصلاح کیف پول — شارژ/کسر با دلیل */
+    65→function WalletDialog({
+    66→  userId,
+    67→  balance,
+    68→  onClose,
+    69→}: {
+    70→  userId: string;
+    71→  balance: number;
+    72→  onClose: () => void;
+    73→}) {
+    74→  const { toast } = useToast();
+    75→  const queryClient = useQueryClient();
+    76→  const [mode, setMode] = useState<'charge' | 'deduct'>('charge');
+    77→  const [amount, setAmount] = useState('');
+    78→  const [reason, setReason] = useState('');
+    79→  const [error, setError] = useState('');
+    80→
+    81→  const save = useMutation({
+    82→    mutationFn: () => {
+    83→      const n = Math.abs(parseInt(amount.replace(/[^\d]/g, ''), 10) || 0);
+    84→      return creditAdminUserWallet(userId, mode === 'charge' ? n : -n, reason.trim());
+    85→    },
+    86→    onSuccess: (d) => {
+    87→      void queryClient.invalidateQueries({ queryKey: ['admin-user', userId] });
+    88→      toast({ description: `کیف پول اصلاح شد — موجودی جدید: ${priceFa(d.balance)}` });
+    89→      onClose();
+    90→    },
+    91→    onError: (err: Error) => setError(err.message),
+    92→  });
+    93→
+    94→  const submit = (e: React.FormEvent) => {
+    95→    e.preventDefault();
+    96→    setError('');
+    97→    const n = Math.abs(parseInt(amount.replace(/[^\d]/g, ''), 10) || 0);
+    98→    if (n <= 0) {
+    99→      setError('مبلغ معتبر وارد کنید.');
+   100→      return;
+   101→    }
+   102→    if (reason.trim().length < 3) {
+   103→      setError('دلیل اصلاح را بنویسید (برای کاربر نمایش داده می‌شود).');
+   104→      return;
+   105→    }
+   106→    save.mutate();
+   107→  };
+   108→
+   109→  return (
+   110→    <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="اصلاح کیف پول">
+   111→      <button type="button" aria-label="بستن" className="absolute inset-0 bg-black/40" onClick={onClose} />
+   112→      <form onSubmit={submit} className="relative w-full max-w-sm space-y-4 rounded-xl border bg-card p-6 shadow-lg">
+   113→        <div>
+   114→          <h2 className="text-sm font-extrabold">اصلاح کیف پول</h2>
+   115→          <p className="mt-1 text-[11px] text-muted-foreground">
+   116→            موجودی فعلی: {priceFa(balance)} — اصلاح با دلیل در تاریخچه کاربر ثبت می‌شود.
+   117→          </p>
+   118→        </div>
+   119→
+   120→        {/* شارژ / کسر */}
+   121→        <div className="grid grid-cols-2 gap-2">
+   122→          {(['charge', 'deduct'] as const).map((m) => (
+   123→            <button
+   124→              key={m}
+   125→              type="button"
+   126→              onClick={() => setMode(m)}
+   127→              className={cn(
+   128→                'flex h-10 items-center justify-center gap-1.5 rounded-[10px] border text-[12.5px] font-bold transition-colors',
+   129→                mode === m
+   130→                  ? 'border-primary-line bg-primary-soft text-primary'
+   131→                  : 'border-input bg-card text-secondary-foreground hover:bg-secondary/60',
+   132→              )}
+   133→            >
+   134→              {m === 'charge' ? <Plus size={14} /> : <Minus size={14} />}
+   135→              {m === 'charge' ? 'شارژ دستی' : 'کسر دستی'}
+   136→            </button>
+   137→          ))}
+   138→        </div>
+   139→
+   140→        <div className="space-y-1.5">
+   141→          <Label htmlFor="wa-amount">مبلغ (تومان)</Label>
+   142→          <Input
+   143→            id="wa-amount"
+   144→            inputMode="numeric"
+   145→            dir="ltr"
+   146→            value={amount}
+   147→            onChange={(e) => setAmount(e.target.value)}
+   148→            placeholder="مثلاً 500000"
+   149→            maxLength={12}
+   150→            autoFocus
+   151→          />
+   152→        </div>
+   153→
+   154→        <div className="space-y-1.5">
+   155→          <Label htmlFor="wa-reason">دلیل (برای کاربر نمایش داده می‌شود)</Label>
+   156→          <Textarea
+   157→            id="wa-reason"
+   158→            value={reason}
+   159→            onChange={(e) => setReason(e.target.value)}
+   160→            placeholder="مثلاً: جبران واریز حضوری شعبه"
+   161→            maxLength={200}
+   162→            className="min-h-20"
+   163→          />
+   164→        </div>
+   165→
+   166→        {error && <p className="text-xs text-destructive">{error}</p>}
+   167→
+   168→        <div className="flex gap-2 pt-1">
+   169→          <Button type="submit" className="flex-1 rounded-md" disabled={save.isPending}>
+   170→            {save.isPending ? <Loader2 className="animate-spin" size={16} /> : null}
+   171→            اعمال اصلاح
+   172→          </Button>
+   173→          <Button type="button" variant="outline" className="rounded-md" onClick={onClose}>
+   174→            انصراف
+   175→          </Button>
+   176→        </div>
+   177→      </form>
+   178→    </div>
+   179→  );
+   180→}
+   181→
+   182→/** دیالوگ رد مدارک احراز با دلیل */
+   183→function RejectDialog({ orderId, onClose }: { orderId: string; onClose: () => void }) {
+   184→  const { toast } = useToast();
+   185→  const queryClient = useQueryClient();
+   186→  const [reason, setReason] = useState('');
+   187→  const [error, setError] = useState('');
+   188→
+   189→  const reject = useMutation({
+   190→    mutationFn: () => reviewAdminVerification(orderId, false, reason.trim()),
+   191→    onSuccess: () => {
+   192→      void queryClient.invalidateQueries({ queryKey: ['admin-user'] });
+   193→      toast({ description: 'درخواست احراز رد شد — دلیل برای کاربر ثبت شد.' });
+   194→      onClose();
+   195→    },
+   196→    onError: (err: Error) => setError(err.message),
+   197→  });
+   198→
+   199→  const submit = (e: React.FormEvent) => {
+   200→    e.preventDefault();
+   201→    setError('');
+   202→    if (reason.trim().length < 3) {
+   203→      setError('دلیل رد را بنویسید.');
+   204→      return;
+   205→    }
+   206→    reject.mutate();
+   207→  };
+   208→
+   209→  return (
+   210→    <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="رد مدارک احراز">
+   211→      <button type="button" aria-label="بستن" className="absolute inset-0 bg-black/40" onClick={onClose} />
+   212→      <form onSubmit={submit} className="relative w-full max-w-sm space-y-4 rounded-xl border bg-card p-6 shadow-lg">
+   213→        <div>
+   214→          <h2 className="text-sm font-extrabold">رد مدارک احراز هویت</h2>
+   215→          <p className="mt-1 text-[11px] text-muted-foreground">دلیل برای کاربر نمایش داده می‌شود تا مدارک درست را دوباره بفرستد.</p>
+   216→        </div>
+   217→        <div className="space-y-1.5">
+   218→          <Label htmlFor="rj-reason">دلیل رد</Label>
+   219→          <Textarea
+   220→            id="rj-reason"
+   221→            value={reason}
+   222→            onChange={(e) => setReason(e.target.value)}
+   223→            placeholder="مثلاً: تصویر کارت ملی ناخواناست"
+   224→            maxLength={300}
+   225→            className="min-h-20"
+   226→            autoFocus
+   227→          />
+   228→        </div>
+   229→        {error && <p className="text-xs text-destructive">{error}</p>}
+   230→        <div className="flex gap-2 pt-1">
+   231→          <Button type="submit" variant="destructive" className="flex-1 rounded-md" disabled={reject.isPending}>
+   232→            {reject.isPending ? <Loader2 className="animate-spin" size={16} /> : null}
+   233→            رد مدارک
+   234→          </Button>
+   235→          <Button type="button" variant="outline" className="rounded-md" onClick={onClose}>
+   236→            انصراف
+   237→          </Button>
+   238→        </div>
+   239→      </form>
+   240→    </div>
+   241→  );
+   242→}
+   243→
+   244→export default function AdminUserDetailPage() {
+   245→  const params = useParams<{ id: string }>();
+   246→  const id = params?.id ?? '';
+   247→  const { toast } = useToast();
+   248→  const queryClient = useQueryClient();
+   249→
+   250→  const [walletOpen, setWalletOpen] = useState(false);
+   251→  const [rejectOpen, setRejectOpen] = useState(false);
+   252→
+   253→  const { data, isLoading, error } = useQuery({
+   254→    queryKey: ['admin-user', id],
+   255→    queryFn: () => fetchAdminUserDetail(id),
+   256→    enabled: Boolean(id),
+   257→  });
+   258→
+   259→  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['admin-user', id] });
+   260→
+   261→  const toggleActive = useMutation({
+   262→    mutationFn: (active: boolean) => setAdminUserActive(id, active),
+   263→    onSuccess: (_d, active) => {
+   264→      invalidate();
+   265→      toast({
+   266→        description: active
+   267→          ? 'حساب کاربر فعال شد.'
+   268→          : 'حساب کاربر غیرفعال شد — ورود مسدود، نشست‌ها باطل و محتوایش پنهان است.',
+   269→      });
+   270→    },
+   271→    onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
+   272→  });
+   273→
+   274→  const toggleRole = useMutation({
+   275→    mutationFn: (input: { isBuyer?: boolean; isSeller?: boolean }) => setAdminUserRoles(id, input),
+   276→    onSuccess: () => {
+   277→      invalidate();
+   278→      toast({ description: 'نقش کاربر به‌روز شد.' });
+   279→    },
+   280→    onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
+   281→  });
+   282→
+   283→  const approve = useMutation({
+   284→    mutationFn: () => reviewAdminVerification(verificationOrderId!, true),
+   285→    onSuccess: () => {
+   286→      invalidate();
+   287→      toast({ description: 'هویت کاربر تأیید شد — نشان احراز روی پروفایل و آگهی‌ها فعال می‌شود.' });
+   288→    },
+   289→    onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
+   290→  });
+   291→
+   292→  if (isLoading) {
+   293→    return (
+   294→      <div className="mx-auto max-w-4xl space-y-3">
+   295→        <Skeleton className="h-8 w-40 rounded-md" />
+   296→        <Skeleton className="h-28 rounded-lg" />
+   297→        <Skeleton className="h-64 rounded-lg" />
+   298→      </div>
+   299→    );
+   300→  }
+   301→
+   302→  if (error || !data) {
+   303→    return (
+   304→      <div className="mx-auto max-w-4xl space-y-4 rounded-lg border bg-card p-10 text-center">
+   305→        <p className="text-sm text-muted-foreground">{error instanceof Error ? error.message : 'کاربر یافت نشد.'}</p>
+   306→        <Link href="/admin/users" className="text-xs font-bold text-primary hover:underline">
+   307→          ← بازگشت به لیست کاربران
+   308→        </Link>
+   309→      </div>
+   310→    );
+   311→  }
+   312→
+   313→  const u = data.user;
+   314→  const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ') || 'بی‌نام';
+   315→  const verificationOrderId = data.verification.orderId ?? null;
+   316→
+   317→  return (
+   318→    <div className="mx-auto max-w-4xl space-y-4">
+   319→      {/* بازگشت */}
+   320→      <Link
+   321→        href="/admin/users"
+   322→        className="inline-flex items-center gap-1.5 text-[12px] font-bold text-primary hover:underline"
+   323→      >
+   324→        <ArrowRight size={14} /> بازگشت به لیست کاربران
+   325→      </Link>
+   326→
+   327→      {/* سربرگ کاربر */}
+   328→      <div className="rounded-lg border bg-card p-4">
+   329→        <div className="flex flex-wrap items-center gap-4">
+   330→          <span className="grid size-14 shrink-0 place-items-center rounded-full bg-primary-soft text-lg font-extrabold text-primary">
+   331→            {(u.first_name || u.user_name || '؟').slice(0, 1).toUpperCase()}
+   332→          </span>
+   333→          <div className="min-w-0 flex-1">
+   334→            <div className="flex flex-wrap items-center gap-2">
+   335→              <h1 className="text-base font-extrabold">{fullName}</h1>
+   336→              <PresenceDot online={u.online} lastSeenAt={u.last_seen_at} />
+   337→              {u.is_verified ? (
+   338→                <span className="inline-flex items-center gap-1 rounded-full bg-verified/10 px-1.5 py-0.5 text-[9px] font-bold text-verified">
+   339→                  <BadgeCheck size={10} /> احرازشده
+   340→                </span>
+   341→              ) : data.verification.status === 'pending' ? (
+   342→                <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-600">احراز در بررسی</span>
+   343→              ) : null}
+   344→              {!u.is_active && (
+   345→                <span className="rounded-full bg-destructive/10 px-1.5 py-0.5 text-[9px] font-bold text-destructive">غیرفعال</span>
+   346→              )}
+   347→              {u.role === 'ADMIN' && (
+   348→                <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-600">ادمین سیستم</span>
+   349→              )}
+   350→            </div>
+   351→            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+   352→              <span dir="ltr" className="font-bold text-foreground/80">{u.phone}</span>
+   353→              <span dir="ltr">@{u.user_name}</span>
+   354→              {u.city || u.province ? <span>{[u.province, u.city].filter(Boolean).join('، ')}</span> : null}
+   355→              <span>عضویت: {dateFa(u.created_at)}</span>
+   356→              <span>آخرین ورود: {u.last_login_at ? timeAgoFa(u.last_login_at) : 'هرگز'}</span>
+   357→              <span>آخرین بازدید: {u.last_seen_at ? timeAgoFa(u.last_seen_at) : '—'}</span>
+   358→            </div>
+   359→          </div>
+   360→
+   361→          {/* عملیات سریع */}
+   362→          <div className="flex flex-wrap items-center gap-2">
+   363→            <Button
+   364→              size="sm"
+   365→              className="rounded-[10px]"
+   366→              onClick={() => setWalletOpen(true)}
+   367→            >
+   368→              <Wallet size={14} /> اصلاح کیف پول
+   369→            </Button>
+   370→            <Link
+   371→              href={`/admin/products?sellerId=${u.id}`}
+   372→              className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-input bg-card px-3 text-[12px] font-bold text-secondary-foreground transition-colors hover:border-primary-line hover:bg-primary-soft hover:text-primary"
+   373→            >
+   374→              <Boxes size={14} /> آگهی‌های این کاربر
+   375→            </Link>
+   376→            <Link
+   377→              href={`/admin/buy-requests?userId=${u.id}`}
+   378→              className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-input bg-card px-3 text-[12px] font-bold text-secondary-foreground transition-colors hover:border-primary-line hover:bg-primary-soft hover:text-primary"
+   379→            >
+   380→              درخواست‌های خرید این کاربر
+   381→            </Link>
+   382→            <Button
+   383→              size="sm"
+   384→              variant={u.is_active ? 'outline' : 'default'}
+   385→              className="rounded-[10px]"
+   386→              disabled={toggleActive.isPending}
+   387→              onClick={() => toggleActive.mutate(!u.is_active)}
+   388→            >
+   389→              {toggleActive.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
+   390→              {u.is_active ? 'غیرفعال‌سازی حساب' : 'فعال‌سازی حساب'}
+   391→            </Button>
+   392→          </div>
+   393→        </div>
+   394→
+   395→        {/* نقش‌ها — سوییچ سریع */}
+   396→        <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-3.5">
+   397→          <span className="text-[11px] font-bold text-muted-foreground">نقش‌ها:</span>
+   398→          {(
+   399→            [
+   400→              { key: 'is_buyer', label: 'خریدار', value: u.is_buyer },
+   401→              { key: 'is_seller', label: 'فروشنده', value: u.is_seller },
+   402→            ] as const
+   403→          ).map((r) => (
+   404→            <button
+   405→              key={r.key}
+   406→              type="button"
+   407→              disabled={toggleRole.isPending}
+   408→              onClick={() => toggleRole.mutate({ [r.key]: !r.value } as { isBuyer?: boolean; isSeller?: boolean })}
+   409→              className={cn(
+   410→                'rounded-[10px] border px-3 py-1 text-[11.5px] font-bold transition-colors',
+   411→                r.value
+   412→                  ? 'border-primary-line bg-primary-soft text-primary'
+   413→                  : 'border-input bg-card text-muted-foreground hover:bg-secondary/60',
+   414→              )}
+   415→            >
+   416→              {r.label}
+   417→            </button>
+   418→          ))}
+   419→          <span className="ms-auto text-[12px] font-extrabold text-primary">{priceFa(u.wallet_balance)}</span>
+   420→        </div>
+   421→      </div>
+   422→
+   423→      {/* تب‌ها */}
+   424→      <Tabs defaultValue="overview" dir="rtl">
+   425→        <TabsList className="flex-wrap">
+   426→          <TabsTrigger value="overview">نمای کلی</TabsTrigger>
+   427→          <TabsTrigger value="products">آگهی‌ها ({toFa(Object.values(data.stats.products).reduce((a, b) => a + b, 0))})</TabsTrigger>
+   428→          <TabsTrigger value="wallet">کیف پول</TabsTrigger>
+   429→          <TabsTrigger value="verification">احراز هویت</TabsTrigger>
+   430→          <TabsTrigger value="messages">پیام‌ها</TabsTrigger>
+   431→        </TabsList>
+   432→
+   433→        {/* نمای کلی */}
+   434→        <TabsContent value="overview" className="mt-3">
+   435→          <div className="rounded-lg border bg-card p-4">
+   436→            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+   437→              <Stat label="آگهی تأییدشده" value={toFa(data.stats.products.confirmed)} />
+   438→              <Stat label="در انتظار تأیید" value={toFa(data.stats.products.pending)} />
+   439→              <Stat label="رد شده" value={toFa(data.stats.products.rejected)} />
+   440→              <Stat label="درخواست خرید" value={toFa(data.stats.buy_requests)} />
+   441→              <Stat label="شارژ در انتظار" value={toFa(data.stats.charges.pending)} />
+   442→              <Stat label="شارژ تأییدشده" value={toFa(data.stats.charges.approved)} />
+   443→              <Stat label="سفارش نردبان" value={toFa(data.stats.ladder_orders)} />
+   444→              <Stat label="رمز عبور" value={u.has_password ? 'تعیین شده' : 'ندارد'} />
+   445→            </div>
+   446→
+   447→            {u.business_desc ? (
+   448→              <div className="mt-4 border-t pt-3.5">
+   449→                <span className="mb-1.5 block text-[11px] font-bold text-muted-foreground">توضیحات کسب‌وکار</span>
+   450→                <p className="text-[12.5px] leading-7">{u.business_desc}</p>
+   451→              </div>
+   452→            ) : null}
+   453→
+   454→            {Object.keys(u.profile ?? {}).length > 0 ? (
+   455→              <div className="mt-4 border-t pt-3.5">
+   456→                <span className="mb-1.5 block text-[11px] font-bold text-muted-foreground">پروفایل کسب‌وکار</span>
+   457→                <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[12px] sm:grid-cols-3">
+   458→                  {Object.entries(u.profile as Record<string, unknown>)
+   459→                    .filter(([, v]) => v != null && v !== '')
+   460→                    .slice(0, 12)
+   461→                    .map(([k, v]) => (
+   462→                      <div key={k} className="min-w-0">
+   463→                        <dt className="truncate text-[10px] text-muted-foreground">{k}</dt>
+   464→                        <dd className="truncate font-medium">{String(v)}</dd>
+   465→                      </div>
+   466→                    ))}
+   467→                </dl>
+   468→              </div>
+   469→            ) : null}
+   470→          </div>
+   471→        </TabsContent>
+   472→
+   473→        {/* آگهی‌ها */}
+   474→        <TabsContent value="products" className="mt-3">
+   475→          <div className="overflow-hidden rounded-lg border bg-card">
+   476→            {data.products.length === 0 ? (
+   477→              <div className="grid place-items-center gap-2 p-10 text-center text-muted-foreground">
+   478→                <Boxes size={26} className="opacity-40" />
+   479→                <p className="text-sm">این کاربر آگهی ثبت نکرده است.</p>
+   480→              </div>
+   481→            ) : (
+   482→              <table className="w-full text-sm">
+   483→                <thead>
+   484→                  <tr className="border-b bg-secondary/40 text-[11px] text-muted-foreground">
+   485→                    <th className="px-3 py-2.5 text-start font-bold">آگهی</th>
+   486→                    <th className="px-3 py-2.5 text-start font-bold">وضعیت</th>
+   487→                    <th className="px-3 py-2.5 text-start font-bold">موجودی</th>
+   488→                    <th className="px-3 py-2.5 text-start font-bold">کف قیمت</th>
+   489→                    <th className="px-3 py-2.5 text-start font-bold">بازدید</th>
+   490→                  </tr>
+   491→                </thead>
+   492→                <tbody>
+   493→                  {data.products.map((p) => (
+   494→                    <tr key={p.id} className="border-b transition-colors last:border-0 hover:bg-secondary/30">
+   495→                      <td className="max-w-[220px] px-3 py-2.5">
+   496→                        <span className="line-clamp-1 font-medium">{p.isLadder ? 'نردبان · ' : ''}{p.productName}</span>
+   497→                        <span className="text-[10px] text-muted-foreground">{timeAgoFa(p.updatedAt)}</span>
+   498→                      </td>
+   499→                      <td className="px-3 py-2.5">
+   500→                        <span
+   501→                          className={cn(
+   502→                            'rounded-full px-1.5 py-0.5 text-[9px] font-bold',
+   503→                            p.status === 'confirmed' && 'bg-emerald-500/10 text-emerald-600',
+   504→                            p.status === 'pending' && 'bg-amber-500/10 text-amber-600',
+   505→                            p.status === 'rejected' && 'bg-destructive/10 text-destructive',
+   506→                            p.status === 'deleted' && 'bg-secondary text-muted-foreground',
+   507→                          )}
+   508→                        >
+   509→                          {STATUS_LABEL[p.status] ?? p.status}
+   510→                        </span>
+   511→                      </td>
+   512→                      <td className="px-3 py-2.5 text-[11.5px]">{toFa(p.stock)} {p.unit}</td>
+   513→                      <td className="px-3 py-2.5 text-[11.5px] font-bold">{p.minSalePrice > 0 ? priceFa(p.minSalePrice) : 'تماس'}</td>
+   514→                      <td className="px-3 py-2.5 text-[11.5px]">{toFa(p.viewCount)}</td>
+   515→                    </tr>
+   516→                  ))}
+   517→                </tbody>
+   518→              </table>
+   519→            )}
+   520→            <p className="border-t bg-secondary/20 px-3 py-2 text-center text-[10px] text-muted-foreground">
+   521→              ۱۰ آگهی اخیر — مدیریت کامل آگهی‌ها در فاز A4 فعال می‌شود.
+   522→            </p>
+   523→          </div>
+   524→        </TabsContent>
+   525→
+   526→        {/* کیف پول */}
+   527→        <TabsContent value="wallet" className="mt-3">
+   528→          <div className="overflow-hidden rounded-lg border bg-card">
+   529→            <div className="flex items-center justify-between gap-2 border-b p-3">
+   530→              <div className="flex items-center gap-2">
+   531→                <Receipt size={15} className="text-muted-foreground" />
+   532→                <span className="text-[12.5px] font-extrabold">تراکنش‌ها (۱۵ مورد اخیر)</span>
+   533→              </div>
+   534→              <Button size="sm" className="rounded-[10px]" onClick={() => setWalletOpen(true)}>
+   535→                <Plus size={14} /> اصلاح جدید
+   536→              </Button>
+   537→            </div>
+   538→            {data.transactions.length === 0 ? (
+   539→              <div className="grid place-items-center gap-2 p-10 text-center text-muted-foreground">
+   540→                <Wallet size={26} className="opacity-40" />
+   541→                <p className="text-sm">تراکنشی ثبت نشده است.</p>
+   542→              </div>
+   543→            ) : (
+   544→              <ul>
+   545→                {data.transactions.map((t) => (
+   546→                  <li key={t.id} className="flex items-center gap-3 border-b px-3 py-2.5 text-sm last:border-0 hover:bg-secondary/30">
+   547→                    <span
+   548→                      className={cn(
+   549→                        'grid size-7 shrink-0 place-items-center rounded-full',
+   550→                        t.incoming ? 'bg-emerald-500/10 text-emerald-600' : 'bg-destructive/10 text-destructive',
+   551→                      )}
+   552→                    >
+   553→                      {t.incoming ? <Plus size={13} /> : <Minus size={13} />}
+   554→                    </span>
+   555→                    <div className="min-w-0 flex-1">
+   556→                      <p className="truncate text-[12.5px] font-medium">{t.title}</p>
+   557→                      <p className="text-[10px] text-muted-foreground">{timeAgoFa(t.at)}</p>
+   558→                    </div>
+   559→                    <span
+   560→                      className={cn(
+   561→                        'shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold',
+   562→                        t.type === 'card'
+   563→                          ? 'bg-primary/10 text-primary'
+   564→                          : t.type === 'ladder'
+   565→                            ? 'bg-amber-500/10 text-amber-600'
+   566→                            : 'bg-secondary text-muted-foreground',
+   567→                      )}
+   568→                    >
+   569→                      {t.type === 'card' ? 'کارت به کارت' : t.type === 'ladder' ? 'نردبان' : 'اصلاح'}
+   570→                    </span>
+   571→                    <span className={cn('shrink-0 text-[12.5px] font-extrabold', t.incoming ? 'text-emerald-600' : 'text-destructive')}>
+   572→                      {t.incoming ? '+' : '−'}{priceFa(t.amount)}
+   573→                    </span>
+   574→                  </li>
+   575→                ))}
+   576→              </ul>
+   577→            )}
+   578→          </div>
+   579→        </TabsContent>
+   580→
+   581→        {/* احراز هویت */}
+   582→        <TabsContent value="verification" className="mt-3">
+   583→          <div className="rounded-lg border bg-card p-4">
+   584→            {data.verification.status === 'none' ? (
+   585→              <div className="grid place-items-center gap-2 p-8 text-center text-muted-foreground">
+   586→                <ShieldCheck size={28} className="opacity-40" />
+   587→                <p className="text-sm">این کاربر هنوز درخواست احراز هویت ثبت نکرده است.</p>
+   588→              </div>
+   589→            ) : (
+   590→              <>
+   591→                <div className="flex flex-wrap items-center justify-between gap-2">
+   592→                  <div className="flex items-center gap-2">
+   593→                    <span
+   594→                      className={cn(
+   595→                        'rounded-full px-2 py-0.5 text-[10px] font-bold',
+   596→                        data.verification.status === 'approved' && 'bg-emerald-500/10 text-emerald-600',
+   597→                        data.verification.status === 'pending' && 'bg-amber-500/10 text-amber-600',
+   598→                        data.verification.status === 'rejected' && 'bg-destructive/10 text-destructive',
+   599→                      )}
+   600→                    >
+   601→                      {data.verification.status === 'approved'
+   602→                        ? 'تأییدشده'
+   603→                        : data.verification.status === 'pending'
+   604→                          ? 'در انتظار بررسی'
+   605→                          : 'رد شده'}
+   606→                    </span>
+   607→                    {data.verification.submittedAt ? (
+   608→                      <span className="text-[11px] text-muted-foreground">ارسال: {dateFa(data.verification.submittedAt)}</span>
+   609→                    ) : null}
+   610→                    {data.verification.reviewedAt ? (
+   611→                      <span className="text-[11px] text-muted-foreground">بازبینی: {dateFa(data.verification.reviewedAt)}</span>
+   612→                    ) : null}
+   613→                  </div>
+   614→
+   615→                  {data.verification.status === 'pending' && (
+   616→                    <div className="flex items-center gap-2">
+   617→                      <Button
+   618→                        size="sm"
+   619→                        className="rounded-[10px]"
+   620→                        disabled={approve.isPending}
+   621→                        onClick={() => approve.mutate()}
+   622→                      >
+   623→                        {approve.isPending ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
+   624→                        تأیید هویت
+   625→                      </Button>
+   626→                      <Button size="sm" variant="destructive" className="rounded-[10px]" onClick={() => setRejectOpen(true)}>
+   627→                        رد مدارک
+   628→                      </Button>
+   629→                    </div>
+   630→                  )}
+   631→                </div>
+   632→
+   633→                {data.verification.rejectionReason ? (
+   634→                  <p className="mt-3 rounded-[10px] bg-destructive/5 px-3 py-2 text-[11.5px] leading-6 text-destructive">
+   635→                    دلیل رد: {data.verification.rejectionReason}
+   636→                  </p>
+   637→                ) : null}
+   638→
+   639→                {/* مدارک */}
+   640→                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+   641→                  {(['nationalCard', 'selfie'] as const).map((key) => {
+   642→                    const doc = data.verification.docs[key];
+   643→                    const label = key === 'nationalCard' ? 'کارت ملی' : 'سلفی';
+   644→                    return (
+   645→                      <div key={key} className="overflow-hidden rounded-[10px] border">
+   646→                        <div className="flex items-center justify-between bg-secondary/40 px-3 py-2">
+   647→                          <span className="text-[11px] font-bold">{label}</span>
+   648→                          {doc ? (
+   649→                            <a
+   650→                              href={doc.url}
+   651→                              target="_blank"
+   652→                              rel="noreferrer"
+   653→                              className="text-[10px] font-bold text-primary hover:underline"
+   654→                            >
+   655→                              اندازه کامل ↗
+   656→                            </a>
+   657→                          ) : null}
+   658→                        </div>
+   659→                        {doc ? (
+   660→                           
+   661→                          <img
+   662→                            src={doc.thumbUrl ?? doc.url}
+   663→                            alt={label}
+   664→                            loading="lazy"
+   665→                            className="h-44 w-full bg-secondary object-cover"
+   666→                          />
+   667→                        ) : (
+   668→                          <div className="grid h-44 place-items-center bg-secondary/30 text-[11px] text-muted-foreground">
+   669→                            مدرکی ثبت نشده
+   670→                          </div>
+   671→                        )}
+   672→                      </div>
+   673→                    );
+   674→                  })}
+   675→                </div>
+   676→              </>
+   677→            )}
+   678→          </div>
+   679→        </TabsContent>
+   680→
+   681→        {/* پیام‌ها — ارسال مستقیم + تاریخچه با وضعیت خوانده‌شدن */}
+   682→        <TabsContent value="messages" className="mt-3">
+   683→          <UserMessagesTab userId={id} userName={fullName} />
+   684→        </TabsContent>
+   685→      </Tabs>
+   686→
+   687→      {walletOpen ? <WalletDialog userId={id} balance={u.wallet_balance} onClose={() => setWalletOpen(false)} /> : null}
+   688→      {rejectOpen && verificationOrderId ? (
+   689→        <RejectDialog orderId={verificationOrderId} onClose={() => setRejectOpen(false)} />
+   690→      ) : null}
+   691→    </div>
+   692→  );
+   693→}
+   694→

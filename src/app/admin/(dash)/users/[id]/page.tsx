@@ -15,6 +15,7 @@ import {
   ArrowRight,
   BadgeCheck,
   Boxes,
+  Crown,
   Loader2,
   Minus,
   Plus,
@@ -43,6 +44,16 @@ import { cn } from '@/lib/utils';
 import { dateFa, priceFa, timeAgoFa, toFa } from '@/lib/format';
 
 type TabKey = 'overview' | 'products' | 'wallet' | 'verification';
+
+/** عنوان سطح بسته — ۱=دوماهه ۲=شش‌ماهه ۳=یک‌ساله */
+function planTitleOf(t: number): string {
+  return t === 1 ? 'دو ماهه' : t === 2 ? 'شش ماهه' : t === 3 ? 'یک‌ساله' : '—';
+}
+
+/** روزهای باقی‌مانده تا تاریخ انقضا (حداقل ۰) */
+function daysLeftOf(iso: string): number {
+  return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000));
+}
 
 const STATUS_LABEL: Record<string, string> = {
   confirmed: 'تأییدشده',
@@ -347,6 +358,14 @@ export default function AdminUserDetailPage() {
               {u.role === 'ADMIN' && (
                 <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-600">ادمین سیستم</span>
               )}
+              {/* ویژه بودن — خواسته مالک ۳۱-۱۰: در جزئیات مشخص */}
+              {u.is_special ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                  <Crown size={10} /> کاربر ویژه
+                </span>
+              ) : (
+                <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">کاربر عادی (رایگان)</span>
+              )}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
               <span dir="ltr" className="font-bold text-foreground/80">{u.phone}</span>
@@ -355,6 +374,15 @@ export default function AdminUserDetailPage() {
               <span>عضویت: {dateFa(u.created_at)}</span>
               <span>آخرین ورود: {u.last_login_at ? timeAgoFa(u.last_login_at) : 'هرگز'}</span>
               <span>آخرین بازدید: {u.last_seen_at ? timeAgoFa(u.last_seen_at) : '—'}</span>
+              {/* وضعیت ویژه — تاریخ انقضا (خواسته مالک ۳۱-۱۰) */}
+              {u.is_special ? (
+                <span className="font-bold text-red-600">
+                  اشتراک ویژه {planTitleOf(u.active_pakage_type)} — اعتبار تا {u.package_expires_at ? dateFa(u.package_expires_at) : '—'}
+                  {u.package_expires_at && ` (${toFa(daysLeftOf(u.package_expires_at))} روز آینده)`}
+                </span>
+              ) : (
+                <span>بدون اشتراک ویژه</span>
+              )}
             </div>
           </div>
 
@@ -379,14 +407,15 @@ export default function AdminUserDetailPage() {
             >
               درخواست‌های خرید این کاربر
             </Link>
+            {/* غیرفعال/فعال‌سازی — کم‌رنگ، فقط اینجا (خواسته مالک ۳۱-۱۰) */}
             <Button
               size="sm"
-              variant={u.is_active ? 'outline' : 'default'}
-              className="rounded-[10px]"
+              variant="ghost"
+              className="h-8 rounded-[10px] border border-input/60 bg-transparent text-[11.5px] font-normal text-muted-foreground/80 hover:border-destructive/25 hover:bg-destructive/5 hover:text-destructive"
               disabled={toggleActive.isPending}
               onClick={() => toggleActive.mutate(!u.is_active)}
             >
-              {toggleActive.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
+              {toggleActive.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
               {u.is_active ? 'غیرفعال‌سازی حساب' : 'فعال‌سازی حساب'}
             </Button>
           </div>
@@ -450,6 +479,47 @@ export default function AdminUserDetailPage() {
                 <p className="text-[12.5px] leading-7">{u.business_desc}</p>
               </div>
             ) : null}
+
+            {/* وضعیت اشتراک ویژه — کادر مخصوص (خواسته مالک ۳۱-۱۰) */}
+            <div
+              className={cn(
+                'mt-4 flex flex-wrap items-center gap-3 rounded-lg border p-3.5',
+                u.is_special ? 'border-red-200 bg-red-50/60' : 'border-border bg-secondary/40',
+              )}
+            >
+              <span
+                className={cn(
+                  'grid size-10 shrink-0 place-items-center rounded-lg',
+                  u.is_special ? 'bg-red-600 text-white' : 'bg-secondary text-muted-foreground',
+                )}
+              >
+                <Crown size={18} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[12.5px] font-extrabold">
+                  {u.is_special ? `کاربر ویژه — اشتراک ${planTitleOf(u.active_pakage_type)}` : 'کاربر عادی (بسته رایگان)'}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-5 text-muted-foreground">
+                  {u.is_special && u.package_expires_at ? (
+                    <>
+                      اعتبار اشتراک ویژه تا <b className="text-foreground">{dateFa(u.package_expires_at)}</b> است —{' '}
+                      {toFa(daysLeftOf(u.package_expires_at))} روز آینده.
+                      {u.package_started_at && (
+                        <span className="text-muted-foreground/80"> (شروع دوره: {dateFa(u.package_started_at)})</span>
+                      )}
+                    </>
+                  ) : (
+                    'این کاربر هیچ بسته اشتراک فعالی ندارد؛ ثبت تا ۱۰ محصول و بدون دسترسی به خریداران.'
+                  )}
+                </p>
+              </div>
+              <Link
+                href="/admin/packages"
+                className="shrink-0 rounded-[10px] border border-input bg-card px-2.5 py-1.5 text-[11px] font-bold text-secondary-foreground transition-colors hover:border-primary-line hover:bg-primary-soft hover:text-primary"
+              >
+                بسته‌ها و کمپین‌ها
+              </Link>
+            </div>
 
             {Object.keys(u.profile ?? {}).length > 0 ? (
               <div className="mt-4 border-t pt-3.5">

@@ -287,6 +287,10 @@ export interface AdminUserRow {
   city_id: number | null;
   product_count: number;
   request_count: number;
+  /** کاربر ویژه — بسته اشتراک فعال دارد (خواسته مالک ۳۱-۱۰) */
+  is_special: boolean;
+  /** انقضای بسته فعال — null یعنی هیچ/منقضی */
+  package_expires_at: string | null;
   verification: 'pending' | 'verified' | 'none';
   last_login_at: string | null;
   /** آنلاین — نبض تازه‌تر از پنجره ۹۰ ثانیه */
@@ -311,6 +315,8 @@ export interface AdminUserListFilters {
   active?: boolean;
   verified?: boolean;
   seller?: boolean;
+  /** فقط کاربران ویژه (بسته فعال) — خواسته مالک ۳۱-۱۰ */
+  special?: boolean;
   /** فقط آنلاین‌ها / فقط آفلاین‌ها */
   online?: boolean;
   page?: number;
@@ -352,6 +358,11 @@ export interface AdminUserDetail {
     is_active: boolean;
     has_password: boolean;
     wallet_balance: number;
+    /** ویژه — بسته فعال + سطح/انقضای آن (خواسته مالک ۳۱-۱۰) */
+    active_pakage_type: number;
+    package_expires_at: string | null;
+    package_started_at: string | null;
+    is_special: boolean;
     avatar_url: string | null;
     business_desc: string | null;
     province_id: number | null;
@@ -848,6 +859,12 @@ export interface AdminPackageOrderRow {
   planKey: string;
   months: number;
   amount: number;
+  /** قیمت پایه قبل از تخفیف (snapshot — خواسته مالک ۳۱-۱۰) */
+  baseAmount?: number;
+  /** درصد تخفیف کمپین لحظه خرید */
+  discountPercent?: number;
+  /** عنوان کمپین لحظه خرید */
+  campaignTitle?: string | null;
   rejectionReason?: string | null;
   reviewedAt?: string | null;
   startsAt?: string | null;
@@ -880,6 +897,109 @@ export async function reviewAdminPackageOrder(orderId: string, approve: boolean,
     approve,
     ...(approve ? {} : { rejectionReason }),
   });
+}
+
+// ─── مدیریت بسته‌ها و کمپین‌ها (خواسته مالک ۳۱-۱۰) ──────────────────────────
+
+/** بسته اشتراک قابل تعریف ادمین — جدول Plan */
+export interface AdminPlanRow {
+  id: string;
+  key: string;
+  title: string;
+  months: number;
+  amount: number;
+  pakageType: number;
+  bestSeller: boolean;
+  features: string[];
+  isActive: boolean;
+  sortOrder: number;
+  /** تعداد جذب این بسته */
+  soldCount: number;
+  orderCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminPlanInput {
+  id?: string;
+  key: string;
+  title: string;
+  months: number;
+  amount: number;
+  pakageType: number;
+  bestSeller: boolean;
+  features: string[];
+  isActive: boolean;
+  sortOrder?: number;
+}
+
+/** کمپین فروش — زمانی/تعدادی (خواسته مالک ۳۱-۱۰) */
+export interface AdminCampaignRow {
+  id: string;
+  title: string;
+  description: string | null;
+  type: 'time' | 'quantity';
+  discountPercent: number;
+  manualDiscountPercent: number | null;
+  startsAt: string;
+  endsAt: string | null;
+  isActive: boolean;
+  expired: boolean;
+  running: boolean;
+  /** درصد جاری مؤثر (روی صفحه بسته‌ها همین اعمال می‌شود) */
+  currentPercent: number;
+  /** شمار خریدهای ثبت‌شده در این کمپین */
+  purchaseCount: number;
+  tiers: Array<{ from: number; to: number | null; percent: number }>;
+  createdAt: string;
+}
+
+export interface AdminCampaignInput {
+  id?: string;
+  title: string;
+  description?: string;
+  type: 'time' | 'quantity';
+  discountPercent: number;
+  manualDiscountPercent?: number | null;
+  startsAt?: string;
+  endsAt?: string | null;
+  isActive: boolean;
+  tiers?: Array<{ from: number; to: number | null; percent: number }>;
+}
+
+/** همه بسته‌ها + آمار فروش/جذب هر بسته */
+export async function fetchAdminPlans(): Promise<{ items: AdminPlanRow[] }> {
+  return adminFetch('/admin/packages/getPlans', {});
+}
+
+/** ساخت/ویرایش بسته (id خالی = ساخت) */
+export async function upsertAdminPlan(input: AdminPlanInput): Promise<{ id: string; key: string; created: boolean }> {
+  return adminFetch('/admin/packages/upsertPlan', input as unknown as Record<string, unknown>);
+}
+
+/** حذف بسته — اگر سفارش دارد فقط غیرفعال می‌شود */
+export async function deleteAdminPlan(id: string): Promise<{ id: string; deactivated: boolean; orders: number }> {
+  return adminFetch('/admin/packages/deletePlan', { id });
+}
+
+/** لیست کمپین‌ها + وضعیت جاری + شمار خرید */
+export async function fetchAdminCampaigns(): Promise<{ items: AdminCampaignRow[] }> {
+  return adminFetch('/admin/packages/getCampaigns', {});
+}
+
+/** ساخت/ویرایش کمپین (id خالی = ساخت) */
+export async function upsertAdminCampaign(input: AdminCampaignInput): Promise<{ id: string; created: boolean }> {
+  return adminFetch('/admin/packages/upsertCampaign', input as unknown as Record<string, unknown>);
+}
+
+/** حذف کمپین */
+export async function deleteAdminCampaign(id: string): Promise<{ id: string }> {
+  return adminFetch('/admin/packages/deleteCampaign', { id });
+}
+
+/** تغییر سریع درصد تخفیف جاری کمپین (null = خودکار پله‌ای) */
+export async function setAdminCampaignDiscount(id: string, manualDiscountPercent: number | null): Promise<{ id: string; manualDiscountPercent: number | null; currentPercent: number }> {
+  return adminFetch('/admin/packages/setCampaignDiscount', { id, manualDiscountPercent });
 }
 
 // ─── صف احراز هویت (A5 — نمای صف) ───────────────────────────────────────────
