@@ -61,3 +61,21 @@ export function dateTimeFa(iso: string): string {
     minute: '2-digit',
   }).format(new Date(iso));
 }
+
+/**
+ * راهنمای تبدیل واحد کنار ورودی عدد — مثل «۱۰۰۰ کیلوگرم (≈ ۱ تن)».
+ * فقط واحدهای رایج؛ بقیه واحدها راهنمایی ندارند.
+ */
+export function unitHintFa(amount: number, unit: string): string | null {
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  if (unit === 'کیلوگرم' && amount >= 1000) {
+    return `≈ ${toFa(Number((amount / 1000).toFixed(2)))} تن`;
+  }
+  if (unit === 'گرم' && amount >= 1000) {
+    return `≈ ${toFa(Number((amount / 1000).toFixed(2)))} کیلوگرم`;
+  }
+  if (unit === 'تن' && amount >= 1) {
+    return `≈ ${toFa(amount * 1000)} کیلوگرم`;
+  }
+  return null;
+}

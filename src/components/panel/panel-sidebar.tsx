@@ -49,13 +49,12 @@ interface PanelNavItem {
   exact?: boolean;
 }
 
-/** منوی فروشنده — ۹ آیتم اصلی + صفحات مشترک */
+/** منوی فروشنده — آیتم‌های فروش + صفحات مشترک (دفتر خرید فقط در پنل خریدار است) */
 export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel', label: 'ایمچ من', icon: UserRound, exact: true },
   { href: '/panel/products/new', label: 'ثبت محصول', icon: PlusSquare, exact: true },
   { href: '/panel/products', label: 'محصولات من', icon: Package },
   { href: '/panel/buyers', label: 'خریداران', icon: Users },
-  { href: '/panel/buyer-book', label: 'دفتر خرید من', icon: BookOpenText },
   { href: '/panel/suggested-buyers', label: 'خریداران پیشنهادی', icon: BadgeCheck },
   { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
   { href: '/panel/favorites', label: 'علاقه‌مندی‌ها', icon: Heart },
@@ -70,12 +69,12 @@ export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel/survey', label: 'نظرسنجی', icon: ScrollText },
 ];
 
-/** منوی خریدار — عین چیدمان MHTML «باسکول من» حالت خریدار */
+/** منوی خریدار — دفتر خرید بالاتر، درست زیر ایمچ من (خواسته مالک ۳۱-۱۰) */
 export const BUYER_NAV: PanelNavItem[] = [
   { href: '/panel', label: 'ایمچ من', icon: UserRound, exact: true },
+  { href: '/panel/buyer-book', label: 'دفتر خرید من', icon: BookOpenText },
   { href: '/panel/buy-requests/new', label: 'ثبت درخواست خرید', icon: ShoppingCart, exact: true },
   { href: '/panel/my-requests', label: 'درخواست های من', icon: FileText },
-  { href: '/panel/buyer-book', label: 'دفتر خرید من', icon: BookOpenText },
   { href: '/panel/suggested-sellers', label: 'پیشنهادی', icon: Sparkles },
   { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
   { href: '/panel/favorites', label: 'علاقه‌مندی‌ها', icon: Heart },

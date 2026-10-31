@@ -437,37 +437,60 @@ export interface MyPackageOrder {
 // خریداران — دفتر خرید، دایرکتوری و پیشنهاد تامین (۳۱-۱۰)
 // ─────────────────────────────────────────────────────────────
 
-/** ردیف دفتر خرید من — دسته برگ + بازه حجم خرید ماهانه */
+/** دوره خرید — ترتیب نمایش در همه‌جا یکسان است */
+export type PurchasePeriod = 'monthly' | 'yearly' | 'weekly' | 'occasional';
+
+/** ترتیب ثابت گزینه‌ها: ماهیانه، سالیانه، هفتگی، موردی */
+export const PURCHASE_PERIODS: PurchasePeriod[] = ['monthly', 'yearly', 'weekly', 'occasional'];
+
+export const PERIOD_LABELS: Record<PurchasePeriod, string> = {
+  monthly: 'ماهیانه',
+  yearly: 'سالیانه',
+  weekly: 'هفتگی',
+  occasional: 'موردی',
+};
+
+/** ردیف دفتر خرید من — دسته برگ + حداقل خرید + دوره؛ واحد از خود دسته (ثابت) */
 export interface BuyerBookItem {
   categoryId: number;
   name: string; // نام دسته (برای نمایش)
-  volumeMin: number;
-  volumeMax: number; // 0 = بدون سقف
-  unit: string; // کیلوگرم | تن | عدد | بسته | لیتر | متر
+  rootName: string; // کشاورزی
+  parentName: string; // میوه
+  unit: string; // واحد دسته — کیلوگرم | تن | عدد | بسته | لیتر
+  minAmount: number; // حداقل خرید در هر دوره
+  period: PurchasePeriod;
 }
 
 /** پاسخ getMyBook */
 export interface MyBuyerBook {
   max: number; // 15
-  units: string[];
   items: BuyerBookItem[];
 }
 
-/** کارت خریدار در دایرکتوری — بی نام و تماس (حریم خصوصی) */
+/** آیتم دایرکتوری — یک کارت برای هر کالای دفتر خرید؛ بی نام و تماس (حریم خصوصی) */
 export interface BuyerDirectoryItem {
-  id: string; // برای sendSupplyOffer
+  id: string; // ObjectId ردیف — برای انتخاب گروهی
+  buyerId: string; // برای sendSupplyOffer
   role: 'عمده‌خریدار' | 'خرده‌خریدار';
-  categories: { id: number; name: string; range: string }[];
-  moreCategories: number;
+  categoryId: number;
+  categoryName: string;
+  rootName: string; // نام دستهٔ ریشه — برای آیکون کارت
+  categoryPath: string; // «کشاورزی / میوه»
+  unit: string;
+  minAmount: number;
+  period: PurchasePeriod;
   province: string | null;
   city: string | null;
   lastActiveAt: string;
   activeRecently: boolean; // فعال در ۷ روز اخیر
+  stale: boolean; // غایب بیش از ۹۰ روز — کم‌رنگ
 }
 
 /** فیلتر دایرکتوری خریداران */
 export interface BuyerDirectoryQuery {
   categoryId?: number;
+  s?: string; // جستجو در نام/مسیر دسته
+  period?: PurchasePeriod;
   provinceId?: number;
   cityId?: number;
   page?: number;

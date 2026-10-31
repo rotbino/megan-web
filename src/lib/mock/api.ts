@@ -1416,22 +1416,27 @@ export async function getBillingConfig(): Promise<BillingConfig> {
   return apiFetch<BillingConfig>('/site-settings/getBillingConfig', {}, { auth: false });
 }
 
-/** دفتر خرید من — دسته‌های برگ + بازه حجم */
+/** دفتر خرید من — دسته‌های برگ + حداقل خرید + دوره */
 export async function getMyBuyerBook(): Promise<MyBuyerBook> {
   return apiFetch<MyBuyerBook>('/buyers/getMyBook', {});
 }
 
-/** ذخیره دفتر خرید من — جایگزینی کامل (فرم چیپ + بازه) */
+/** ذخیره دفتر خرید من — جایگزینی کامل (تیک برگ‌ها + حداقل + دوره).
+ *  سمت سررور ستون حجم «volumeMin» است؛ نگاشت نام اینجا انجام می‌شود. */
 export async function saveMyBuyerBook(
-  items: Array<Pick<BuyerBookItem, 'categoryId' | 'volumeMin' | 'volumeMax' | 'unit'>>,
+  items: Array<Pick<BuyerBookItem, 'categoryId' | 'minAmount' | 'period'>>,
 ): Promise<{ saved: number }> {
-  return apiFetch<{ saved: number }>('/buyers/saveMyBook', { items });
+  return apiFetch<{ saved: number }>('/buyers/saveMyBook', {
+    items: items.map((i) => ({ categoryId: i.categoryId, volumeMin: i.minAmount, period: i.period })),
+  });
 }
 
-/** دایرکتوری خریداران — فیلتر دسته/استان/شهر + صفحه‌بندی */
+/** دایرکتوری خریداران — آیتم‌های دفاتر خرید؛ فیلتر دسته/جستجو/دوره/مکان + صفحه‌بندی */
 export async function getBuyerDirectory(q: BuyerDirectoryQuery): Promise<BuyerDirectoryPage> {
   return apiFetch<BuyerDirectoryPage>('/buyers/directory', {
     categoryId: q.categoryId,
+    s: q.s,
+    period: q.period,
     provinceId: q.provinceId,
     cityId: q.cityId,
     page: q.page ?? 1,

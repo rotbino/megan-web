@@ -55,7 +55,7 @@ export function SupplyOfferModal({
     }
     if (isGroup) {
       sendGroup.mutate(
-        { buyerIds: targets.map((t) => t.id), message: text },
+        { buyerIds: targets.map((t) => t.buyerId), message: text },
         {
           onSuccess: (r) => {
             toast({
@@ -68,7 +68,7 @@ export function SupplyOfferModal({
       );
     } else {
       sendOne.mutate(
-        { buyerId: targets[0].id, message: text },
+        { buyerId: targets[0].buyerId, message: text },
         {
           onSuccess: (r) => {
             toast({
