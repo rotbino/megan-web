@@ -170,9 +170,9 @@ export function Header() {
         <nav className="hidden items-center nav-desktop:flex" aria-label="حساب کاربری">
           {user ? (
             <>
-              {/* فروشنده → خریداران (بازار درخواست‌های خرید) / خریدار → فروشندگان پیشنهادی */}
+              {/* فروشنده → دایرکتوری خریداران (خریداران + درخواست‌ها) / خریدار → فروشندگان پیشنهادی */}
               <Link
-                href={isSeller ? '/buyAd-requests' : '/panel/suggested-sellers'}
+                href={isSeller ? '/buyers' : '/panel/suggested-sellers'}
                 className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
               >
                 {isSeller ? <BuyersIcon size={24} /> : <SellersIcon size={24} />}
@@ -207,7 +207,7 @@ export function Header() {
               </Link>
               <span className="mx-1 h-9 w-px bg-border" aria-hidden />
               <Link
-                href="/buyAd-requests"
+                href="/buyers"
                 className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
               >
                 <BuyersIcon size={24} />

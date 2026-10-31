@@ -2,13 +2,14 @@
 
 /**
  * کیف پول — پرداخت کارت به کارت (جایگزین درگاه پرداخت، خواسته کاربر):
- * ۱) انتخاب یکی از ۳ پکیج یا «سایر» (مبلغ دلخواه — خواسته مالک ۳۱-۱۰):
- *    حداقل ۴۰۰ هزار؛ ۳۰٪ شارژ اضافه تا ۱ میلیون و ۵۰٪ بالاتر.
+ * ۱) انتخاب یکی از پکیج‌ها یا «سایر» (مبلغ دلخواه — خواسته مالک ۳۱-۱۰):
+ *    پکیج‌ها/درصدها/حداقل شارژ دلخواه همه از تنظیمات پویای ادمین می‌آیند
+ *    («تنظیمات کیف شارژ و مصرف شارژ») — هیچ عددی این‌جا hardcode نیست.
  * ۲) واریز مبلغ به کارت + بارگذاری تصویر فیش
  * ۳) ارسال فیش برای ادمین → پس از تایید در پنل ادمین، شارژ اعمال می‌شود
  *
  * ساختار مرتب (خواسته مالک TEST-D6):
- *  • تب «تراکنش‌ها» = فقط اقلام قطعی‌شده (شارژ کارت‌به‌کارت تاییدشده + نردبان + اصلاح ادمین)
+ *  • تب «تراکنش‌ها» = فقط اقلام قطعی‌شده (شارژ تاییدشده + نردبان + اصلاح + ارسال گروهی)
  *  • تب «کارت به کارت» = فیش‌های خودم: در انتظار / تاییدشده / ردشده + دلیل رد + راهنمای اقدام
  *  • فیش ردشده هرگز به تراکنش‌ها نمی‌رود؛ کاربر دلیل و کار بعدی را اینجا می‌بیند.
  */
@@ -29,6 +30,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import {
+  useBillingConfig,
   useMyChargeOrders,
   usePanelProfile,
   useSubmitChargeRequest,
@@ -39,34 +41,54 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PanelCard } from '@/components/panel/panel-parts';
-import {
-  AIMCH_CARD_NUMBER,
-  AIMCH_CARD_OWNER,
-  CHARGE_PACKAGES,
-  CUSTOM_CHARGE_MAX,
-  CUSTOM_CHARGE_MIN,
-  CUSTOM_CHARGE_TIER2_AT,
-  LADDER_MAX_MONTHS,
-  LADDER_MONTHLY_PRICE,
-  MIN_CHARGE,
-  customBonusPercent,
-} from '@/lib/mock/data';
+import { AIMCH_CARD_NUMBER, AIMCH_CARD_OWNER } from '@/lib/mock/data';
 import { dateFa, priceFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { ChargePackage, MyChargeOrder, WalletTransaction } from '@/lib/types';
+import type { MyChargeOrder, WalletTransaction } from '@/lib/types';
+
+/** درصد شارژ اضافه مبلغ دلخواه — از پله‌های تنظیمات پویا */
+function tierPercent(amount: number, tiers: { aboveAmount: number; percent: number }[]): number {
+  let percent = 0;
+  for (const t of tiers) {
+    if (amount > t.aboveAmount) percent = t.percent;
+  }
+  return percent;
+}
 
 export default function WalletPage() {
   const { data: profile } = usePanelProfile();
   const { data: transactions } = useWalletTransactions();
   const { data: chargeOrders } = useMyChargeOrders();
+  const { data: billing } = useBillingConfig();
   const submitCharge = useSubmitChargeRequest();
   const { toast } = useToast();
 
-  const [pkgKey, setPkgKey] = useState<ChargePackage['key']>('p200');
+  const [pkgKey, setPkgKey] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [receipt, setReceipt] = useState<{ url: string; name: string } | null>(null);
   const [sent, setSent] = useState<{ amount: number; charge: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // پکیج‌های زنده از تنظیمات ادمین — تا بارگیری، فرم غیرفعال است
+  const packages = useMemo(
+    () =>
+      (billing?.chargePackages ?? []).map((p) => ({
+        ...p,
+        charge: Math.round(p.amount * (1 + p.bonusPercent / 100)),
+      })),
+    [billing],
+  );
+
+  // انتخاب پیش‌فرض — پکیج میانی (بهترین تعادل)؛ نبود → «سایر».
+  // الگوی رسمی React (تنظیم حین رندر، بدون effect) — فقط بار اول
+  if (packages.length > 0 && pkgKey === null) {
+    setPkgKey(packages[Math.min(1, packages.length - 1)].key);
+  }
+
+  const customMin = billing?.customCharge.minAmount ?? 400_000;
+  const customMax = billing?.customCharge.maxAmount ?? 100_000_000;
+  const customTiers = billing?.customCharge.tiers ?? [];
+  const maxBonus = customTiers.reduce((m, t) => Math.max(m, t.percent), 0);
 
   const isCustom = pkgKey === 'custom';
   const customNum = useMemo(() => {
@@ -75,15 +97,15 @@ export default function WalletPage() {
     return Number.isFinite(n) ? n : 0;
   }, [customAmount]);
 
-  const fixedPkg = CHARGE_PACKAGES.find((p) => p.key === pkgKey);
+  const fixedPkg = packages.find((p) => p.key === pkgKey);
 
   /** پکیج مؤثر — برای «سایر» از مبلغ واردشده محاسبه می‌شود */
   const pkg: { amount: number; bonusPercent: number; charge: number } | null = isCustom
-    ? customNum >= CUSTOM_CHARGE_MIN
+    ? customNum >= customMin
       ? {
           amount: customNum,
-          bonusPercent: customBonusPercent(customNum),
-          charge: Math.round(customNum * (1 + customBonusPercent(customNum) / 100)),
+          bonusPercent: tierPercent(customNum, customTiers),
+          charge: Math.round(customNum * (1 + tierPercent(customNum, customTiers) / 100)),
         }
       : null
     : fixedPkg
@@ -92,10 +114,10 @@ export default function WalletPage() {
 
   const balance = profile?.userInfo.walletBalance ?? 0;
   const customError =
-    isCustom && customNum > 0 && customNum < CUSTOM_CHARGE_MIN
-      ? `حداقل مبلغ شارژ دلخواه ${priceFa(CUSTOM_CHARGE_MIN)} تومان است.`
-      : isCustom && customNum > CUSTOM_CHARGE_MAX
-        ? `حداکثر مبلغ شارژ دلخواه ${priceFa(CUSTOM_CHARGE_MAX)} تومان است.`
+    isCustom && customNum > 0 && customNum < customMin
+      ? `حداقل مبلغ شارژ دلخواه ${priceFa(customMin)} است.`
+      : isCustom && customNum > customMax
+        ? `حداکثر مبلغ شارژ دلخواه ${priceFa(customMax)} است.`
         : null;
 
   const copyCard = async () => {
@@ -128,7 +150,7 @@ export default function WalletPage() {
       toast({ description: 'ابتدا تصویر فیش واریزی را بارگذاری کنید.' });
       return;
     }
-    if (!pkg) {
+    if (!pkg || !pkgKey) {
       toast({
         description:
           customError ?? 'مبلغ دلخواه را وارد کنید.',
@@ -166,7 +188,8 @@ export default function WalletPage() {
           </div>
         </div>
         <p className="text-[11px] leading-5 text-muted-foreground">
-          حداقل شارژ پکیجی {priceFa(MIN_CHARGE)} است؛ برای شارژ دلخواه (سایر) حداقل {priceFa(CUSTOM_CHARGE_MIN)}.
+          پکیج‌ها و درصدهای شارژ توسط مدیریت تعیین می‌شود؛ برای شارژ دلخواه (سایر) حداقل {priceFa(customMin)}
+          (برابر گران‌ترین پکیج) است.
         </p>
       </PanelCard>
 
@@ -182,9 +205,9 @@ export default function WalletPage() {
           </p>
         </div>
 
-        {/* پکیج‌ها + سایر */}
+        {/* پکیج‌ها + سایر — همه از تنظیمات پویای ادمین */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" role="radiogroup" aria-label="پکیج‌های شارژ">
-          {CHARGE_PACKAGES.map((p) => (
+          {packages.map((p) => (
             <button
               key={p.key}
               type="button"
@@ -231,9 +254,11 @@ export default function WalletPage() {
               isCustom ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/40',
             )}
           >
-            <span className="absolute -top-2.5 right-3 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white">
-              تا {toFa(50)}٪ شارژ اضافه
-            </span>
+            {maxBonus > 0 && (
+              <span className="absolute -top-2.5 right-3 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                تا {toFa(maxBonus)}٪ شارژ اضافه
+              </span>
+            )}
             <span className="flex items-center gap-1.5 text-sm font-extrabold">
               <PencilRuler size={15} className="text-primary" /> سایر
             </span>
@@ -244,7 +269,7 @@ export default function WalletPage() {
                 isCustom ? 'bg-emerald-50 text-emerald-600' : 'bg-secondary text-muted-foreground',
               )}
             >
-              از {priceFa(CUSTOM_CHARGE_MIN)} تومان
+              از {priceFa(customMin)}
             </span>
           </button>
         </div>
@@ -274,9 +299,15 @@ export default function WalletPage() {
               </div>
             </div>
             <p className="text-[11px] leading-5 text-muted-foreground">
-              از {priceFa(CUSTOM_CHARGE_MIN)} تا {priceFa(CUSTOM_CHARGE_TIER2_AT)} تومان →{' '}
-              <b className="text-emerald-600">{toFa(30)}٪ شارژ اضافه</b>؛ بیش از {priceFa(CUSTOM_CHARGE_TIER2_AT)} تومان →{' '}
-              <b className="text-emerald-600">{toFa(50)}٪ شارژ اضافه</b>.
+              {customTiers.length > 0
+                ? customTiers
+                    .map((t, i) =>
+                      i === 0 || t.aboveAmount === 0
+                        ? `هر مبلغی → ${toFa(t.percent)}٪ شارژ اضافه`
+                        : `بیش از ${priceFa(t.aboveAmount)} → ${toFa(t.percent)}٪ شارژ اضافه`,
+                    )
+                    .join('؛ ')
+                : 'درصد شارژ اضافه پس از تعیین توسط مدیریت نمایش داده می‌شود.'}
             </p>
             {customError ? (
               <p className="rounded-md bg-red-50 px-2.5 py-1.5 text-[11px] font-bold text-red-600">{customError}</p>
@@ -393,7 +424,7 @@ export default function WalletPage() {
       </PanelCard>
 
       {/* نردبان آگهی — تبلیغ جدا از شارژ (خواسته مالک ۳۱-۱۰: این مفهوم فقط
-          در کیف پول بماند تا با بسته‌های اشتراک قاطی نشود) */}
+          در کیف پول بماند تا با بسته‌های اشتراک قاطی نشود)؛ قیمت از تنظیمات */}
       <PanelCard className="space-y-3">
         <div className="flex items-start gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-md bg-amber-500/10 text-amber-600">
@@ -403,7 +434,7 @@ export default function WalletPage() {
             <p className="flex flex-wrap items-center gap-2 text-sm font-extrabold">
               نردبان آگهی
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10.5px] font-bold text-amber-700">
-                {priceFa(LADDER_MONTHLY_PRICE)} / ماه — تا {toFa(LADDER_MAX_MONTHS)} ماه
+                {priceFa(billing?.ladder.monthlyPrice ?? 50_000)} / ماه — تا {toFa(billing?.ladder.maxMonths ?? 4)} ماه
               </span>
             </p>
             <p className="mt-1.5 text-xs leading-6 text-muted-foreground">
@@ -490,7 +521,7 @@ function TransactionRow({ t }: { t: WalletTransaction }) {
         <p className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
           {dateFa(t.at)}
           <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
-            {t.type === 'card' ? 'کارت به کارت' : t.type === 'ladder' ? 'نردبان' : 'اصلاح ادمین'}
+            {t.type === 'card' ? 'کارت به کارت' : t.type === 'ladder' ? 'نردبان' : t.type === 'offer' ? 'ارسال گروهی پیشنهاد' : 'اصلاح ادمین'}
           </span>
         </p>
       </div>

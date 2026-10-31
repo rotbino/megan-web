@@ -85,6 +85,7 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
     items: [
       { href: '/admin/charges', label: 'شارژها', Icon: Coins, superOnly: false },
       { href: '/admin/packages', label: 'بسته‌ها و کمپین‌ها', Icon: Crown, superOnly: false },
+      { href: '/admin/billing', label: 'تنظیمات شارژ و مصرف', Icon: Settings, superOnly: false },
     ],
   },
   {

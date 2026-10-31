@@ -1336,3 +1336,17 @@ export async function fetchAdminActivities(filters: AdminActivityFilters = {}): 
 export async function fetchAdminActivityStats(): Promise<AdminActivityStats> {
   return adminFetch<AdminActivityStats>('/admin/activities/stats', {});
 }
+
+// ─── تنظیمات کیف شارژ و مصرف شارژ (پویا — ۳۱-۱۰) ──────────────────────────
+
+import type { BillingConfig } from '@/lib/types';
+
+/** پیکربندی صورتحساب — برای فرم ادمین (با حداقل محاسبه‌شده شارژ دلخواه) */
+export async function fetchAdminBilling(): Promise<BillingConfig> {
+  return adminFetch<BillingConfig>('/admin/settings/getBilling', {});
+}
+
+/** ذخیره پیکربندی — نرمال‌سازی سمت سرور؛ لاگ عملیات خودکار ثبت می‌شود */
+export async function updateAdminBilling(billing: BillingConfig): Promise<BillingConfig> {
+  return adminFetch<BillingConfig>('/admin/settings/updateBilling', { billing });
+}

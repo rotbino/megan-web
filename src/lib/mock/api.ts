@@ -295,12 +295,13 @@ const toBuyRequest = (r: RawBuyRequest): BuyRequest => ({
 });
 
 export async function getBuyRequests(
-  opts: { s?: string; provinceId?: number; page?: number; perPage?: number } = {},
+  opts: { s?: string; categoryId?: number; provinceId?: number; page?: number; perPage?: number } = {},
 ): Promise<Paged<BuyRequest>> {
   const raw = await apiFetch<{ items: RawBuyRequest[]; total: number; page: number; pageCount: number }>(
     '/buy-requests/getBuyRequestList',
     {
       s: opts.s,
+      categoryId: opts.categoryId,
       provinceId: opts.provinceId,
       page: opts.page,
       perPage: opts.perPage,
@@ -1395,4 +1396,66 @@ export interface MyProductStats {
 /** آمار کامل آگهی من — چه کسانی دیدند/تماس زدند/ذخیره کردند */
 export async function getMyProductStats(productId: number): Promise<MyProductStats> {
   return apiFetch<MyProductStats>('/products/getMyProductStats', { id: productId });
+}
+
+// ─── تنظیمات پویای صورتحساب + خریداران (۳۱-۱۰) ────────────────────────────
+
+import type {
+  BillingConfig,
+  BuyerBookItem,
+  BuyerDirectoryPage,
+  BuyerDirectoryQuery,
+  GroupSendResult,
+  MyBuyerBook,
+  OfferQuota,
+  SendOfferResult,
+} from '@/lib/types';
+
+/** پیکربندی صورتحساب — عمومی؛ پکیج شارژ/شارژ دلخواه/نردبان/قیمت پیشنهاد تامین */
+export async function getBillingConfig(): Promise<BillingConfig> {
+  return apiFetch<BillingConfig>('/site-settings/getBillingConfig', {}, { auth: false });
+}
+
+/** دفتر خرید من — دسته‌های برگ + بازه حجم */
+export async function getMyBuyerBook(): Promise<MyBuyerBook> {
+  return apiFetch<MyBuyerBook>('/buyers/getMyBook', {});
+}
+
+/** ذخیره دفتر خرید من — جایگزینی کامل (فرم چیپ + بازه) */
+export async function saveMyBuyerBook(
+  items: Array<Pick<BuyerBookItem, 'categoryId' | 'volumeMin' | 'volumeMax' | 'unit'>>,
+): Promise<{ saved: number }> {
+  return apiFetch<{ saved: number }>('/buyers/saveMyBook', { items });
+}
+
+/** دایرکتوری خریداران — فیلتر دسته/استان/شهر + صفحه‌بندی */
+export async function getBuyerDirectory(q: BuyerDirectoryQuery): Promise<BuyerDirectoryPage> {
+  return apiFetch<BuyerDirectoryPage>('/buyers/directory', {
+    categoryId: q.categoryId,
+    provinceId: q.provinceId,
+    cityId: q.cityId,
+    page: q.page ?? 1,
+    perPage: q.perPage ?? 12,
+  });
+}
+
+/** سهمیه پیشنهاد تامین امروز + قیمت ارسال گروهی */
+export async function getMyOfferQuota(): Promise<OfferQuota> {
+  return apiFetch<OfferQuota>('/buyers/getMyOfferQuota', {});
+}
+
+/** ارسال پیشنهاد تامین تکی — رایگان تا سقف روزانه سطح بسته */
+export async function sendSupplyOffer(input: {
+  buyerId: string;
+  message: string;
+}): Promise<SendOfferResult> {
+  return apiFetch<SendOfferResult>('/buyers/sendSupplyOffer', input);
+}
+
+/** ارسال گروهی پیشنهاد تامین — پولی از کیف پول (هر گیرنده) */
+export async function groupSendSupplyOffer(input: {
+  buyerIds: string[];
+  message: string;
+}): Promise<GroupSendResult> {
+  return apiFetch<GroupSendResult>('/buyers/groupSendSupplyOffer', input);
 }

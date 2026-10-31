@@ -83,7 +83,7 @@ export function useCities(provinceId?: number) {
 }
 
 export function useBuyRequests(
-  opts: { s?: string; provinceId?: number; page?: number; perPage?: number } = {},
+  opts: { s?: string; categoryId?: number; provinceId?: number; page?: number; perPage?: number } = {},
   initialData?: Paged<BuyRequest>,
 ) {
   return useQuery({
@@ -629,5 +629,80 @@ export function useMyProductStats(productId: number, enabled: boolean) {
     queryFn: () => api.getMyProductStats(productId),
     enabled: enabled && Number.isFinite(productId) && productId > 0,
     staleTime: 30_000,
+  });
+}
+
+// ─── تنظیمات صورتحساب + خریداران (۳۱-۱۰) ────────────────────────────────
+
+/** پیکربندی صورتحساب — عمومی؛ کش بلند چون به‌ندرت عوض می‌شود */
+export function useBillingConfig() {
+  return useQuery({
+    queryKey: ['billing-config'],
+    queryFn: () => api.getBillingConfig(),
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** دفتر خرید من */
+export function useMyBuyerBook() {
+  return useQuery({
+    queryKey: ['my-buyer-book'],
+    queryFn: () => api.getMyBuyerBook(),
+  });
+}
+
+/** ذخیره دفتر خرید — بعدش دایرکتوری را هم بیات کن */
+export function useSaveMyBuyerBook() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.saveMyBuyerBook,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-buyer-book'] });
+      queryClient.invalidateQueries({ queryKey: ['buyer-directory'] });
+    },
+  });
+}
+
+/** دایرکتوری خریداران — فیلتر دسته/استان/شهر */
+export function useBuyerDirectory(q: import('@/lib/types').BuyerDirectoryQuery) {
+  return useQuery({
+    queryKey: ['buyer-directory', q],
+    queryFn: () => api.getBuyerDirectory(q),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** سهمیه پیشنهاد تامین امروز */
+export function useMyOfferQuota(enabled = true) {
+  return useQuery({
+    queryKey: ['my-offer-quota'],
+    queryFn: () => api.getMyOfferQuota(),
+    enabled,
+  });
+}
+
+/** ارسال تکی — بعدش سهمیه و مکالمات تازه شوند */
+export function useSendSupplyOffer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.sendSupplyOffer,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-offer-quota'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+}
+
+/** ارسال گروهی — کیف پول + سهمیه + تراکنش‌ها تازه شوند */
+export function useGroupSendSupplyOffer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.groupSendSupplyOffer,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-offer-quota'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['panel-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['panel-wallet-transactions'] });
+    },
   });
 }

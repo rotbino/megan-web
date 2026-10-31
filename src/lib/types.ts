@@ -291,21 +291,25 @@ export type SurveyScore = 'excellent' | 'good' | 'average' | 'bad' | 'very_bad';
 // کیف پول — پرداخت کارت به کارت (جایگزین درگاه پرداخت)
 // ─────────────────────────────────────────────────────────────
 
-/** پکیج شارژ کیف پول — سه پکیج کارت به کارت + «سایر» (مبلغ دلخواه) */
+/** پکیج شارژ کیف پول — از تنظیمات پویای ادمین (کلید آزاد مثل p100/p200/p400) + «سایر» */
 export interface ChargePackage {
-  key: 'p100' | 'p200' | 'p400' | 'custom';
+  key: string;
   amount: number; // مبلغ واریزی (تومان)
-  bonusPercent: number; // درصد شارژ اضافه (دلخواه: ۳۰ یا ۵۰)
-  charge: number; // شارژ اعمالی نهایی = amount × (۱ + درصد)
+  bonusPercent: number; // درصد شارژ اضافه
+  charge?: number; // شارژ اعمالی نهایی = amount × (۱ + درصد)
 }
 
-/** قواعد شارژ دلخواه (دکمه «سایر») — از getWallet بک‌اند هم می‌آید */
+/** پله درصد شارژ اضافه مبلغ دلخواه — اعمال تا وقتی amount از aboveAmount بیشتر باشد */
+export interface CustomChargeTier {
+  aboveAmount: number;
+  percent: number;
+}
+
+/** قواعد شارژ دلخواه (دکمه «سایر») — از تنظیمات پویای ادمین */
 export interface CustomChargeRules {
-  min: number; // حداقل ۴۰۰ هزار
+  min: number; // حداقل = مبلغ گران‌ترین پکیج شارژ (محاسبه سرور)
   max: number;
-  tier2At: number; // آستانه ۵۰٪ (بالای ۱ میلیون)
-  tier1Percent: number; // ۳۰٪
-  tier2Percent: number; // ۵۰٪
+  tiers: CustomChargeTier[]; // صعودی — [0→30٪, 1M→50٪]
 }
 
 /** تراکنش کیف پول — فقط اقلام قطعی‌شده (در انتظار/ردشده اینجا نیستند؛ تب کارت‌به‌کارت‌اند) */
@@ -315,8 +319,8 @@ export interface WalletTransaction {
   amount: number;
   incoming: boolean; // واریز / کسر
   at: string;
-  /** نوع تراکنش: card = شارژ کارت‌به‌کارت تأییدشده؛ ladder = نردبان؛ adjust = اصلاح ادمین (آینده: online) */
-  type: 'card' | 'ladder' | 'adjust';
+  /** نوع تراکنش: card = شارژ کارت‌به‌کارت تأییدشده؛ ladder = نردبان؛ adjust = اصلاح ادمین؛ offer = ارسال گروهی پیشنهاد تامین */
+  type: 'card' | 'ladder' | 'adjust' | 'offer';
 }
 
 /** فیش شارژ کارت‌به‌کارت کاربر — تب «کارت به کارت» کیف پول */
@@ -427,4 +431,96 @@ export interface MyPackageOrder {
   expiresAt?: string | null;
   createdAt: string;
   receipt: { url: string; thumbUrl?: string } | null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// خریداران — دفتر خرید، دایرکتوری و پیشنهاد تامین (۳۱-۱۰)
+// ─────────────────────────────────────────────────────────────
+
+/** ردیف دفتر خرید من — دسته برگ + بازه حجم خرید ماهانه */
+export interface BuyerBookItem {
+  categoryId: number;
+  name: string; // نام دسته (برای نمایش)
+  volumeMin: number;
+  volumeMax: number; // 0 = بدون سقف
+  unit: string; // کیلوگرم | تن | عدد | بسته | لیتر | متر
+}
+
+/** پاسخ getMyBook */
+export interface MyBuyerBook {
+  max: number; // 15
+  units: string[];
+  items: BuyerBookItem[];
+}
+
+/** کارت خریدار در دایرکتوری — بی نام و تماس (حریم خصوصی) */
+export interface BuyerDirectoryItem {
+  id: string; // برای sendSupplyOffer
+  role: 'عمده‌خریدار' | 'خرده‌خریدار';
+  categories: { id: number; name: string; range: string }[];
+  moreCategories: number;
+  province: string | null;
+  city: string | null;
+  lastActiveAt: string;
+  activeRecently: boolean; // فعال در ۷ روز اخیر
+}
+
+/** فیلتر دایرکتوری خریداران */
+export interface BuyerDirectoryQuery {
+  categoryId?: number;
+  provinceId?: number;
+  cityId?: number;
+  page?: number;
+  perPage?: number;
+}
+
+/** پاسخ directory */
+export interface BuyerDirectoryPage {
+  items: BuyerDirectoryItem[];
+  total: number;
+  page: number;
+  perPage: number;
+  buyRequestCount: number | null; // درخواست‌های خرید همین دسته — تب دوم
+}
+
+/** سهمیه پیشنهاد تامین امروز (دارندگان بسته) */
+export interface OfferQuota {
+  isFeatured: boolean;
+  pakageType: number;
+  dailyLimit: number;
+  usedToday: number;
+  left: number;
+  groupSend: {
+    perRecipientPrice: number;
+    maxBatch: number;
+    maxPerDay: number;
+    usedToday: number;
+    left: number;
+  };
+  walletBalance: number;
+}
+
+/** نتیجه ارسال تکی */
+export interface SendOfferResult {
+  offerId: string;
+  threadId: string;
+  quotaLeft: number;
+}
+
+/** نتیجه ارسال گروهی */
+export interface GroupSendResult {
+  sent: number;
+  fee: number;
+  perRecipient: number;
+  balance: number;
+  groupLeft: number;
+}
+
+/** پیکربندی صورتحساب — از site-settings/getBillingConfig (عمومی) */
+export interface BillingConfig {
+  chargePackages: ChargePackage[];
+  customCharge: { maxAmount: number; tiers: CustomChargeTier[]; minAmount: number };
+  ladder: { monthlyPrice: number; maxMonths: number };
+  supplyOffer: { dailyLimits: { pakageType: number; label: string; limit: number }[] };
+  groupSend: { perRecipientPrice: number; maxPerDay: number; maxBatch: number };
 }

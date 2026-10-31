@@ -55,12 +55,12 @@ const isMyAimach = (p: string) =>
 /** منوی فروشنده */
 const sellerItems: NavItem[] = [
   { href: '/product-list', label: 'بازار', Icon: Store, match: isMarket },
-  // خریداران پیشنهادی با امتیاز تطابق — و صفحه عمومی درخواست‌های خرید
+  // دایرکتوری خریداران (خریداران + درخواست‌های خرید — دو تب) — و خریداران پیشنهادی
   {
-    href: '/panel/suggested-buyers',
+    href: '/buyers',
     label: 'خریداران',
     Icon: BuyersIcon,
-    match: (p) => isSuggestedBuyers(p) || p === '/buyAd-requests' || p.startsWith('/buyAd-requests/'),
+    match: (p) => isSuggestedBuyers(p) || p === '/buyers' || p.startsWith('/buyers/') || p === '/buyAd-requests' || p.startsWith('/buyAd-requests/'),
   },
   { href: '/panel/products/new', label: 'ثبت محصول', Icon: AddProductIcon, match: (p) => p === '/panel/products/new' },
   { href: '/panel/messages', label: 'پیام ها', Icon: MessagesIcon, match: isMessages },
@@ -80,7 +80,7 @@ const buyerItems: NavItem[] = [
 /** لاگین‌نشده — هر دو لینک خریداران و فروشندگان، بدون پیام‌ها (خواسته مالک) */
 const loggedOutItems: NavItem[] = [
   { href: '/product-list', label: 'بازار', Icon: Store, match: isMarket },
-  { href: '/buyAd-requests', label: 'خریداران', Icon: BuyersIcon, match: (p) => p === '/buyAd-requests' || p.startsWith('/buyAd-requests/') },
+  { href: '/buyers', label: 'خریداران', Icon: BuyersIcon, match: (p) => p === '/buyers' || p.startsWith('/buyers/') || p === '/buyAd-requests' || p.startsWith('/buyAd-requests/') },
   { href: '/panel/suggested-sellers', label: 'فروشندگان', Icon: SellersIcon, match: () => false },
   { href: '/panel/products/new', label: 'ثبت محصول', Icon: AddProductIcon, match: () => false },
   { href: '/panel', label: 'ایمچ من', Icon: MyAccountIcon, match: () => false },
