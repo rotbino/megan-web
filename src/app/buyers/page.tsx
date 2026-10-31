@@ -32,13 +32,7 @@ export default async function BuyersPage() {
     <>
       <Header />
       <main className="flex-1">
-        <div className="mx-auto max-w-5xl px-4 pt-6 lg:px-6">
-          <h1 className="text-2xl font-bold">خریداران</h1>
-          <p className="mt-2 text-xs leading-6 text-muted-foreground">
-            کالاهایی که خریداران عمده به‌طور مستمر می‌خرند — با دسته‌بندی، جستجو و دوره خرید مرور کنید. برای
-            ارسال پیشنهاد تامین، بسته اشتراک فعال لازم است.
-          </p>
-        </div>
+        {/* عنوان و تب‌های کوچک داخل BuyersView رندر می‌شوند (خواستهٔ مالک ۱-۱۱) */}
         <BuyersView initialData={initial} />
       </main>
       <Footer />

@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
+import { NeedPackageModal } from '@/components/shared/need-package-modal';
 import { LADDER_MAX_MONTHS, LADDER_MONTHLY_PRICE, REJECTION_REASONS, ladderMonthsLabel } from '@/lib/mock/data';
 import { priceFa, stockFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -70,6 +71,8 @@ function MyProductsPageInner() {
   const [ladderProduct, setLadderProduct] = useState<Product | null>(null);
   // تعداد ماه نردبان — پیش‌فرض ۱، تا ۴ ماه (خواسته مالک ۳۱-۱۰)
   const [ladderMonths, setLadderMonths] = useState(1);
+  // الگوی همیشگی ۱-۱۱: موجودی ناکافی برای نردبان → مودال شارژ (بستن + شارژ کیف پول)
+  const [needWalletMsg, setNeedWalletMsg] = useState<string | null>(null);
 
   if (isLoading || !data) {
     return <div className="h-64 animate-pulse rounded-lg border bg-card" />;
@@ -355,14 +358,34 @@ function MyProductsPageInner() {
                   موجودی کیف پول برای نردبان {ladderMonthsLabel(ladderMonths)} کافی نیست — برای این گزینه{' '}
                   {priceFa(ladderCost)} شارژ لازم دارید.
                 </p>
-                <Button asChild className="w-full rounded-md">
-                  <Link href="/panel/wallet">شارژ کیف پول (کارت به کارت)</Link>
+                <Button
+                  className="w-full rounded-md"
+                  onClick={() => {
+                    // الگوی همیشگی: پیام داخل مودال شارژ؛ دیالوگ نردبان بسته می‌شود تا تداخل نکنند
+                    setNeedWalletMsg(
+                      `موجودی کیف پول شما برای نردبان ${ladderMonthsLabel(ladderMonths)} «${ladderProduct?.productName}» کافی نیست — ${priceFa(ladderCost)} شارژ لازم دارید (موجودی فعلی: ${priceFa(balance)}).`,
+                    );
+                    setLadderProduct(null);
+                  }}
+                >
+                  <Wallet size={15} /> شارژ کیف پول و پرداخت
                 </Button>
               </div>
             )}
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* الگوی همیشگی ۱-۱۱: کمبود شارژ نردبان → مودال شارژ */}
+      {needWalletMsg && (
+        <NeedPackageModal
+          open
+          onClose={() => setNeedWalletMsg(null)}
+          kind="wallet"
+          message={needWalletMsg}
+          ctaLabel="شارژ کیف پول (کارت به کارت)"
+        />
+      )}
     </div>
   );
 }

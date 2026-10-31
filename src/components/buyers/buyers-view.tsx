@@ -11,9 +11,11 @@
  *    و اگر فرزند داشته باشد برای ریزترشدن باز می‌ماند.
  *  • کارت‌ها ساده و عین باسکول: آواتار + نام خریدار، جملهٔ «خریدار … هستم»،
  *    تاریخ و مکان (خواستهٔ مالک ۱-۱۱).
- *  • دو تب «خریداران» و «درخواست‌های خرید» — نوار تب برجسته بالای جستجو، همیشه
- *    نمایان (موبایل و دسکتاپ)؛ رنگ‌های مکمل: تب خریداران آبی برند، تب درخواست‌ها
- *    کهربایی — تا کاربر بلافاصله دو بخش را تشخیص دهد (خواسته مالک ۳۱-۱۰).
+ *  • دو تب کوچک کنار عنوان: «خریدهای دوره‌ای» و «درخواست‌های خرید» (خواستهٔ
+ *    مالک ۱-۱۱ — مینیمال؛ قبلاً نوار تب برجسته بالای جستجو بود).
+ *  • انتخاب گروهی بر «خریدار» است: تیک یک کارت همهٔ کارت‌های همان خریدار را
+ *    انتخاب می‌کند؛ تعداد و هزینهٔ نمایشی = خریداران یکتا × قیمت هر گیرنده
+ *    (خواستهٔ مالک ۱-۱۱ — قبلاً چند کارتِ یک خریدار فقط «۱» نشان می‌داد).
  *  • «پیشنهاد تامین»: فقط فروشندگان دارندهٔ بستهٔ فعال — تکی با سهمیهٔ روزانه؛
  *    «ارسال گروهی» پولی است (هر گیرنده از کیف پول). دکمه‌های ارسال خاکستری‌اند
  *    تا صفحه از رنگ آبی اشباع نشود (خواسته مالک ۳۱-۱۰).
@@ -55,6 +57,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AuthModal } from '@/components/shared/auth-modal';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
+import { NeedPackageModal } from '@/components/shared/need-package-modal';
 import { SupplyOfferModal } from '@/components/buyers/supply-offer-modal';
 import { BookEntryCard } from '@/components/buyers/book-entry-card';
 import { dateFa, toFa } from '@/lib/format';
@@ -96,6 +99,8 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [offerTargets, setOfferTargets] = useState<BuyerDirectoryItem[] | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+  // الگوی همیشگی نیاز به اشتراک/شارژ (خواستهٔ مالک ۱-۱۱) — مودال با بستن + خرید بسته
+  const [needPkgOpen, setNeedPkgOpen] = useState(false);
 
   const { data: tree = [] } = useCategoryTree();
   const { data: provinces = [] } = useProvinces();
@@ -162,31 +167,37 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
   const toggleSelect = (b: BuyerDirectoryItem) => {
     setSelection((prev) => {
       const next = new Set(prev);
-      if (next.has(b.id)) {
-        next.delete(b.id);
+      if (next.has(b.buyerId)) {
+        next.delete(b.buyerId);
       } else {
-        next.add(b.id);
+        next.add(b.buyerId);
       }
       return next;
     });
   };
 
-  const selectedItems = items.filter((b) => selection.has(b.id));
+  // انتخاب بر خریدار است نه کارت: تیک هر کارت کل خریدار را انتخاب می‌کند و همهٔ
+  // کارت‌های همان خریدار تیک می‌خورند؛ هزینه همیشه بر خریدارِ یکتا حساب می‌شود
+  const selectedItems = items.filter((b) => selection.has(b.buyerId));
+  const selectedBuyers = dedupeByBuyer(selectedItems);
 
   const startOffer = (b: BuyerDirectoryItem | null) => {
     if (!user) {
       setAuthOpen(true);
       return;
     }
-    if (!isFeatured) {
-      toast({
-        description: 'ارسال پیشنهاد تامین مخصوص فروشندگان دارندهٔ بستهٔ اشتراک فعال است.',
-        variant: 'destructive',
-      });
+    // اگر سهمیه هنوز در حال بارگذاری است صبر می‌کنیم تا قضاوت اشتباه نشود.
+    if (quotaQuery.isPending) {
+      toast({ description: 'در حال بررسی وضعیت بستهٔ شما…' });
       return;
     }
-    // گروهی: انتخاب‌ها ممکن است همهٔ یک خریدار باشند → یگانه‌سازی بر خریدار
-    setOfferTargets(b ? [b] : dedupeByBuyer(selectedItems));
+    // بدون بستهٔ فعال → مودال خرید اشتراک (الگوی همیشگی ۱-۱۱، به‌جای توست).
+    if (!isFeatured) {
+      setNeedPkgOpen(true);
+      return;
+    }
+    // گروهی: انتخاب‌ها از قبل بر خریدار یکتا هستند
+    setOfferTargets(b ? [b] : selectedBuyers);
   };
 
   // ─── موبایل: انتخاب دسته سلسله‌مراتبی — عین الگوی آگهی‌ها (خواستهٔ مالک ۱-۱۱) ──
@@ -223,6 +234,55 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
 
   return (
     <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-4 lg:grid-cols-[260px_1fr] lg:px-6 lg:py-6">
+      {/* عنوان + دو تب کوچک کنار هم (خواستهٔ مالک ۱-۱۱ — مینیمال):
+          تب اول «خریدهای دوره‌ای» = دفترچهٔ نیازهای مستمر خریداران؛
+          تب دوم «درخواست‌های خرید» = آگهی‌های لحظه‌ای */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 lg:col-span-2">
+        <h1 className="text-2xl font-bold">خریداران</h1>
+        <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="بخش‌های صفحه خریداران">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'buyers'}
+            onClick={() => setTab('buyers')}
+            className={cn(
+              'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
+              tab === 'buyers'
+                ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                : 'border-border bg-card text-muted-foreground hover:border-foreground/25 hover:text-foreground',
+            )}
+          >
+            <Users size={13} className="shrink-0" />
+            خریدهای دوره‌ای
+            <span className={cn(tab === 'buyers' ? 'opacity-80' : 'text-muted-foreground')}>
+              {directory.isLoading && !data ? '…' : toFa(total)}
+            </span>
+          </button>
+          {showRequestsTab && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'requests'}
+              onClick={() => setTab('requests')}
+              className={cn(
+                'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
+                tab === 'requests'
+                  ? 'border-amber-600 bg-amber-500 text-white shadow-sm'
+                  : 'border-border bg-card text-muted-foreground hover:border-foreground/25 hover:text-foreground',
+              )}
+            >
+              <ClipboardList size={13} className="shrink-0" />
+              درخواست‌های خرید
+              {data?.buyRequestCount != null && (
+                <span className={cn(tab === 'requests' ? 'opacity-80' : 'text-muted-foreground')}>
+                  {toFa(data.buyRequestCount)}
+                </span>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* سایدبار — دسکتاپ */}
       <aside className="hidden space-y-5 lg:block" aria-label="فیلترها">
         <div className="rounded-md border bg-card p-4">
@@ -354,65 +414,6 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
 
       {/* لیست */}
       <div className="min-w-0 space-y-4">
-        {/* تب‌های اصلی — برجسته و همیشه نمایان (موبایل و دسکتاپ)؛
-            رنگ مکمل: خریداران آبی برند / درخواست‌ها کهربایی (خواسته مالک ۳۱-۱۰) */}
-        <div
-          className={cn('grid gap-2', showRequestsTab ? 'grid-cols-2' : 'grid-cols-1')}
-          role="tablist"
-          aria-label="بخش‌های صفحه خریداران"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'buyers'}
-            onClick={() => setTab('buyers')}
-            className={cn(
-              'flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-[13px] font-extrabold transition-colors sm:text-sm',
-              tab === 'buyers'
-                ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-                : 'border-border bg-card text-muted-foreground hover:border-foreground/25 hover:text-foreground',
-            )}
-          >
-            <Users size={16} className="shrink-0" />
-            خریداران
-            <span
-              className={cn(
-                'min-w-6 rounded-full px-1.5 py-0.5 text-[11px] font-bold leading-4',
-                tab === 'buyers' ? 'bg-white/25 text-primary-foreground' : 'bg-secondary text-muted-foreground',
-              )}
-            >
-              {directory.isLoading && !data ? '…' : toFa(total)}
-            </span>
-          </button>
-          {showRequestsTab && (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'requests'}
-              onClick={() => setTab('requests')}
-              className={cn(
-                'flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-[13px] font-extrabold transition-colors sm:text-sm',
-                tab === 'requests'
-                  ? 'border-amber-600 bg-amber-500 text-white shadow-sm'
-                  : 'border-border bg-card text-muted-foreground hover:border-foreground/25 hover:text-foreground',
-              )}
-            >
-              <ClipboardList size={16} className="shrink-0" />
-              درخواست‌های خرید
-              {data?.buyRequestCount != null && (
-                <span
-                  className={cn(
-                    'min-w-6 rounded-full px-1.5 py-0.5 text-[11px] font-bold leading-4',
-                    tab === 'requests' ? 'bg-white/25 text-white' : 'bg-secondary text-muted-foreground',
-                  )}
-                >
-                  {toFa(data.buyRequestCount)}
-                </span>
-              )}
-            </button>
-          )}
-        </div>
-
         {/* جستجو — سرجایش، بالای لیست */}
         <div className="rounded-md border bg-card p-3 sm:p-4">
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
@@ -516,9 +517,9 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
           )}
         </div>
 
-        {/* ── تب خریداران ── */}
+        {/* ── تب خریدهای دوره‌ای ── */}
         {tab === 'buyers' && (
-          <div role="tabpanel" aria-label="خریداران">
+          <div role="tabpanel" aria-label="خریدهای دوره‌ای">
             {directory.isLoading && !data ? (
               <div className="space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -550,7 +551,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
                       key={b.id}
                       entry={b}
                       selectable={isFeatured}
-                      selected={selection.has(b.id)}
+                      selected={selection.has(b.buyerId)}
                       onToggle={() => toggleSelect(b)}
                       onOffer={() => startOffer(b)}
                     />
@@ -591,10 +592,14 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
               <div className="sticky bottom-20 z-30 mt-4 rounded-xl border-2 border-primary/30 bg-card p-3 shadow-lg sm:bottom-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-[11px] leading-5">
-                    <b>{toFa(dedupeByBuyer(selectedItems).length)}</b> خریدار انتخاب شد — هزینه:{' '}
+                    <b>{toFa(selectedBuyers.length)}</b> خریدار انتخاب شد
+                    {selectedItems.length > selectedBuyers.length && (
+                      <> ({toFa(selectedItems.length)} مورد)</>
+                    )}{' '}
+                    — هزینه:{' '}
                     <b className="text-primary">
                       {toFa(
-                        (dedupeByBuyer(selectedItems).length *
+                        (selectedBuyers.length *
                           (quota?.groupSend.perRecipientPrice ?? 0)).toLocaleString('fa-IR'),
                       )}
                     </b>{' '}
@@ -777,6 +782,13 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
         targets={offerTargets ?? []}
         quota={quota}
         products={myProducts?.items}
+      />
+      {/* الگوی همیشگی ۱-۱۱: بدون بستهٔ فعال، مودال «خرید اشتراک» باز می‌شود */}
+      <NeedPackageModal
+        open={needPkgOpen}
+        onClose={() => setNeedPkgOpen(false)}
+        kind="package"
+        message="ارسال پیشنهاد تامین به خریداران عمده، ویژهٔ فروشندگان دارندهٔ بستهٔ اشتراک فعال است. با فعال‌سازی یکی از بسته‌های ایمچ، از امروز می‌توانید برای خریداران پیشنهاد بفرستید."
       />
       <AuthModal
         open={authOpen}
