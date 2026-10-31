@@ -13,9 +13,9 @@
  *    تاریخ و مکان (خواستهٔ مالک ۱-۱۱).
  *  • دو تب کوچک کنار عنوان: «خریدهای دوره‌ای» و «درخواست‌های خرید» (خواستهٔ
  *    مالک ۱-۱۱ — مینیمال؛ قبلاً نوار تب برجسته بالای جستجو بود).
- *  • انتخاب گروهی بر «خریدار» است: تیک یک کارت همهٔ کارت‌های همان خریدار را
- *    انتخاب می‌کند؛ تعداد و هزینهٔ نمایشی = خریداران یکتا × قیمت هر گیرنده
- *    (خواستهٔ مالک ۱-۱۱ — قبلاً چند کارتِ یک خریدار فقط «۱» نشان می‌داد).
+ *  • انتخاب گروهی بر «همان یک کارت» است: تیک هر نیاز خرید فقط همان را انتخاب
+ *    می‌کند (خواستهٔ مالک شب دوم — قبلاً تیک یک کارت کل خریدار را تیک می‌زد)؛
+ *    هزینه و گیرنده همچنان بر خریدار یکتا حساب می‌شود.
  *  • «پیشنهاد تامین»: فقط فروشندگان دارندهٔ بستهٔ فعال — تکی با سهمیهٔ روزانه؛
  *    «ارسال گروهی» پولی است (هر گیرنده از کیف پول). دکمه‌های ارسال خاکستری‌اند
  *    تا صفحه از رنگ آبی اشباع نشود (خواسته مالک ۳۱-۱۰).
@@ -95,8 +95,9 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
   const [sheet, setSheet] = useState<SheetKind>(null);
   const [catStack, setCatStack] = useState<Category[]>([]);
 
-  // انتخاب گروهی + مودال‌ها
-  const [selection, setSelection] = useState<Set<string>>(new Set());
+  // انتخاب گروهی — هر تیک فقط همان نیاز خرید را برمی‌گزیند (خواستهٔ مالک شب
+  // دوم)؛ کل آیتم ذخیره می‌شود تا انتخاب صفحات قبل هم در ارسال گروهی بماند
+  const [selection, setSelection] = useState<Map<string, BuyerDirectoryItem>>(new Map());
   const [offerTargets, setOfferTargets] = useState<BuyerDirectoryItem[] | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   // الگوی همیشگی نیاز به اشتراک/شارژ (خواستهٔ مالک ۱-۱۱) — مودال با بستن + خرید بسته
@@ -166,20 +167,18 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
 
   const toggleSelect = (b: BuyerDirectoryItem) => {
     setSelection((prev) => {
-      const next = new Set(prev);
-      if (next.has(b.buyerId)) {
-        next.delete(b.buyerId);
+      const next = new Map(prev);
+      if (next.has(b.id)) {
+        next.delete(b.id);
       } else {
-        next.add(b.buyerId);
+        next.set(b.id, b);
       }
       return next;
     });
   };
 
-  // انتخاب بر خریدار است نه کارت: تیک هر کارت کل خریدار را انتخاب می‌کند و همهٔ
-  // کارت‌های همان خریدار تیک می‌خورند؛ هزینه همیشه بر خریدارِ یکتا حساب می‌شود
-  const selectedItems = items.filter((b) => selection.has(b.buyerId));
-  const selectedBuyers = dedupeByBuyer(selectedItems);
+  // انتخاب‌ها آیتم‌به‌آیتم‌اند (حتی بین صفحات)؛ گیرنده و هزینه بر خریدار یکتا
+  const selectedBuyers = dedupeByBuyer([...selection.values()]);
 
   const startOffer = (b: BuyerDirectoryItem | null) => {
     if (!user) {
@@ -196,7 +195,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
       setNeedPkgOpen(true);
       return;
     }
-    // گروهی: انتخاب‌ها از قبل بر خریدار یکتا هستند
+    // گروهی: همهٔ انتخاب‌ها (حتی از صفحات قبل) — یکتا‌شده بر خریدار
     setOfferTargets(b ? [b] : selectedBuyers);
   };
 
@@ -283,7 +282,8 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
         </div>
       </div>
 
-      {/* سایدبار — دسکتاپ */}
+      {/* سایدبار — دسکتاپ: دسته‌ها + سهمیه؛ فیلترهای دوره/موقعیت زیر جستجوست
+          (خواستهٔ مالک شب دوم — بیشتر جلوی چشم) */}
       <aside className="hidden space-y-5 lg:block" aria-label="فیلترها">
         <div className="rounded-md border bg-card p-4">
           <h2 className="mb-3 flex items-center gap-1.5 text-sm font-bold">
@@ -296,94 +296,6 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
             onPick={pickCategory}
             onClear={clearCategory}
           />
-        </div>
-
-        <div className="rounded-md border bg-card p-4">
-          <h2 className="mb-3 flex items-center gap-1.5 text-sm font-bold">
-            <CalendarClock size={14} className="text-primary" />
-            دوره خرید
-          </h2>
-          <ul className="space-y-0.5 text-sm">
-            <li>
-              <button
-                type="button"
-                onClick={() => {
-                  setPeriod('all');
-                  setPage(1);
-                }}
-                className={cn(
-                  'block w-full rounded-lg px-2.5 py-1.5 text-start transition-colors',
-                  period === 'all'
-                    ? 'bg-accent font-bold text-accent-foreground'
-                    : 'text-muted-foreground hover:bg-secondary',
-                )}
-              >
-                همه دوره‌ها
-              </button>
-            </li>
-            {PURCHASE_PERIODS.map((p) => (
-              <li key={p}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPeriod(p);
-                    setPage(1);
-                  }}
-                  className={cn(
-                    'block w-full rounded-lg px-2.5 py-1.5 text-start transition-colors',
-                    period === p
-                      ? 'bg-accent font-bold text-accent-foreground'
-                      : 'text-muted-foreground hover:bg-secondary',
-                  )}
-                >
-                  {PERIOD_LABELS[p]}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="space-y-3 rounded-md border bg-card p-4">
-          <h2 className="flex items-center gap-1.5 text-sm font-bold">
-            <MapPin size={14} className="text-primary" />
-            موقعیت جغرافیایی
-          </h2>
-          <Select
-            dir="rtl"
-            value={provinceId ? String(provinceId) : undefined}
-            onValueChange={(v) => {
-              setProvinceId(Number(v));
-              setCityId(null);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger className="w-full rounded-md" aria-label="استان">
-              <SelectValue placeholder="همه استان‌ها" />
-            </SelectTrigger>
-            <SelectContent>
-              {provinces.map((p) => (
-                <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            dir="rtl"
-            value={cityId ? String(cityId) : undefined}
-            onValueChange={(v) => {
-              setCityId(Number(v));
-              setPage(1);
-            }}
-            disabled={!provinceId}
-          >
-            <SelectTrigger className="w-full rounded-md" aria-label="شهر">
-              <SelectValue placeholder={provinceId ? 'همه شهرها' : 'ابتدا استان را انتخاب کنید'} />
-            </SelectTrigger>
-            <SelectContent>
-              {cities.map((c) => (
-                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         {/* نوار سهمیهٔ فروشندهٔ ویژه */}
@@ -414,7 +326,8 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
 
       {/* لیست */}
       <div className="min-w-0 space-y-4">
-        {/* جستجو — سرجایش، بالای لیست */}
+        {/* جستجو — سرجایش، بالای لیست + فیلترهای دوره/استان/شهر زیر سرچ‌باکس
+            (خواستهٔ مالک شب دوم: بیشتر جلوی چشم؛ موبایل چیپ‌های خودش را دارد) */}
         <div className="rounded-md border bg-card p-3 sm:p-4">
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
             <form className="relative flex-1" onSubmit={(e) => e.preventDefault()} role="search">
@@ -430,6 +343,68 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
               />
               <Search size={15} className="pointer-events-none absolute inset-y-0 start-3 my-auto text-muted-foreground" />
             </form>
+          </div>
+
+          {/* فیلترهای دوره/استان/شهر — دسکتاپ، همین زیر سرچ‌باکس */}
+          <div className="mt-2.5 hidden flex-wrap items-center gap-2 lg:flex">
+            <Select
+              dir="rtl"
+              value={period}
+              onValueChange={(v) => {
+                setPeriod(v as PeriodFilter);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger size="sm" className="h-9 w-[150px] rounded-md text-xs" aria-label="دوره خرید">
+                <CalendarClock className="size-3.5" />
+                <SelectValue placeholder="همه دوره‌ها" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه دوره‌ها</SelectItem>
+                {PURCHASE_PERIODS.map((p) => (
+                  <SelectItem key={p} value={p}>{PERIOD_LABELS[p]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              dir="rtl"
+              value={provinceId ? String(provinceId) : 'all'}
+              onValueChange={(v) => {
+                setProvinceId(v === 'all' ? null : Number(v));
+                setCityId(null);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger size="sm" className="h-9 w-[168px] rounded-md text-xs" aria-label="استان">
+                <MapPin className="size-3.5" />
+                <SelectValue placeholder="همه استان‌ها" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه استان‌ها</SelectItem>
+                {provinces.map((p) => (
+                  <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              dir="rtl"
+              value={cityId ? String(cityId) : 'all'}
+              onValueChange={(v) => {
+                setCityId(v === 'all' ? null : Number(v));
+                setPage(1);
+              }}
+              disabled={!provinceId}
+            >
+              <SelectTrigger size="sm" className="h-9 w-[150px] rounded-md text-xs" aria-label="شهر">
+                <SelectValue placeholder={provinceId ? 'همه شهرها' : 'ابتدا استان'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه شهرها</SelectItem>
+                {cities.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
             <span className="truncate">
@@ -551,7 +526,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
                       key={b.id}
                       entry={b}
                       selectable={isFeatured}
-                      selected={selection.has(b.buyerId)}
+                      selected={selection.has(b.id)}
                       onToggle={() => toggleSelect(b)}
                       onOffer={() => startOffer(b)}
                     />
@@ -587,14 +562,20 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
               </>
             )}
 
-            {/* نوار ارسال گروهی — چسبان پایین وقتی انتخابی هست */}
-            {isFeatured && selection.size > 0 && (
-              <div className="sticky bottom-20 z-30 mt-4 rounded-xl border-2 border-primary/30 bg-card p-3 shadow-lg sm:bottom-4">
+            {/* نوار ارسال گروهی — چسبان پایین وقتی گیرنده‌ای هست؛ دکمهٔ سبز تا موقع
+                تیک زدن بیشتر به چشم بیاید (خواستهٔ مالک شب دوم). پس از ارسال موفق،
+                انتخاب پاک می‌شود تا ارسال/هزینهٔ دوباره اتفاق نیفتد */}
+            {isFeatured && selectedBuyers.length > 0 && (
+              <div className="sticky bottom-20 z-30 mt-4 rounded-xl border-2 border-emerald-500/40 bg-card p-3 shadow-lg sm:bottom-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-[11px] leading-5">
-                    <b>{toFa(selectedBuyers.length)}</b> خریدار انتخاب شد
-                    {selectedItems.length > selectedBuyers.length && (
-                      <> ({toFa(selectedItems.length)} مورد)</>
+                    {selection.size === selectedBuyers.length ? (
+                      <><b>{toFa(selectedBuyers.length)}</b> خریدار انتخاب شد</>
+                    ) : (
+                      <>
+                        <b>{toFa(selection.size)}</b> نیاز خرید از{' '}
+                        <b>{toFa(selectedBuyers.length)}</b> خریدار انتخاب شد
+                      </>
                     )}{' '}
                     — هزینه:{' '}
                     <b className="text-primary">
@@ -608,7 +589,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
                   <div className="flex gap-2">
                     <Button
                       size="sm"
-                      className="rounded-md bg-[#5b6472] text-white hover:bg-[#4c5462]"
+                      className="rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
                       onClick={() => startOffer(null)}
                     >
                       <Send size={13} /> ارسال گروهی پیشنهاد
@@ -617,7 +598,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
                       size="sm"
                       variant="ghost"
                       className="rounded-md"
-                      onClick={() => setSelection(new Set())}
+                      onClick={() => setSelection(new Map())}
                     >
                       لغو انتخاب
                     </Button>
@@ -734,9 +715,9 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
         <div className="space-y-3 p-1">
           <Select
             dir="rtl"
-            value={provinceId ? String(provinceId) : undefined}
+            value={provinceId ? String(provinceId) : 'all'}
             onValueChange={(v) => {
-              setProvinceId(Number(v));
+              setProvinceId(v === 'all' ? null : Number(v));
               setCityId(null);
               setPage(1);
             }}
@@ -745,6 +726,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
               <SelectValue placeholder="همه استان‌ها" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">همه استان‌ها</SelectItem>
               {provinces.map((p) => (
                 <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
               ))}
@@ -752,9 +734,9 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
           </Select>
           <Select
             dir="rtl"
-            value={cityId ? String(cityId) : undefined}
+            value={cityId ? String(cityId) : 'all'}
             onValueChange={(v) => {
-              setCityId(Number(v));
+              setCityId(v === 'all' ? null : Number(v));
               setPage(1);
             }}
             disabled={!provinceId}
@@ -763,6 +745,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
               <SelectValue placeholder={provinceId ? 'همه شهرها' : 'ابتدا استان را انتخاب کنید'} />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">همه شهرها</SelectItem>
               {cities.map((c) => (
                 <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
               ))}
@@ -774,11 +757,23 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
         </div>
       </BottomSheet>
 
-      {/* مودال‌ها — key: هر مجموعهٔ هدف، فرم تازه با پیش‌نویس داینامیک */}
+      {/* مودال‌ها — key: هر مجموعهٔ هدف، فرم تازه با نمونهٔ پارامتریک؛ پس از
+          ارسال موفق، کارت‌های همان خریداران از انتخاب درمی‌آیند (ضمناً جلوگیری
+          از ارسال/هزینهٔ دوباره برای همان گیرنده) */}
       <SupplyOfferModal
         key={offerTargets ? offerTargets.map((t) => t.buyerId).join(',') : 'closed'}
         open={offerTargets !== null}
         onClose={() => setOfferTargets(null)}
+        onSent={(buyerIds) => {
+          setSelection((prev) => {
+            if (prev.size === 0) return prev;
+            const next = new Map(prev);
+            for (const [id, item] of next) {
+              if (buyerIds.includes(item.buyerId)) next.delete(id);
+            }
+            return next;
+          });
+        }}
         targets={offerTargets ?? []}
         quota={quota}
         products={myProducts?.items}
