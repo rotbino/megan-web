@@ -1,17 +1,16 @@
 /**
- * لاگ جستجوهای کاربران — ذخیره‌سازی فایل-محورِ ساده (JSON در .data/).
+ * لاگ ورودی‌های جستجو — ذخیره‌سازی فایل-محورِ ساده (JSON در .data/).
  *
- * هدف سئو: هر جستجوی واقعی کاربر یک شمارنده می‌گیرد؛ صفحه «جستجوهای
- * کاربران» (/searches) پربازدیدترین‌ها و آخرین‌ها را به‌صورت لینک به
- * صفحات جستجوی ایندکس‌پذیر (/product-list/search/{q}) رندر می‌کند تا
- * موتورهای جستجو به جستجوهای انجام‌شده دسترسی داشته باشند.
+ * هدف سئو: هر صفحه جستجوی ایندکس‌پذیر (/product-list/search/{q}) یک شمارنده
+ * ورودی می‌گیرد؛ صفحه «ورودی‌های گوگل» (/searches) نشان می‌دهد از هر لینکِ
+ * ثبت‌شده در گوگل چند کاربر به ایمچ آمده است.
  *
  * نکته استقرار: در محیط سرور-مانند (next start روی VPS) کافی است؛
  * برای سرورلس (Vercel) بعداً به جدول دیتابیس/بک‌اند منتقل شود.
  */
 import { promises as fs } from 'fs';
 import path from 'path';
-import { POPULAR_SEARCHES } from './popular-searches';
+import { GOOGLE_ENTRY_QS } from './popular-searches';
 
 export interface SearchLogEntry {
   q: string;
@@ -59,7 +58,7 @@ async function readFileEntries(): Promise<SearchLogEntry[]> {
 export async function readSearchLog(): Promise<SearchLogEntry[]> {
   const file = await readFileEntries();
   const map = new Map<string, SearchLogEntry>();
-  for (const q of POPULAR_SEARCHES) map.set(q, { q, count: 0, lastAt: 0 });
+  for (const q of GOOGLE_ENTRY_QS) map.set(q, { q, count: 0, lastAt: 0 });
   for (const e of file) map.set(e.q, { ...e }); // فایل بر seed مقدم است
   return [...map.values()];
 }
@@ -85,7 +84,7 @@ export async function recordSearch(rawQ: string): Promise<SearchLogEntry[]> {
 /** حذف قدیمی‌ترین ورودی‌های غیر seed وقتی از سقف عبور کرد */
 function capEntries(entries: SearchLogEntry[]): SearchLogEntry[] {
   if (entries.length <= MAX_ENTRIES) return entries;
-  const seeds = new Set<string>(POPULAR_SEARCHES);
+  const seeds = new Set<string>(GOOGLE_ENTRY_QS);
   const overflow = entries
     .filter((e) => !seeds.has(e.q))
     .sort((a, b) => a.lastAt - b.lastAt);

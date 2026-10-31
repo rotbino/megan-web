@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { apiBase, joinUrl } from '@/lib/api/client';
-import { POPULAR_SEARCHES } from '@/lib/popular-searches';
+import { GOOGLE_ENTRY_QS } from '@/lib/popular-searches';
 import { SITE_URL } from '@/lib/site';
 
 const BASE = SITE_URL;
@@ -87,8 +87,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.4,
   }));
 
-  // صفحات جستجوی پربازدید — هر عبارت یک URL ایندکس‌پذیر اختصاصی (long-tail سئو)
-  const searchPages: MetadataRoute.Sitemap = POPULAR_SEARCHES.map((q) => ({
+  // صفحات جستجوی ورودی‌های گوگل — هر کالا یک URL ایندکس‌پذیر اختصاصی (long-tail سئو).
+  // عنوان‌های گوگلی (مثل «خرید سیب زمینی عمده در تهران») به همین آدرس‌های هسته‌ای
+  // لینک می‌شوند؛ آدرس‌های شنی هم با ریدایرکت دائمی به همین‌ها می‌رسند.
+  const searchPages: MetadataRoute.Sitemap = GOOGLE_ENTRY_QS.map((q) => ({
     url: `${BASE}/product-list/search/${encodeURIComponent(q)}`,
     changeFrequency: 'daily' as const,
     priority: 0.7,

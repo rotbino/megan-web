@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ChevronLeft, Headphones, Link2, Mail, Megaphone, Phone, UserRoundCheck } from 'lucide-react';
 import { BrandLogo } from '@/components/shared/brand';
-import { POPULAR_SEARCHES, searchPath } from '@/lib/popular-searches';
+import { GOOGLE_ENTRIES, searchPath } from '@/lib/popular-searches';
 
 /** فوتر — همان ساختار باسکول: سه هدف، ستون‌های لینک، توضیح سئویی، تماس و کپی‌رایت */
 const goals = [
@@ -83,25 +83,27 @@ export function Footer() {
         ))}
       </div>
 
-      {/* لینک‌های سئویی مثل باسکول — هر عبارت به صفحه جستجوی اختصاصی خودش */}
+      {/* ورودی‌های گوگل — عبارت‌هایی که کاربران در گوگل سرچ کردند و به ایمچ رسیدند؛
+          هر عنوان به صفحه اختصاصی همان کالا می‌رود (کلمات عمده/خرید/شهر از مسیر حذف
+          شده‌اند تا نتیجه جستجو پُر باشد) و ورودی‌هایش در /searches شمرده می‌شود */}
       <div className="border-t">
         <div className="mx-auto max-w-7xl px-4 py-5 lg:px-6">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
-            <Link2 size={12} /> پربازدیدترین بازارهای عمده
+            <Link2 size={12} /> کاربران گوگل چه سرچ کردند و به ایمچ رسیدند؟
           </p>
           <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-            {POPULAR_SEARCHES.map((s) => (
-              <li key={s}>
-                <Link href={searchPath(s)} className="hover:text-primary">{s}</Link>
+            {GOOGLE_ENTRIES.map((e) => (
+              <li key={e.title}>
+                <Link href={searchPath(e.q)} className="hover:text-primary">{e.title}</Link>
               </li>
             ))}
-            {/* ادامه — صفحه جستجوهای کاربران: پربازدیدترین و آخرین جستجوهای واقعی */}
+            {/* ادامه — آمار ورودی هر لینک ثبت‌شده در گوگل */}
             <li className="font-bold">
               <Link
                 href="/searches"
                 className="inline-flex items-center gap-0.5 text-primary hover:underline"
               >
-                مشاهده جستجوهای کاربران
+                مشاهده همه ورودی‌های گوگل
                 <ChevronLeft size={13} aria-hidden />
               </Link>
             </li>

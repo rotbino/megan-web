@@ -15,6 +15,7 @@ import {
 } from '@/components/shared/buskool-icons';
 import { useAuth } from '@/lib/mock/auth';
 import { useCategoryTree, useSuggestions, useUnreadMessagesCount } from '@/lib/mock/hooks';
+import { searchPath } from '@/lib/popular-searches';
 import { UnreadBadge } from '@/components/shared/unread-badge';
 import { cn } from '@/lib/utils';
 import type { Category } from '@/lib/types';
@@ -72,9 +73,10 @@ export function Header() {
     if (!value) return;
     setFocused(false);
     setQ('');
-    // جستجو به مسیر سئو-پسند می‌رود — هر جستجوی کاربر URL اختصاصی و
-    // ایندکس‌پذیر می‌گیرد (/product-list/search/{q} با کنونیکال اختصاصی)
-    router.push(`/product-list/search/${encodeURIComponent(value)}`);
+    // جستجو به مسیر سئو-پسند می‌رود — کلمات اضافه (عمده/خرید/شهر…) همان‌جا
+    // حذف می‌شوند تا کاربر مستقیم به صفحه یکتای همان کالا برسد و نتیجه پُر باشد:
+    // «خرید سیب زمینی عمده در تهران» → /product-list/search/سیب زمینی
+    router.push(searchPath(value));
   };
 
   const closeMega = () => {

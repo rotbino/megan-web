@@ -5,37 +5,42 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { JsonLd } from '@/components/shared/json-ld';
 import { toFa, timeAgoFa } from '@/lib/format';
-import { POPULAR_SEARCHES, searchPath } from '@/lib/popular-searches';
+import { GOOGLE_ENTRY_QS, searchPath, seedTitleFor } from '@/lib/popular-searches';
 import { readSearchLog } from '@/lib/search-log';
 import { SITE_URL } from '@/lib/site';
 
+/** عنوان واحد بخش فوتر و این صفحه — «ورودی کاربران از گوگل» (خواسته مالک) */
+const PAGE_TITLE = 'کاربران گوگل چه سرچ کردند و به ایمچ رسیدند؟';
+
 /**
- * صفحه «جستجوهای کاربران» — پربازدیدترین و آخرین جستجوهای واقعی کاربران
- * به‌صورت لینک به صفحات جستجوی ایندکس‌پذیر (/product-list/search/{q}).
+ * صفحه «ورودی‌های گوگل» — عبارت‌هایی که کاربران در گوگل جستجو کرده و به
+ * ایمچ رسیده‌اند، به‌صورت لینک به صفحات جستجوی ایندکس‌پذیر
+ * (/product-list/search/{q}).
  *
- * ارزش سئو: خزنده‌ها از این صفحه به تمام جستجوهای انجام‌شده لینک می‌گیرند
- * (long-tail) و کاربران هم می‌توانند جستجوهای یکدیگر را ببینند. ISR کوتاه
- * ۶۰ ثانیه‌ای تا شمارش‌ها و جستجوهای تازه زود reflected شوند.
+ * ارزش سئو: خزنده‌ها از فوتر و این صفحه به صفحات فرودِ همهٔ کالاها لینک
+ * می‌گیرند (long-tail) و ما هم می‌بینیم از هر لینک ثبت‌شده در گوگل چند
+ * کاربر آمده است (شمارنده هر URL). ISR کوتاه ۶۰ ثانیه‌ای تا شمارش‌ها و
+ * جستجوهای تازه زود reflected شوند.
  */
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: 'جستجوهای کاربران ایمچ — خرید و فروش عمده',
+  title: `${PAGE_TITLE} — جستجوهای پرتکرار بازار عمده`,
   description:
-    'پربازدیدترین و آخرین جستجوهای کاربران بازار عمده ایمچ؛ خرید عمده و فروش عمده هر کالا با بهترین قیمت از تولیدکنندگان و فروشندگان سراسر ایران.',
+    'جستجوهای واقعی کاربران گوگل که به بازار عمده ایمچ رسیده‌اند؛ خرید عمده و فروش عمده هر کالا با بهترین قیمت از تولیدکنندگان و فروشندگان سراسر ایران.',
   alternates: { canonical: '/searches' },
   openGraph: {
-    title: 'جستجوهای کاربران ایمچ — خرید و فروش عمده',
-    description: 'پربازدیدترین و آخرین جستجوهای کاربران بازار عمده ایمچ',
+    title: PAGE_TITLE,
+    description: 'جستجوهای واقعی کاربران گوگل که به بازار عمده ایمچ رسیده‌اند',
     type: 'website',
   },
 };
 
 export default async function SearchesPage() {
   const log = await readSearchLog();
-  const rank = new Map<string, number>(POPULAR_SEARCHES.map((q, i) => [q as string, i]));
+  const rank = new Map(GOOGLE_ENTRY_QS.map((q, i) => [q, i]));
 
-  // پربازدیدترین‌ها — شمارش نزولی؛ تساوی‌ها با ترتیب seed (رتبه بازار)
+  // پربازدیدترین ورودی‌ها — شمارش نزولی؛ تساوی‌ها با ترتیب seed (رتبه بازار)
   const top = [...log]
     .sort((a, b) => b.count - a.count || (rank.get(a.q) ?? 999) - (rank.get(b.q) ?? 999))
     .slice(0, 24);
@@ -51,17 +56,18 @@ export default async function SearchesPage() {
       <Header />
       <main className="flex-1">
         <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6 lg:py-8">
-          <h1 className="text-lg font-extrabold lg:text-2xl">جستجوهای کاربران ایمچ</h1>
+          <h1 className="text-lg font-extrabold lg:text-2xl">{PAGE_TITLE}</h1>
           <p className="mt-2 max-w-3xl text-xs leading-6 text-muted-foreground lg:text-sm">
-            جستجوهای واقعی کاربران بازار عمده ایمچ — پربازدیدترین‌ها و تازه‌ترین‌ها. هر جستجو به صفحه
-            اختصاصی همان کالا می‌رسد تا خریداران عمده سریع‌تر به فروشنده و قیمت روز برسند.
+            این‌ها همان عبارت‌هایی است که کاربران در گوگل جستجو کردند و به بازار عمده ایمچ رسیدند؛
+            روی هر کدام کلیک کنید تا آگهی‌های فروش عمده همان کالا را با قیمت روز ببینید. ورودی هر
+            لینک اینجا شمرده می‌شود تا معروف‌ترین کالاهای بازار عمده ایران مشخص بماند.
           </p>
 
-          {/* ─── پربازدیدترین جستجوها ─────────────────────────────── */}
+          {/* ─── پربازدیدترین ورودی‌های گوگل ─────────────────────── */}
           <section className="mt-6" aria-labelledby="popular-searches">
             <h2 id="popular-searches" className="mb-3 flex items-center gap-1.5 text-sm font-bold">
               <Flame size={15} className="text-primary" />
-              پربازدیدترین جستجوها
+              پربازدیدترین ورودی‌های گوگل
             </h2>
             <ul className="flex flex-wrap gap-2">
               {top.map((e) => (
@@ -71,10 +77,10 @@ export default async function SearchesPage() {
                     className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary/50 hover:text-primary"
                   >
                     <Search size={12} className="text-muted-foreground" aria-hidden />
-                    {e.q}
+                    {seedTitleFor(e.q) ?? e.q}
                     {e.count > 0 && (
                       <span className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
-                        {toFa(e.count)} بار
+                        {toFa(e.count)} ورودی
                       </span>
                     )}
                   </Link>
@@ -136,13 +142,13 @@ export default async function SearchesPage() {
         data={{
           '@context': 'https://schema.org',
           '@type': 'ItemList',
-          name: 'جستجوهای کاربران ایمچ',
+          name: PAGE_TITLE,
           numberOfItems: top.length,
           itemListElement: top.map((e, i) => ({
             '@type': 'ListItem',
             position: i + 1,
             url: `${SITE_URL}${searchPath(e.q)}`,
-            name: e.q,
+            name: seedTitleFor(e.q) ?? e.q,
           })),
         }}
       />
