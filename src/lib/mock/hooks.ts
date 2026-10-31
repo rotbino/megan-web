@@ -148,8 +148,13 @@ export function usePanelProfile() {
   return useQuery({ queryKey: ['panel-profile'], queryFn: api.getPanelProfile, staleTime: 60_000 });
 }
 
-export function useMyProducts() {
-  return useQuery({ queryKey: ['panel-my-products'], queryFn: api.getMyProducts, staleTime: 30_000 });
+export function useMyProducts(enabled = true) {
+  return useQuery({
+    queryKey: ['panel-my-products'],
+    queryFn: api.getMyProducts,
+    staleTime: 30_000,
+    enabled,
+  });
 }
 
 export function useSavedLists() {

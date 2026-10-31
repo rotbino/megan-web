@@ -46,6 +46,7 @@ import {
   useCategoryTree,
   useCities,
   useMyOfferQuota,
+  useMyProducts,
   useProvinces,
 } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
@@ -125,6 +126,9 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
   const quotaQuery = useMyOfferQuota(Boolean(user));
   const quota = quotaQuery.data ?? null;
   const isFeatured = quota?.isFeatured ?? false;
+
+  // آگهی‌های خود فروشنده — برای پیش‌نویس دقیق متن پیشنهاد (کالا/واحد/قیمت واقعی)
+  const { data: myProducts } = useMyProducts(Boolean(user));
 
   const pickCategory = (c: Category) => {
     setCategoryId(c.id);
@@ -765,13 +769,14 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
         </div>
       </BottomSheet>
 
-      {/* مودال‌ها — key: هر مجموعهٔ هدف، فرم تازه با متن خالی */}
+      {/* مودال‌ها — key: هر مجموعهٔ هدف، فرم تازه با پیش‌نویس داینامیک */}
       <SupplyOfferModal
         key={offerTargets ? offerTargets.map((t) => t.buyerId).join(',') : 'closed'}
         open={offerTargets !== null}
         onClose={() => setOfferTargets(null)}
         targets={offerTargets ?? []}
         quota={quota}
+        products={myProducts?.items}
       />
       <AuthModal
         open={authOpen}

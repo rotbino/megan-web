@@ -1,41 +1,126 @@
 'use client';
 
 /**
- * مودال پیشنهاد تامین (خواسته مالک ۳۱-۱۰) — فرم فوق‌ساده:
+ * مودال پیشنهاد تامین (خواسته مالک ۳۱-۱۰ / اصلاح ۱-۱۱) — فرم فوق‌ساده:
  *  • تکی: رایگان تا سقف روزانهٔ سطح بسته (سهمیه نمایش داده می‌شود)
  *  • گروهی: هر گیرنده از کیف پول کسر می‌شود (هزینه شفاف قبل از ارسال)
- * متن پیشنهاد آزاد است — شرایط ویژه/تخفیف را فروشنده داخل متن می‌نویسد.
+ *  • متن پیشنهاد از روی دیتا پیش‌نویس می‌شود (خواسته مالک ۱-۱۱): نام خریدار
+ *    و فروشنده، کالا و واحد از کارت/آگهی‌های خود فروشنده برداشته می‌شود؛
+ *    اگر فروشندهٔ دارندهٔ بسته در همین دسته آگهی تأییدشده با قیمت داشته باشد،
+ *    نام همان کالا و قیمت واقعی‌اش می‌آید — وگرنه نام دستهٔ نیاز خریدار.
+ *    فروشنده متن را ویرایش می‌کند و می‌فرستد.
  */
 
 import { useState } from 'react';
 import { Loader2, Send, Users } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/mock/auth';
 import { useGroupSendSupplyOffer, useSendSupplyOffer } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { priceFa, toFa } from '@/lib/format';
-import type { BuyerDirectoryItem, OfferQuota } from '@/lib/types';
+import type { BuyerDirectoryItem, OfferQuota, Product } from '@/lib/types';
+
+/** واحد → صفت هر واحدی: کیلوگرم → کیلویی، تن → تنی … (مثل «کیلویی ۵۰ هزار تومان») */
+const UNIT_ADJ: Record<string, string> = {
+  کیلوگرم: 'کیلویی',
+  کیلو: 'کیلویی',
+  تن: 'تنی',
+  گرم: 'گرمی',
+  عدد: 'عددی',
+  بسته: 'بسته‌ای',
+  کیسه: 'کیسه‌ای',
+  لیتر: 'لیتری',
+  متر: 'متری',
+};
+
+/** قیمت خوانا با حروف: ۵۰۰۰۰ → «۵۰ هزار تومان»، ۳۷۰۰۰۰۰ → «۳ میلیون و ۷۰۰ هزار تومان» */
+function priceWordsFa(toman: number): string {
+  if (toman >= 1_000_000) {
+    const millions = Math.floor(toman / 1_000_000);
+    const rest = toman % 1_000_000;
+    return rest > 0
+      ? `${toFa(millions)} میلیون و ${priceWordsFa(rest)}`
+      : `${toFa(millions)} میلیون تومان`;
+  }
+  if (toman >= 1000 && toman % 1000 === 0) return `${toFa(toman / 1000)} هزار تومان`;
+  return priceFa(toman);
+}
+
+/** پیش‌نویس متن پیشنهاد — همهٔ قطعات از دیتا (خواسته مالک ۱-۱۱) */
+export function buildOfferDraft(opts: {
+  targets: BuyerDirectoryItem[];
+  sellerName: string;
+  products?: Product[];
+}): string {
+  const { targets, sellerName, products } = opts;
+  if (targets.length === 0) return '';
+  const isGroup = targets.length > 1;
+  const first = targets[0];
+
+  // همهٔ انتخاب‌ها یک کالا هستند؟ — گروهیِ چندکالایی عمومی می‌ماند
+  const sameCategory = targets.every((t) => t.categoryId === first.categoryId);
+
+  // آگهی تأییدشدهٔ فروشنده در همین نیاز خریدار — اول دستهٔ برگ، بعد دستهٔ پدر
+  const confirmed = products?.filter((p) => p.status !== 'pending' && p.status !== 'rejected');
+  const match =
+    confirmed?.find((p) => p.subCategoryId === first.categoryId) ??
+    confirmed?.find((p) => p.categoryId === first.categoryId);
+
+  // کالا — نام آگهی خود فروشنده (مثل «سیب زمینی آگریا») یا نیاز خریدار
+  const goods = match?.productName ?? (sameCategory ? first.categoryName : 'کالای مورد نیاز شما');
+
+  // واحد و قیمت واقعی آگهی فروشنده — وگرنه واحد نیاز خریدار بدون قیمت ساختگی
+  const unit = match?.unit ?? first.unit;
+  const unitAdj = UNIT_ADJ[unit] ?? `هر ${unit}`;
+  const price = match?.minSalePrice ?? null;
+
+  const greeting = isGroup
+    ? `سلام. ${sellerName} هستم،`
+    : `سلام، جناب ${first.buyerName}. ${sellerName} هستم،`;
+  const priceClause =
+    price != null ? `با بهترین قیمت و کیفیت از قرار ${unitAdj} ${priceWordsFa(price)}` : 'با بهترین قیمت و کیفیت';
+
+  return [
+    `${greeting} فروشنده عمده ${goods}،`,
+    `${priceClause}. در صورتی که علاقه‌مند هستید توی چت پیام بدید تا تصاویر و اطلاعات بیشتر و قیمت‌های دقیق‌تر در اختیارتان قرار بدیم.`,
+    'همچنین می‌توانیم برای جنابعالی در صورت خرید دوره‌ای، تخفیف ۵ درصدی در نظر بگیریم.',
+  ].join(' ');
+}
 
 export function SupplyOfferModal({
   open,
   onClose,
   targets,
   quota,
+  products,
 }: {
   open: boolean;
   onClose: () => void;
   /** یک هدف = تکی؛ بیشتر = گروهی */
   targets: BuyerDirectoryItem[];
   quota: OfferQuota | null;
+  /** آگهی‌های خود فروشنده — برای پیش‌نویس دقیق کالا/قیمت */
+  products?: Product[];
 }) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [message, setMessage] = useState('');
   const sendOne = useSendSupplyOffer();
   const sendGroup = useGroupSendSupplyOffer();
 
-  // ریست متن هنگام بستن — بدون effect؛ پدر با key هر بار هدف تازه می‌سازد
+  // پیش‌نویس داینامیک — فقط بار اول (پدر با key هر بار هدف تازه می‌سازد؛
+  // کاربر بعد از باز شدن مودال صاحب متن است و ویرایشش حفظ می‌شود)
+  const [drafted, setDrafted] = useState(false);
+  if (open && targets.length > 0 && !drafted) {
+    setDrafted(true);
+    const sellerName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'فروشنده ایمچ';
+    setMessage(buildOfferDraft({ targets, sellerName, products }));
+  }
+
   const close = () => {
     setMessage('');
+    setDrafted(false);
     onClose();
   };
 
@@ -135,9 +220,9 @@ export function SupplyOfferModal({
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value.slice(0, 1500))}
-          rows={5}
+          rows={7}
           dir="rtl"
-          placeholder={'مثال: سلام، پسته اکبری درجه یک با قیمت عمده داریم؛ برای خرید ماهانه ۵٪ تخفیف می‌گذاریم.'}
+          placeholder="متن پیشنهاد خود را بنویسید…"
           className="mt-3 w-full resize-none rounded-lg border border-input bg-card p-3 text-xs leading-6 outline-none transition-colors focus:border-primary"
           aria-label="متن پیشنهاد تامین"
         />
