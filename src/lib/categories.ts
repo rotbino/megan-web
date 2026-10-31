@@ -36,3 +36,18 @@ export function findCategoryPath(tree: Category[], slugOrName: string): Category
 export function findCategoryBySlugTree(tree: Category[], slug: string): Category | null {
   return flatten(tree).find((c) => c.slug === slug) ?? null;
 }
+
+/** مسیر ریشه → نود برای یک id — ناوبری خریداران (دسکتاپ/بات‌شیت موبایل) */
+export function findCategoryPathById(tree: Category[], id: number): Category[] | null {
+  const path: Category[] = [];
+  const walk = (nodes: Category[]): boolean => {
+    for (const n of nodes) {
+      path.push(n);
+      if (n.id === id) return true;
+      if (n.children?.length && walk(n.children)) return true;
+      path.pop();
+    }
+    return false;
+  };
+  return walk(tree) ? path : null;
+}

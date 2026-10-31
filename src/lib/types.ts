@@ -468,10 +468,11 @@ export interface MyBuyerBook {
   items: BuyerBookItem[];
 }
 
-/** آیتم دایرکتوری — یک کارت برای هر کالای دفتر خرید؛ بی نام و تماس (حریم خصوصی) */
+/** آیتم دایرکتوری — یک کارت برای هر کالای دفتر خرید؛ نام خریدار روی کارت، تماس فقط از مسیر چت */
 export interface BuyerDirectoryItem {
   id: string; // ObjectId ردیف — برای انتخاب گروهی
   buyerId: string; // برای sendSupplyOffer
+  buyerName: string; // نام نمایشی خریدار — روی کارت (خواسته مالک ۱-۱۱)
   role: 'عمده‌خریدار' | 'خرده‌خریدار';
   categoryId: number;
   categoryName: string;

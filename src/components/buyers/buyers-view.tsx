@@ -1,12 +1,16 @@
 'use client';
 
 /**
- * خریداران (بازطراحی مالک ۳۱-۱۰) — مرور آیتم‌های دفاتر خرید، عین الگوی صفحه
- * جستجوی آگهی‌ها اما با طراحی متمایز و ساده‌تر:
- *  • دسکتاپ: سایدبار دسته‌بندی (هر سطح قابل انتخاب — ریشه کل زیردرخت، برگ دقیق)
- *    + دوره خرید + موقعیت؛ جستجوی بالای لیست سرجایش مانده است.
- *  • موبایل: چیپ‌های فیلتر + بات‌شیت‌های سلسله‌مراتبی (الگوی ایمچ).
- *  • کارت‌ها مینیمال و کشیده مثل درخواست‌های خرید — یک کارت برای هر کالای دفتر خرید.
+ * خریداران (بازطراحی مالک ۳۱-۱۰ / اصلاح ۱-۱۱) — مرور نیازهای خرید، عین الگوی
+ * ناوبری آگهی‌های خرید (خواستهٔ مالک ۱-۱۱):
+ *  • دسکتاپ: سایدبار دسته‌بندی — صفحهٔ اول فقط سطوح اول؛ با انتخاب دسته
+ *    (مثلاً کشاورزی) فقط خریداران همان دسته لود می‌شوند و سایدبار فرزندان
+ *    همان دسته + دکمهٔ «بازگشت» را نشان می‌دهد (رفتار عین آگهی‌ها).
+ *  • موبایل: چیپ‌های فیلتر + بات‌شیت سلسله‌مراتبی؛ باز کردن بات‌شیت روی دستهٔ
+ *    فعال، هم‌ترازها/فرزندان همان دسته؛ انتخاب هر دسته بلافاصله فیلتر می‌کند
+ *    و اگر فرزند داشته باشد برای ریزترشدن باز می‌ماند.
+ *  • کارت‌ها ساده و عین باسکول: آواتار + نام خریدار، جملهٔ «خریدار … هستم»،
+ *    تاریخ و مکان (خواستهٔ مالک ۱-۱۱).
  *  • دو تب «خریداران» و «درخواست‌های خرید» — نوار تب برجسته بالای جستجو، همیشه
  *    نمایان (موبایل و دسکتاپ)؛ رنگ‌های مکمل: تب خریداران آبی برند، تب درخواست‌ها
  *    کهربایی — تا کاربر بلافاصله دو بخش را تشخیص دهد (خواسته مالک ۳۱-۱۰).
@@ -15,10 +19,11 @@
  *    تا صفحه از رنگ آبی اشباع نشود (خواسته مالک ۳۱-۱۰).
  */
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   CalendarClock,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -34,6 +39,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '@/lib/mock/auth';
+import { findCategoryPathById } from '@/lib/categories';
 import {
   useBuyerDirectory,
   useBuyRequests,
@@ -57,6 +63,7 @@ import {
   PURCHASE_PERIODS,
   type BuyerDirectoryItem,
   type BuyerDirectoryPage,
+  type BuyRequest,
   type Category,
   type PurchasePeriod,
 } from '@/lib/types';
@@ -124,7 +131,6 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
     setCategoryLabel(c.categoryName);
     setPage(1);
     setReqPage(1);
-    closeSheets();
   };
 
   const clearCategory = () => {
@@ -179,16 +185,36 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
     setOfferTargets(b ? [b] : dedupeByBuyer(selectedItems));
   };
 
-  // ─── موبایل: انتخاب دسته سلسله‌مراتبی ─────────────────────────
+  // ─── موبایل: انتخاب دسته سلسله‌مراتبی — عین الگوی آگهی‌ها (خواستهٔ مالک ۱-۱۱) ──
   const sheetLevel = catStack[catStack.length - 1];
   const sheetItems = sheetLevel ? sheetLevel.children ?? [] : tree;
 
+  /** باز کردن بات‌شیت دسته‌ها — روی دستهٔ فعال، پشته تا سطح همان دسته
+   *  پیش‌تنظیم می‌شود (نه از ریشه) تا فرزندان/هم‌ترازهای همان دسته دیده شوند؛
+   *  برای برگ، یک سطح عقب‌تر (هم‌ترازهای خودش) — عین رفتار آگهی‌ها. */
+  const openCategoriesSheet = () => {
+    if (categoryId != null) {
+      const p = findCategoryPathById(tree, categoryId);
+      if (p?.length) {
+        const cur = p[p.length - 1];
+        setCatStack(cur.children?.length ? p : p.slice(0, -1));
+        setSheet('categories');
+        return;
+      }
+    }
+    setCatStack([]);
+    setSheet('categories');
+  };
+
+  /** انتخاب هر دسته (هر سطح) بلافاصله خریداران همان دسته را لود می‌کند؛
+   *  اگر فرزند داشته باشد بات‌شیت برای ریزترشدن باز می‌ماند (خواستهٔ مالک ۱-۱۱). */
   const selectMobileCategory = (c: Category) => {
+    pickCategory(c);
     if (c.children?.length) {
       setCatStack((st) => [...st, c]);
       return;
     }
-    pickCategory(c);
+    closeSheets();
   };
 
   return (
@@ -393,9 +419,9 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
                   setS(e.target.value);
                   setPage(1);
                 }}
-                placeholder="جستجوی کالا در دفاتر خرید؛ مثلاً پسته"
+                placeholder="جستجو در نیازهای خرید؛ مثلاً پسته"
                 className="rounded-md pe-4 ps-10"
-                aria-label="جستجوی کالا در دفاتر خرید"
+                aria-label="جستجو در نیازهای خرید"
               />
               <Search size={15} className="pointer-events-none absolute inset-y-0 start-3 my-auto text-muted-foreground" />
             </form>
@@ -406,7 +432,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
                 ? '…'
                 : tab === 'buyers'
                   ? <>
-                      <b className="text-foreground">{toFa(total)}</b> کالا در دفاتر خرید
+                      <b className="text-foreground">{toFa(total)}</b> نیاز خرید
                       {categoryLabel && <> در «{categoryLabel}»</>}
                     </>
                   : 'درخواست‌های خرید'}
@@ -428,7 +454,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
         <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto border-b border-border/70 px-4 pb-2.5 lg:hidden">
           <button
             type="button"
-            onClick={() => setSheet('categories')}
+            onClick={openCategoriesSheet}
             className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground/85 transition-colors hover:border-foreground/30"
           >
             <List size={14} className="text-muted-foreground" />
@@ -613,30 +639,9 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
               </div>
             ) : (
               <>
-                <ul className="space-y-2.5">
+                <ul className="space-y-3">
                   {(reqData.data?.items ?? []).map((r) => (
-                    <li
-                      key={r.id}
-                      className="flex items-center justify-between gap-3 rounded-md border bg-card p-3.5"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-xs font-extrabold">
-                          {r.name ? `${r.subcategoryName} (${r.name})` : r.subcategoryName}
-                        </p>
-                        <p className="mt-1 text-[11px] text-muted-foreground">
-                          {toFa(r.requirementAmount.toLocaleString('fa-IR'))} {r.unit} · {r.city} ·{' '}
-                          {dateFa(r.createdAt)}
-                        </p>
-                      </div>
-                      <Button
-                        asChild
-                        size="sm"
-                        variant="outline"
-                        className="h-8 shrink-0 rounded-md px-3 text-[11px]"
-                      >
-                        <Link href="/buyAd-requests">مشاهده</Link>
-                      </Button>
-                    </li>
+                    <RequestPreviewCard key={r.id} request={r} />
                   ))}
                 </ul>
                 <div className="mt-3 text-center">
@@ -675,7 +680,10 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
               <button
                 type="button"
                 onClick={() => selectMobileCategory(c)}
-                className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-3 text-start text-sm font-medium transition-colors hover:bg-accent"
+                className={cn(
+                  'flex w-full items-center justify-between gap-2 rounded-lg px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
+                  c.id === categoryId ? 'font-bold text-primary' : 'font-medium',
+                )}
               >
                 <span className="line-clamp-1">{c.categoryName}</span>
                 {c.children?.length ? (
@@ -777,7 +785,10 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
   );
 }
 
-/** درخت دسته‌بندی سایدبار — هر سطح قابل انتخاب است (ریشه = کل زیردرخت) */
+/** ناوبری دسته‌های خریداران — عین الگوی آگهی‌های خرید (خواستهٔ مالک ۱-۱۱):
+ *  صفحهٔ اول فقط سطوح اول؛ با انتخاب دسته (مثلاً کشاورزی) فقط خریداران همان
+ *  دسته لود می‌شوند و سایدبار فرزندان همان دسته + دکمهٔ «بازگشت» نشان می‌دهد.
+ *  برای برگ، هم‌ترازهای خودش (فرزندان والد) دیده می‌شوند. */
 function CategoryNav({
   tree,
   activeId,
@@ -789,8 +800,13 @@ function CategoryNav({
   onPick: (c: Category) => void;
   onClear: () => void;
 }) {
-  return (
-    <nav className="max-h-96 space-y-0.5 overflow-y-auto pe-1 text-sm">
+  const path = activeId != null ? findCategoryPathById(tree, activeId) : null;
+  const current = path?.[path.length - 1];
+  const parent = path && path.length > 1 ? path[path.length - 2] : undefined;
+
+  // صفحهٔ اول — فقط سطوح اول (خواستهٔ مالک ۱-۱۱)
+  const rootsList = (highlightId?: number) => (
+    <nav className="max-h-96 space-y-0.5 overflow-y-auto pe-1 text-sm" aria-label="دسته‌های خرید">
       <button
         type="button"
         onClick={onClear}
@@ -804,51 +820,131 @@ function CategoryNav({
         همه دسته‌ها
       </button>
       {tree.map((root) => (
-        <div key={root.id}>
-          <button
-            type="button"
-            onClick={() => onPick(root)}
-            className={cn(
-              'block w-full rounded-lg px-2.5 py-1.5 text-start transition-colors',
-              activeId === root.id ? 'bg-accent font-bold text-accent-foreground' : 'font-medium hover:bg-secondary',
-            )}
-          >
-            {root.categoryName}
-          </button>
-          {(root.children ?? []).map((l2) => (
-            <div key={l2.id}>
+        <button
+          key={root.id}
+          type="button"
+          onClick={() => onPick(root)}
+          className={cn(
+            'flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-start transition-colors',
+            root.id === highlightId || root.id === activeId
+              ? 'font-bold text-primary'
+              : 'font-medium text-foreground/85 hover:bg-secondary',
+          )}
+        >
+          <span className="line-clamp-1">{root.categoryName}</span>
+          {!!root.children?.length && (
+            <ChevronLeft size={14} className="shrink-0 opacity-50" aria-hidden />
+          )}
+        </button>
+      ))}
+    </nav>
+  );
+
+  if (!current) return rootsList();
+
+  // تمرکز: فرزندان دستهٔ فعلی؛ اگر برگ بود → هم‌ترازهای خودش (فرزندان والد)
+  const focus = current.children?.length ? current : parent;
+  if (!focus) return rootsList(current.id);
+
+  // مقصد دکمهٔ بازگشت: والدِ سطحِ درحال‌نمایش (یا فهرست سطوح اول اگر ریشه است)
+  const focusIndex = path.indexOf(focus);
+  const backTarget = focusIndex > 0 ? path[focusIndex - 1] : undefined;
+
+  return (
+    <nav aria-label="زیردسته‌ها">
+      {/* بازگشت به دستهٔ بالاتر — عین الگوی آگهی‌ها */}
+      <button
+        type="button"
+        onClick={() => (backTarget ? onPick(backTarget) : onClear())}
+        className="mb-2 flex w-full items-center gap-1 rounded-lg bg-secondary px-2.5 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      >
+        <ChevronRight size={14} aria-hidden />
+        بازگشت به {backTarget?.categoryName ?? 'همه دسته‌ها'}
+      </button>
+
+      {/* عنوان سطح فعلی + تعداد زیردسته */}
+      <p className="mb-1.5 px-2.5 text-xs font-bold text-foreground/80">
+        {focus.categoryName}
+        <span className="ms-1 font-normal text-muted-foreground">
+          ({toFa(focus.children?.length ?? 0)} زیردسته)
+        </span>
+      </p>
+
+      <ul className="max-h-96 space-y-0.5 overflow-y-auto pe-1">
+        {(focus.children ?? []).map((c) => {
+          const active = c.id === current.id;
+          return (
+            <li key={c.id}>
               <button
                 type="button"
-                onClick={() => onPick(l2)}
+                onClick={() => onPick(c)}
+                aria-current={active ? 'true' : undefined}
                 className={cn(
-                  'block w-full rounded-lg ps-5 pe-2.5 py-1.5 text-start text-[13px] transition-colors',
-                  activeId === l2.id
-                    ? 'bg-accent font-bold text-accent-foreground'
+                  'flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-start text-sm transition-colors',
+                  active
+                    ? 'font-bold text-primary'
                     : 'text-muted-foreground hover:bg-secondary',
                 )}
               >
-                {l2.categoryName}
+                <span className="line-clamp-1">{c.categoryName}</span>
+                {!!c.children?.length && (
+                  <ChevronLeft size={14} className="shrink-0 opacity-50" aria-hidden />
+                )}
               </button>
-              {(l2.children ?? []).map((l3) => (
-                <button
-                  key={l3.id}
-                  type="button"
-                  onClick={() => onPick(l3)}
-                  className={cn(
-                    'block w-full rounded-lg ps-8 pe-2.5 py-1.5 text-start text-xs transition-colors',
-                    activeId === l3.id
-                      ? 'bg-accent font-bold text-accent-foreground'
-                      : 'text-muted-foreground/80 hover:bg-secondary',
-                  )}
-                >
-                  {l3.categoryName}
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
-      ))}
+            </li>
+          );
+        })}
+      </ul>
     </nav>
+  );
+}
+
+/** کارت پیش‌نمایش درخواست خرید — عین چیدمان باسکول (خواستهٔ مالک ۱-۱۱):
+ *  سربرگ آواتار + نام خریدار، جملهٔ «خریدار … هستم»، تاریخ و مکان. */
+function RequestPreviewCard({ request }: { request: BuyRequest }) {
+  const initial = request.firstName.trim().charAt(0) || 'خ';
+  return (
+    <li>
+      <Link
+        href="/buyAd-requests"
+        className="block rounded-md border bg-card p-4 transition-shadow hover:shadow-md sm:p-5"
+      >
+        {/* سربرگ: خریدار */}
+        <div className="flex items-center gap-2.5">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-extrabold text-primary">
+            {initial}
+          </span>
+          <span className="truncate text-sm font-extrabold sm:text-[15px]">
+            {request.firstName} {request.lastName}
+          </span>
+        </div>
+
+        {/* جمله — عین باسکول */}
+        <p className="mt-3 text-[13px] leading-7 text-muted-foreground sm:text-sm">
+          خریدار <b className="text-foreground">{toFa(request.requirementAmount)} {request.unit}</b>{' '}
+          <b className="text-foreground">{request.subcategoryName}</b>
+          {request.name ? (
+            <> از نوع <b className="text-foreground">{request.name}</b> هستم</>
+          ) : (
+            ' هستم'
+          )}
+        </p>
+
+        {/* زمان و مکان */}
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <CalendarDays size={14} className="text-foreground/45" />
+            {dateFa(request.createdAt)}
+          </span>
+          {request.city && (
+            <span className="flex items-center gap-1">
+              <MapPin size={14} className="text-foreground/45" />
+              {request.city}
+            </span>
+          )}
+        </div>
+      </Link>
+    </li>
   );
 }
 

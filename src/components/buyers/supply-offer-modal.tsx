@@ -101,8 +101,8 @@ export function SupplyOfferModal({
             </h2>
             {!isGroup && (
               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {targets[0].role}
-                {targets[0].city ? ` — ${targets[0].city}` : targets[0].province ? ` — ${targets[0].province}` : ''}
+                {targets[0].buyerName} — {targets[0].categoryName}
+                {targets[0].city ? ` (${targets[0].city})` : ''}
               </p>
             )}
           </div>
