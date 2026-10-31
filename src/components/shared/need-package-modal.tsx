@@ -44,7 +44,7 @@ export function NeedPackageModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+      className="fixed inset-0 z-[70] grid place-items-center bg-black/50 p-4"
       role="dialog"
       aria-modal="true"
       aria-label={isPackage ? 'نیاز به بسته اشتراک' : 'نیاز به شارژ کیف پول'}

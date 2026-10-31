@@ -19,6 +19,9 @@
  *  • «پیشنهاد تامین»: فقط فروشندگان دارندهٔ بستهٔ فعال — تکی با سهمیهٔ روزانه؛
  *    «ارسال گروهی» پولی است (هر گیرنده از کیف پول). دکمه‌های ارسال خاکستری‌اند
  *    تا صفحه از رنگ آبی اشباع نشود (خواسته مالک ۳۱-۱۰).
+ *  • دکمهٔ/چک‌باکس پیشنهاد تامین فقط با انتخاب «دستهٔ آخر» (برگ) فعال می‌شود
+ *    (خواستهٔ مالک): کالا تا حد زیادی مشخص است، پیشنهاد دقیق‌تر و برای خریدار
+ *    فیلترپذیر (دسته/نوع کالا) — پیش از آن دکمه کم‌رنگ است و کلیکش راهنما می‌دهد.
  */
 
 import { useState } from 'react';
@@ -30,6 +33,7 @@ import {
   ChevronRight,
   ClipboardList,
   Filter,
+  Info,
   List,
   Loader2,
   MapPin,
@@ -136,11 +140,20 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
   // آگهی‌های خود فروشنده — برای پیش‌نویس دقیق متن پیشنهاد (کالا/واحد/قیمت واقعی)
   const { data: myProducts } = useMyProducts(Boolean(user));
 
+  // دستهٔ انتخاب‌شدهٔ فعلی + برگ بودنش — دکمهٔ/چک‌باکس پیشنهاد تامین فقط با
+  // «دستهٔ آخر» فعال می‌شود (خواستهٔ مالک): کالا تا حد زیادی مشخص است، پیشنهاد
+  // دقیق‌تر می‌شود و خریدار می‌تواند پیشنهادها را بر اساس دسته/نوع فیلتر کند.
+  const selectedPath = categoryId != null ? findCategoryPathById(tree, categoryId) : null;
+  const selectedCategory = selectedPath?.[selectedPath.length - 1] ?? null;
+  const offerReady = Boolean(selectedCategory && !selectedCategory.children?.length);
+
   const pickCategory = (c: Category) => {
     setCategoryId(c.id);
     setCategoryLabel(c.categoryName);
     setPage(1);
     setReqPage(1);
+    // پیشنهاد به دستهٔ کالا وصل است — با تغییر دسته، انتخاب‌های گروهی پاک می‌شوند
+    setSelection(new Map());
   };
 
   const clearCategory = () => {
@@ -148,6 +161,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
     setCategoryLabel(null);
     setPage(1);
     setReqPage(1);
+    setSelection(new Map());
   };
 
   const resetFilters = () => {
@@ -181,6 +195,14 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
   const selectedBuyers = dedupeByBuyer([...selection.values()]);
 
   const startOffer = (b: BuyerDirectoryItem | null) => {
+    // دکمهٔ پیشنهاد فقط با دستهٔ آخر فعال است — کلیکِ پیش از آن راهنما می‌دهد (خواستهٔ مالک)
+    if (!offerReady) {
+      toast({
+        description:
+          'برای ارسال پیشنهاد تامین، دستهٔ آخر کالا را از «دسته‌ها» انتخاب کنید (مثلاً کشاورزی / صیفی / سیب زمینی) تا پیشنهاد دقیق‌تر و قابل مقایسه برای خریدار شود.',
+      });
+      return;
+    }
     if (!user) {
       setAuthOpen(true);
       return;
@@ -495,6 +517,17 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
         {/* ── تب خریدهای دوره‌ای ── */}
         {tab === 'buyers' && (
           <div role="tabpanel" aria-label="خریدهای دوره‌ای">
+            {/* راهنمای گیت دستهٔ آخر — تا دستهٔ آخر انتخاب نشود، دکمه/چک‌باکس پیشنهاد قفل است */}
+            {!offerReady && (
+              <div className="mb-3 flex items-start gap-2 rounded-md border border-primary/25 bg-primary/5 px-3.5 py-2.5 text-[11px] leading-5 text-foreground/80">
+                <Info size={14} className="mt-0.5 shrink-0 text-primary" />
+                <p>
+                  برای ارسال پیشنهاد تامین، دستهٔ <b>آخرِ</b> کالا را از «دسته‌ها» انتخاب کنید
+                  (مثلاً کشاورزی / صیفی / سیب زمینی) — این‌طور کالای پیشنهاد شما از ابتدا
+                  مشخص می‌شود و خریدار می‌تواند آن را راحت‌تر با پیشنهادهای دیگر مقایسه کند.
+                </p>
+              </div>
+            )}
             {directory.isLoading && !data ? (
               <div className="space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -529,6 +562,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
                       selected={selection.has(b.id)}
                       onToggle={() => toggleSelect(b)}
                       onOffer={() => startOffer(b)}
+                      offerReady={offerReady}
                     />
                   ))}
                 </ul>
@@ -777,6 +811,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
         targets={offerTargets ?? []}
         quota={quota}
         products={myProducts?.items}
+        category={selectedCategory}
       />
       {/* الگوی همیشگی ۱-۱۱: بدون بستهٔ فعال، مودال «خرید اشتراک» باز می‌شود */}
       <NeedPackageModal

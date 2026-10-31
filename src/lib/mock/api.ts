@@ -1408,7 +1408,10 @@ import type {
   GroupSendResult,
   MyBuyerBook,
   OfferQuota,
+  ReceivedOffersPage,
+  ReceivedOffersQuery,
   SendOfferResult,
+  SupplyOfferTerms,
 } from '@/lib/types';
 
 /** پیکربندی صورتحساب — عمومی؛ پکیج شارژ/شارژ دلخواه/نردبان/قیمت پیشنهاد تامین */
@@ -1449,18 +1452,35 @@ export async function getMyOfferQuota(): Promise<OfferQuota> {
   return apiFetch<OfferQuota>('/buyers/getMyOfferQuota', {});
 }
 
-/** ارسال پیشنهاد تامین تکی — رایگان تا سقف روزانه سطح بسته */
+/** ارسال پیشنهاد تامین تکی — رایگان تا سقف روزانه سطح بسته؛ terms = شرایط
+ *  ساختاریافته (دستهٔ آخر/نوع کالا/چک/ارسال/حداقل خرید) برای فیلتر خریدار */
 export async function sendSupplyOffer(input: {
   buyerId: string;
   message: string;
+  terms?: SupplyOfferTerms;
 }): Promise<SendOfferResult> {
-  return apiFetch<SendOfferResult>('/buyers/sendSupplyOffer', input);
+  const { terms, ...rest } = input;
+  return apiFetch<SendOfferResult>('/buyers/sendSupplyOffer', { ...rest, ...terms });
 }
 
 /** ارسال گروهی پیشنهاد تامین — پولی از کیف پول (هر گیرنده) */
 export async function groupSendSupplyOffer(input: {
   buyerIds: string[];
   message: string;
+  terms?: SupplyOfferTerms;
 }): Promise<GroupSendResult> {
-  return apiFetch<GroupSendResult>('/buyers/groupSendSupplyOffer', input);
+  const { terms, ...rest } = input;
+  return apiFetch<GroupSendResult>('/buyers/groupSendSupplyOffer', { ...rest, ...terms });
+}
+
+/** پیشنهادهای تامین دریافتی من — پنل خریدار؛ فیلتر دسته/نوع کالا/چک/ارسال */
+export async function getMyReceivedOffers(q: ReceivedOffersQuery): Promise<ReceivedOffersPage> {
+  return apiFetch<ReceivedOffersPage>('/buyers/getMyReceivedOffers', {
+    categoryId: q.categoryId,
+    productType: q.productType,
+    hasCheck: q.hasCheck,
+    hasDelivery: q.hasDelivery,
+    page: q.page ?? 1,
+    perPage: q.perPage ?? 10,
+  });
 }

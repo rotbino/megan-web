@@ -17,6 +17,7 @@ import {
   Handshake,
   Heart,
   HelpCircle,
+  Inbox,
   LifeBuoy,
   LogOut,
   Medal,
@@ -69,12 +70,14 @@ export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel/survey', label: 'نظرسنجی', icon: ScrollText },
 ];
 
-/** منوی خریدار — دفتر خرید بالاتر، درست زیر ایمچ من (خواسته مالک ۳۱-۱۰) */
+/** منوی خریدار — دفتر خرید بالاتر، درست زیر ایمچ من (خواسته مالک ۳۱-۱۰)؛
+ *  «پیشنهادهای تامین» بعد از درخواست‌های من — پاسخ فروشندگان به نیازها */
 export const BUYER_NAV: PanelNavItem[] = [
   { href: '/panel', label: 'ایمچ من', icon: UserRound, exact: true },
   { href: '/panel/buyer-book', label: 'دفتر خرید من', icon: BookOpenText },
   { href: '/panel/buy-requests/new', label: 'ثبت درخواست خرید', icon: ShoppingCart, exact: true },
   { href: '/panel/my-requests', label: 'درخواست های من', icon: FileText },
+  { href: '/panel/received-offers', label: 'پیشنهادهای تامین', icon: Inbox },
   { href: '/panel/suggested-sellers', label: 'پیشنهادی', icon: Sparkles },
   { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
   { href: '/panel/favorites', label: 'علاقه‌مندی‌ها', icon: Heart },

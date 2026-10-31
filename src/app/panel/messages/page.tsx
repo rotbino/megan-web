@@ -44,7 +44,15 @@ export default function PanelMessagesPage() {
   const { data: conversations, isLoading } = useConversations();
   const { data: adminInbox } = useAdminMessages();
   const markAdminRead = useMarkAdminMessagesRead();
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(() => {
+    // لینک مستقیم به مکالمهٔ یک پیشنهاد تامین — «مشاهدهٔ گفتگو» در پنل خریدار
+    try {
+      const t = new URLSearchParams(window.location.search).get('thread');
+      return t && /^[0-9a-fA-F]{24}$/.test(t) ? t : null;
+    } catch {
+      return null;
+    }
+  });
   const [q, setQ] = useState('');
   const [draft, setDraft] = useState('');
   const listRef = useRef<HTMLDivElement>(null);

@@ -541,6 +541,63 @@ export interface GroupSendResult {
   groupLeft: number;
 }
 
+/** شرایط ساختاریافتهٔ پیشنهاد تامین (خواستهٔ مالک) — دستهٔ آخر + نوع کالا +
+ *  سوییچ چک (درصد/سرسید) + سوییچ ارسال به محل (پرداخت‌کنندهٔ حمل) + حداقل خرید.
+ *  ساختاری ذخیره می‌شود تا خریدار بتواند پیشنهادها را فیلتر و مقایسه کند. */
+export interface SupplyOfferTerms {
+  categoryId?: number;
+  productType?: string;
+  checkAccepted?: boolean;
+  checkPercent?: number;
+  checkMaxDays?: number;
+  deliveryToBuyer?: boolean;
+  shippingCostBy?: 'seller' | 'customer';
+  minOrderAmount?: number;
+}
+
+/** پیشنهاد تامین دریافتی — کارت پنل خریدار (فیلتر/مقایسهٔ فروشندگان) */
+export interface ReceivedOffer {
+  id: string;
+  sellerId: string;
+  sellerName: string;
+  sellerVerified: boolean;
+  categoryId: number | null;
+  categoryName: string | null;
+  categoryPath: string | null;
+  productType: string | null;
+  message: string;
+  checkAccepted: boolean;
+  checkPercent: number | null;
+  checkMaxDays: number | null;
+  deliveryToBuyer: boolean;
+  shippingCostBy: 'seller' | 'customer' | null;
+  minOrderAmount: number | null;
+  unit: string;
+  isGroup: boolean;
+  threadId: string | null;
+  createdAt: string;
+}
+
+/** فیلتر پیشنهادهای دریافتی (پنل خریدار) */
+export interface ReceivedOffersQuery {
+  categoryId?: number;
+  productType?: string;
+  hasCheck?: boolean;
+  hasDelivery?: boolean;
+  page?: number;
+  perPage?: number;
+}
+
+/** پاسخ getMyReceivedOffers */
+export interface ReceivedOffersPage {
+  items: ReceivedOffer[];
+  total: number;
+  page: number;
+  perPage: number;
+  /** دسته‌های یکتای پیشنهادهای دریافتی — برای فیلتر انتخابی بالای صفحه */
+  categories: { id: number; name: string }[];
+}
+
 /** پیکربندی صورتحساب — از site-settings/getBillingConfig (عمومی) */
 export interface BillingConfig {
   chargePackages: ChargePackage[];

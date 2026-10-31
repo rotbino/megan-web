@@ -711,3 +711,12 @@ export function useGroupSendSupplyOffer() {
     },
   });
 }
+
+/** پیشنهادهای تامین دریافتی — پنل خریدار (فیلتر دسته/نوع/چک/ارسال) */
+export function useMyReceivedOffers(q: import('@/lib/types').ReceivedOffersQuery) {
+  return useQuery({
+    queryKey: ['my-received-offers', q],
+    queryFn: () => api.getMyReceivedOffers(q),
+    placeholderData: keepPreviousData,
+  });
+}

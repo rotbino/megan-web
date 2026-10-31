@@ -1,34 +1,39 @@
 'use client';
 
 /**
- * مودال پیشنهاد تامین (اصلاح مالک ۱-۱۱، شب دوم) — فرم ساده + «نمونهٔ پارامتریک»:
- *  • متن خالی شروع می‌شود و پلیس‌هولدر فقط راهنماست: «جزئیات پیشنهاد تامین خود
- *    را در این بخش به‌صورت روشن برای کاربر وارد کنید…» (خواستهٔ مالک — پیش‌نویس
- *    خودکار حذف شد تا کاربر خودش صاحب متن باشد).
- *  • زیر فیلد، لینک «نمونه پیشنهاد تامین» نمونهٔ کاملی را باز می‌کند که با
- *    دیتای واقعی پر شده است (پارامتریک): نام خریدار/فروشنده، کالا و واحد و
- *    قیمت از آگهی خود فروشنده، حداقل سفارش، و همهٔ آنچه برای خریدار عمده
- *    مهم است — نحوهٔ پرداخت، شرایط حمل، تخفیف خرید دوره‌ای، امکان نمونه‌کالا.
- *    با یک کلیک «استفاده از این نمونه» متن داخل فیلد می‌نشیند؛ کاربر اگر
- *    بخواهد همان را می‌فرستد و اگر نخواهد دست‌کم الگو دارد.
+ * مودال پیشنهاد تامین (بازطراحی مالک — فرم حرفه‌ای ساختاریافته):
+ *  • دکمهٔ ارسال سمت سایت فقط با انتخاب «دستهٔ آخر» (برگ) فعال می‌شود →
+ *    دستهٔ کالا از ابتدا مشخص است؛ «نوع {دسته}» با مثالِ خود دسته (اختیاری)
+ *    و «حداقل خرید» با واحدِ همان دسته.
+ *  • فیلد توضیحات همچنان مهم‌ترین فیلد است — متن آزاد + «نمونهٔ پارامتریک»
+ *    زیر فیلد (خواستهٔ مالک شب دوم).
+ *  • شرایط تامین ساختاریافته (خواستهٔ مالک): سوییچ «پرداخت با چک» فقط با
+ *    روشن‌شدنش «درصد چک» و «حداکثر سرسید چک» را ظاهر می‌کند؛ سوییچ «ارسال
+ *    به محل» فقط «پرداخت‌کنندهٔ حمل» را. فرم شلوغ نمی‌شود و خریدار در پنل
+ *    خودش می‌تواند پیشنهادها را بر اساس همین مزایا فیلتر و مقایسه کند.
  *  • تکی: نمونهٔ شخصی؛ گروهی: نمونهٔ عمومی و همه‌کالا (بدون نام خریدار).
  */
 
 import { useMemo, useState } from 'react';
-import { ChevronDown, Copy, FileText, Loader2, Send, Users } from 'lucide-react';
+import { Banknote, ChevronDown, Copy, FileText, Loader2, Send, Truck, Users } from 'lucide-react';
 import { useAuth } from '@/lib/mock/auth';
 import { useGroupSendSupplyOffer, useSendSupplyOffer } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { NeedPackageModal } from '@/components/shared/need-package-modal';
 import { priceFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import {
   PERIOD_LABELS,
   type BuyerDirectoryItem,
+  type Category,
   type OfferQuota,
   type Product,
+  type SupplyOfferTerms,
 } from '@/lib/types';
+
 /** واحد → صفت هر واحدی: کیلوگرم → کیلویی، تن → تنی … (مثل «کیلویی ۵۰ هزار تومان») */
 const UNIT_ADJ: Record<string, string> = {
   کیلوگرم: 'کیلویی',
@@ -65,17 +70,19 @@ export function buildOfferSample(opts: {
   targets: BuyerDirectoryItem[];
   sellerName: string;
   products?: Product[];
+  /** دستهٔ آخرِ انتخاب‌شده — کالای پیشنهاد از ابتدا مشخص است (خواستهٔ مالک) */
+  category?: Category | null;
 }): string {
-  const { targets, sellerName, products } = opts;
+  const { targets, sellerName, products, category } = opts;
   if (targets.length === 0) return '';
   const isGroup = targets.length > 1;
 
-  // ─── گروهی: نمونهٔ عمومی — بدون نام خریدار و بدون کالای خاص ───
+  // ─── گروهی: عمومی — بدون نام خریدار؛ با دستهٔ برگ انتخابی کالا روشن است ───
   if (isGroup) {
     // حوزهٔ کاری فروشنده از آگهی‌های تأییدشده‌اش (حداکثر دو کالا)
     const confirmed = products?.filter((p) => p.status === 'confirmed') ?? [];
     const names = [...new Set(confirmed.map((p) => p.subCategoryName || p.categoryName))].slice(0, 2);
-    const field = names.length ? names.join(' و ') : 'کالای مورد نیاز شما';
+    const field = category?.categoryName ?? (names.length ? names.join(' و ') : 'کالای مورد نیاز شما');
 
     return [
       'سلام؛',
@@ -102,7 +109,7 @@ export function buildOfferSample(opts: {
     confirmed?.find((p) => p.categoryId === first.categoryId);
 
   // کالا — نام آگهی خود فروشنده (مثل «سیب زمینی آگریا») یا نیاز خریدار
-  const goods = match?.productName ?? first.categoryName;
+  const goods = match?.productName ?? category?.categoryName ?? first.categoryName;
 
   // واحد و قیمت واقعی آگهی فروشنده — وگرنه جملهٔ قابل‌ارسال، نه عدد ساختگی
   const unit = match?.unit ?? first.unit;
@@ -130,6 +137,49 @@ export function buildOfferSample(opts: {
   ].join('\n');
 }
 
+/** فیلد عددی فشرده با پسوند چسبیده (٪ / روز / واحد دسته) — الگوی UnitInput، کوچک‌شده برای مودال */
+function NumField({
+  value,
+  onChange,
+  suffix,
+  ariaLabel,
+  placeholder,
+  invalid,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  suffix: string;
+  ariaLabel: string;
+  placeholder?: string;
+  invalid?: boolean;
+}) {
+  return (
+    <div className="relative">
+      <input
+        dir="ltr"
+        inputMode="numeric"
+        autoComplete="off"
+        aria-label={ariaLabel}
+        aria-invalid={invalid || undefined}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => {
+          const d = e.target.value.replace(/[^\d]/g, '').slice(0, 9);
+          onChange(d ? Number(d).toLocaleString('en-US') : '');
+        }}
+        className={cn(
+          'font-num h-9 w-full rounded-md border border-input bg-card text-center text-sm font-bold tabular-nums outline-none transition-colors focus:border-primary',
+          'ps-14 pe-2',
+          invalid && 'border-red-400 focus:border-red-400',
+        )}
+      />
+      <span className="font-num pointer-events-none absolute inset-y-0 left-2 flex items-center whitespace-nowrap text-[11px] font-bold text-muted-foreground">
+        {suffix}
+      </span>
+    </div>
+  );
+}
+
 export function SupplyOfferModal({
   open,
   onClose,
@@ -137,6 +187,7 @@ export function SupplyOfferModal({
   targets,
   quota,
   products,
+  category,
 }: {
   open: boolean;
   onClose: () => void;
@@ -147,11 +198,21 @@ export function SupplyOfferModal({
   quota: OfferQuota | null;
   /** آگهی‌های خود فروشنده — برای پرکردن پارامترهای نمونه (کالا/واحد/قیمت) */
   products?: Product[];
+  /** دستهٔ آخرِ انتخاب‌شده — مودال فقط با برگ باز می‌شود؛ نوع/حداقل خرید از آن */
+  category: Category | null;
 }) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [message, setMessage] = useState('');
   const [showSample, setShowSample] = useState(false);
+  // ─── شرایط ساختاریافته (خواستهٔ مالک) ───
+  const [productType, setProductType] = useState('');
+  const [minOrder, setMinOrder] = useState('');
+  const [checkOn, setCheckOn] = useState(false);
+  const [checkPercent, setCheckPercent] = useState('50');
+  const [checkDays, setCheckDays] = useState('60');
+  const [deliveryOn, setDeliveryOn] = useState(false);
+  const [shipBy, setShipBy] = useState<'seller' | 'customer' | null>(null);
   const sendOne = useSendSupplyOffer();
   const sendGroup = useGroupSendSupplyOffer();
   // الگوی همیشگی ۱-۱۱: کمبود موجودی → مودال «شارژ کیف پول» (بستن + شارژ)
@@ -160,13 +221,20 @@ export function SupplyOfferModal({
   const sellerName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'فروشنده ایمچ';
   // نمونهٔ پارامتریک — هر بار هدف تازه (پدر با key خودش فرم تازه می‌سازد)
   const sample = useMemo(
-    () => buildOfferSample({ targets, sellerName, products }),
-    [targets, sellerName, products],
+    () => buildOfferSample({ targets, sellerName, products, category }),
+    [targets, sellerName, products, category],
   );
 
   const close = () => {
     setMessage('');
     setShowSample(false);
+    setProductType('');
+    setMinOrder('');
+    setCheckOn(false);
+    setCheckPercent('50');
+    setCheckDays('60');
+    setDeliveryOn(false);
+    setShipBy(null);
     onClose();
   };
 
@@ -178,10 +246,43 @@ export function SupplyOfferModal({
   const balance = quota?.walletBalance ?? 0;
   const pending = sendOne.isPending || sendGroup.isPending;
 
+  const num = (v: string) => Number(v.replace(/[^\d]/g, '')) || 0;
+
   const useSample = () => {
     if (!sample) return;
     setMessage(sample.slice(0, 1500));
     setShowSample(false);
+  };
+
+  /** شرایط ساختاریافته از فرم — با اعتبارسنجی وابستگی سوییچ‌ها (عین بک‌اند) */
+  const buildTerms = (): SupplyOfferTerms | null => {
+    if (checkOn) {
+      const p = num(checkPercent);
+      const d = num(checkDays);
+      if (p < 10 || p > 100) {
+        toast({ description: 'درصد مبلغ با چک باید بین ۱۰ تا ۱۰۰ باشد.', variant: 'destructive' });
+        return null;
+      }
+      if (d < 1 || d > 365) {
+        toast({ description: 'حداکثر سرسید چک را بین ۱ تا ۳۶۵ روز وارد کنید.', variant: 'destructive' });
+        return null;
+      }
+    }
+    if (deliveryOn && !shipBy) {
+      toast({ description: 'پرداخت‌کنندهٔ هزینهٔ حمل را انتخاب کنید (فروشنده یا مشتری).', variant: 'destructive' });
+      return null;
+    }
+    const mo = num(minOrder);
+    return {
+      categoryId: category?.id,
+      productType: productType.trim() || undefined,
+      checkAccepted: checkOn || undefined,
+      checkPercent: checkOn ? num(checkPercent) : undefined,
+      checkMaxDays: checkOn ? num(checkDays) : undefined,
+      deliveryToBuyer: deliveryOn || undefined,
+      shippingCostBy: deliveryOn ? (shipBy ?? undefined) : undefined,
+      minOrderAmount: mo > 0 ? mo : undefined,
+    };
   };
 
   const send = () => {
@@ -190,6 +291,8 @@ export function SupplyOfferModal({
       toast({ description: 'متن پیشنهاد را کامل کنید (حداقل ۵ نویسه).', variant: 'destructive' });
       return;
     }
+    const terms = buildTerms();
+    if (!terms) return;
     // موجودی ناکافی → مودال شارژ (الگوی همیشگی)؛ دکمه غیرفعال نمی‌شود
     if (isGroup && fee > balance) {
       setNeedWallet(true);
@@ -197,7 +300,7 @@ export function SupplyOfferModal({
     }
     if (isGroup) {
       sendGroup.mutate(
-        { buyerIds: targets.map((t) => t.buyerId), message: text },
+        { buyerIds: targets.map((t) => t.buyerId), message: text, terms },
         {
           onSuccess: (r) => {
             toast({
@@ -211,7 +314,7 @@ export function SupplyOfferModal({
       );
     } else {
       sendOne.mutate(
-        { buyerId: targets[0].buyerId, message: text },
+        { buyerId: targets[0].buyerId, message: text, terms },
         {
           onSuccess: (r) => {
             toast({
@@ -228,8 +331,9 @@ export function SupplyOfferModal({
 
   return (
     <>
+      {/* z-[60]: بالای نوار پایین موبایل (z-50) — دکمه‌های ارسال زیر نوار نروند */}
       <div
-        className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+        className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4"
         role="dialog"
         aria-modal="true"
         aria-label="پیشنهاد تامین"
@@ -240,16 +344,22 @@ export function SupplyOfferModal({
             <span className="grid size-10 place-items-center rounded-md bg-primary/10 text-primary">
               {isGroup ? <Users size={19} /> : <Send size={18} />}
             </span>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-sm font-extrabold">
                 {isGroup ? `ارسال گروهی به ${toFa(targets.length)} خریدار` : 'پیشنهاد تامین'}
               </h2>
-              {!isGroup && (
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  {targets[0].buyerName} — {targets[0].categoryName}
-                  {targets[0].city ? ` (${targets[0].city})` : ''}
-                </p>
-              )}
+              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                {isGroup ? (
+                  <>
+                    دستهٔ کالا: <b className="text-foreground/80">{category?.categoryName}</b>
+                  </>
+                ) : (
+                  <>
+                    {targets[0].buyerName} — دستهٔ کالا:{' '}
+                    <b className="text-foreground/80">{category?.categoryName}</b>
+                  </>
+                )}
+              </p>
             </div>
           </div>
 
@@ -277,6 +387,136 @@ export function SupplyOfferModal({
             ) : null}
           </div>
 
+          {/* ─── نوع کالا + حداقل خرید — از دستهٔ آخرِ انتخاب‌شده ─── */}
+          {category && (
+            <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+              <div>
+                <label htmlFor="offer-product-type" className="mb-1 block text-[11px] font-bold text-muted-foreground">
+                  نوع {category.categoryName} <span className="font-normal">(اختیاری)</span>
+                </label>
+                <Input
+                  id="offer-product-type"
+                  value={productType}
+                  onChange={(e) => setProductType(e.target.value.slice(0, 60))}
+                  placeholder={category.example ? `مثلا : ${category.example}` : 'مثلا : اکبری'}
+                  className="h-9 rounded-md text-xs"
+                  maxLength={60}
+                />
+              </div>
+              <div>
+                <label htmlFor="offer-min-order" className="mb-1 block text-[11px] font-bold text-muted-foreground">
+                  حداقل خرید <span className="font-normal">(اختیاری)</span>
+                </label>
+                <NumField
+                  value={minOrder}
+                  onChange={setMinOrder}
+                  suffix={category.unit}
+                  ariaLabel="حداقل خرید"
+                  placeholder="مثلا : 500"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ─── شرایط تامین — سوییچ‌ها فقط فیلد وابستهٔ خودشان را ظاهر می‌کنند ─── */}
+          <div className="mt-3 rounded-lg border bg-secondary/30 p-3">
+            <p className="text-[10px] font-bold leading-4 text-muted-foreground">
+              شرایط تامین (اختیاری) — با مشخص‌کردن این‌ها، خریدار می‌تواند پیشنهاد شما را
+              راحت‌تر با بقیه مقایسه کند.
+            </p>
+
+            {/* سوییچ چک */}
+            <div className="mt-2.5 flex items-center justify-between gap-3">
+              <label htmlFor="offer-check" className="flex items-center gap-1.5 text-xs font-bold">
+                <Banknote size={14} className="text-muted-foreground/70" />
+                امکان پرداخت با چک
+              </label>
+              <Switch
+                id="offer-check"
+                checked={checkOn}
+                onCheckedChange={(v) => {
+                  setCheckOn(v);
+                  if (v && !checkPercent) setCheckPercent('50');
+                  if (v && !checkDays) setCheckDays('60');
+                }}
+                aria-label="امکان پرداخت با چک"
+              />
+            </div>
+            {checkOn && (
+              <div className="mt-2 grid grid-cols-2 gap-2 rounded-md border bg-card p-2.5">
+                <div>
+                  <label htmlFor="offer-check-percent" className="mb-1 block text-[10px] font-bold text-muted-foreground">
+                    درصد مبلغ با چک
+                  </label>
+                  <NumField
+                    value={checkPercent}
+                    onChange={setCheckPercent}
+                    suffix="٪"
+                    ariaLabel="درصد مبلغ با چک"
+                    invalid={num(checkPercent) < 10 || num(checkPercent) > 100}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="offer-check-days" className="mb-1 block text-[10px] font-bold text-muted-foreground">
+                    حداکثر سرسید چک
+                  </label>
+                  <NumField
+                    value={checkDays}
+                    onChange={setCheckDays}
+                    suffix="روز"
+                    ariaLabel="حداکثر سرسید چک"
+                    invalid={num(checkDays) < 1 || num(checkDays) > 365}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* سوییچ ارسال به محل */}
+            <div className="mt-2.5 flex items-center justify-between gap-3 border-t pt-2.5">
+              <label htmlFor="offer-delivery" className="flex items-center gap-1.5 text-xs font-bold">
+                <Truck size={14} className="text-muted-foreground/70" />
+                ارسال به محل خریدار
+              </label>
+              <Switch
+                id="offer-delivery"
+                checked={deliveryOn}
+                onCheckedChange={setDeliveryOn}
+                aria-label="ارسال به محل خریدار"
+              />
+            </div>
+            {deliveryOn && (
+              <div className="mt-2 rounded-md border bg-card p-2.5">
+                <span className="mb-1.5 block text-[10px] font-bold text-muted-foreground">
+                  هزینهٔ حمل با …
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  {(
+                    [
+                      { key: 'seller', label: 'فروشنده' },
+                      { key: 'customer', label: 'مشتری' },
+                    ] as const
+                  ).map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setShipBy(key)}
+                      aria-pressed={shipBy === key}
+                      className={cn(
+                        'rounded-md border px-2 py-2 text-xs font-bold transition-colors',
+                        shipBy === key
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ─── متن پیشنهاد — مهم‌ترین فیلد ─── */}
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value.slice(0, 1500))}
