@@ -438,15 +438,16 @@ export interface MyPackageOrder {
 // ─────────────────────────────────────────────────────────────
 
 /** دوره خرید — ترتیب نمایش در همه‌جا یکسان است */
-export type PurchasePeriod = 'monthly' | 'yearly' | 'weekly' | 'occasional';
+export type PurchasePeriod = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'occasional';
 
-/** ترتیب ثابت گزینه‌ها: ماهیانه، سالیانه، هفتگی، موردی */
-export const PURCHASE_PERIODS: PurchasePeriod[] = ['monthly', 'yearly', 'weekly', 'occasional'];
+/** ترتیب ثابت گزینه‌ها: روزانه، هفتگی، ماهیانه، سالیانه، موردی */
+export const PURCHASE_PERIODS: PurchasePeriod[] = ['daily', 'weekly', 'monthly', 'yearly', 'occasional'];
 
 export const PERIOD_LABELS: Record<PurchasePeriod, string> = {
+  daily: 'روزانه',
+  weekly: 'هفتگی',
   monthly: 'ماهیانه',
   yearly: 'سالیانه',
-  weekly: 'هفتگی',
   occasional: 'موردی',
 };
 

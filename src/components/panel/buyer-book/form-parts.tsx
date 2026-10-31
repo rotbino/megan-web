@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * قطعات مشترک فرم‌های دفتر خرید — انتخاب دوره (چهارگزینه ثابت به‌ترتیب:
- * ماهیانه، سالیانه، هفتگی، موردی) و ورودی حداقل خرید با واحد ثابت دسته
+ * قطعات مشترک فرم‌های دفتر خرید — انتخاب دوره (پنج‌گزینه ثابت به‌ترتیب:
+ * روزانه، هفتگی، ماهیانه، سالیانه، موردی) و ورودی حداقل خرید با واحد ثابت دسته
  * و راهنمای تبدیل واحد (مثل ۱۰۰۰ کیلوگرم ≈ ۱ تن).
  */
 
@@ -10,7 +10,7 @@ import { PERIOD_LABELS, PURCHASE_PERIODS, type PurchasePeriod } from '@/lib/type
 import { unitHintFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-/** انتخاب دوره خرید — رادیو چهارگزینه‌ای سگمنتی */
+/** انتخاب دوره خرید — سگمنتی پنج‌گزینه‌ای؛ در موبایل فشرده‌تر تا جا شود */
 export function PeriodPicker({
   value,
   onChange,
@@ -21,7 +21,11 @@ export function PeriodPicker({
   className?: string;
 }) {
   return (
-    <div className={cn('flex rounded-md bg-secondary p-0.5', className)} role="radiogroup" aria-label="دوره خرید">
+    <div
+      className={cn('flex gap-0.5 rounded-md bg-secondary p-0.5', className)}
+      role="radiogroup"
+      aria-label="دوره خرید"
+    >
       {PURCHASE_PERIODS.map((p) => (
         <button
           key={p}
@@ -30,7 +34,7 @@ export function PeriodPicker({
           aria-checked={value === p}
           onClick={() => onChange(p)}
           className={cn(
-            'flex-1 rounded-[5px] px-1.5 py-1.5 text-xs font-bold transition-colors',
+            'min-w-0 flex-1 rounded-[5px] px-0.5 py-1.5 text-[11px] font-bold leading-5 transition-colors sm:px-1.5 sm:text-xs',
             value === p
               ? 'bg-card text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.08)]'
               : 'text-muted-foreground hover:text-foreground',

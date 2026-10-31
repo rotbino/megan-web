@@ -7,9 +7,12 @@
  *    + دوره خرید + موقعیت؛ جستجوی بالای لیست سرجایش مانده است.
  *  • موبایل: چیپ‌های فیلتر + بات‌شیت‌های سلسله‌مراتبی (الگوی ایمچ).
  *  • کارت‌ها مینیمال و کشیده مثل درخواست‌های خرید — یک کارت برای هر کالای دفتر خرید.
- *  • دو تب: «خریداران» و «درخواست‌های خرید» همین دسته (بدون درخواست → تب مخفی).
+ *  • دو تب «خریداران» و «درخواست‌های خرید» — نوار تب برجسته بالای جستجو، همیشه
+ *    نمایان (موبایل و دسکتاپ)؛ رنگ‌های مکمل: تب خریداران آبی برند، تب درخواست‌ها
+ *    کهربایی — تا کاربر بلافاصله دو بخش را تشخیص دهد (خواسته مالک ۳۱-۱۰).
  *  • «پیشنهاد تامین»: فقط فروشندگان دارندهٔ بستهٔ فعال — تکی با سهمیهٔ روزانه؛
- *    «ارسال گروهی» پولی است (هر گیرنده از کیف پول).
+ *    «ارسال گروهی» پولی است (هر گیرنده از کیف پول). دکمه‌های ارسال خاکستری‌اند
+ *    تا صفحه از رنگ آبی اشباع نشود (خواسته مالک ۳۱-۱۰).
  */
 
 import { useMemo, useState } from 'react';
@@ -321,6 +324,65 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
 
       {/* لیست */}
       <div className="min-w-0 space-y-4">
+        {/* تب‌های اصلی — برجسته و همیشه نمایان (موبایل و دسکتاپ)؛
+            رنگ مکمل: خریداران آبی برند / درخواست‌ها کهربایی (خواسته مالک ۳۱-۱۰) */}
+        <div
+          className={cn('grid gap-2', showRequestsTab ? 'grid-cols-2' : 'grid-cols-1')}
+          role="tablist"
+          aria-label="بخش‌های صفحه خریداران"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'buyers'}
+            onClick={() => setTab('buyers')}
+            className={cn(
+              'flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-[13px] font-extrabold transition-colors sm:text-sm',
+              tab === 'buyers'
+                ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                : 'border-border bg-card text-muted-foreground hover:border-foreground/25 hover:text-foreground',
+            )}
+          >
+            <Users size={16} className="shrink-0" />
+            خریداران
+            <span
+              className={cn(
+                'min-w-6 rounded-full px-1.5 py-0.5 text-[11px] font-bold leading-4',
+                tab === 'buyers' ? 'bg-white/25 text-primary-foreground' : 'bg-secondary text-muted-foreground',
+              )}
+            >
+              {directory.isLoading && !data ? '…' : toFa(total)}
+            </span>
+          </button>
+          {showRequestsTab && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'requests'}
+              onClick={() => setTab('requests')}
+              className={cn(
+                'flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-[13px] font-extrabold transition-colors sm:text-sm',
+                tab === 'requests'
+                  ? 'border-amber-600 bg-amber-500 text-white shadow-sm'
+                  : 'border-border bg-card text-muted-foreground hover:border-foreground/25 hover:text-foreground',
+              )}
+            >
+              <ClipboardList size={16} className="shrink-0" />
+              درخواست‌های خرید
+              {data?.buyRequestCount != null && (
+                <span
+                  className={cn(
+                    'min-w-6 rounded-full px-1.5 py-0.5 text-[11px] font-bold leading-4',
+                    tab === 'requests' ? 'bg-white/25 text-white' : 'bg-secondary text-muted-foreground',
+                  )}
+                >
+                  {toFa(data.buyRequestCount)}
+                </span>
+              )}
+            </button>
+          )}
+        </div>
+
         {/* جستجو — سرجایش، بالای لیست */}
         <div className="rounded-md border bg-card p-3 sm:p-4">
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
@@ -337,35 +399,6 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
               />
               <Search size={15} className="pointer-events-none absolute inset-y-0 start-3 my-auto text-muted-foreground" />
             </form>
-            {/* تب‌ها — دسکتاپ */}
-            <div className="hidden items-center gap-1.5 sm:flex">
-              <button
-                type="button"
-                onClick={() => setTab('buyers')}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors',
-                  tab === 'buyers'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary text-muted-foreground hover:bg-secondary/70',
-                )}
-              >
-                <Users size={14} /> خریداران
-              </button>
-              {showRequestsTab && (
-                <button
-                  type="button"
-                  onClick={() => setTab('requests')}
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors',
-                    tab === 'requests'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-secondary text-muted-foreground hover:bg-secondary/70',
-                  )}
-                >
-                  <ClipboardList size={14} /> درخواست‌های خرید
-                </button>
-              )}
-            </div>
           </div>
           <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
             <span className="truncate">
@@ -391,7 +424,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
           </div>
         </div>
 
-        {/* نوار فیلتر و تب — موبایل (الگوی باسکول/دیوار) */}
+        {/* نوار فیلتر — موبایل (الگوی باسکول/دیوار)؛ تب‌ها بالا هستند و اینجا نیستند */}
         <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto border-b border-border/70 px-4 pb-2.5 lg:hidden">
           <button
             type="button"
@@ -451,27 +484,11 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
               <X size={13} />
             </button>
           )}
-          {/* تب‌ها — موبایل */}
-          <button
-            type="button"
-            onClick={() => setTab(tab === 'buyers' ? 'requests' : 'buyers')}
-            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground/85 transition-colors hover:border-foreground/30"
-          >
-            {tab === 'buyers' ? (
-              <>
-                <ClipboardList size={14} className="text-muted-foreground" /> درخواست‌های خرید
-              </>
-            ) : (
-              <>
-                <Users size={14} className="text-muted-foreground" /> خریداران
-              </>
-            )}
-          </button>
         </div>
 
         {/* ── تب خریداران ── */}
         {tab === 'buyers' && (
-          <>
+          <div role="tabpanel" aria-label="خریداران">
             {directory.isLoading && !data ? (
               <div className="space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -554,7 +571,11 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
                     تومان از کیف پول
                   </p>
                   <div className="flex gap-2">
-                    <Button size="sm" className="rounded-md" onClick={() => startOffer(null)}>
+                    <Button
+                      size="sm"
+                      className="rounded-md bg-[#5b6472] text-white hover:bg-[#4c5462]"
+                      onClick={() => startOffer(null)}
+                    >
                       <Send size={13} /> ارسال گروهی پیشنهاد
                     </Button>
                     <Button
@@ -569,12 +590,12 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
 
         {/* ── تب درخواست‌های خرید ── */}
         {tab === 'requests' && (
-          <div>
+          <div role="tabpanel" aria-label="درخواست‌های خرید">
             {reqData.isLoading && !reqData.data ? (
               <div className="grid place-items-center py-16 text-muted-foreground">
                 <Loader2 className="animate-spin" size={22} />

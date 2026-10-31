@@ -2,8 +2,8 @@
 
 /**
  * افزودن کالا به دفتر خرید — دو گام، دقیقاً مثل انتخاب دسته در ثبت درخواست خرید:
- * ۱) جستجو یا حرکت در درخت دسته‌ها؛ فقط شاخه‌های آخر (برگ‌ها) قابل تیک‌زدن‌اند.
- *    انتخاب‌ها به‌صورت چیپ‌های قابل حذف بالای لیست دیده می‌شوند.
+ * ۱) جستجو یا حرکت در درخت دسته‌ها؛ فقط شاخه‌های آخر (برگ‌ها) با چک‌باکس مربعی
+ *    قابل تیک‌زدن‌اند (حس چندانتخابی). انتخاب‌ها به‌صورت چیپ‌های قابل حذف بالای لیست دیده می‌شوند.
  * ۲) برای هر کالا فقط «حداقل خرید» (واحد از خود دسته، ثابت) و «دوره خرید»
  *    مشخص می‌شود و ثبت نهایی انجام می‌شود.
  * موبایل: بات‌شیت پایین‌رونده / دسکتاپ: مودال مرکزی — الگوی انتخاب دسته ایمچ.
@@ -33,18 +33,18 @@ interface LeafInfo {
   parentName: string;
 }
 
-/** چک‌باکس دایره‌ای برگ — فقط نمایشی (بدون state) */
+/** چک‌باکس مربعی برگ — حس چندانتخابی (مثل چک‌باکس)، نه رادیو */
 function Tick({ checked, disabled }: { checked: boolean; disabled?: boolean }) {
   return (
     <span
       className={cn(
-        'grid size-5 shrink-0 place-items-center rounded-full border-2 transition-colors',
-        checked ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/40',
+        'grid size-5 shrink-0 place-items-center rounded-[5px] border-2 transition-colors',
+        checked ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/40 bg-card',
         disabled && 'opacity-40',
       )}
       aria-hidden
     >
-      {checked && <Check size={12} strokeWidth={3} />}
+      {checked && <Check size={13} strokeWidth={3.5} />}
     </span>
   );
 }
@@ -223,6 +223,9 @@ export function AddItemFlow({
                       <li key={cat.id}>
                         <button
                           type="button"
+                          role="checkbox"
+                          aria-checked={checked}
+                          aria-disabled={inBook}
                           onClick={() => toggleLeaf(cat)}
                           disabled={inBook}
                           className={cn(
@@ -257,6 +260,9 @@ export function AddItemFlow({
                       <li key={c.id}>
                         <button
                           type="button"
+                          role="checkbox"
+                          aria-checked={checked}
+                          aria-disabled={inBook}
                           onClick={() => toggleLeaf(c)}
                           disabled={inBook}
                           className={cn(

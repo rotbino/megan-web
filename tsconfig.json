@@ -40,8 +40,11 @@
     "node_modules",
     "examples",
     "repos",
-    "skills",
     "mini-services",
-    "scripts"
+    "tests",
+    "tool-results",
+    "skills",
+    "scripts",
+    "db"
   ]
 }

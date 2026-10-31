@@ -3,7 +3,8 @@
 /**
  * کارت آیتم دفتر خرید (سمت سایت) — مینیمال، تمیز و کشیده مثل کارت درخواست خرید،
  * اما متمایز: کاشی آیکون دسته به‌جای آواتار، چیپ دوره، بدون نام و اطلاعات تماس
- * (حریم خصوصی خریدار) و یک اقدام: «ارسال پیشنهاد تامین».
+ * (حریم خصوصی خریدار) و یک اقدام: «ارسال پیشنهاد تامین» — خاکستری خنثی،
+ * نه آبی؛ تا فهرست از رنگ برند اشباع نشود (خواسته مالک ۳۱-۱۰).
  * غایبِ بیش از ۹۰ روز کم‌رنگ است و انتهای فهرست می‌آید.
  */
 
@@ -97,7 +98,12 @@ export function BookEntryCard({
               انتخاب
             </label>
           )}
-          <Button size="sm" className="rounded-md" onClick={onOffer}>
+          {/* خاکستری خنثی — نه آبی؛ اشباع رنگ برند در فهرست (خواسته مالک ۳۱-۱۰) */}
+          <Button
+            size="sm"
+            className="rounded-md bg-[#5b6472] text-white hover:bg-[#4c5462]"
+            onClick={onOffer}
+          >
             <Send size={14} />
             ارسال پیشنهاد تامین
           </Button>
@@ -118,7 +124,11 @@ export function BookEntryCard({
             انتخاب
           </label>
         )}
-        <Button size="sm" className="flex-1 rounded-md" onClick={onOffer}>
+        <Button
+          size="sm"
+          className="flex-1 rounded-md bg-[#5b6472] text-white hover:bg-[#4c5462]"
+          onClick={onOffer}
+        >
           <Send size={14} />
           ارسال پیشنهاد تامین
         </Button>
