@@ -157,7 +157,7 @@ export default function RegisterPage() {
     step === 'phone' ? 'ورود / ثبت‌نام' : step === 'password' ? 'رمز عبور' : 'تکمیل اطلاعات';
   const stepSubtitle =
     step === 'phone'
-      ? 'ورود و ثبت‌نام ایمچ فقط با شماره موبایل انجام می‌شود.'
+      ? 'برای ثبت‌نام، شماره موبایل خود را وارد کنید.'
       : step === 'password'
         ? `رمز عبور پنل خود را برای ${phone} وارد کنید.`
         : 'نام و شهر شما در ایمچ ذخیره می‌شود تا ثبت آگهی‌ها سریع‌تر باشد.';
@@ -196,6 +196,8 @@ export default function RegisterPage() {
                       placeholder="0912…"
                       maxLength={11}
                       className="font-num rounded-md text-center text-base tracking-widest"
+                      autoFocus
+                      autoComplete="tel"
                     />
                   </div>
                   {error && <p className="text-xs text-destructive">{error}</p>}

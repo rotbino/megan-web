@@ -21,9 +21,9 @@ import {
   Info,
   Loader2,
   Pencil,
-  Phone,
   Save,
   ShoppingCart,
+  ShieldCheck,
   Store,
   Trash2,
   UserRound,
@@ -53,7 +53,6 @@ interface FormState {
   provinceId: string;
   cityId: string;
   address: string;
-  publicPhoneVisible: boolean;
   isCompany: boolean;
   companyName: string;
   companyRegisterNumber: string;
@@ -107,7 +106,6 @@ export default function EditProfilePage() {
       provinceId: u.provinceId != null ? String(u.provinceId) : '',
       cityId: u.cityId != null ? String(u.cityId) : '',
       address: (pf.address ?? '').replace(' - ', '، '),
-      publicPhoneVisible: Boolean(pf.publicPhone),
       isCompany: pf.isCompany,
       companyName: pf.companyName ?? '',
       companyRegisterNumber: '',
@@ -231,7 +229,6 @@ export default function EditProfilePage() {
         province_id: form.provinceId ? Number(form.provinceId) : null,
         city_id: form.cityId ? Number(form.cityId) : null,
         address: form.address.trim() || null,
-        publicPhone: form.publicPhoneVisible ? u.phone : null,
         description: form.about.trim() || null,
         isCompany: form.isCompany,
         companyName: form.isCompany ? form.companyName.trim() : '',
@@ -501,33 +498,15 @@ export default function EditProfilePage() {
           </div>
         </div>
 
-        {/* نمایش شماره به فروشندگان */}
-        <div className="flex items-center justify-between rounded-md border p-3">
-          <div className="flex items-center gap-2 text-xs">
-            <Phone size={15} className="text-muted-foreground" />
-            <span className="font-bold">نمایش شماره به فروشندگان</span>
-            <span className="text-muted-foreground">
-              {form.publicPhoneVisible ? 'فعال است' : 'غیرفعال'}
-            </span>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={form.publicPhoneVisible}
-            aria-label="نمایش شماره به فروشندگان"
-            onClick={() => patch({ publicPhoneVisible: !form.publicPhoneVisible })}
-            className={cn(
-              'relative h-6 w-11 rounded-full transition-colors',
-              form.publicPhoneVisible ? 'bg-emerald-500' : 'bg-border',
-            )}
-          >
-            <span
-              className={cn(
-                'absolute top-0.5 size-5 rounded-full bg-white shadow transition-all',
-                form.publicPhoneVisible ? 'left-0.5' : 'left-[calc(100%-1.375rem)]',
-              )}
-            />
-          </button>
+        {/* امنیت شماره موبایل (خواستهٔ مالک ۱-۱۱): شمارهٔ شما هرگز در دیتای
+            عمومی نیست؛ فقط با دکمهٔ «شماره تماس» و برای اعضای واردشده
+            از سرویس اختصاصی ایمچ آشکار می‌شود. */}
+        <div className="flex items-start gap-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-[11px] leading-6 text-muted-foreground">
+          <ShieldCheck size={15} className="mt-0.5 shrink-0 text-primary" />
+          <p>
+            شماره موبایل شما در هیچ صفحهٔ عمومی نمایش داده نمی‌شود؛ خریداران فقط با دکمهٔ
+            «شماره تماس» و پس از ورود به ایمچ آن را می‌بینند (سهمیهٔ تماس روزانهٔ اعضا اعمال می‌شود).
+          </p>
         </div>
       </PanelCard>
 

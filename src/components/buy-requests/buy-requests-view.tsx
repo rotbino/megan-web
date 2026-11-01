@@ -147,10 +147,12 @@ function RequestCard({ request }: { request: BuyRequest }) {
   const [needLogin, setNeedLogin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
   const contact = useBuyRequestContact();
 
   const reveal = async () => {
     if (phone) return;
+    setContactError(null);
     if (!getTokens()?.accessToken) {
       setNeedLogin(true);
       setLoginOpen(true);
@@ -164,8 +166,12 @@ function RequestCard({ request }: { request: BuyRequest }) {
       if (err instanceof ApiError && err.status === 401) {
         setNeedLogin(true);
         setLoginOpen(true);
+      } else if (err instanceof ApiError) {
+        // پیام بک‌اند (مثلاً سهمیهٔ تماس روزانه) همان‌جا زیر دکمه دیده می‌شود
+        setContactError(err.message);
+      } else {
+        setContactError('دریافت شماره موقتاً ممکن نشد؛ دوباره تلاش کنید.');
       }
-      // خطای دیگر — بی‌صدا می‌ماند؛ دکمه قابل کلیک مجدد است
     } finally {
       setLoading(false);
     }
@@ -220,6 +226,7 @@ function RequestCard({ request }: { request: BuyRequest }) {
       {loginOpen && (
         <LazyAuthModal
           open={loginOpen}
+          intent="call"
           onClose={() => setLoginOpen(false)}
           onLoggedIn={() => {
             setLoginOpen(false);
@@ -228,10 +235,13 @@ function RequestCard({ request }: { request: BuyRequest }) {
           }}
         />
       )}
-      {needLogin && !loginOpen && (
+      {needLogin && !loginOpen && !contactError && (
         <p className="mt-2 flex items-center gap-1.5 text-[11px] text-amber-600">
           <LogIn size={12} /> برای مشاهده شماره تماس خریدار، وارد حساب خود شوید.
         </p>
+      )}
+      {contactError && (
+        <p className="mt-2 text-[11px] font-medium leading-5 text-destructive">{contactError}</p>
       )}
     </li>
   );

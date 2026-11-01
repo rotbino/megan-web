@@ -25,7 +25,7 @@ export function RegisterBanner() {
     // مهمان → مقصد را ذخیره کن و مودال ورود/ثبت‌نام باز شود؛ بعد از ورود یا
     // ثبت‌نام (تکمیل نام/شهر) کارار به «بخش محصولات پنل» می‌رود (خواسته مالک)
     setAfterAuthRedirect('/panel/products');
-    requireAuth();
+    requireAuth('register');
   };
 
   return (

@@ -65,6 +65,7 @@ const FREE_ROWS: Array<{ label: string; included: boolean }> = [
   { label: `ثبت تا ${toFa(FREE_PACKAGE.features.productCapacity)} محصول`, included: true },
   { label: 'ثبت درخواست خرید (هر تعداد که خواستید)', included: true },
   { label: 'انتشار آگهی در بازار ایمچ', included: true },
+  { label: `تماس روزانه با تا ${toFa(FREE_PACKAGE.features.dailyCallLimit)} کاربر`, included: true },
   { label: 'دسترسی به شماره تماس خریداران', included: false },
   { label: 'خریداران پیشنهادی (تطبیق با آگهی‌های شما)', included: false },
   { label: 'نشان فروشنده ویژه روی محصولات و پروفایل', included: false },
@@ -336,6 +337,9 @@ export default function PricingPage() {
             const percent = p.discountPercent ?? 0;
             const finalAmount = p.finalAmount ?? p.amount;
             const features = p.features?.length ? p.features : PAID_PLAN_FEATURES;
+            // سهمیهٔ تماس روزانه همیشه دیده می‌شود — حتی اگر ردیف‌های ادمین قدیمی باشند (خواستهٔ مالک ۱-۱۱)
+            const hasCallRow = features.some((f) => f.startsWith('تماس روزانه'));
+            const allFeatures = hasCallRow ? features : [...features, 'تماس روزانه با تا ۳۰ کاربر ایمچ'];
             return (
               <div
                 key={p.key}
@@ -395,7 +399,7 @@ export default function PricingPage() {
                   <CreditCard size={14} className="ms-1" /> انتخاب و پرداخت
                 </Button>
                 <ul className="mt-6 flex-1 space-y-3 border-t pt-5">
-                  {features.map((f) => (
+                  {allFeatures.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-[12.5px] leading-6 lg:text-[13.5px]">
                       <Check size={16} className="mt-1 shrink-0 text-emerald-600" />
                       {f}

@@ -28,14 +28,16 @@ import { fetchAuthUser, logoutRemote, updateUserRoleRemote } from '@/lib/mock/ap
 import { closeChatSocket } from '@/lib/api/socket';
 import { silentResubscribeIfGranted } from '@/lib/push';
 import { LazyAuthModal } from '@/components/shared/lazy-auth-modal';
+import type { AuthIntent } from '@/components/shared/auth-modal';
 import type { SessionUser } from '@/lib/types';
 
 const STORAGE_KEY = 'imach:session-user';
 
 interface AuthContextValue {
   user: SessionUser | null;
-  /** اگر لاگین نبود مودال ورود را باز می‌کند */
-  requireAuth: () => boolean;
+  /** اگر لاگین نبود مودال ورود را با نیات داده‌شده باز می‌کند —
+   *  جملهٔ مودال با همان نیات جمله‌بندی می‌شود (قیمت/تماس/ثبت‌نام/...) */
+  requireAuth: (intent?: AuthIntent) => boolean;
   login: (user: SessionUser) => void;
   logout: () => void;
   /** تغییر نقش فروشنده/خریدار — هم‌زمان در بک‌اند ماندگار می‌شود */
@@ -65,6 +67,7 @@ function normalizeCachedUser(raw: unknown): SessionUser | null {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [open, setOpen] = useState(false);
+  const [intent, setIntent] = useState<AuthIntent>('login');
   const bootedRef = useRef(false);
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -174,8 +177,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [persist]);
 
-  const requireAuth = useCallback(() => {
+  const requireAuth = useCallback((why: AuthIntent = 'login') => {
     if (user) return true;
+    setIntent(why);
     setOpen(true);
     return false;
   }, [user]);
@@ -188,8 +192,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={value}>
       {children}
-      {/* چانک مودال فقط لحظه‌ی باز شدن fetch می‌شود (F5) */}
-      {open && <LazyAuthModal open={open} onClose={() => setOpen(false)} onLoggedIn={() => setOpen(false)} />}
+      {/* چانک مودال فقط لحظه‌ی باز شدن fetch می‌شود (F5) — نیات، جملهٔ فرم را می‌سازد */}
+      {open && (
+        <LazyAuthModal
+          open={open}
+          intent={intent}
+          onClose={() => setOpen(false)}
+          onLoggedIn={() => setOpen(false)}
+        />
+      )}
     </AuthContext.Provider>
   );
 }

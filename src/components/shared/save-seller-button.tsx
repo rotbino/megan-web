@@ -22,7 +22,7 @@ export function SaveSellerButton({ userName, sellerName }: { userName: string; s
   const isSaved = optimistic ?? Boolean(saved);
 
   const submit = () => {
-    if (!requireAuth()) return;
+    if (!requireAuth('save')) return;
     const next = !isSaved;
     setOptimistic(next);
     toggle.mutate(userName, {

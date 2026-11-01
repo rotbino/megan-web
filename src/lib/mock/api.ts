@@ -583,7 +583,6 @@ export async function getPanelProfile(): Promise<PanelProfile> {
       activityDomain: (p.activityDomain as string) ?? null,
       humanResourceCount: (p.humanResourceCount as number) ?? null,
       profilePhoto: raw.user.avatar_url ?? (p.profilePhoto as string) ?? null,
-      publicPhone: (p.publicPhone as string) ?? null,
       address: (p.address as string) ?? null,
       isCompany: (p.isCompany as boolean) ?? false,
       companyName: (p.companyName as string) ?? '',
@@ -639,7 +638,6 @@ export async function updatePanelProfile(
     profile: {
       ...(input.activityDomain !== undefined ? { activityDomain: input.activityDomain } : {}),
       ...(input.humanResourceCount !== undefined ? { humanResourceCount: input.humanResourceCount } : {}),
-      ...(input.publicPhone !== undefined ? { publicPhone: input.publicPhone } : {}),
       ...(input.address !== undefined ? { address: input.address } : {}),
       ...(input.isCompany !== undefined ? { isCompany: input.isCompany } : {}),
       ...(input.companyName !== undefined ? { companyName: input.companyName } : {}),

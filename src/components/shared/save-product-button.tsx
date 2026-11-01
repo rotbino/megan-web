@@ -33,7 +33,7 @@ export function SaveProductButton({
   const isSaved = optimistic?.productId === productId ? optimistic.saved : saved;
 
   const submit = () => {
-    if (!requireAuth()) return;
+    if (!requireAuth('save')) return;
     const next = !isSaved;
     setOptimistic({ productId, saved: next });
     toggle.mutate(productId, {

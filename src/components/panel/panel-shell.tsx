@@ -130,7 +130,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
           user ? (
             children
           ) : (
-            <LoginGate onOpen={() => requireAuth()} />
+            <LoginGate onOpen={() => requireAuth('login')} />
           )
         ) : (
           <div className="grid min-h-[60vh] place-items-center" aria-hidden>

@@ -45,7 +45,6 @@ function completionOf(pf: PanelProfile['profile'], isVerified: boolean) {
   const checks = [
     Boolean(pf.description && pf.description.length >= 100),
     Boolean(pf.profilePhoto),
-    Boolean(pf.publicPhone),
     Boolean(pf.address),
     isVerified,
     pf.isCompany,

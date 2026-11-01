@@ -786,6 +786,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
       />
       <AuthModal
         open={authOpen}
+        intent="offer"
         onClose={() => setAuthOpen(false)}
         onLoggedIn={() => {
           setAuthOpen(false);

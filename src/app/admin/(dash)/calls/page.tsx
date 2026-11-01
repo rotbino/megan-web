@@ -41,6 +41,7 @@ const SOURCE_LABELS: Record<string, string> = {
   product: 'صفحه آگهی',
   profile: 'پروفایل',
   chat: 'چت',
+  buyer_request: 'کارت خریدار',
 };
 
 const PER_PAGE = 20;

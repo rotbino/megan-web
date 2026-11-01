@@ -43,7 +43,7 @@ export function RfqForm() {
     // مهمان: داده فرم ذخیره می‌شود (pending RFQ)؛ مودال ورود باز می‌شود و
     // بعد از ورود/ثبت‌نام همین درخواست «بلافاصله» ثبت و کاربر به پنل خرید
     // (درخواست‌های در انتظار) می‌رود (خواسته مالک ۲۸-۱۰)
-    if (!requireAuth()) {
+    if (!requireAuth('rfq')) {
       savePendingRfq({
         subCategoryId: category.id,
         productType: productType.trim(),

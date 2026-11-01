@@ -168,7 +168,6 @@ export interface PanelProfile {
     activityDomain: string | null;
     humanResourceCount: number | null;
     profilePhoto: string | null;
-    publicPhone: string | null;
     address: string | null; // «تهران - تهران»
     isCompany: boolean;
     companyName: string;

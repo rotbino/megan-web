@@ -229,6 +229,7 @@ export function SellerReviews({ userName, sellerName }: { userName: string; sell
       {loginOpen && (
         <LazyAuthModal
           open={loginOpen}
+          intent="review"
           onClose={() => setLoginOpen(false)}
           onLoggedIn={() => {
             setLoginOpen(false);

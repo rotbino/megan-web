@@ -25,7 +25,7 @@ export function ProductPrice({
     return (
       <Button
         variant="outline"
-        onClick={() => requireAuth()}
+        onClick={() => requireAuth('price')}
         className={cn(
           'w-full rounded-md font-medium',
           variant === 'page' ? 'h-12 text-base' : 'h-10',

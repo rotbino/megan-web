@@ -52,7 +52,6 @@ interface SellerData {
     totalStock?: number;
     // فیلدهای کسب‌وکار — از فرم ویرایش پروفایل (embedded myuser_profiles)
     address?: string | null;
-    publicPhone?: string | null;
     isCompany?: boolean;
     companyName?: string | null;
     gallery?: Array<{ url: string; thumbUrl: string }>;

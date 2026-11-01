@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, KeyRound, Loader2, Smartphone, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,16 +21,40 @@ import { flushPendingRfq, takeAfterAuthRedirect, PANEL_RFQ_DEST } from '@/lib/pe
  * • کاربر جدید → /register?step=info برای نام/استان/شهر.
  *
  * موبایل: بات‌شیت پایین‌رونده (قانون کلی مودال‌های ایمچ) / دسکتاپ: مودال مرکزی.
- * کاربر لاگین‌نشیده قیمت‌ها را نمی‌بیند؛ همین مودال از دکمه «مشاهده قیمت» باز می‌شود.
+ * کاربر لاگین‌نشده قیمت‌ها را نمی‌بیند؛ همین مودال از دکمه «مشاهده قیمت» باز می‌شود.
  */
+
+/**
+ * مودال از کجا باز شده؟ جملهٔ بالای فرم با همان نیات جمله‌بندی می‌شود
+ * (خواسته مالک ۱-۱۱: به‌جای جملهٔ ثابت «فقط با شماره موبایل…»،
+ * جمله‌ای که همان لحظه برای کاربر معنا دارد).
+ */
+export type AuthIntent = 'login' | 'register' | 'price' | 'call' | 'rfq' | 'save' | 'chat' | 'review' | 'offer';
+
+/** جملهٔ مرحله شماره موبایل بر اساس نیات ورود */
+const INTENT_SUBTITLES: Record<AuthIntent, string> = {
+  login: 'برای ورود، شماره موبایل خود را وارد کنید.',
+  register: 'برای ثبت‌نام، شماره موبایل خود را وارد کنید.',
+  price: 'برای مشاهده قیمت، شماره موبایل خود را وارد کنید.',
+  call: 'برای تماس ابتدا وارد شوید؛ شماره موبایل خود را وارد کنید.',
+  rfq: 'برای ثبت درخواست خرید، شماره موبایل خود را وارد کنید.',
+  save: 'برای ذخیره کردن، شماره موبایل خود را وارد کنید.',
+  chat: 'برای گفتگو با فروشنده، شماره موبایل خود را وارد کنید.',
+  review: 'برای ثبت نظر، شماره موبایل خود را وارد کنید.',
+  offer: 'برای ارسال پیشنهاد تامین، شماره موبایل خود را وارد کنید.',
+};
+
 export function AuthModal({
   open,
   onClose,
   onLoggedIn,
+  intent = 'login',
 }: {
   open: boolean;
   onClose: () => void;
   onLoggedIn: () => void;
+  /** نیات باز شدن — جملهٔ بالای فرم و فوکوس خودکار روی موبایل */
+  intent?: AuthIntent;
 }) {
   const router = useRouter();
   const { login } = useAuth();
@@ -38,8 +62,21 @@ export function AuthModal({
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const phoneRef = useRef<HTMLInputElement>(null);
 
   const loginMutation = useLoginSession();
+  // بدنهٔ فرم دوبار رندر می‌شود (بات‌شیت موبایل + مودال دسکتاپ) — id یکتا
+  // برای هر نمونه تا label/aria و فرم‌ها درست بمانند
+  const phoneId = useId();
+  const passwordId = useId();
+
+  // فوکوس همیشگی روی اینپوت موبایل — مودال که باز می‌شود کاربر مستقیم تایپ کند
+  // (autoFocus فقط لحظهٔ مونت عمل می‌کند؛ رفرشِ نیت/مرحه هم اینجا پوشیده می‌شود)
+  useEffect(() => {
+    if (!open || step !== 'phone') return;
+    const t = setTimeout(() => phoneRef.current?.focus(), 80);
+    return () => clearTimeout(t);
+  }, [open, step, intent]);
 
   const handleSuccess = async (isNewUser: boolean, user: Parameters<typeof login>[0]) => {
     login(user);
@@ -106,17 +143,10 @@ export function AuthModal({
     );
   };
 
-  const reset = () => {
-    setStep('phone');
-    setPhone('');
-    setPassword('');
-    setError('');
-  };
-
   const title = step === 'phone' ? 'ورود / ثبت‌نام' : 'رمز عبور';
   const subtitle =
     step === 'phone'
-      ? 'ورود و ثبت‌نام ایمچ فقط با شماره موبایل انجام می‌شود.'
+      ? INTENT_SUBTITLES[intent]
       : `رمز عبور پنل خود را برای ${phone} وارد کنید.`;
 
   const body = (
@@ -131,9 +161,10 @@ export function AuthModal({
       {step === 'phone' ? (
         <form onSubmit={sendPhone} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="auth-phone">شماره موبایل</Label>
+            <Label htmlFor={phoneId}>شماره موبایل</Label>
             <Input
-              id="auth-phone"
+              id={phoneId}
+              ref={phoneRef}
               dir="ltr"
               inputMode="numeric"
               value={phone}
@@ -141,7 +172,7 @@ export function AuthModal({
               placeholder="0912…"
               maxLength={11}
               className="font-num rounded-md text-center text-base tracking-widest"
-              autoFocus={open}
+              autoComplete="tel"
             />
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
@@ -153,9 +184,9 @@ export function AuthModal({
       ) : (
         <form onSubmit={sendPassword} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="auth-password">رمز عبور</Label>
+            <Label htmlFor={passwordId}>رمز عبور</Label>
             <Input
-              id="auth-password"
+              id={passwordId}
               type="password"
               dir="ltr"
               value={password}

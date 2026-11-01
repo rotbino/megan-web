@@ -123,7 +123,7 @@ export function ChatWidget({
       return (
         <div className="flex h-full min-h-0 flex-1 flex-col">
           {loggedOut}
-          {loginOpen && <LazyAuthModal open={loginOpen} onClose={() => setLoginOpen(false)} onLoggedIn={() => setLoginOpen(false)} />}
+          {loginOpen && <LazyAuthModal open={loginOpen} intent="chat" onClose={() => setLoginOpen(false)} onLoggedIn={() => setLoginOpen(false)} />}
         </div>
       );
     }
@@ -134,7 +134,7 @@ export function ChatWidget({
           <h2 id="chat-title" className="text-sm font-extrabold">چت با {sellerName}</h2>
         </div>
         {loggedOut}
-        {loginOpen && <LazyAuthModal open={loginOpen} onClose={() => setLoginOpen(false)} onLoggedIn={() => setLoginOpen(false)} />}
+        {loginOpen && <LazyAuthModal open={loginOpen} intent="chat" onClose={() => setLoginOpen(false)} onLoggedIn={() => setLoginOpen(false)} />}
       </section>
     );
   }
