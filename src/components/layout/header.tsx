@@ -21,10 +21,15 @@ import { cn } from '@/lib/utils';
 import type { Category } from '@/lib/types';
 
 /**
- * هدر ایمچ (v8):
- * ردیف ۱ (هدر اصلی): [لوگو |۱۰px| جستجو (flex) | لینک‌های نقش‌محور + پیام‌ها + منوی کاربر]
- *         جستجو با فاصله ثابت ۱۰px (gap-2.5) به لوگو چسبیده است؛
- *         دکمه‌های انتها با پدینگ ۲۴px (px-6) به منتهی‌الیه چپ هدر می‌چسبند.
+ * هدر ایمچ (v9):
+ * ردیف ۱ (هدر اصلی): [گروه راست: لوگو |۱۶px| جستجو (flex)] ⟵ فاصله آزاد ⟵ [نوار کاربر]
+ *         جستجو داخل یک گروه flex-1 نشسته و با gap ثابت ۱۶px (nav-desktop:gap-4)
+ *         به لوگو چسبیده است — هرچه صفحه پهن‌تر شود جستجو فقط پهن‌تر می‌شود و
+ *         از لوگو دور نمی‌افتد (باگ justify-between نسخه قبل همین بود).
+ *         نوار کاربر (خریداران/فروشندگان، پیام‌ها، پروفایل) با shrink-0 و
+ *         پدینگ ۲۴px هدر (px-6) به منتهی‌الیه چپ می‌چسبد و وسط نمی‌ماند.
+ *         باکس جستجو تپل‌تر (h-12) بدون بکگراند، فقط بوردر طوسی کمرنگ
+ *         (خواسته مالک — بار سوم!) + دکمه آبی تمام‌ارتفاع در انتهای چپ.
  * ردیف ۲ (نوار زیر هدر — فقط دسکتاپ): [دسته بندی (مگامنو) | فروشنده شوید] — هم‌تراز با px-6
  *         با اسکرول به داخل صفحه جمع می‌شود (فضای بیشتری برای محتوا) و با
  *         اسکرول به سمت بالا دوباره باز می‌شود (خواسته مالک ۱-۱۱ — در همه صفحات).
@@ -126,90 +131,99 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card shadow-[0_2px_12px_rgba(35,38,43,0.08)]">
-      {/* ─── ردیف ۱ — هدر اصلی: لوگو |۱۰px| جستجو | دکمه‌های انتها (پدینگ ۲۴px لبه چپ) ── */}
-      <div className="flex items-center justify-between gap-2.5 px-3 py-2.5 nav-desktop:gap-2.5 nav-desktop:px-6 nav-desktop:py-3">
-        <Link href="/" aria-label="ایمچ — صفحه اصلی" className="shrink-0">
-          <BrandLogo size="sm" className="h-7" />
-        </Link>
+      {/* ─── ردیف ۱ — هدر اصلی ──
+          گروه راست (لوگو + جستجو) flex-1 است؛ یعنی فضای اضافه همیشه داخل گروه
+          می‌ماند و جستجو هرگز از لوگو جدا نمی‌شود. نوار کاربر shrink-0 است و
+          چون گروه راست تمام فضای آزاد را می‌بلعد، به منتهی‌الیه چپ (۲۴px = px-6)
+          می‌چسبد. */}
+      <div className="flex items-center gap-2.5 px-3 py-2.5 nav-desktop:gap-4 nav-desktop:px-6 nav-desktop:py-3">
+        {/* گروه راست — لوگو + جستجو؛ جستجو با ۱۶px به لوگو چسبیده */}
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 nav-desktop:gap-4">
+          <Link href="/" aria-label="ایمچ — صفحه اصلی" className="shrink-0">
+            <BrandLogo size="sm" className="h-7" />
+          </Link>
 
-        {/* جستجوی دسکتاپ — چسبیده به لوگو با فاصله ۱۰px؛ فضای باقی‌مانده تا دکمه‌ها (سقف عرض منطقی) */}
-        <div ref={searchWrap} className="relative hidden min-w-0 max-w-[680px] flex-1 nav-desktop:block">
+          {/* جستجوی دسکتاپ — تپل (h-12)، بدون بکگراند، بوردر طوسی کمرنگ؛
+              چسبیده به لوگو (۱۶px) و کشسان تا خود نوار کاربر (مثل باسکول) */}
+          <div ref={searchWrap} className="relative hidden min-w-0 flex-1 nav-desktop:block">
+            <form
+              onSubmit={(e) => { e.preventDefault(); submit(); }}
+              className="flex h-12 items-stretch overflow-hidden rounded-xl border border-[#d4d4d8] bg-transparent transition-[border-color,box-shadow] focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10"
+              role="search"
+            >
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onFocus={() => setFocused(true)}
+                placeholder="به دنبال چه محصولی هستید؟"
+                className="min-w-0 flex-1 bg-transparent px-4 text-[15px] outline-none placeholder:text-muted-foreground"
+                aria-label="جستجوی محصول"
+              />
+              <button
+                type="submit"
+                aria-label="جستجو"
+                className="flex w-14 shrink-0 items-center justify-center bg-primary text-primary-foreground transition-colors hover:bg-primary-deep"
+              >
+                <Search size={19} strokeWidth={2.4} />
+              </button>
+            </form>
+
+            {focused && q.trim().length >= 2 && (
+              <div className="absolute inset-x-0 top-full z-50 mt-1.5 overflow-hidden rounded-md border bg-popover shadow-lg">
+                {suggestions.length > 0 ? (
+                  <ul className="max-h-72 overflow-y-auto p-1 text-sm">
+                    {suggestions.map((s) => (
+                      <li key={s}>
+                        <button
+                          type="button"
+                          onClick={() => submit(s)}
+                          className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-start hover:bg-accent"
+                        >
+                          <Search size={14} className="text-muted-foreground" />
+                          {s}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="px-4 py-3 text-sm text-muted-foreground">نتیجه‌ای یافت نشد.</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* نوار جستجوی موبایل — چیپ خاکستری ملایم + همه ایران */}
           <form
             onSubmit={(e) => { e.preventDefault(); submit(); }}
-            className="flex h-10 items-stretch overflow-hidden rounded-[10px] bg-secondary transition-colors focus-within:ring-2 focus-within:ring-ring/30"
             role="search"
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-[10px] bg-secondary px-2 nav-desktop:hidden"
           >
+            <button type="submit" aria-label="جستجو" className="shrink-0 text-muted-foreground">
+              <SearchIconBuskool size={24} />
+            </button>
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              onFocus={() => setFocused(true)}
-              placeholder="به دنبال چه محصولی هستید؟"
-              className="min-w-0 flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground"
+              placeholder="جستجوی محصول"
+              className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               aria-label="جستجوی محصول"
             />
+            <span className="h-6 w-px shrink-0 bg-border" aria-hidden />
             <button
-              type="submit"
-              aria-label="جستجو"
-              className="my-1 me-1 flex w-12 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition-colors hover:bg-primary-deep"
+              type="button"
+              title="فیلتر مکان"
+              aria-label="فیلتر مکان: همه ایران"
+              className="flex shrink-0 items-center gap-2 text-[#4a505b]"
             >
-              <Search size={18} strokeWidth={2.4} />
+              <span className="whitespace-nowrap text-sm font-medium">همه ایران</span>
+              <LocationIconBuskool size={20} className="text-muted-foreground" />
             </button>
           </form>
-
-          {focused && q.trim().length >= 2 && (
-            <div className="absolute inset-x-0 top-full z-50 mt-1.5 overflow-hidden rounded-md border bg-popover shadow-lg">
-              {suggestions.length > 0 ? (
-                <ul className="max-h-72 overflow-y-auto p-1 text-sm">
-                  {suggestions.map((s) => (
-                    <li key={s}>
-                      <button
-                        type="button"
-                        onClick={() => submit(s)}
-                        className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-start hover:bg-accent"
-                      >
-                        <Search size={14} className="text-muted-foreground" />
-                        {s}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="px-4 py-3 text-sm text-muted-foreground">نتیجه‌ای یافت نشد.</p>
-              )}
-            </div>
-          )}
         </div>
 
-        {/* نوار جستجوی موبایل — چیپ خاکستری ملایم + همه ایران */}
-        <form
-          onSubmit={(e) => { e.preventDefault(); submit(); }}
-          role="search"
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-[10px] bg-secondary px-2 nav-desktop:hidden"
-        >
-          <button type="submit" aria-label="جستجو" className="shrink-0 text-muted-foreground">
-            <SearchIconBuskool size={24} />
-          </button>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="جستجوی محصول"
-            className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            aria-label="جستجوی محصول"
-          />
-          <span className="h-6 w-px shrink-0 bg-border" aria-hidden />
-          <button
-            type="button"
-            title="فیلتر مکان"
-            aria-label="فیلتر مکان: همه ایران"
-            className="flex shrink-0 items-center gap-2 text-[#4a505b]"
-          >
-            <span className="whitespace-nowrap text-sm font-medium">همه ایران</span>
-            <LocationIconBuskool size={20} className="text-muted-foreground" />
-          </button>
-        </form>
-
-        {/* دکمه‌های انتها — نقش‌محور: سیستم با نقش کاربر تطبیق می‌یابد */}
-        <nav className="hidden items-center nav-desktop:flex" aria-label="حساب کاربری">
+        {/* نوار کاربر — منتهی‌الیه چپ؛ گروه راست flex-1 است پس این نوار به لبه
+            چپ می‌چسبد (فقط ۲۴px پدینگ هدر) و وسط هدر معلق نمی‌ماند */}
+        <nav className="hidden shrink-0 items-center nav-desktop:flex" aria-label="حساب کاربری">
           {user ? (
             <>
               {/* فروشنده → دایرکتوری خریداران (خریداران + درخواست‌ها) / خریدار → فروشندگان پیشنهادی */}

@@ -107,7 +107,10 @@ export function HeaderUserMenu({ variant = 'desktop' }: { variant?: 'desktop' | 
   );
 
   return (
-    <div ref={wrapRef} className="relative">
+    <div
+      ref={wrapRef}
+      className={cn('relative', variant === 'mobile' && 'nav-desktop:hidden')}
+    >
       {/* دکمه — دسکتاپ: آواتار+نام+فلش / موبایل: فقط آواتار */}
       <button
         type="button"
