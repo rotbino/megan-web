@@ -10,9 +10,10 @@ import { useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Check, Coins, Loader2, X } from 'lucide-react';
+import { Check, Coins, Crown, Loader2, X } from 'lucide-react';
 import {
   fetchAdminChargeOrders,
+  fetchAdminQueues,
   reviewAdminChargeOrder,
   type AdminChargeOrderRow,
 } from '@/lib/admin/api';
@@ -64,6 +65,15 @@ export default function AdminChargesPage() {
     refetchInterval: 60_000,
   });
 
+  // فیش‌های خرید بسته — جدا از شارژ کیف پول بررسی می‌شوند (خواستهٔ مالک
+  // ۱-۱۱: این‌جا هدایت می‌کنیم تا فیش بسته گم نشود)
+  const { data: queues } = useQuery({
+    queryKey: ['admin-queues'],
+    queryFn: fetchAdminQueues,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+
   const review = useMutation({
     mutationFn: (input: { orderId: string; approve: boolean; reason?: string }) =>
       reviewAdminChargeOrder(input.orderId, input.approve, input.reason),
@@ -98,6 +108,22 @@ export default function AdminChargesPage() {
         </div>
         {isFetching && !isLoading ? <Loader2 size={15} className="animate-spin text-muted-foreground" /> : null}
       </div>
+
+      {/* فیش‌های خرید بسته این‌جا نیستند — صفشان جداست؛ هدایت واضح تا
+          فیش بسته (حتی فیش خودِ ادمین) گم نشود (خواستهٔ مالک ۱-۱۱) */}
+      {queues && queues.pendingPackages > 0 && (
+        <Link
+          href="/admin/packages"
+          className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-2.5 text-[12px] font-bold text-amber-800 transition-colors hover:bg-amber-100"
+        >
+          <span className="flex items-center gap-2">
+            <Crown size={15} className="shrink-0" />
+            {toFa(queues.pendingPackages)} فیش خرید بسته در انتظار بررسی است —
+            بازبینی در «بسته‌ها و کمپین‌ها»
+          </span>
+          <span aria-hidden>←</span>
+        </Link>
+      )}
 
       {/* تب‌های وضعیت */}
       <div className="flex flex-wrap gap-1.5">

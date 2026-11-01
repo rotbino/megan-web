@@ -1,8 +1,11 @@
 'use client';
 
 /**
- * خریداران (بازطراحی مالک ۳۱-۱۰ / اصلاح ۱-۱۱) — مرور نیازهای خرید، عین الگوی
- * ناوبری آگهی‌های خرید (خواستهٔ مالک ۱-۱۱):
+ * خریداران (بازطراحی مالک ۱-۱۱ — دور سوم) — مرور نیازهای خرید:
+ *  • تب‌ویوی واقعی (خواستهٔ مالک ۱-۱۱ دور سوم): عنوان «خریداران» حذف شد؛
+ *    دو تبِ «خریدهای دوره‌ای» و «درخواست‌های خرید» به‌صورت تب واقعی (خط زیرین،
+ *    بدون ظاهر دکمه) همیشه در دسترس‌اند — با هر تب که کار کرد داخلش می‌رود؛
+ *    تب دیگری محو نمی‌شود.
  *  • دسکتاپ: سایدبار دسته‌بندی — صفحهٔ اول فقط سطوح اول؛ با انتخاب دسته
  *    (مثلاً کشاورزی) فقط خریداران همان دسته لود می‌شوند و سایدبار فرزندان
  *    همان دسته + دکمهٔ «بازگشت» را نشان می‌دهد (رفتار عین آگهی‌ها).
@@ -10,18 +13,17 @@
  *    فعال، هم‌ترازها/فرزندان همان دسته؛ انتخاب هر دسته بلافاصله فیلتر می‌کند
  *    و اگر فرزند داشته باشد برای ریزترشدن باز می‌ماند.
  *  • کارت‌ها ساده و عین باسکول: آواتار + نام خریدار، جملهٔ «خریدار … هستم»،
- *    تاریخ و مکان (خواستهٔ مالک ۱-۱۱).
- *  • دو تب کوچک کنار عنوان: «خریدهای دوره‌ای» و «درخواست‌های خرید» (خواستهٔ
- *    مالک ۱-۱۱ — مینیمال؛ قبلاً نوار تب برجسته بالای جستجو بود).
- *  • انتخاب گروهی بر «همان یک کارت» است: تیک هر نیاز خرید فقط همان را انتخاب
- *    می‌کند (خواستهٔ مالک شب دوم — قبلاً تیک یک کارت کل خریدار را تیک می‌زد)؛
- *    هزینه و گیرنده همچنان بر خریدار یکتا حساب می‌شود.
+ *    تاریخ و مکان.
+ *  • «ارسال پیشنهاد تامین» روی کارت همیشه فعال است (خواستهٔ مالک ۱-۱۱ دور
+ *    سوم): هر نیاز ثبت‌شده از ابتدا به دستهٔ آخر کالایش وصل است؛ دسته از خود
+ *    کارت می‌آید و مودال با عنوان واضح «پیشنهاد تامین برنج» باز می‌شود.
+ *  • ارسال گروهی (خواستهٔ مالک): دیگر چک‌باکسی روی کارت‌ها نیست — دکمهٔ
+ *    «پیشنهاد تامین گروهی» بالای لیست، ویزار سه‌مرحله‌ای را باز می‌کند:
+ *    دستهٔ آخر → انتخاب خریداران همان دسته + محاسبهٔ هزینه → فرم پیشنهاد.
+ *    هزینهٔ کامل (تکی: سهمیه، گروهی: جمع از کیف پول) قبل از ارسال مشخص است.
  *  • «پیشنهاد تامین»: فقط فروشندگان دارندهٔ بستهٔ فعال — تکی با سهمیهٔ روزانه؛
  *    «ارسال گروهی» پولی است (هر گیرنده از کیف پول). دکمه‌های ارسال خاکستری‌اند
  *    تا صفحه از رنگ آبی اشباع نشود (خواسته مالک ۳۱-۱۰).
- *  • دکمهٔ/چک‌باکس پیشنهاد تامین فقط با انتخاب «دستهٔ آخر» (برگ) فعال می‌شود
- *    (خواستهٔ مالک): کالا تا حد زیادی مشخص است، پیشنهاد دقیق‌تر و برای خریدار
- *    فیلترپذیر (دسته/نوع کالا) — پیش از آن دکمه کم‌رنگ است و کلیکش راهنما می‌دهد.
  */
 
 import { useState } from 'react';
@@ -32,15 +34,11 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
-  Filter,
-  Info,
   List,
   Loader2,
   MapPin,
   RotateCcw,
   Search,
-  Send,
-  ShieldCheck,
   Users,
   X,
 } from 'lucide-react';
@@ -63,6 +61,7 @@ import { AuthModal } from '@/components/shared/auth-modal';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
 import { NeedPackageModal } from '@/components/shared/need-package-modal';
 import { SupplyOfferModal } from '@/components/buyers/supply-offer-modal';
+import { GroupOfferWizard } from '@/components/buyers/group-offer-wizard';
 import { BookEntryCard } from '@/components/buyers/book-entry-card';
 import { dateFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -79,6 +78,7 @@ import {
 const PER_PAGE = 12;
 type SheetKind = 'categories' | 'period' | 'location' | null;
 type PeriodFilter = PurchasePeriod | 'all';
+type BuyersTab = 'buyers' | 'requests';
 
 export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }) {
   const { user } = useAuth();
@@ -93,16 +93,16 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
   const [cityId, setCityId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [reqPage, setReqPage] = useState(1);
-  const [tab, setTab] = useState<'buyers' | 'requests'>('buyers');
+  // تب‌ویوی واقعی (خواستهٔ مالک دور سوم) — هر دو تب همیشه در دسترس‌اند
+  const [tab, setTab] = useState<BuyersTab>('buyers');
 
   // موبایل — بات‌شیت‌ها
   const [sheet, setSheet] = useState<SheetKind>(null);
   const [catStack, setCatStack] = useState<Category[]>([]);
 
-  // انتخاب گروهی — هر تیک فقط همان نیاز خرید را برمی‌گزیند (خواستهٔ مالک شب
-  // دوم)؛ کل آیتم ذخیره می‌شود تا انتخاب صفحات قبل هم در ارسال گروهی بماند
-  const [selection, setSelection] = useState<Map<string, BuyerDirectoryItem>>(new Map());
-  const [offerTargets, setOfferTargets] = useState<BuyerDirectoryItem[] | null>(null);
+  // مودال پیشنهاد تکی + ویزار گروهی
+  const [offerTarget, setOfferTarget] = useState<BuyerDirectoryItem | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   // الگوی همیشگی نیاز به اشتراک/شارژ (خواستهٔ مالک ۱-۱۱) — مودال با بستن + خرید بسته
   const [needPkgOpen, setNeedPkgOpen] = useState(false);
@@ -126,11 +126,13 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
   const total = data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / PER_PAGE));
 
-  // تب دوم — درخواست‌های خرید همین دسته
+  // تب دوم — درخواست‌های خرید همین دسته (خواستهٔ مالک دور سوم: تب همیشه هست)
   const reqData = useBuyRequests(
     { categoryId: categoryId ?? undefined, provinceId: provinceId ?? undefined, page: reqPage },
   );
-  const showRequestsTab = data?.buyRequestCount == null || data.buyRequestCount > 0;
+  const reqTotal = reqData.data?.total ?? 0;
+  const reqItems = reqData.data?.items ?? [];
+  const reqPageCount = Math.max(1, reqData.data?.pageCount ?? 1);
 
   // سهمیه — فقط برای کاربر واردشده (دارندهٔ بسته معنا دارد)
   const quotaQuery = useMyOfferQuota(Boolean(user));
@@ -140,20 +142,11 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
   // آگهی‌های خود فروشنده — برای پیش‌نویس دقیق متن پیشنهاد (کالا/واحد/قیمت واقعی)
   const { data: myProducts } = useMyProducts(Boolean(user));
 
-  // دستهٔ انتخاب‌شدهٔ فعلی + برگ بودنش — دکمهٔ/چک‌باکس پیشنهاد تامین فقط با
-  // «دستهٔ آخر» فعال می‌شود (خواستهٔ مالک): کالا تا حد زیادی مشخص است، پیشنهاد
-  // دقیق‌تر می‌شود و خریدار می‌تواند پیشنهادها را بر اساس دسته/نوع فیلتر کند.
-  const selectedPath = categoryId != null ? findCategoryPathById(tree, categoryId) : null;
-  const selectedCategory = selectedPath?.[selectedPath.length - 1] ?? null;
-  const offerReady = Boolean(selectedCategory && !selectedCategory.children?.length);
-
   const pickCategory = (c: Category) => {
     setCategoryId(c.id);
     setCategoryLabel(c.categoryName);
     setPage(1);
     setReqPage(1);
-    // پیشنهاد به دستهٔ کالا وصل است — با تغییر دسته، انتخاب‌های گروهی پاک می‌شوند
-    setSelection(new Map());
   };
 
   const clearCategory = () => {
@@ -161,7 +154,6 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
     setCategoryLabel(null);
     setPage(1);
     setReqPage(1);
-    setSelection(new Map());
   };
 
   const resetFilters = () => {
@@ -179,46 +171,54 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
     setCatStack([]);
   };
 
-  const toggleSelect = (b: BuyerDirectoryItem) => {
-    setSelection((prev) => {
-      const next = new Map(prev);
-      if (next.has(b.id)) {
-        next.delete(b.id);
-      } else {
-        next.set(b.id, b);
-      }
-      return next;
-    });
-  };
-
-  // انتخاب‌ها آیتم‌به‌آیتم‌اند (حتی بین صفحات)؛ گیرنده و هزینه بر خریدار یکتا
-  const selectedBuyers = dedupeByBuyer([...selection.values()]);
-
-  const startOffer = (b: BuyerDirectoryItem | null) => {
-    // دکمهٔ پیشنهاد فقط با دستهٔ آخر فعال است — کلیکِ پیش از آن راهنما می‌دهد (خواستهٔ مالک)
-    if (!offerReady) {
-      toast({
-        description:
-          'برای ارسال پیشنهاد تامین، دستهٔ آخر کالا را از «دسته‌ها» انتخاب کنید (مثلاً کشاورزی / صیفی / سیب زمینی) تا پیشنهاد دقیق‌تر و قابل مقایسه برای خریدار شود.',
-      });
-      return;
-    }
+  /** دروازهٔ مشترک پیشنهاد تامین (تکی و گروهی): ورود → بستهٔ فعال؛
+   *  دکمه‌ها همیشه فعال‌اند و مودال‌های راهنما باز می‌شوند. */
+  const passOfferGates = (): boolean => {
     if (!user) {
       setAuthOpen(true);
-      return;
+      return false;
     }
     // اگر سهمیه هنوز در حال بارگذاری است صبر می‌کنیم تا قضاوت اشتباه نشود.
     if (quotaQuery.isPending) {
       toast({ description: 'در حال بررسی وضعیت بستهٔ شما…' });
-      return;
+      return false;
     }
     // بدون بستهٔ فعال → مودال خرید اشتراک (الگوی همیشگی ۱-۱۱، به‌جای توست).
     if (!isFeatured) {
       setNeedPkgOpen(true);
-      return;
+      return false;
     }
-    // گروهی: همهٔ انتخاب‌ها (حتی از صفحات قبل) — یکتا‌شده بر خریدار
-    setOfferTargets(b ? [b] : selectedBuyers);
+    return true;
+  };
+
+  /** پیشنهاد تکی — دستهٔ کالا از خود کارت می‌آید (خواستهٔ مالک ۱-۱۱ دور سوم):
+   *  هر نیاز ثبت‌شده به دستهٔ آخر وصل است؛ دکمه همیشه فعال است. */
+  const startOffer = (b: BuyerDirectoryItem) => {
+    if (!passOfferGates()) return;
+    setOfferTarget(b);
+  };
+
+  /** پیشنهاد گروهی — ویزار سه‌مرحله‌ای (خواستهٔ مالک دور سوم) */
+  const startGroupOffer = () => {
+    if (!passOfferGates()) return;
+    setWizardOpen(true);
+  };
+
+  /** دستهٔ کامل هدف از درخت — برای واحد/مثال و عنوان «پیشنهاد تامین برنج» */
+  const targetCategory = (b: BuyerDirectoryItem | null): Category | null => {
+    if (!b) return null;
+    const path = findCategoryPathById(tree, b.categoryId);
+    if (path?.length) return path[path.length - 1];
+    // اگر درخت هنوز لود نشده، از دیتای خود کارت می‌سازیم تا دکمه هیچ‌وقت قفل نشود
+    return {
+      id: b.categoryId,
+      categoryName: b.categoryName,
+      slug: '',
+      unit: b.unit,
+      min: 0,
+      parentId: null,
+      score: 0,
+    };
   };
 
   // ─── موبایل: انتخاب دسته سلسله‌مراتبی — عین الگوی آگهی‌ها (خواستهٔ مالک ۱-۱۱) ──
@@ -255,52 +255,46 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
 
   return (
     <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-4 lg:grid-cols-[260px_1fr] lg:px-6 lg:py-6">
-      {/* عنوان + دو تب کوچک کنار هم (خواستهٔ مالک ۱-۱۱ — مینیمال):
-          تب اول «خریدهای دوره‌ای» = دفترچهٔ نیازهای مستمر خریداران؛
-          تب دوم «درخواست‌های خرید» = آگهی‌های لحظه‌ای */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 lg:col-span-2">
-        <h1 className="text-2xl font-bold">خریداران</h1>
-        <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="بخش‌های صفحه خریداران">
+      {/* ─── تب‌ویوی واقعی (خواستهٔ مالک دور سوم) — عنوان «خریداران» حذف شد؛
+          هر دو تب همیشه کنار هم، حسِ تب واقعی با خط زیرین، بدون شلوغی ─── */}
+      <div className="lg:col-span-2" role="tablist" aria-label="بخش‌های صفحه خریداران">
+        <div className="flex items-stretch gap-6 border-b border-border">
           <button
             type="button"
             role="tab"
             aria-selected={tab === 'buyers'}
             onClick={() => setTab('buyers')}
             className={cn(
-              'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
+              '-mb-px flex items-center gap-1.5 border-b-2 px-1 pb-2.5 pt-1 text-sm font-bold transition-colors',
               tab === 'buyers'
-                ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-                : 'border-border bg-card text-muted-foreground hover:border-foreground/25 hover:text-foreground',
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground',
             )}
           >
-            <Users size={13} className="shrink-0" />
+            <Users size={15} className="shrink-0" />
             خریدهای دوره‌ای
-            <span className={cn(tab === 'buyers' ? 'opacity-80' : 'text-muted-foreground')}>
+            <span className={cn('font-num text-[11px]', tab === 'buyers' ? 'text-primary/70' : 'text-muted-foreground/70')}>
               {directory.isLoading && !data ? '…' : toFa(total)}
             </span>
           </button>
-          {showRequestsTab && (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'requests'}
-              onClick={() => setTab('requests')}
-              className={cn(
-                'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
-                tab === 'requests'
-                  ? 'border-amber-600 bg-amber-500 text-white shadow-sm'
-                  : 'border-border bg-card text-muted-foreground hover:border-foreground/25 hover:text-foreground',
-              )}
-            >
-              <ClipboardList size={13} className="shrink-0" />
-              درخواست‌های خرید
-              {data?.buyRequestCount != null && (
-                <span className={cn(tab === 'requests' ? 'opacity-80' : 'text-muted-foreground')}>
-                  {toFa(data.buyRequestCount)}
-                </span>
-              )}
-            </button>
-          )}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'requests'}
+            onClick={() => setTab('requests')}
+            className={cn(
+              '-mb-px flex items-center gap-1.5 border-b-2 px-1 pb-2.5 pt-1 text-sm font-bold transition-colors',
+              tab === 'requests'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <ClipboardList size={15} className="shrink-0" />
+            درخواست‌های خرید
+            <span className={cn('font-num text-[11px]', tab === 'requests' ? 'text-primary/70' : 'text-muted-foreground/70')}>
+              {reqData.isLoading && !reqData.data ? '…' : toFa(reqTotal)}
+            </span>
+          </button>
         </div>
       </div>
 
@@ -309,7 +303,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
       <aside className="hidden space-y-5 lg:block" aria-label="فیلترها">
         <div className="rounded-md border bg-card p-4">
           <h2 className="mb-3 flex items-center gap-1.5 text-sm font-bold">
-            <Filter size={14} className="text-primary" />
+            <List size={14} className="text-primary" />
             دسته بندی خرید
           </h2>
           <CategoryNav
@@ -326,8 +320,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
             {isFeatured ? (
               <>
                 <p>
-                  <ShieldCheck size={13} className="ms-0.5 inline text-emerald-600" /> سهمیهٔ پیشنهاد
-                  تامین امروز: <b>{toFa(quota.left)}</b> از <b>{toFa(quota.dailyLimit)}</b>
+                  سهمیهٔ پیشنهاد تامین امروز: <b>{toFa(quota.left)}</b> از <b>{toFa(quota.dailyLimit)}</b>
                 </p>
                 <p className="mt-1 text-muted-foreground">
                   ارسال گروهی: {toFa(quota.groupSend.perRecipientPrice.toLocaleString('fa-IR'))} تومان
@@ -365,6 +358,19 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
               />
               <Search size={15} className="pointer-events-none absolute inset-y-0 start-3 my-auto text-muted-foreground" />
             </form>
+
+            {/* دکمهٔ پیشنهاد گروهی (خواستهٔ مالک ۱-۱۱ دور سوم) — به‌جای چک‌باکس
+                روی کارت‌ها؛ ویزار سه‌مرحله‌ای: دسته → خریداران + هزینه → فرم */}
+            {tab === 'buyers' && (
+              <button
+                type="button"
+                onClick={startGroupOffer}
+                className="flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-input bg-card px-3.5 py-2.5 text-xs font-bold text-foreground/75 transition-colors hover:border-foreground/30 hover:bg-secondary hover:text-foreground sm:py-2"
+              >
+                <Users size={14} />
+                پیشنهاد تامین گروهی
+              </button>
+            )}
           </div>
 
           {/* فیلترهای دوره/استان/شهر — دسکتاپ، همین زیر سرچ‌باکس */}
@@ -517,17 +523,6 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
         {/* ── تب خریدهای دوره‌ای ── */}
         {tab === 'buyers' && (
           <div role="tabpanel" aria-label="خریدهای دوره‌ای">
-            {/* راهنمای گیت دستهٔ آخر — تا دستهٔ آخر انتخاب نشود، دکمه/چک‌باکس پیشنهاد قفل است */}
-            {!offerReady && (
-              <div className="mb-3 flex items-start gap-2 rounded-md border border-primary/25 bg-primary/5 px-3.5 py-2.5 text-[11px] leading-5 text-foreground/80">
-                <Info size={14} className="mt-0.5 shrink-0 text-primary" />
-                <p>
-                  برای ارسال پیشنهاد تامین، دستهٔ <b>آخرِ</b> کالا را از «دسته‌ها» انتخاب کنید
-                  (مثلاً کشاورزی / صیفی / سیب زمینی) — این‌طور کالای پیشنهاد شما از ابتدا
-                  مشخص می‌شود و خریدار می‌تواند آن را راحت‌تر با پیشنهادهای دیگر مقایسه کند.
-                </p>
-              </div>
-            )}
             {directory.isLoading && !data ? (
               <div className="space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -558,11 +553,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
                     <BookEntryCard
                       key={b.id}
                       entry={b}
-                      selectable={isFeatured}
-                      selected={selection.has(b.id)}
-                      onToggle={() => toggleSelect(b)}
                       onOffer={() => startOffer(b)}
-                      offerReady={offerReady}
                     />
                   ))}
                 </ul>
@@ -595,84 +586,60 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
                 )}
               </>
             )}
-
-            {/* نوار ارسال گروهی — چسبان پایین وقتی گیرنده‌ای هست؛ دکمهٔ سبز تا موقع
-                تیک زدن بیشتر به چشم بیاید (خواستهٔ مالک شب دوم). پس از ارسال موفق،
-                انتخاب پاک می‌شود تا ارسال/هزینهٔ دوباره اتفاق نیفتد */}
-            {isFeatured && selectedBuyers.length > 0 && (
-              <div className="sticky bottom-20 z-30 mt-4 rounded-xl border-2 border-emerald-500/40 bg-card p-3 shadow-lg sm:bottom-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-[11px] leading-5">
-                    {selection.size === selectedBuyers.length ? (
-                      <><b>{toFa(selectedBuyers.length)}</b> خریدار انتخاب شد</>
-                    ) : (
-                      <>
-                        <b>{toFa(selection.size)}</b> نیاز خرید از{' '}
-                        <b>{toFa(selectedBuyers.length)}</b> خریدار انتخاب شد
-                      </>
-                    )}{' '}
-                    — هزینه:{' '}
-                    <b className="text-primary">
-                      {toFa(
-                        (selectedBuyers.length *
-                          (quota?.groupSend.perRecipientPrice ?? 0)).toLocaleString('fa-IR'),
-                      )}
-                    </b>{' '}
-                    تومان از کیف پول
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      className="rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
-                      onClick={() => startOffer(null)}
-                    >
-                      <Send size={13} /> ارسال گروهی پیشنهاد
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="rounded-md"
-                      onClick={() => setSelection(new Map())}
-                    >
-                      لغو انتخاب
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
-        {/* ── تب درخواست‌های خرید ── */}
+        {/* ── تب درخواست‌های خرید (خواستهٔ مالک دور سوم: تب کامل، داخلش می‌شود
+            رفت و صفحه‌بندی دارد؛ لینک «مشاهدهٔ همه» فقط برای جستجوی پیشرفته‌تر) ── */}
         {tab === 'requests' && (
           <div role="tabpanel" aria-label="درخواست‌های خرید">
             {reqData.isLoading && !reqData.data ? (
               <div className="grid place-items-center py-16 text-muted-foreground">
                 <Loader2 className="animate-spin" size={22} />
               </div>
-            ) : (reqData.data?.items?.length ?? 0) === 0 ? (
+            ) : reqItems.length === 0 ? (
               <div className="rounded-md border border-dashed bg-card p-10 text-center">
                 <ClipboardList size={30} className="mx-auto text-muted-foreground/60" />
                 <p className="mt-3 text-sm font-bold">درخواست خریدی در این فیلتر نیست.</p>
-                <Link
-                  href="/buyAd-requests"
-                  className="mt-2 inline-block text-xs font-bold text-primary underline"
-                >
-                  مشاهدهٔ همهٔ درخواست‌های خرید
-                </Link>
+                <p className="mt-1.5 text-xs leading-6 text-muted-foreground">
+                  فیلترها را تغییر دهید یا همهٔ درخواست‌ها را ببینید —{' '}
+                  <Link href="/buyAd-requests" className="font-bold text-primary underline">
+                    همهٔ درخواست‌های خرید
+                  </Link>
+                </p>
               </div>
             ) : (
               <>
                 <ul className="space-y-3">
-                  {(reqData.data?.items ?? []).map((r) => (
+                  {reqItems.map((r) => (
                     <RequestPreviewCard key={r.id} request={r} />
                   ))}
                 </ul>
-                <div className="mt-3 text-center">
-                  <Link href="/buyAd-requests" className="text-xs font-bold text-primary underline">
-                    مشاهدهٔ همهٔ درخواست‌ها و جستجو
-                  </Link>
-                </div>
+                {reqPageCount > 1 && (
+                  <nav className="mt-4 flex items-center justify-center gap-3" aria-label="صفحه‌بندی درخواست‌ها">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-md"
+                      disabled={reqPage <= 1}
+                      onClick={() => setReqPage((p) => Math.max(1, p - 1))}
+                    >
+                      <ChevronRight size={15} /> قبلی
+                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                      صفحهٔ {toFa(reqPage)} از {toFa(reqPageCount)}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-md"
+                      disabled={reqPage >= reqPageCount}
+                      onClick={() => setReqPage((p) => Math.min(reqPageCount, p + 1))}
+                    >
+                      بعدی <ChevronLeft size={15} />
+                    </Button>
+                  </nav>
+                )}
               </>
             )}
           </div>
@@ -791,27 +758,24 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
         </div>
       </BottomSheet>
 
-      {/* مودال‌ها — key: هر مجموعهٔ هدف، فرم تازه با نمونهٔ پارامتریک؛ پس از
-          ارسال موفق، کارت‌های همان خریداران از انتخاب درمی‌آیند (ضمناً جلوگیری
-          از ارسال/هزینهٔ دوباره برای همان گیرنده) */}
+      {/* مودال پیشنهاد تکی — key: هر هدف تازه، فرم تازه با نمونهٔ پارامتریک؛
+          عنوان مودال خیلی واضح نام دسته را می‌آورد: «پیشنهاد تامین برنج» */}
       <SupplyOfferModal
-        key={offerTargets ? offerTargets.map((t) => t.buyerId).join(',') : 'closed'}
-        open={offerTargets !== null}
-        onClose={() => setOfferTargets(null)}
-        onSent={(buyerIds) => {
-          setSelection((prev) => {
-            if (prev.size === 0) return prev;
-            const next = new Map(prev);
-            for (const [id, item] of next) {
-              if (buyerIds.includes(item.buyerId)) next.delete(id);
-            }
-            return next;
-          });
-        }}
-        targets={offerTargets ?? []}
+        key={offerTarget?.id ?? 'closed'}
+        open={offerTarget !== null}
+        onClose={() => setOfferTarget(null)}
+        targets={offerTarget ? [offerTarget] : []}
         quota={quota}
         products={myProducts?.items}
-        category={selectedCategory}
+        category={targetCategory(offerTarget)}
+      />
+
+      {/* ویزار پیشنهاد گروهی — دستهٔ آخر → خریداران همان دسته + هزینه → فرم */}
+      <GroupOfferWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        quota={quota}
+        products={myProducts?.items}
       />
       {/* الگوی همیشگی ۱-۱۱: بدون بستهٔ فعال، مودال «خرید اشتراک» باز می‌شود */}
       <NeedPackageModal
@@ -993,16 +957,4 @@ function RequestPreviewCard({ request }: { request: BuyRequest }) {
       </Link>
     </li>
   );
-}
-
-/** یگانه‌سازی بر خریدار — انتخاب چند کالا از یک خریدار فقط یک گیرنده است */
-function dedupeByBuyer(items: BuyerDirectoryItem[]): BuyerDirectoryItem[] {
-  const seen = new Set<string>();
-  const out: BuyerDirectoryItem[] = [];
-  for (const it of items) {
-    if (seen.has(it.buyerId)) continue;
-    seen.add(it.buyerId);
-    out.push(it);
-  }
-  return out;
 }

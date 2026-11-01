@@ -697,6 +697,8 @@ export interface AdminStatsV2 extends AdminStats {
     pendingBuyRequests: number;
     pendingVerifications: number;
     pendingCharges: number;
+    /** فیش‌های خرید بسته در صف بررسی — نشان قرمز سایدبار + بنر هدایت شارژها */
+    pendingPackages: number;
     ladderOrders: number;
   };
   revenue: {
@@ -729,6 +731,20 @@ export async function fetchAdminRecentActivity(): Promise<{ recentActions: Admin
 /** آمار داشبورد عملیاتی (روند + درآمد + صف‌ها) */
 export async function fetchAdminStatsV2(): Promise<AdminStatsV2> {
   return adminFetch<AdminStatsV2>('/admin/dashboard/getStats', {});
+}
+
+/** صف‌های در انتظار — سبک؛ برای نشان‌های قرمز سایدبار پنل ادمین */
+export interface AdminQueues {
+  pendingProducts: number;
+  pendingBuyRequests: number;
+  pendingVerifications: number;
+  pendingCharges: number;
+  /** فیش‌های خرید بسته — صفحهٔ «بسته‌ها و کمپین‌ها» */
+  pendingPackages: number;
+}
+
+export async function fetchAdminQueues(): Promise<AdminQueues> {
+  return adminFetch<AdminQueues>('/admin/dashboard/getQueues', {});
 }
 
 // ─── لاگ عملیات ادمین ────────────────────────────────────────────────────────

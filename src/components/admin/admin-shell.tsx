@@ -4,19 +4,26 @@
  * پوسته پنل ادمین — کاملاً جدا از پوسته کاربران (components/panel):
  *  • تم سفیدِ فلت: سایدبار سفید + فقط یک خط ظریف بین منو و محتوا (border-e)؛
  *    رنگ اصلی (آبی) فقط در دکمه‌ها و لهجه‌های کوچک، نه پس‌زمینه
+ *  • سایدبار آکاردئونی (خواستهٔ مالک ۱-۱۱): هر گروه به‌صورت پیش‌فرض بسته؛
+ *    فقط گروه اول باز است و با باز کردن هر گره، بقیهٔ گره‌ها بسته می‌شوند
+ *    تا پنل شلوغ و ترسناک نباشد. گروهِ صفحهٔ فعال خودکار باز می‌ماند.
+ *  • نشان قرمز صف‌های در انتظار (آگهی/درخواست/احراز/شارژ/فیش بسته) روی
+ *    آیتم مربوطه — ادمین فیش خرید بستهٔ خودش را هم مثل بقیه کاربران همین‌جا
+ *    می‌بیند و تأیید می‌کند (خواستهٔ مالک ۱-۱۱).
  *  • دسکتاپ: سایدبار ثابت سمت راست + محتوای سفید — موبایل: تاپ‌بار + دراور
  *  • گارد نشست: توکن ادمین → me؛ ناموفق → /admin/login
  *  • تغییر رمز خودم از تاپ‌بار (API زنده — admin/auth/changePassword)
- * آیتم‌های فازهای بعد (A3..A5) نمایش داده می‌شوند با چیپ فاز و غیرفعال.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import {
   Activity,
   BadgeCheck,
   Boxes,
+  ChevronDown,
   ClipboardList,
   Coins,
   Crown,
@@ -48,16 +55,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { adminChangePassword, adminLogout, fetchAdminMe, type AdminProfile } from '@/lib/admin/api';
+import { adminChangePassword, adminLogout, fetchAdminMe, fetchAdminQueues, type AdminProfile } from '@/lib/admin/api';
 import { cn } from '@/lib/utils';
 
-/** منوی پنل — دسته‌بندی‌شده تا خلوت شود (خواسته مالک ۳۱-۱۰):
- *  هر گروه = یک سرشاخه کوچک + آیتم‌هایش؛ «ادمین‌ها» فقط برای مدیر ارشد. */
+/** منوی پنل — آکاردئونی (خواستهٔ مالک ۱-۱۱): هر گروه پیش‌فرض بسته؛
+ *  باز کردن هر گره بقیه را می‌بندد؛ گروه صفحهٔ فعال خودکار باز است.
+ *  «ادمین‌ها» فقط برای مدیر ارشد. badge: کلید صف در انتظار (نشان قرمز). */
 interface NavItem {
   href: string;
   label: string;
   Icon: typeof LayoutDashboard;
   superOnly: boolean;
+  /** کلید نشان قرمز — شمار ردیف‌های در انتظار بررسی همان صفحه */
+  badge?: keyof import('@/lib/admin/api').AdminQueues;
 }
 
 const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
@@ -74,17 +84,17 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
   {
     title: 'بازار و محتوا',
     items: [
-      { href: '/admin/products', label: 'آگهی‌ها', Icon: Boxes, superOnly: false },
-      { href: '/admin/buy-requests', label: 'درخواست‌های خرید', Icon: ClipboardList, superOnly: false },
+      { href: '/admin/products', label: 'آگهی‌ها', Icon: Boxes, superOnly: false, badge: 'pendingProducts' },
+      { href: '/admin/buy-requests', label: 'درخواست‌های خرید', Icon: ClipboardList, superOnly: false, badge: 'pendingBuyRequests' },
       { href: '/admin/reviews', label: 'نظرات فروشندگان', Icon: Star, superOnly: false },
-      { href: '/admin/verifications', label: 'احراز هویت', Icon: BadgeCheck, superOnly: false },
+      { href: '/admin/verifications', label: 'احراز هویت', Icon: BadgeCheck, superOnly: false, badge: 'pendingVerifications' },
     ],
   },
   {
     title: 'مالی و فروش',
     items: [
-      { href: '/admin/charges', label: 'شارژها', Icon: Coins, superOnly: false },
-      { href: '/admin/packages', label: 'بسته‌ها و کمپین‌ها', Icon: Crown, superOnly: false },
+      { href: '/admin/charges', label: 'شارژها', Icon: Coins, superOnly: false, badge: 'pendingCharges' },
+      { href: '/admin/packages', label: 'بسته‌ها و کمپین‌ها', Icon: Crown, superOnly: false, badge: 'pendingPackages' },
       { href: '/admin/billing', label: 'تنظیمات شارژ و مصرف', Icon: Settings, superOnly: false },
     ],
   },
@@ -105,14 +115,48 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
   },
 ];
 
+/** نشان قرمز شمار صف — فقط وقتی ردیفی در انتظار است */
+function QueueBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className="ms-auto grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-extrabold leading-none text-white"
+      aria-label={`${count} مورد در انتظار بررسی`}
+    >
+      {count > 99 ? '۹۹+' : new Intl.NumberFormat('fa-IR').format(count)}
+    </span>
+  );
+}
+
 function SidebarNav({ onNavigate, superAdmin }: { onNavigate?: () => void; superAdmin?: boolean }) {
   const pathname = usePathname() ?? '/admin';
   const isActive = (href: string) =>
     href === '/admin' ? pathname === '/admin' : pathname === href || pathname.startsWith(`${href}/`);
 
-  const renderItem = ({ href, label, Icon, superOnly }: NavItem) => {
+  // گروهِ صفحهٔ فعال — همیشه باز باشد (حتی اگر کاربر گروه دیگری را باز کند،
+  // با ناوبری به داخل گروه، همین‌جا باز می‌شود)
+  const activeGroupIndex = useMemo(() => {
+    const idx = NAV_GROUPS.findIndex((g) => g.items.some((it) => isActive(it.href)));
+    return idx === -1 ? null : idx;
+  }, [pathname]);
+
+  // آکاردئون (خواستهٔ مالک): همهٔ گروه‌ها بسته؛ فقط گروه اول باز است و
+  // باز کردن هر گره بقیه را می‌بندد
+  const [openGroup, setOpenGroup] = useState<number | null>(0);
+  const effectiveOpen = activeGroupIndex ?? openGroup;
+
+  // صف‌های در انتظار — نشان قرمز آیتم‌ها (۶۰ ثانیه یک‌بار تازه می‌شود)
+  const { data: queues } = useQuery({
+    queryKey: ['admin-queues'],
+    queryFn: fetchAdminQueues,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+
+  const renderItem = ({ href, label, Icon, superOnly, badge }: NavItem) => {
     if (superOnly && !superAdmin) return null; // فقط مدیر ارشد
     const active = isActive(href);
+    const badgeCount = badge && queues ? queues[badge] : 0;
     return (
       <Link
         key={label}
@@ -128,6 +172,7 @@ function SidebarNav({ onNavigate, superAdmin }: { onNavigate?: () => void; super
       >
         <Icon size={18} className={cn('shrink-0', active ? 'text-primary' : 'text-muted-foreground/70')} />
         <span className="min-w-0 flex-1 truncate">{label}</span>
+        {badge && <QueueBadge count={badgeCount} />}
       </Link>
     );
   };
@@ -136,14 +181,41 @@ function SidebarNav({ onNavigate, superAdmin }: { onNavigate?: () => void; super
     <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-2" aria-label="منوی مدیریت">
       {/* داشبورد — تک‌آیتم بالا */}
       {renderItem({ href: '/admin', label: 'داشبورد', Icon: LayoutDashboard, superOnly: false })}
-      {NAV_GROUPS.map((group) => (
-        <div key={group.title} className="mt-1">
-          <p className="px-3 pb-1 pt-2.5 text-[10px] font-extrabold tracking-wide text-muted-foreground/70">
-            {group.title}
-          </p>
-          <div className="flex flex-col gap-0.5">{group.items.map(renderItem)}</div>
-        </div>
-      ))}
+      {NAV_GROUPS.map((group, gi) => {
+        const open = effectiveOpen === gi;
+        return (
+          <div key={group.title} className="mt-1">
+            <button
+              type="button"
+              onClick={() => setOpenGroup(open ? -1 : gi)}
+              aria-expanded={open}
+              aria-label={`بخش ${group.title}`}
+              className={cn(
+                'flex w-full items-center gap-2 rounded-md px-3 py-2 text-[11px] font-extrabold tracking-wide transition-colors hover:bg-secondary/60',
+                open ? 'text-foreground' : 'text-muted-foreground/80',
+              )}
+            >
+              <ChevronDown
+                size={14}
+                className={cn('shrink-0 text-muted-foreground/60 transition-transform', !open && '-rotate-90')}
+                aria-hidden
+              />
+              <span className="min-w-0 flex-1 truncate text-start">{group.title}</span>
+              {/* جمع نشان‌های گروه — حتی بسته، صف در انتظار دیده شود */}
+              {(() => {
+                const sum = group.items.reduce(
+                  (s, it) => s + (it.badge && queues ? queues[it.badge] : 0),
+                  0,
+                );
+                return <QueueBadge count={sum} />;
+              })()}
+            </button>
+            {open && (
+              <div className="flex flex-col gap-0.5 pb-1">{group.items.map(renderItem)}</div>
+            )}
+          </div>
+        );
+      })}
     </nav>
   );
 }

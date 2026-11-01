@@ -1,17 +1,21 @@
 'use client';
 
 /**
- * مودال پیشنهاد تامین (بازطراحی مالک — فرم حرفه‌ای ساختاریافته):
- *  • دکمهٔ ارسال سمت سایت فقط با انتخاب «دستهٔ آخر» (برگ) فعال می‌شود →
- *    دستهٔ کالا از ابتدا مشخص است؛ «نوع {دسته}» با مثالِ خود دسته (اختیاری)
- *    و «حداقل خرید» با واحدِ همان دسته.
- *  • فیلد توضیحات همچنان مهم‌ترین فیلد است — متن آزاد + «نمونهٔ پارامتریک»
- *    زیر فیلد (خواستهٔ مالک شب دوم).
- *  • شرایط تامین ساختاریافته (خواستهٔ مالک): سوییچ «پرداخت با چک» فقط با
- *    روشن‌شدنش «درصد چک» و «حداکثر سرسید چک» را ظاهر می‌کند؛ سوییچ «ارسال
- *    به محل» فقط «پرداخت‌کنندهٔ حمل» را. فرم شلوغ نمی‌شود و خریدار در پنل
- *    خودش می‌تواند پیشنهادها را بر اساس همین مزایا فیلتر و مقایسه کند.
+ * مودال/فرم پیشنهاد تامین (بازطراحی مالک ۱-۱۱):
+ *  • دکمهٔ ارسال روی کارت «همیشه» فعال است — هر نیاز خرید از ابتدا به یک
+ *    دستهٔ آخر (برگ) وصل است؛ دستهٔ کالا از خود کارت می‌آید و بالای مودال
+ *    خیلی واضح می‌آید: «پیشنهاد تامین برنج».
+ *  • «نوع {دسته}» با مثالِ خود دسته (اختیاری) و «حداقل خرید» با واحدِ
+ *    همان دسته.
+ *  • فیلد توضیحات مهم‌ترین فیلد است — متن آزاد + «نمونهٔ پارامتریک» زیر فیلد.
+ *  • شرایط تامین ساختاریافته: سوییچ «پرداخت با چک» فقط با روشن‌شدنش
+ *    «درصد چک» و «حداکثر سرسید چک» را ظاهر می‌کند؛ سوییچ «ارسال به محل»
+ *    فقط «پرداخت‌کنندهٔ حمل» را.
+ *  • هزینه قبل از ارسال شفاف است — تکی: سهمیهٔ امروز؛ گروهی: جمع هزینه از
+ *    کیف پول (هر گیرنده × قیمت واحد) + موجودی.
  *  • تکی: نمونهٔ شخصی؛ گروهی: نمونهٔ عمومی و همه‌کالا (بدون نام خریدار).
+ *  • بدنهٔ فرم (SupplyOfferForm) بین مودال تکی و گام سومِ ویزار گروهی
+ *    مشترک است تا رفتار و متن‌ها یکی بمانند.
  */
 
 import { useMemo, useState } from 'react';
@@ -48,7 +52,7 @@ const UNIT_ADJ: Record<string, string> = {
 };
 
 /** قیمت خوانا با حروف: ۵۰۰۰۰ → «۵۰ هزار تومان»، ۳۷۰۰۰۰۰ → «۳ میلیون و ۷۰۰ هزار تومان» */
-function priceWordsFa(toman: number): string {
+export function priceWordsFa(toman: number): string {
   if (toman >= 1_000_000) {
     const millions = Math.floor(toman / 1_000_000);
     const rest = toman % 1_000_000;
@@ -65,12 +69,12 @@ const PAYMENT_LINE = '• پرداخت: نقدی هنگام تحویل یا کا
 
 /** نمونهٔ پارامتریک پیشنهاد تامین — همهٔ قطعات از دیتا (خواستهٔ مالک ۱-۱۱ شب دوم).
  *  جاهای خالی به‌جای براکت، جملهٔ قابل‌ارسال دارند تا اگر کاربر همین را بفرستد
- *  متن ناتماد به نظر نرسد. */
+ *  متن ناتمام به نظر نرسد. */
 export function buildOfferSample(opts: {
   targets: BuyerDirectoryItem[];
   sellerName: string;
   products?: Product[];
-  /** دستهٔ آخرِ انتخاب‌شده — کالای پیشنهاد از ابتدا مشخص است (خواستهٔ مالک) */
+  /** دستهٔ آخرِ هدف — کالای پیشنهاد از ابتدا مشخص است */
   category?: Category | null;
 }): string {
   const { targets, sellerName, products, category } = opts;
@@ -138,7 +142,7 @@ export function buildOfferSample(opts: {
 }
 
 /** فیلد عددی فشرده با پسوند چسبیده (٪ / روز / واحد دسته) — الگوی UnitInput، کوچک‌شده برای مودال */
-function NumField({
+export function NumField({
   value,
   onChange,
   suffix,
@@ -180,32 +184,32 @@ function NumField({
   );
 }
 
-export function SupplyOfferModal({
-  open,
-  onClose,
-  onSent,
+/** فرم مشترک پیشنهاد تامین — مودال تکی و گام سوم ویزار گروهی هر دو از این
+ *  استفاده می‌کنند تا متن‌ها، اعتبارسنجی و جریان ارسال یکی بماند. */
+export function SupplyOfferForm({
   targets,
   quota,
   products,
   category,
+  onSent,
+  onCancel,
 }: {
-  open: boolean;
-  onClose: () => void;
-  /** پس از ارسال موفق — شناسهٔ خریدارانی که پیام گرفتند؛ فهرست کارت‌هایشان را از انتخاب درمی‌آورد */
-  onSent?: (buyerIds: string[]) => void;
   /** یک هدف = تکی؛ بیشتر = گروهی */
   targets: BuyerDirectoryItem[];
   quota: OfferQuota | null;
   /** آگهی‌های خود فروشنده — برای پرکردن پارامترهای نمونه (کالا/واحد/قیمت) */
   products?: Product[];
-  /** دستهٔ آخرِ انتخاب‌شده — مودال فقط با برگ باز می‌شود؛ نوع/حداقل خرید از آن */
+  /** دستهٔ آخرِ هدف — نوع/حداقل خرید از آن */
   category: Category | null;
+  /** پس از ارسال موفق — شناسهٔ خریدارانی که پیام گرفتند */
+  onSent?: (buyerIds: string[]) => void;
+  onCancel: () => void;
 }) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [message, setMessage] = useState('');
   const [showSample, setShowSample] = useState(false);
-  // ─── شرایط ساختاریافته (خواستهٔ مالک) ───
+  // ─── شرایط ساختاریافته ───
   const [productType, setProductType] = useState('');
   const [minOrder, setMinOrder] = useState('');
   const [checkOn, setCheckOn] = useState(false);
@@ -225,20 +229,7 @@ export function SupplyOfferModal({
     [targets, sellerName, products, category],
   );
 
-  const close = () => {
-    setMessage('');
-    setShowSample(false);
-    setProductType('');
-    setMinOrder('');
-    setCheckOn(false);
-    setCheckPercent('50');
-    setCheckDays('60');
-    setDeliveryOn(false);
-    setShipBy(null);
-    onClose();
-  };
-
-  if (!open || targets.length === 0) return null;
+  if (targets.length === 0) return null;
 
   const isGroup = targets.length > 1;
   const perRecipient = quota?.groupSend.perRecipientPrice ?? 0;
@@ -307,7 +298,7 @@ export function SupplyOfferModal({
               description: `پیشنهاد برای ${toFa(r.sent)} خریدار ارسال شد — ${priceFa(r.fee)} از کیف پول کسر شد.`,
             });
             onSent?.(targets.map((t) => t.buyerId));
-            close();
+            onCancel();
           },
           onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
         },
@@ -321,7 +312,7 @@ export function SupplyOfferModal({
               description: `پیشنهاد تامین ارسال شد — پاسخ را در «پیام ها» دنبال کنید (${toFa(r.quotaLeft)} سهمیه امروز باقی مانده).`,
             });
             onSent?.([targets[0].buyerId]);
-            close();
+            onCancel();
           },
           onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
         },
@@ -331,264 +322,232 @@ export function SupplyOfferModal({
 
   return (
     <>
-      {/* z-[60]: بالای نوار پایین موبایل (z-50) — دکمه‌های ارسال زیر نوار نروند */}
-      <div
-        className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4"
-        role="dialog"
-        aria-modal="true"
-        aria-label="پیشنهاد تامین"
-        onClick={(e) => e.target === e.currentTarget && !pending && close()}
-      >
-        <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-xl border bg-card p-5 shadow-2xl">
-          <div className="flex items-center gap-2.5">
-            <span className="grid size-10 place-items-center rounded-md bg-primary/10 text-primary">
-              {isGroup ? <Users size={19} /> : <Send size={18} />}
-            </span>
-            <div className="min-w-0">
-              <h2 className="text-sm font-extrabold">
-                {isGroup ? `ارسال گروهی به ${toFa(targets.length)} خریدار` : 'پیشنهاد تامین'}
-              </h2>
-              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                {isGroup ? (
-                  <>
-                    دستهٔ کالا: <b className="text-foreground/80">{category?.categoryName}</b>
-                  </>
-                ) : (
-                  <>
-                    {targets[0].buyerName} — دستهٔ کالا:{' '}
-                    <b className="text-foreground/80">{category?.categoryName}</b>
-                  </>
-                )}
-              </p>
-            </div>
-          </div>
-
-          {/* سهمیه / هزینه — شفاف قبل از ارسال */}
-          <div className="mt-3 rounded-lg bg-secondary/70 p-3 text-[11px] leading-5">
-            {isGroup ? (
-              <>
-                <p>
-                  هزینه هر گیرنده <b>{priceFa(perRecipient)}</b> از کیف پول — جمع:{' '}
-                  <b className="text-primary">{priceFa(fee)}</b> (موجودی: {priceFa(balance)})
-                </p>
-                {fee > balance && (
-                  <p className="mt-1 font-bold text-red-600">
-                    موجودی کافی نیست —{' '}
-                    <button type="button" className="underline" onClick={() => setNeedWallet(true)}>
-                      شارژ کیف پول
-                    </button>
-                  </p>
-                )}
-              </>
-            ) : quota ? (
-              <p>
-                سهمیه امروز: <b>{toFa(quota.left)}</b> از <b>{toFa(quota.dailyLimit)}</b> پیشنهاد باقی مانده.
-              </p>
-            ) : null}
-          </div>
-
-          {/* ─── نوع کالا + حداقل خرید — از دستهٔ آخرِ انتخاب‌شده ─── */}
-          {category && (
-            <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-              <div>
-                <label htmlFor="offer-product-type" className="mb-1 block text-[11px] font-bold text-muted-foreground">
-                  نوع {category.categoryName} <span className="font-normal">(اختیاری)</span>
-                </label>
-                <Input
-                  id="offer-product-type"
-                  value={productType}
-                  onChange={(e) => setProductType(e.target.value.slice(0, 60))}
-                  placeholder={category.example ? `مثلا : ${category.example}` : 'مثلا : اکبری'}
-                  className="h-9 rounded-md text-xs"
-                  maxLength={60}
-                />
-              </div>
-              <div>
-                <label htmlFor="offer-min-order" className="mb-1 block text-[11px] font-bold text-muted-foreground">
-                  حداقل خرید <span className="font-normal">(اختیاری)</span>
-                </label>
-                <NumField
-                  value={minOrder}
-                  onChange={setMinOrder}
-                  suffix={category.unit}
-                  ariaLabel="حداقل خرید"
-                  placeholder="مثلا : 500"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* ─── شرایط تامین — سوییچ‌ها فقط فیلد وابستهٔ خودشان را ظاهر می‌کنند ─── */}
-          <div className="mt-3 rounded-lg border bg-secondary/30 p-3">
-            <p className="text-[10px] font-bold leading-4 text-muted-foreground">
-              شرایط تامین (اختیاری) — با مشخص‌کردن این‌ها، خریدار می‌تواند پیشنهاد شما را
-              راحت‌تر با بقیه مقایسه کند.
+      {/* سهمیه / هزینه — شفاف قبل از ارسال (خواستهٔ مالک: کاربر قبل از ارسال
+          تکی هم از وضعیت سهمیه و هزینه خبر دارد) */}
+      <div className="rounded-lg bg-secondary/70 p-3 text-[11px] leading-5">
+        {isGroup ? (
+          <>
+            <p>
+              هزینه هر گیرنده <b>{priceFa(perRecipient)}</b> از کیف پول — جمع:{' '}
+              <b className="text-primary">{priceFa(fee)}</b> برای <b>{toFa(targets.length)}</b> خریدار
+              (موجودی: {priceFa(balance)})
             </p>
-
-            {/* سوییچ چک */}
-            <div className="mt-2.5 flex items-center justify-between gap-3">
-              <label htmlFor="offer-check" className="flex items-center gap-1.5 text-xs font-bold">
-                <Banknote size={14} className="text-muted-foreground/70" />
-                امکان پرداخت با چک
-              </label>
-              <Switch
-                id="offer-check"
-                checked={checkOn}
-                onCheckedChange={(v) => {
-                  setCheckOn(v);
-                  if (v && !checkPercent) setCheckPercent('50');
-                  if (v && !checkDays) setCheckDays('60');
-                }}
-                aria-label="امکان پرداخت با چک"
-              />
-            </div>
-            {checkOn && (
-              <div className="mt-2 grid grid-cols-2 gap-2 rounded-md border bg-card p-2.5">
-                <div>
-                  <label htmlFor="offer-check-percent" className="mb-1 block text-[10px] font-bold text-muted-foreground">
-                    درصد مبلغ با چک
-                  </label>
-                  <NumField
-                    value={checkPercent}
-                    onChange={setCheckPercent}
-                    suffix="٪"
-                    ariaLabel="درصد مبلغ با چک"
-                    invalid={num(checkPercent) < 10 || num(checkPercent) > 100}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="offer-check-days" className="mb-1 block text-[10px] font-bold text-muted-foreground">
-                    حداکثر سرسید چک
-                  </label>
-                  <NumField
-                    value={checkDays}
-                    onChange={setCheckDays}
-                    suffix="روز"
-                    ariaLabel="حداکثر سرسید چک"
-                    invalid={num(checkDays) < 1 || num(checkDays) > 365}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* سوییچ ارسال به محل */}
-            <div className="mt-2.5 flex items-center justify-between gap-3 border-t pt-2.5">
-              <label htmlFor="offer-delivery" className="flex items-center gap-1.5 text-xs font-bold">
-                <Truck size={14} className="text-muted-foreground/70" />
-                ارسال به محل خریدار
-              </label>
-              <Switch
-                id="offer-delivery"
-                checked={deliveryOn}
-                onCheckedChange={setDeliveryOn}
-                aria-label="ارسال به محل خریدار"
-              />
-            </div>
-            {deliveryOn && (
-              <div className="mt-2 rounded-md border bg-card p-2.5">
-                <span className="mb-1.5 block text-[10px] font-bold text-muted-foreground">
-                  هزینهٔ حمل با …
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  {(
-                    [
-                      { key: 'seller', label: 'فروشنده' },
-                      { key: 'customer', label: 'مشتری' },
-                    ] as const
-                  ).map(({ key, label }) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setShipBy(key)}
-                      aria-pressed={shipBy === key}
-                      className={cn(
-                        'rounded-md border px-2 py-2 text-xs font-bold transition-colors',
-                        shipBy === key
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground',
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ─── متن پیشنهاد — مهم‌ترین فیلد ─── */}
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value.slice(0, 1500))}
-            rows={7}
-            dir="rtl"
-            placeholder={
-              'جزئیات پیشنهاد تامین خود را در این بخش به‌صورت روشن برای کاربر وارد کنید؛\nقیمت، حداقل سفارش، نحوهٔ پرداخت، شرایط ارسال و تخفیف را فراموش نکنید.'
-            }
-            className="mt-3 w-full resize-none rounded-lg border border-input bg-card p-3 text-xs leading-6 outline-none transition-colors focus:border-primary"
-            aria-label="متن پیشنهاد تامین"
-          />
-
-          {/* زیر فیلد: لینک نمونهٔ پارامتریک + شمارنده */}
-          <div className="mt-1.5 flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setShowSample((v) => !v)}
-              aria-expanded={showSample}
-              className="flex items-center gap-1 text-[11px] font-bold text-primary transition-colors hover:underline"
-            >
-              <FileText size={13} />
-              نمونه پیشنهاد تامین
-              <ChevronDown size={13} className={cn('transition-transform', showSample && 'rotate-180')} />
-            </button>
-            <span className="text-[10px] text-muted-foreground">{toFa(message.length)} / {toFa(1500)}</span>
-          </div>
-
-          {/* نمونهٔ پارامتریک — با اطلاعات شما و این خریدار آماده شده */}
-          {showSample && (
-            <div className="mt-2 rounded-lg border border-dashed bg-secondary/40 p-3">
-              <p className="text-[10px] font-bold leading-5 text-muted-foreground">
-                {isGroup
-                  ? 'نمونهٔ عمومی برای ارسال گروهی — بخوانید و در صورت نیاز ویرایش کنید:'
-                  : 'نمونه — با اطلاعات شما و این خریدار آماده شده است:'}
+            {fee > balance && (
+              <p className="mt-1 font-bold text-red-600">
+                موجودی کافی نیست —{' '}
+                <button type="button" className="underline" onClick={() => setNeedWallet(true)}>
+                  شارژ کیف پول
+                </button>
               </p>
-              <p className="mt-1.5 max-h-56 overflow-y-auto whitespace-pre-line text-[11px] leading-6 text-foreground/85">
-                {sample}
-              </p>
-              <Button size="sm" className="mt-2.5 w-full rounded-md" onClick={useSample}>
-                <Copy size={13} /> استفاده از این نمونه
-              </Button>
-            </div>
-          )}
-
-          <div className="mt-3 flex gap-2">
-            <Button
-              className="flex-1 rounded-md"
-              onClick={send}
-              disabled={pending || message.trim().length < 5}
-            >
-              {pending ? (
-                <>
-                  <Loader2 size={15} className="animate-spin" /> در حال ارسال…
-                </>
-              ) : isGroup ? (
-                <>
-                  <Send size={15} /> ارسال گروهی و پرداخت {priceFa(fee)}
-                </>
-              ) : (
-                <>
-                  <Send size={15} /> ارسال پیشنهاد
-                </>
-              )}
-            </Button>
-            <Button variant="outline" className="rounded-md" onClick={close} disabled={pending}>
-              انصراف
-            </Button>
-          </div>
-        </div>
+            )}
+          </>
+        ) : quota ? (
+          <p>
+            سهمیه امروز: <b>{toFa(quota.left)}</b> از <b>{toFa(quota.dailyLimit)}</b> پیشنهاد باقی مانده.
+          </p>
+        ) : null}
       </div>
 
-      {/* الگوی همیشگی ۱-۱۱: موجودی ناکافی → مودال شارژ (روی مودال ارسال، همیشه بالا) */}
+      {/* ─── نوع کالا + حداقل خرید — از دستهٔ هدف ─── */}
+      {category && (
+        <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+          <div>
+            <label htmlFor="offer-product-type" className="mb-1 block text-[11px] font-bold text-muted-foreground">
+              نوع {category.categoryName} <span className="font-normal">(اختیاری)</span>
+            </label>
+            <Input
+              id="offer-product-type"
+              value={productType}
+              onChange={(e) => setProductType(e.target.value.slice(0, 60))}
+              placeholder={category.example ? `مثلا : ${category.example}` : 'مثلا : اکبری'}
+              className="h-9 rounded-md text-xs"
+              maxLength={60}
+            />
+          </div>
+          <div>
+            <label htmlFor="offer-min-order" className="mb-1 block text-[11px] font-bold text-muted-foreground">
+              حداقل خرید <span className="font-normal">(اختیاری)</span>
+            </label>
+            <NumField
+              value={minOrder}
+              onChange={setMinOrder}
+              suffix={category.unit}
+              ariaLabel="حداقل خرید"
+              placeholder="مثلا : 500"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ─── شرایط تامین — سوییچ‌ها فقط فیلد وابستهٔ خودشان را ظاهر می‌کنند ─── */}
+      <div className="mt-3 rounded-lg border bg-secondary/30 p-3">
+        <p className="text-[10px] font-bold leading-4 text-muted-foreground">
+          شرایط تامین (اختیاری) — با مشخص‌کردن این‌ها، خریدار می‌تواند پیشنهاد شما را
+          راحت‌تر با بقیه مقایسه کند.
+        </p>
+
+        {/* سوییچ چک */}
+        <div className="mt-2.5 flex items-center justify-between gap-3">
+          <label htmlFor="offer-check" className="flex items-center gap-1.5 text-xs font-bold">
+            <Banknote size={14} className="text-muted-foreground/70" />
+            امکان پرداخت با چک
+          </label>
+          <Switch
+            id="offer-check"
+            checked={checkOn}
+            onCheckedChange={(v) => {
+              setCheckOn(v);
+              if (v && !checkPercent) setCheckPercent('50');
+              if (v && !checkDays) setCheckDays('60');
+            }}
+            aria-label="امکان پرداخت با چک"
+          />
+        </div>
+        {checkOn && (
+          <div className="mt-2 grid grid-cols-2 gap-2 rounded-md border bg-card p-2.5">
+            <div>
+              <label htmlFor="offer-check-percent" className="mb-1 block text-[10px] font-bold text-muted-foreground">
+                درصد مبلغ با چک
+              </label>
+              <NumField
+                value={checkPercent}
+                onChange={setCheckPercent}
+                suffix="٪"
+                ariaLabel="درصد مبلغ با چک"
+                invalid={num(checkPercent) < 10 || num(checkPercent) > 100}
+              />
+            </div>
+            <div>
+              <label htmlFor="offer-check-days" className="mb-1 block text-[10px] font-bold text-muted-foreground">
+                حداکثر سرسید چک
+              </label>
+              <NumField
+                value={checkDays}
+                onChange={setCheckDays}
+                suffix="روز"
+                ariaLabel="حداکثر سرسید چک"
+                invalid={num(checkDays) < 1 || num(checkDays) > 365}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* سوییچ ارسال به محل */}
+        <div className="mt-2.5 flex items-center justify-between gap-3 border-t pt-2.5">
+          <label htmlFor="offer-delivery" className="flex items-center gap-1.5 text-xs font-bold">
+            <Truck size={14} className="text-muted-foreground/70" />
+            ارسال به محل خریدار
+          </label>
+          <Switch
+            id="offer-delivery"
+            checked={deliveryOn}
+            onCheckedChange={setDeliveryOn}
+            aria-label="ارسال به محل خریدار"
+          />
+        </div>
+        {deliveryOn && (
+          <div className="mt-2 rounded-md border bg-card p-2.5">
+            <span className="mb-1.5 block text-[10px] font-bold text-muted-foreground">
+              هزینهٔ حمل با …
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              {(
+                [
+                  { key: 'seller', label: 'فروشنده' },
+                  { key: 'customer', label: 'مشتری' },
+                ] as const
+              ).map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setShipBy(key)}
+                  aria-pressed={shipBy === key}
+                  className={cn(
+                    'rounded-md border px-2 py-2 text-xs font-bold transition-colors',
+                    shipBy === key
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ─── متن پیشنهاد — مهم‌ترین فیلد ─── */}
+      <textarea
+        value={message}
+        onChange={(e) => setMessage(e.target.value.slice(0, 1500))}
+        rows={7}
+        dir="rtl"
+        placeholder={
+          'جزئیات پیشنهاد تامین خود را در این بخش به‌صورت روشن برای کاربر وارد کنید؛\nقیمت، حداقل سفارش، نحوهٔ پرداخت، شرایط ارسال و تخفیف را فراموش نکنید.'
+        }
+        className="mt-3 w-full resize-none rounded-lg border border-input bg-card p-3 text-xs leading-6 outline-none transition-colors focus:border-primary"
+        aria-label="متن پیشنهاد تامین"
+      />
+
+      {/* زیر فیلد: لینک نمونهٔ پارامتریک + شمارنده */}
+      <div className="mt-1.5 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setShowSample((v) => !v)}
+          aria-expanded={showSample}
+          className="flex items-center gap-1 text-[11px] font-bold text-primary transition-colors hover:underline"
+        >
+          <FileText size={13} />
+          نمونه پیشنهاد تامین
+          <ChevronDown size={13} className={cn('transition-transform', showSample && 'rotate-180')} />
+        </button>
+        <span className="text-[10px] text-muted-foreground">{toFa(message.length)} / {toFa(1500)}</span>
+      </div>
+
+      {/* نمونهٔ پارامتریک — با اطلاعات شما و این خریدار آماده شده */}
+      {showSample && (
+        <div className="mt-2 rounded-lg border border-dashed bg-secondary/40 p-3">
+          <p className="text-[10px] font-bold leading-5 text-muted-foreground">
+            {isGroup
+              ? 'نمونهٔ عمومی برای ارسال گروهی — بخوانید و در صورت نیاز ویرایش کنید:'
+              : 'نمونه — با اطلاعات شما و این خریدار آماده شده است:'}
+          </p>
+          <p className="mt-1.5 max-h-56 overflow-y-auto whitespace-pre-line text-[11px] leading-6 text-foreground/85">
+            {sample}
+          </p>
+          <Button size="sm" className="mt-2.5 w-full rounded-md" onClick={useSample}>
+            <Copy size={13} /> استفاده از این نمونه
+          </Button>
+        </div>
+      )}
+
+      <div className="mt-3 flex gap-2">
+        <Button
+          className="flex-1 rounded-md"
+          onClick={send}
+          disabled={pending || message.trim().length < 5}
+        >
+          {pending ? (
+            <>
+              <Loader2 size={15} className="animate-spin" /> در حال ارسال…
+            </>
+          ) : isGroup ? (
+            <>
+              <Send size={15} /> ارسال گروهی و پرداخت {priceFa(fee)}
+            </>
+          ) : (
+            <>
+              <Send size={15} /> ارسال پیشنهاد
+            </>
+          )}
+        </Button>
+        <Button variant="outline" className="rounded-md" onClick={onCancel} disabled={pending}>
+          انصراف
+        </Button>
+      </div>
+
+      {/* الگوی همیشگی ۱-۱۱: موجودی ناکافی → مودال شارژ (همیشه بالا) */}
       <NeedPackageModal
         open={needWallet}
         onClose={() => setNeedWallet(false)}
@@ -598,5 +557,80 @@ export function SupplyOfferModal({
         )} شارژ لازم دارید (موجودی فعلی: ${priceFa(balance)}).`}
       />
     </>
+  );
+}
+
+/** مودال تکی — عنوان خیلی واضح با نام دستهٔ کالا (خواستهٔ مالک ۱-۱۱:
+ *  «وقتی مدال باز می‌شود بالایش بنویسد، مثلاً: پیشنهاد تامین برنج») */
+export function SupplyOfferModal({
+  open,
+  onClose,
+  onSent,
+  targets,
+  quota,
+  products,
+  category,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** پس از ارسال موفق — شناسهٔ خریدارانی که پیام گرفتند؛ فهرست کارت‌هایشان را از انتخاب درمی‌آورد */
+  onSent?: (buyerIds: string[]) => void;
+  /** یک هدف = تکی؛ بیشتر = گروهی */
+  targets: BuyerDirectoryItem[];
+  quota: OfferQuota | null;
+  /** آگهی‌های خود فروشنده — برای پرکردن پارامترهای نمونه (کالا/واحد/قیمت) */
+  products?: Product[];
+  /** دستهٔ آخرِ هدف — از خود کارت خریدار می‌آید */
+  category: Category | null;
+}) {
+  if (!open || targets.length === 0) return null;
+
+  const isGroup = targets.length > 1;
+  const first = targets[0];
+
+  return (
+    /* z-[60]: بالای نوار پایین موبایل (z-50) — دکمه‌های ارسال زیر نوار نروند */
+    <div
+      className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="پیشنهاد تامین"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-xl border bg-card p-5 shadow-2xl">
+        <div className="flex items-center gap-2.5">
+          <span className="grid size-10 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+            {isGroup ? <Users size={19} /> : <Send size={18} />}
+          </span>
+          <div className="min-w-0">
+            {/* عنوان واضح با نام دستهٔ کالا — «پیشنهاد تامین برنج» */}
+            <h2 className="truncate text-sm font-extrabold">
+              {isGroup ? 'ارسال گروهی پیشنهاد تامین' : 'پیشنهاد تامین'}
+              {category?.categoryName ? ` ${category.categoryName}` : ''}
+            </h2>
+            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+              {isGroup ? (
+                <>برای {toFa(targets.length)} خریدار</>
+              ) : (
+                <>
+                  {first.buyerName} — خریدار <b className="text-foreground/80">{first.categoryName}</b>
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3">
+          <SupplyOfferForm
+            targets={targets}
+            quota={quota}
+            products={products}
+            category={category}
+            onSent={onSent}
+            onCancel={onClose}
+          />
+        </div>
+      </div>
+    </div>
   );
 }

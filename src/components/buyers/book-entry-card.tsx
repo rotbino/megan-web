@@ -2,14 +2,13 @@
 
 /**
  * کارت آیتم دفتر خرید (سمت سایت) — عین چیدمان سادهٔ کارت درخواست خرید باسکول:
- *  • سربرگ: آواتار دایره‌ای + نام خریدار (نام اول می‌آید) + چک‌باکس انتخاب گروهی
+ *  • سربرگ: آواتار دایره‌ای + نام خریدار
  *  • جمله: «خریدار عمده ۲ تن پسته به‌صورت ماهیانه هستم»
  *  • پانویس: آیکون تقویم + آخرین فعالیت، آیکون مکان + استان/شهر
- *  • اقدام: دکمهٔ «ارسال پیشنهاد تامین» با عنوان (بازگشت خواستهٔ مالک — آیکونِ
- *    تنها به‌اندازهٔ کافی گویا نبود) — دکمه و چک‌باکس فقط با انتخاب «دستهٔ آخر»
- *    کالا فعال‌اند (خواستهٔ مالک): دستهٔ کالا تا حد زیادی مشخص می‌شود و پیشنهاد
- *    برای خریدار فیلترپذیر است؛ غیر از آن حالت دکمه کم‌رنگ و کلیکش راهنمای
- *    «دستهٔ آخر را انتخاب کنید» می‌دهد.
+ *  • اقدام: دکمهٔ «ارسال پیشنهاد تامین» — همیشه فعال (خواستهٔ مالک ۱-۱۱):
+ *    هر نیاز ثبت‌شده از ابتدا به یک دستهٔ آخر وصل است؛ دستهٔ کالا از خود
+ *    همین کارت می‌آید و پیشنهاد دقیقاً برای همان دسته می‌رود. ارسال گروهی
+ *    از دکمهٔ بالای لیست (ویزار) انجام می‌شود — دیگر چک‌باکسی روی کارت نیست.
  *  • نقطهٔ سبز روی آواتار = فعال در ۷ روز گذشته؛ غایبِ بیش از ۹۰ روز کم‌رنگ.
  */
 
@@ -20,19 +19,10 @@ import { PERIOD_LABELS, type BuyerDirectoryItem } from '@/lib/types';
 
 export function BookEntryCard({
   entry,
-  selectable,
-  selected,
-  onToggle,
   onOffer,
-  offerReady = true,
 }: {
   entry: BuyerDirectoryItem;
-  selectable?: boolean;
-  selected?: boolean;
-  onToggle?: () => void;
   onOffer: () => void;
-  /** فقط با دستهٔ آخرِ انتخاب‌شده فعال است — وگرنه دکمه/چک‌باکس قفل و راهنما (خواستهٔ مالک) */
-  offerReady?: boolean;
 }) {
   const location = [entry.province, entry.city].filter(Boolean).join(' - ');
   const initial = entry.buyerName.trim().charAt(0) || 'خ';
@@ -44,7 +34,7 @@ export function BookEntryCard({
         entry.stale && 'opacity-60 hover:opacity-100',
       )}
     >
-      {/* سربرگ — آواتار + نام خریدار + چک‌باکس انتخاب گروهی */}
+      {/* سربرگ — آواتار + نام خریدار */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-extrabold text-primary">
@@ -59,26 +49,6 @@ export function BookEntryCard({
           </span>
           <h3 className="truncate text-sm font-extrabold sm:text-[15px]">{entry.buyerName}</h3>
         </div>
-
-        {selectable && (
-          <label
-            className={cn(
-              'flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground',
-              !offerReady && 'pointer-events-none opacity-40',
-            )}
-            title={offerReady ? 'انتخاب برای ارسال گروهی' : 'ابتدا دستهٔ آخر کالا را انتخاب کنید'}
-          >
-            <input
-              type="checkbox"
-              checked={selected}
-              onChange={() => onToggle?.()}
-              disabled={!offerReady}
-              className="size-4 accent-primary"
-              aria-label="انتخاب برای ارسال گروهی"
-            />
-            <span className="hidden sm:inline">انتخاب</span>
-          </label>
-        )}
       </div>
 
       {/* جمله — عین باسکول: خریدار … هستم */}
@@ -103,20 +73,13 @@ export function BookEntryCard({
         )}
       </div>
 
-      {/* اقدام — دکمهٔ عنوان‌دار (خواستهٔ مالک: عنوان گویاتر از آیکون تنهاست).
-          قفل تا انتخاب دستهٔ آخر؛ کلیک در حالت قفل → راهنمای والد (توست) */}
+      {/* اقدام — دکمهٔ عنوان‌دار؛ همیشه فعال، دسته از خود کارت */}
       <div className="mt-3 border-t border-border/60 pt-3">
         <button
           type="button"
           onClick={onOffer}
-          aria-disabled={!offerReady || undefined}
-          title={offerReady ? 'ارسال پیشنهاد تامین' : 'برای فعال‌شدن، دستهٔ آخر کالا را از «دسته‌ها» انتخاب کنید'}
-          className={cn(
-            'flex items-center gap-1.5 rounded-md border border-input bg-card px-3.5 py-2 text-xs font-bold text-foreground/75 transition-colors',
-            offerReady
-              ? 'hover:border-foreground/30 hover:bg-secondary hover:text-foreground'
-              : 'cursor-not-allowed opacity-45',
-          )}
+          title={`ارسال پیشنهاد تامین ${entry.categoryName}`}
+          className="flex items-center gap-1.5 rounded-md border border-input bg-card px-3.5 py-2 text-xs font-bold text-foreground/75 transition-colors hover:border-foreground/30 hover:bg-secondary hover:text-foreground"
         >
           <Send size={14} />
           ارسال پیشنهاد تامین
