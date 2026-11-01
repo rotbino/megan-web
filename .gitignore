@@ -52,3 +52,5 @@ prompt
 server.log
 # Skills directory
 /skills/
+# دادهٔ زمان اجرای لاگ جستجو/گوگل — محلی است، وارد گیت نمی‌شود
+/.data/

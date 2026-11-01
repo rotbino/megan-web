@@ -103,3 +103,85 @@ async function writeLog(entries: SearchLogEntry[]): Promise<void> {
     // بدون دسترسی نوشتن → بی‌صدا رد؛ صفحه جستجوها seedها را نشان می‌دهد
   }
 }
+
+// ─── جدول دوم: ورودی‌های واقعی گوگل (به تفکیک تاریخ) ────────────────────────
+//
+// خواستهٔ مالک: «اگر تونستی مکانیزمی برای ورود از گوگل پیدا کنی با هر ورود
+// از گوگل اون عبارت رو مقدارش رو یکی بالا ببر … و حتی اگر تونستی به تفکیک
+// تاریخ هم ثبت کن توی یه جدول دیگه. ولی … اون جدول دومی باید بر اساس
+// واقعیت باشه که بفهمیم واقعا از گوگل چقدر ورودی داریم.»
+//
+// این جدول فقط دادهٔ واقعی دارد (بدون بذر/برندینگ) و از شمارندهٔ جستجوی
+// داخلی جدا است: هر ورودی با رفرر گوگل به صفحه جستجو +۱ می‌خورد — هم در
+// مجموع کل و هم در ستون همان روز (تاریخ محلی).
+
+export interface GoogleLogEntry {
+  q: string;
+  /** مجموع ورودی‌های واقعی از گوگل */
+  total: number;
+  firstAt: number;
+  lastAt: number;
+  /** شمارش روزانه — کلید 'YYYY-MM-DD' به وقت محلی سرور */
+  days: Record<string, number>;
+}
+
+const GOOGLE_FILE = path.join(DATA_DIR, 'google-log.json');
+
+/** امروز به وقت محلی — 'YYYY-MM-DD' */
+function localDay(ts = Date.now()): string {
+  const d = new Date(ts);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function isGoogleEntry(x: unknown): x is GoogleLogEntry {
+  if (typeof x !== 'object' || x === null) return false;
+  const e = x as Record<string, unknown>;
+  return (
+    typeof e.q === 'string' &&
+    typeof e.total === 'number' &&
+    typeof e.firstAt === 'number' &&
+    typeof e.lastAt === 'number' &&
+    typeof e.days === 'object' &&
+    e.days !== null
+  );
+}
+
+/** خواندن جدول واقعی گوگل — خالی در نبود فایل */
+export async function readGoogleLog(): Promise<GoogleLogEntry[]> {
+  try {
+    const parsed: unknown = JSON.parse(await fs.readFile(GOOGLE_FILE, 'utf8'));
+    if (Array.isArray(parsed)) return parsed.filter(isGoogleEntry);
+  } catch {
+    /* فایل نیست/خراب → خالی */
+  }
+  return [];
+}
+
+/**
+ * ثبت یک ورودی واقعی از گوگل — +۱ روی مجموع و روی همان روز.
+ * هم‌زمان نوشتن اتمی؛ خطا هیچ اثری روی ریکوئست ندارد.
+ */
+export async function recordGoogleEntry(rawQ: string): Promise<void> {
+  const q = normalizeQuery(rawQ);
+  if (!q) return;
+  try {
+    const entries = await readGoogleLog();
+    const now = Date.now();
+    const day = localDay(now);
+    const existing = entries.find((e) => e.q === q);
+    if (existing) {
+      existing.total += 1;
+      existing.lastAt = now;
+      existing.days[day] = (existing.days[day] ?? 0) + 1;
+    } else {
+      entries.push({ q, total: 1, firstAt: now, lastAt: now, days: { [day]: 1 } });
+    }
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    const tmp = `${GOOGLE_FILE}.tmp`;
+    await fs.writeFile(tmp, JSON.stringify(entries), 'utf8');
+    await fs.rename(tmp, GOOGLE_FILE);
+  } catch {
+    // بدون دسترسی نوشتن → بی‌صدا رد
+  }
+}

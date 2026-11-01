@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { apiBase, joinUrl } from '@/lib/api/client';
 import { GOOGLE_ENTRY_QS } from '@/lib/popular-searches';
+import { getSearchUniverse } from '@/lib/search-universe';
 import { SITE_URL } from '@/lib/site';
 
 const BASE = SITE_URL;
@@ -45,7 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // سه منبع واقعی — هر کدام مستقل؛ خرابی یکی بقیه را نمی‌اندازد
-  const [categoryNodes, productItems] = await Promise.all([
+  const [categoryNodes, productItems, universe] = await Promise.all([
     fetch(joinUrl(apiBase(), '/categories/getAllCategories'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -64,6 +65,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .then((r) => r.json() as Promise<{ status: boolean; data?: { items: SitemapProduct[] } }>)
       .then((j) => (j?.status && j.data?.items ? j.data.items : []))
       .catch(() => [] as SitemapProduct[]),
+    getSearchUniverse().catch(() => []),
   ]);
 
   // فروشندگانِ دارای آگهی — از همان لیست واقعی محصولات (یکتا)
@@ -87,10 +89,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.4,
   }));
 
-  // صفحات جستجوی ورودی‌های گوگل — هر کالا یک URL ایندکس‌پذیر اختصاصی (long-tail سئو).
-  // عنوان‌های گوگلی (مثل «خرید سیب زمینی عمده در تهران») به همین آدرس‌های هسته‌ای
-  // لینک می‌شوند؛ آدرس‌های شنی هم با ریدایرکت دائمی به همین‌ها می‌رسند.
-  const searchPages: MetadataRoute.Sitemap = GOOGLE_ENTRY_QS.map((q) => ({
+  // صفحات جستجوی ورودی‌های گوگل — هر کالا (و هر کالا+نوع) یک URL ایندکس‌پذیر
+  // اختصاصی (long-tail سئو). عنوان‌های گوگلی (مثل «خرید سیب زمینی عمده در
+  // تهران» یا «فروش عمده برنج هاشمی در همدان») همه به همین آدرس‌های هسته‌ای
+  // لینک می‌شوند از صفحه /searches؛ آدرس‌های شنی هم با ریدایرکت دائمی به
+  // همین‌ها می‌رسند. جهان جستجو هزاران عبارت می‌سازد اما URL یکتا (هسته)
+  // حدود هزار و اندی است — سایت‌مپ سبک می‌ماند و همهٔ صفحات فرود پوشش داده
+  // می‌شوند (خواستهٔ مالک: اولین کرال گوگل همه را ایندکس کند).
+  const seedCores = new Set<string>(GOOGLE_ENTRY_QS);
+  const searchCores = [
+    ...seedCores,
+    ...new Set(universe.map((p) => p.core).filter((c) => !seedCores.has(c))),
+  ];
+  const searchPages: MetadataRoute.Sitemap = searchCores.map((q) => ({
     url: `${BASE}/product-list/search/${encodeURIComponent(q)}`,
     changeFrequency: 'daily' as const,
     priority: 0.7,
