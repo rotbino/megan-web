@@ -201,11 +201,15 @@ export interface PanelProfile {
   certificates: Array<{ id: string; url: string; thumbUrl: string }>;
 }
 
-/** لیست نشان‌شده — پاسخ سرویس: { lists: [{ id, name, cnt, saved }] } */
+/** لیست نشان‌شده — پاسخ سرویس: { lists: [{ id, name, cnt, saved?, targetStatus? }] } */
 export interface SavedList {
   id: string; // ObjectId
   name: string; // «سیب زمینی»
   cnt: number; // تعداد نشان‌شده‌ها
+  /** فقط همراه targetUserId — آیا هدف در این لیست است؟ (مودال CRM) */
+  saved?: boolean;
+  /** وضعیت CRM هدف در همین لیست — فقط همراه targetUserId */
+  targetStatus?: SavedUserStatusKey | null;
 }
 
 /** وضعیت CRM نشان‌شده — چیپ‌های صفحه جزئیات لیست باسکول */

@@ -40,7 +40,7 @@ export async function SeoCityLinks({ core, excludeCity }: { core: string; exclud
             <nav aria-label={`شهرهای ${core}`} className="mt-3">
               <ul className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {cityLinks.map((l) => (
-                  <li key={l.url}>
+                  <li key={l.phrase}>
                     <Link
                       href={l.url}
                       className="block truncate rounded px-1.5 py-1 text-[12.5px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
@@ -65,7 +65,7 @@ export async function SeoCityLinks({ core, excludeCity }: { core: string; exclud
             <nav aria-label={`انواع ${core}`} className="mt-3">
               <ul className="flex flex-wrap gap-x-4 gap-y-1">
                 {varietyLinks.map((l) => (
-                  <li key={l.url}>
+                  <li key={l.phrase}>
                     <Link
                       href={l.url}
                       className="block truncate rounded px-1.5 py-1 text-[12.5px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"

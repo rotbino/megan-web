@@ -38,7 +38,7 @@ const INTENT_SUBTITLES: Record<AuthIntent, string> = {
   price: 'برای مشاهده قیمت، شماره موبایل خود را وارد کنید.',
   call: 'برای تماس ابتدا وارد شوید؛ شماره موبایل خود را وارد کنید.',
   rfq: 'برای ثبت درخواست خرید، شماره موبایل خود را وارد کنید.',
-  save: 'برای ذخیره کردن، شماره موبایل خود را وارد کنید.',
+  save: 'برای نشان کردن، شماره موبایل خود را وارد کنید.',
   chat: 'برای گفتگو با فروشنده، شماره موبایل خود را وارد کنید.',
   review: 'برای ثبت نظر، شماره موبایل خود را وارد کنید.',
   offer: 'برای ارسال پیشنهاد تامین، شماره موبایل خود را وارد کنید.',
@@ -176,7 +176,8 @@ export function AuthModal({
             />
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
-          <Button type="submit" size="lg" className="w-full rounded-md" disabled={loginMutation.isPending}>
+          {/* هم‌قدِ اینپوت موبایل — قانون تناسب RULES.md §۱ (h-12 / md:h-13) */}
+          <Button type="submit" size="lg" className="h-12 w-full rounded-md md:h-13" disabled={loginMutation.isPending}>
             {loginMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : null}
             {loginMutation.isPending ? 'در حال ورود…' : 'ورود به ایمچ'}
           </Button>
@@ -198,7 +199,8 @@ export function AuthModal({
             />
           </div>
           {error && <p className="text-center text-xs text-destructive">{error}</p>}
-          <Button type="submit" size="lg" className="w-full rounded-md" disabled={loginMutation.isPending}>
+          {/* هم‌قدِ اینپوت رمز (h-12 / md:h-13) */}
+          <Button type="submit" size="lg" className="h-12 w-full rounded-md md:h-13" disabled={loginMutation.isPending}>
             {loginMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : null}
             {loginMutation.isPending ? 'در حال بررسی…' : 'ورود'}
           </Button>

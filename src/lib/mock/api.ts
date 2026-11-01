@@ -153,14 +153,48 @@ export async function getProduct(id: number): Promise<Product | null> {
   }
 }
 
-export async function getRelatedProducts(product: Product, limit = 6): Promise<Product[]> {
+/** محصولات مشابه — هم‌زیردسته + گسترش هم‌دسته؛ سورت نردبان←ویژه←آپدیت + صفحه‌بندی */
+export async function getRelatedProducts(
+  product: Pick<Product, 'id' | 'subCategoryId' | 'categoryId'>,
+  page = 1,
+  pageSize = 20,
+): Promise<{ items: Product[]; total: number; page: number; pageCount: number }> {
   try {
-    const raw = await apiFetch<RawProduct[]>(
+    const raw = await apiFetch<{
+      items: RawProduct[];
+      total: number;
+      page: number;
+      pageCount: number;
+    }>(
       '/products/getRelatedProducts',
-      { subCategoryId: product.subCategoryId, excludeId: product.id, limit },
+      {
+        subCategoryId: product.subCategoryId,
+        excludeId: product.id,
+        categoryId: product.categoryId,
+        page,
+        pageSize,
+      },
       { auth: false },
     );
-    return raw.map(toProduct);
+    return { ...raw, items: raw.items.map(toProduct) };
+  } catch {
+    return { items: [], total: 0, page, pageCount: 0 };
+  }
+}
+
+/** آگهی‌های دیگر همان فروشنده — ریل افقی صفحهٔ محصول */
+export async function getSellerProducts(
+  userName: string,
+  excludeId?: number,
+  limit = 12,
+): Promise<Product[]> {
+  try {
+    const raw = await apiFetch<{ items: RawProduct[]; total: number }>(
+      '/products/getSellerProducts',
+      { userName, excludeId, limit },
+      { auth: false },
+    );
+    return (raw.items ?? []).map(toProduct);
   } catch {
     return [];
   }
@@ -818,8 +852,19 @@ export async function ladderProduct(input: {
 
 // ─── نشان شده ها (B7 — واقعی) ──────────────────────────────────────────────
 
-export async function getSavedLists(): Promise<SavedList[]> {
-  return apiFetch<SavedList[]>('/saved/getSavedLists', {});
+/** لیست‌های نشان‌شدهٔ من — با targetUserId: هر لیست پرچم saved و وضعیت هدف
+ *  را هم می‌گیرد (پر کردن چک‌باکس‌های مودال CRM نشان‌کردن) */
+export async function getSavedLists(targetUserId?: string): Promise<SavedList[]> {
+  return apiFetch<SavedList[]>('/saved/getSavedLists', { targetUserId });
+}
+
+/** مودال CRM نشان‌کردن — سینک عضویت هدف در لیست‌ها + وضعیت پیگیری */
+export async function markUser(input: {
+  targetUserId: string;
+  listIds: string[];
+  status?: SavedUserItem['status'];
+}): Promise<{ added: number; removed: number; marked: boolean; status: SavedUserItem['status'] | null }> {
+  return apiFetch('/saved/markUser', input);
 }
 
 export async function getSavedListUsers(listId: string): Promise<SavedUserItem[] | null> {
@@ -1292,48 +1337,6 @@ export async function getSellerPhone(target: { id?: number; userName?: string })
   callLogged: boolean;
 }> {
   return apiFetch('/products/getSellerPhone', target);
-}
-
-// ─── علاقه‌مندی‌ها — نشان آگهی + ذخیره فروشنده (خواسته مالک ۳۰-۱۰) ─────────
-
-/** نشان/حذف نشان آگهی */
-export async function toggleProductFavorite(productId: number): Promise<{ saved: boolean }> {
-  return apiFetch<{ saved: boolean }>('/favorites/toggleProduct', { productId });
-}
-
-/** ذخیره/حذف صفحه اختصاصی فروشنده */
-export async function toggleSellerFavorite(userName: string): Promise<{ saved: boolean }> {
-  return apiFetch<{ saved: boolean }>('/favorites/toggleSeller', { userName });
-}
-
-/** شناسه آگهی‌های نشان‌شده من — وضعیت اولیه دکمه‌های ذخیره */
-export async function getMyProductFavoriteIds(): Promise<number[]> {
-  return apiFetch<number[]>('/favorites/getMyProductFavoriteIds', {});
-}
-
-/** آیا این فروشنده را ذخیره کرده‌ام؟ */
-export async function isSellerSaved(userName: string): Promise<boolean> {
-  const r = await apiFetch<{ saved: boolean }>('/favorites/isSellerSaved', { userName });
-  return r.saved;
-}
-
-/** فروشنده ذخیره‌شده — کارت سبک برای صفحه علاقه‌مندی‌ها */
-export interface FavoriteSellerCard {
-  userName: string;
-  firstName: string;
-  lastName: string;
-  isVerified: boolean;
-  isPremium: boolean;
-  avatarUrl: string | null;
-  productCount: number;
-  provinceName: string | null;
-  cityName: string | null;
-  savedAt: string;
-}
-
-/** آگهی‌ها + فروشندگان ذخیره‌شده من */
-export async function getMyFavorites(): Promise<{ products: Product[]; sellers: FavoriteSellerCard[] }> {
-  return apiFetch<{ products: Product[]; sellers: FavoriteSellerCard[] }>('/favorites/getMyFavorites', {});
 }
 
 // ─── آمار آگهی (خواسته مالک ۳۰-۱۰) ──────────────────────────────────────────

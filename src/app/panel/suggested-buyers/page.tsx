@@ -9,11 +9,11 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Crown, Info, Lock } from 'lucide-react';
-import { useMyPackage, useSaveBuyer, useSuggestedBuyers } from '@/lib/mock/hooks';
-import { useToast } from '@/hooks/use-toast';
+import { useMyPackage, useSuggestedBuyers } from '@/lib/mock/hooks';
 import { Button } from '@/components/ui/button';
 import { PanelCard, PanelPromoCards } from '@/components/panel/panel-parts';
 import { BuyerCard } from '@/components/panel/buyer-card';
+import { MarkUserSheet, type MarkTarget } from '@/components/shared/mark-user-sheet';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { SuggestedBuyer } from '@/lib/types';
@@ -26,11 +26,10 @@ const TIER_LABEL: Record<SuggestedBuyer['tier'], string> = {
 
 export default function SuggestedBuyersPage() {
   const { data: buyers, isLoading } = useSuggestedBuyers();
-  const saveBuyer = useSaveBuyer();
   // گیت بسته (خواسته مالک): خریداران پیشنهادی ویژه بسته فعال است
   const { data: myPackage } = useMyPackage();
-  const { toast } = useToast();
-  const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
+  // نشان کردن — مودال CRM (خواسته مالک ۱-۱۱ دور هفتم)
+  const [markTarget, setMarkTarget] = useState<MarkTarget | null>(null);
 
   const groups = useMemo(() => {
     const g: Record<SuggestedBuyer['tier'], SuggestedBuyer[]> = { exact: [], 'same-product': [], 'near-category': [] };
@@ -38,21 +37,13 @@ export default function SuggestedBuyersPage() {
     return g;
   }, [buyers]);
 
-  const toggleSave = (buyer: SuggestedBuyer) => {
-    if (savedIds.has(buyer.buyRequest.id)) return;
-    saveBuyer.mutate(
-      {
-        targetUserId: buyer.buyRequest.myuserId,
-        listName: buyer.buyRequest.subcategoryName, // لیست به نام دسته کالا — الگوی باسکول
-      },
-      {
-        onSuccess: () => {
-          setSavedIds((prev) => new Set(prev).add(buyer.buyRequest.id));
-          toast({ description: 'خریدار به لیست نشان شده ها اضافه شد.' });
-        },
-        onError: (err) => toast({ description: err instanceof Error ? err.message : 'نشان کردن ناموفق بود.' }),
-      },
-    );
+  const openMark = (buyer: SuggestedBuyer) => {
+    setMarkTarget({
+      targetUserId: buyer.buyRequest.myuserId,
+      targetName: `${buyer.buyRequest.firstName} ${buyer.buyRequest.lastName}`.trim(),
+      isVerified: buyer.buyRequest.isVerified,
+      defaultListName: buyer.buyRequest.subcategoryName, // الگوی باسکول
+    });
   };
 
   const section = (tier: SuggestedBuyer['tier'], title: string, hint: string) => {
@@ -70,8 +61,7 @@ export default function SuggestedBuyersPage() {
             <BuyerCard
               key={b.buyRequest.id}
               request={b.buyRequest}
-              saved={savedIds.has(b.buyRequest.id)}
-              onToggleSave={() => toggleSave(b)}
+              onToggleSave={() => openMark(b)}
               matchBadge={{ score: b.matchScore, label: TIER_LABEL[b.tier] }}
               relatedHint={`مرتبط با: ${b.relatedProduct}`}
             />
@@ -131,6 +121,11 @@ export default function SuggestedBuyersPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* مودال CRM نشان‌کردن خریدار پیشنهادی */}
+      {markTarget && (
+        <MarkUserSheet open={!!markTarget} onClose={() => setMarkTarget(null)} target={markTarget} />
       )}
     </div>
   );

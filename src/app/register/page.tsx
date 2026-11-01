@@ -201,7 +201,8 @@ export default function RegisterPage() {
                     />
                   </div>
                   {error && <p className="text-xs text-destructive">{error}</p>}
-                  <Button type="submit" size="lg" className="w-full rounded-md" disabled={loginMutation.isPending}>
+                  {/* هم‌قدِ اینپوت موبایل — قانون تناسب RULES.md §۱ (h-12 / md:h-13) */}
+                  <Button type="submit" size="lg" className="h-12 w-full rounded-md md:h-13" disabled={loginMutation.isPending}>
                     {loginMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : null}
                     {loginMutation.isPending ? 'در حال ورود…' : 'ورود به ایمچ'}
                   </Button>
@@ -228,7 +229,8 @@ export default function RegisterPage() {
                     </p>
                   )}
                   {error && <p className="text-center text-xs text-destructive">{error}</p>}
-                  <Button type="submit" size="lg" className="w-full rounded-md" disabled={loginMutation.isPending}>
+                  {/* هم‌قدِ اینپوت رمز (h-12 / md:h-13) */}
+                  <Button type="submit" size="lg" className="h-12 w-full rounded-md md:h-13" disabled={loginMutation.isPending}>
                     {loginMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : null}
                     {loginMutation.isPending ? 'در حال بررسی…' : 'ورود'}
                   </Button>
@@ -297,7 +299,8 @@ export default function RegisterPage() {
                     </Select>
                   </div>
                   {error && <p className="text-xs text-destructive">{error}</p>}
-                  <Button type="submit" size="lg" className="w-full rounded-md" disabled={profileMutation.isPending}>
+                  {/* هم‌قدِ اینپوت‌های فرم (h-12 / md:h-13) */}
+                  <Button type="submit" size="lg" className="h-12 w-full rounded-md md:h-13" disabled={profileMutation.isPending}>
                     {profileMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <MapPin size={17} />}
                     {profileMutation.isPending ? 'در حال ذخیره…' : 'ذخیره و ورود به ایمچ'}
                   </Button>

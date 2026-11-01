@@ -8,7 +8,6 @@ import {
   MapPin,
   Package,
   Phone,
-  Share2,
   ShieldAlert,
   Store,
   User,
@@ -20,17 +19,22 @@ import { ProductImage } from '@/components/shared/product-image';
 import { ProductPrice } from '@/components/shared/product-price';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { LadderBadge, OldAdBadge, PremiumSellerBadge } from '@/components/shared/badges';
-import { SaveProductButton } from '@/components/shared/save-product-button';
+import { MarkUserButton } from '@/components/shared/mark-user-sheet';
 import { ProductViewPing } from '@/components/shared/product-view-ping';
 import { ChatDialog } from '@/components/products/chat-dialog';
-import { RelatedProducts } from '@/components/products/related-products';
-import { SellerRatingBadge } from '@/components/products/seller-rating-badge';
+import { ShareButton } from '@/components/products/share-button';
+import { ProductReviews } from '@/components/products/product-reviews';
+import { SellerProductsRail } from '@/components/products/seller-products-rail';
+import { SellerCtaBox } from '@/components/products/seller-cta-box';
+import { SimilarProducts } from '@/components/products/similar-products';
+import { RelatedSearches } from '@/components/products/related-searches';
 import { SellerOnlineBadge } from '@/components/products/seller-online-badge';
+import { SellerRatingBadge } from '@/components/products/seller-rating-badge';
 import { MobileContactBar } from '@/components/products/mobile-contact-bar';
 import { ArrowLeftIcon } from '@/components/shared/buskool-icons';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { stockFa, toFa } from '@/lib/format';
+import { stockFa, toFa, priceFa } from '@/lib/format';
 import { apiBase, joinUrl } from '@/lib/api/client';
 import { SITE_URL } from '@/lib/site';
 import type { Product } from '@/lib/types';
@@ -73,30 +77,95 @@ async function getProduct(id: number): Promise<Product | null> {
   }
 }
 
+/** آدرس مطلق برای OG/JSON-LD — عکس‌های نسبی به دامنهٔ سایت وصل می‌شوند */
+function absoluteUrl(url: string): string {
+  if (url.startsWith('http')) return url;
+  return `${SITE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id, slug } = await params;
+  const { id } = await params;
   const product = await getProduct(Number(id));
   if (!product) return { title: 'محصول یافت نشد' };
-  const title = `خرید و قیمت ${product.productName} عمده | ${product.cityName.trim()} ${product.provinceName}`;
+
+  const city = product.cityName.trim();
+  const sellerName = `${product.seller.firstName} ${product.seller.lastName}`.trim();
+  // کنونیکال همیشه به آدرس رسمی (slug واقعی محصول) — ورودی شنی سیگنال‌ها را
+  // روی همان URL جمع می‌کند (قانون سئو RULES.md §۴)
+  const canonical = `/product-view/${product.slug}/${product.categoryName}/${product.id}`;
+  // عنوان عمده‌محور (RULES.md §۴): خرید عمده {کالا} در {شهر} | قیمت عمده — ایمچ
+  // (قالب layout خودش « | ایمچ» می‌چسباند — اینجا تکرار نشود)
+  const title = `خرید عمده ${product.productName} در ${city} | قیمت عمده ${product.subCategoryName}`;
+  const description =
+    `خرید عمده ${product.productName} از ${sellerName} در ${city}، ${product.provinceName}؛ ` +
+    `موجودی ${stockFa(product.stock, product.unit)}، حداقل فروش ${stockFa(product.minSaleAmount, product.unit)}. ` +
+    `قیمت روز ${product.subCategoryName} و تماس مستقیم با فروشنده در بازار عمده ایمچ.`;
+
   return {
     title,
-    description: `${title} — ${product.seller.firstName} ${product.seller.lastName} | ایمچ. موجودی ${stockFa(product.stock, product.unit)}، حداقل فروش ${stockFa(product.minSaleAmount, product.unit)}.`,
-    alternates: { canonical: `/product-view/${slug}/${product.categoryName}/${product.id}` },
-    openGraph: { title, type: 'website' },
+    description,
+    keywords: [
+      `خرید عمده ${product.productName}`,
+      `قیمت عمده ${product.productName}`,
+      `فروش عمده ${product.productName}`,
+      `خرید عمده ${product.subCategoryName} در ${city}`,
+      `فروش عمده ${product.subCategoryName} در ${product.provinceName}`,
+      `خرید عمده ${product.subCategoryName}`,
+      `${sellerName}`,
+      `${sellerName} ${city}`,
+      'بازار عمده',
+      'ایمچ',
+    ],
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url: `${SITE_URL}${canonical}`,
+      siteName: 'ایمچ',
+      images: product.photos.slice(0, 3).map((ph) => ({ url: absoluteUrl(ph) })),
+    },
+    twitter: { card: 'summary_large_image', title, description },
   };
 }
 
 export default async function ProductViewPage({ params }: Props) {
-  const { slug, id } = await params;
+  const { id } = await params;
   const product = await getProduct(Number(id));
   if (!product) notFound();
 
+  const city = product.cityName.trim();
+  const sellerName = `${product.seller.firstName} ${product.seller.lastName}`.trim();
+  const productUrl = `/product-view/${product.slug}/${product.categoryName}/${product.id}`;
+
   const info = [
-    { icon: User, label: 'نام فروشنده', value: `${product.seller.firstName} ${product.seller.lastName}` },
-    { icon: MapPin, label: 'آدرس', value: `${product.provinceName} — ${product.cityName.trim()}` },
+    { icon: User, label: 'نام فروشنده', value: sellerName },
+    { icon: MapPin, label: 'آدرس', value: `${product.provinceName} — ${city}` },
     { icon: Package, label: 'میزان موجودی', value: stockFa(product.stock, product.unit) },
     { icon: BadgeCheck, label: 'حداقل میزان فروش', value: stockFa(product.minSaleAmount, product.unit) },
   ] as const;
+
+  // پرسش‌های متداول — فقط از دیتای واقعی همین آگهی (سئو + شفافیت خریدار)
+  const faqs = [
+    {
+      q: `قیمت عمده ${product.productName} چقدر است؟`,
+      a: product.minSalePrice
+        ? `کف قیمت هر ${product.unit} از ${priceFa(product.minSalePrice)} شروع می‌شود؛ قیمت نهایی توافقی است و برای مذاکرهٔ خرید عمده مستقیم با ${sellerName} تماس بگیرید.`
+        : `قیمت توافقی است؛ برای اطلاع از قیمت روز ${product.productName} با ${sellerName} در ${city} تماس بگیرید.`,
+    },
+    {
+      q: `حداقل میزان خرید عمده چقدر است؟`,
+      a: `حداقل فروش این فروشنده در هر معامله ${stockFa(product.minSaleAmount, product.unit)} است و در حال حاضر ${stockFa(product.stock, product.unit)} موجودی آمادهٔ فروش دارد.`,
+    },
+    {
+      q: `فروشنده کجاست و چطور با او در تماس شوم؟`,
+      a: `${sellerName} در ${city}، استان ${product.provinceName} فعالیت دارد؛ از همین صفحه می‌توانید چت کنید یا با ثبت‌نام/ورود، شماره تماس را دریافت کنید.`,
+    },
+    {
+      q: `چطور خودم آگهی فروش عمده ثبت کنم؟`,
+      a: `ثبت آگهی فروش عمده در ایمچ رایگان است؛ با شماره موبایل وارد شوید، دسته و نوع کالا را انتخاب کنید و آگهی شما همان روز در معرض دید خریداران عمده قرار می‌گیرد.`,
+    },
+  ];
 
   return (
     <>
@@ -143,17 +212,22 @@ export default async function ProductViewPage({ params }: Props) {
               <div className="relative aspect-square w-full max-w-[420px] overflow-hidden rounded-md border">
                 <ProductImage
                   photos={product.photos}
-                  alt={product.productName}
+                  alt={`خرید عمده ${product.productName} در ${city}`}
                   className="object-cover"
                   iconSize={96}
                   priority
                   sizes="(max-width: 640px) 100vw, 420px"
                 />
-                {/* «فروشنده ویژه» — مستطیل رنگ برند چسبیده به گوشهٔ بالا-چپ عکس (عین کارت لیست —
-                    خواسته مالک ۱-۱۱)؛ نردبان دیگر روی عکس نیست و فقط کنار عنوان می‌آید */}
-                {product.isElevated && (
-                  <span className="absolute left-0 top-0 rounded-br-[6px] bg-primary px-2.5 py-1.5 text-xs font-medium leading-none text-primary-foreground shadow-sm">
-                    فروشنده ویژه
+                {/* نردبان روی گوشهٔ عکس (خواسته مالک ۱-۱۱ دور هفتم) — به‌جای
+                    «فروشنده ویژه» که فقط کنار نام فروشنده می‌نشیند (بدون تکرار) */}
+                {product.isLadder && (
+                  <span className="absolute left-0 top-0">
+                    <LadderBadge className="rounded-br-[6px] px-2.5 py-1.5 text-xs shadow-sm" />
+                  </span>
+                )}
+                {product.hasVideo && (
+                  <span className="absolute bottom-2 end-2 rounded-sm bg-black/55 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur">
+                    ویدیو دارد
                   </span>
                 )}
               </div>
@@ -175,14 +249,15 @@ export default async function ProductViewPage({ params }: Props) {
               </div>
 
               <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  {product.isLadder && <LadderBadge className="px-2 py-1 text-xs" />}
-                  {product.isElevated && <PremiumSellerBadge className="px-2 py-1 text-xs" />}
-                  {product.isOld && <OldAdBadge />}
+                {/* عنوان + اشتراک‌گذاری رو‌به‌روی عنوان (خواسته مالک ۱-۱۱ دور هفتم) */}
+                <div className="flex items-start justify-between gap-2">
+                  <h1 className="text-xl font-bold leading-8 sm:text-2xl">
+                    خرید عمده {product.productName}
+                  </h1>
+                  <ShareButton url={productUrl} title={`خرید عمده ${product.productName} در ${city}`} />
                 </div>
-                <h1 className="text-xl font-bold leading-8 sm:text-2xl">
-                  {product.productName}
-                </h1>
+                {product.isOld && <OldAdBadge />}
+
                 <ul className="grid gap-2.5 rounded-md border bg-card p-4 text-sm">
                   {info.map(({ icon: Icon, label, value }) => (
                     <li key={label} className="flex items-center gap-2.5">
@@ -197,15 +272,19 @@ export default async function ProductViewPage({ params }: Props) {
 
                 <ProductPrice product={product} variant="page" />
 
+                {/* بازدید + نشان کردن (CRM) — هم‌قد (قانون تناسب) */}
                 <div className="flex items-center justify-between gap-2">
                   <p className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Eye size={13} /> {toFa(product.viewCount)} بازدید
                   </p>
-                  <SaveProductButton productId={product.id} />
+                  <MarkUserButton
+                    target={{
+                      targetUserId: product.myuserId,
+                      targetName: sellerName,
+                      isVerified: product.seller.isVerified,
+                    }}
+                  />
                 </div>
-                <p className="flex items-center justify-end text-xs text-muted-foreground">
-                  <Share2 size={13} /> اشتراک‌گذاری آگهی
-                </p>
               </div>
             </div>
 
@@ -217,6 +296,23 @@ export default async function ProductViewPage({ params }: Props) {
               </p>
             </section>
 
+            {/* پرسش‌های متداول — محتوای واقعی هم‌گام با JSON-LD (سئو) */}
+            <section aria-labelledby="faq-title" className="rounded-md border bg-card p-5">
+              <h2 id="faq-title" className="mb-3 text-base font-bold">
+                پرسش‌های متداول خرید عمده {product.productName}
+              </h2>
+              <div className="divide-y divide-border/70">
+                {faqs.map((f) => (
+                  <details key={f.q} className="group py-3">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[13px] font-bold leading-6 marker:hidden">
+                      {f.q}
+                      <ArrowLeftIcon size={15} className="shrink-0 text-muted-foreground transition-transform group-open:-rotate-90" />
+                    </summary>
+                    <p className="mt-2 text-xs leading-6 text-muted-foreground">{f.a}</p>
+                  </details>
+                ))}
+              </div>
+            </section>
           </div>
 
           {/* سایدبار فروشنده */}
@@ -227,10 +323,14 @@ export default async function ProductViewPage({ params }: Props) {
                   <Store size={22} />
                 </span>
                 <div className="min-w-0">
+                  {/* «فروشنده ویژه» فقط همین‌جا — کنار نام (خواسته مالک: بدون تکرار روی عکس) */}
                   <p className="flex min-w-0 items-center gap-2 font-bold">
-                    <span className="truncate">{product.seller.firstName} {product.seller.lastName}</span>
-                    <SellerOnlineBadge userName={product.seller.userName} sellerId={product.myuserId} />
+                    <span className="truncate">{sellerName}</span>
+                    {product.isElevated && <PremiumSellerBadge className="shrink-0" />}
                   </p>
+                  <div className="mt-0.5 flex items-center gap-2">
+                    <SellerOnlineBadge userName={product.seller.userName} sellerId={product.myuserId} />
+                  </div>
                   <div className="mt-1 flex flex-col items-start gap-1">
                     {product.seller.isVerified && (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
@@ -242,27 +342,26 @@ export default async function ProductViewPage({ params }: Props) {
                 </div>
               </div>
               <Separator className="my-4" />
-              {/* تماس + چت — افقی کنار هم (مثل باسکول؛ گویاتر از عمودی) */}
+              {/* تماس + چت — افقی کنار هم؛ ارتفاع هر سه دکمهٔ کارت برابر h-11 (RULES.md §۱) */}
               <div className="grid grid-cols-2 gap-2">
-                <PhoneReveal
-                  sellerName={`${product.seller.firstName} ${product.seller.lastName}`}
-                  productId={product.id}
-                >
+                <PhoneReveal sellerName={sellerName} productId={product.id}>
                   <Button className="h-11 w-full rounded-md text-sm font-medium">
                     <Phone size={17} />
-                    شماره تماس
+                    {/* موبایل: «تماس» (خواسته مالک) / دسکتاپ: «شماره تماس» */}
+                    <span className="nav-desktop:hidden">تماس</span>
+                    <span className="hidden nav-desktop:inline">شماره تماس</span>
                   </Button>
                 </PhoneReveal>
                 <ChatDialog
                   productId={product.id}
                   sellerUserName={product.seller.userName}
                   sellerId={product.myuserId}
-                  sellerName={`${product.seller.firstName} ${product.seller.lastName}`}
+                  sellerName={sellerName}
                   productName={product.productName}
                   className="h-11 w-full rounded-md text-sm font-medium"
                 />
               </div>
-              <Button asChild variant="outline" className="mt-2 w-full rounded-md">
+              <Button asChild variant="outline" className="mt-2 h-11 w-full rounded-md">
                 <Link href={`/profile/${product.seller.userName}`}>
                   <Store size={16} />
                   مشاهده پروفایل فروشنده
@@ -285,7 +384,38 @@ export default async function ProductViewPage({ params }: Props) {
           </aside>
         </div>
 
-        <RelatedProducts product={product} />
+        {/* ─── نظرات ۵ نظر آخر (اگر باشد) ─── */}
+        <ProductReviews sellerUserName={product.seller.userName} sellerName={sellerName} />
+
+        {/* ─── محصولات دیگر همین فروشنده — ریل خودگردان ─── */}
+        <div className="pt-8">
+          <SellerProductsRail
+            sellerUserName={product.seller.userName}
+            sellerName={sellerName}
+            excludeId={product.id}
+          />
+        </div>
+
+        {/* ─── دعوت به ثبت محصول (کاربران گوگل) ─── */}
+        <div className="pt-8">
+          <SellerCtaBox />
+        </div>
+
+        {/* ─── محصولات مشابه — گرید صفحه‌بندی‌شده ─── */}
+        <div className="pt-8">
+          <SimilarProducts product={product} />
+        </div>
+
+        {/* ─── جستجوهای مرتبط (کالا × شهر × فروشنده) ─── */}
+        <div className="pt-8">
+          <RelatedSearches
+            productName={product.productName}
+            subCategoryName={product.subCategoryName}
+            cityName={city}
+            sellerUserName={product.seller.userName}
+            sellerName={sellerName}
+          />
+        </div>
 
         {/* جای نوار فیکس موبایل (۷۲px بالای نوار پایین ۵۹px) تا محتوا زیرش نماند */}
         <div className="h-[74px] nav-desktop:hidden" aria-hidden />
@@ -296,7 +426,7 @@ export default async function ProductViewPage({ params }: Props) {
         productId={product.id}
         sellerUserName={product.seller.userName}
         sellerId={product.myuserId}
-        sellerName={`${product.seller.firstName} ${product.seller.lastName}`}
+        sellerName={sellerName}
         productName={product.productName}
       />
 
@@ -323,7 +453,7 @@ export default async function ProductViewPage({ params }: Props) {
               '@type': 'ListItem',
               position: 4,
               name: product.productName,
-              item: `${SITE_URL}/product-view/${product.slug}/${product.categoryName}/${product.id}`,
+              item: `${SITE_URL}${productUrl}`,
             },
           ],
         }}
@@ -333,16 +463,36 @@ export default async function ProductViewPage({ params }: Props) {
           '@context': 'https://schema.org',
           '@type': 'Product',
           name: product.productName,
-          description: product.description.slice(0, 200),
+          description: product.description.slice(0, 300),
           category: product.subCategoryName,
+          image: product.photos.slice(0, 4).map(absoluteUrl),
+          url: `${SITE_URL}${productUrl}`,
+          sku: String(product.id),
           offers: {
-            '@type': 'AggregateOffer',
+            '@type': 'Offer',
             priceCurrency: 'IRT',
-            lowPrice: product.minSalePrice ?? undefined,
-            offerCount: 1,
+            price: product.minSalePrice ?? undefined,
             availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-            seller: { '@type': 'Organization', name: `${product.seller.firstName} ${product.seller.lastName}` },
+            url: `${SITE_URL}${productUrl}`,
+            areaServed: `${city}، ${product.provinceName}`,
+            seller: {
+              '@type': 'Organization',
+              name: sellerName,
+              url: `${SITE_URL}/profile/${product.seller.userName}`,
+            },
           },
+        }}
+      />
+      {/* پرسش‌های متداول — دقیقاً هم‌گام با بخش دیدنی صفحه (قانون سئو) */}
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: faqs.map((f) => ({
+            '@type': 'Question',
+            name: f.q,
+            acceptedAnswer: { '@type': 'Answer', text: f.a },
+          })),
         }}
       />
     </>

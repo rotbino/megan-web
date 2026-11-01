@@ -9,14 +9,14 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Crown, Lock, Search, SlidersHorizontal, Users } from 'lucide-react';
-import { useBuyRequests, useCategoryTree, useMyPackage, useSaveBuyer } from '@/lib/mock/hooks';
+import { useBuyRequests, useCategoryTree, useMyPackage } from '@/lib/mock/hooks';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PanelCard, PanelPromoCards } from '@/components/panel/panel-parts';
 import { BuyerCard, BulkSmsBanner } from '@/components/panel/buyer-card';
-import { useToast } from '@/hooks/use-toast';
+import { MarkUserSheet, type MarkTarget } from '@/components/shared/mark-user-sheet';
 import { toFa } from '@/lib/format';
 
 const PER_BATCH = 10;
@@ -24,14 +24,13 @@ const PER_BATCH = 10;
 export default function PanelBuyersPage() {
   const { data: paged, isLoading } = useBuyRequests({ perPage: 50 });
   const { data: tree } = useCategoryTree();
-  const saveBuyer = useSaveBuyer();
   // گیت بسته (خواسته مالک): بسته رایگان خریداران را نمی‌بیند
   const { data: myPackage, isLoading: pkgLoading } = useMyPackage();
-  const { toast } = useToast();
   const [q, setQ] = useState('');
   const [rootCat, setRootCat] = useState('all');
   const [batch, setBatch] = useState(1);
-  const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
+  // نشان کردن خریدار — مودال CRM (خواسته مالک ۱-۱۱ دور هفتم؛ دیگر toggle خام نیست)
+  const [markTarget, setMarkTarget] = useState<MarkTarget | null>(null);
 
   const roots = useMemo(() => tree ?? [], [tree]);
 
@@ -101,18 +100,14 @@ export default function PanelBuyersPage() {
     );
   }
 
-  const toggleSave = async (r: (typeof filtered)[number]) => {
-    if (savedIds.has(r.id)) return; // حذف از لیست از خود CRM انجام می‌شود
-    try {
-      await saveBuyer.mutateAsync({
-        targetUserId: r.myuserId,
-        listName: r.subcategoryName, // لیست به نام دسته کالا — الگوی باسکول («سیب زمینی»)
-      });
-      setSavedIds((prev) => new Set(prev).add(r.id));
-      toast({ description: 'خریدار به لیست نشان شده ها اضافه شد.' });
-    } catch (err) {
-      toast({ description: err instanceof Error ? err.message : 'نشان کردن ناموفق بود.' });
-    }
+  const openMark = (r: (typeof filtered)[number]) => {
+    setMarkTarget({
+      targetUserId: r.myuserId,
+      targetName: `${r.firstName} ${r.lastName}`.trim(),
+      isVerified: r.isVerified,
+      // لیست پیش‌فرض به نام دستهٔ کالا — الگوی باسکول («سیب زمینی»)
+      defaultListName: r.subcategoryName,
+    });
   };
 
   return (
@@ -178,7 +173,7 @@ export default function PanelBuyersPage() {
         <div className="space-y-3">
           {visible.map((r, i) => (
             <div key={r.id} className="contents">
-              <BuyerCard request={r} saved={savedIds.has(r.id)} onToggleSave={() => void toggleSave(r)} />
+              <BuyerCard request={r} onToggleSave={() => openMark(r)} />
               {(i + 1) % 5 === 0 && i + 1 < visible.length && <BulkSmsBanner />}
             </div>
           ))}
@@ -192,6 +187,11 @@ export default function PanelBuyersPage() {
             </button>
           )}
         </div>
+      )}
+
+      {/* مودال CRM نشان‌کردن خریدار */}
+      {markTarget && (
+        <MarkUserSheet open={!!markTarget} onClose={() => setMarkTarget(null)} target={markTarget} />
       )}
     </div>
   );

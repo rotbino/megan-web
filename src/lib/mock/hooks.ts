@@ -42,11 +42,22 @@ export function useProduct(id: number) {
   });
 }
 
-export function useRelatedProducts(product: Product | null | undefined) {
+export function useRelatedProducts(product: Product | null | undefined, page = 1, pageSize = 20) {
   return useQuery({
-    queryKey: product ? qk.related(product.id) : ['related', 'none'],
-    queryFn: () => api.getRelatedProducts(product!),
+    queryKey: product ? [...qk.related(product.id), page, pageSize] : ['related', 'none'],
+    queryFn: () => api.getRelatedProducts(product!, page, pageSize),
     enabled: !!product,
+    placeholderData: (prev) => prev, // صفحه‌بندی نرم — اسکرول نپرد
+    staleTime: 120_000,
+  });
+}
+
+/** آگهی‌های دیگر همان فروشنده — ریل افقی صفحهٔ محصول */
+export function useSellerProducts(userName: string | undefined, excludeId?: number, limit = 12) {
+  return useQuery({
+    queryKey: ['seller-products', userName, excludeId, limit],
+    queryFn: () => api.getSellerProducts(userName!, excludeId, limit),
+    enabled: Boolean(userName),
     staleTime: 120_000,
   });
 }
@@ -158,7 +169,31 @@ export function useMyProducts(enabled = true) {
 }
 
 export function useSavedLists() {
-  return useQuery({ queryKey: ['panel-saved-lists'], queryFn: api.getSavedLists, staleTime: 30_000 });
+  return useQuery({ queryKey: ['panel-saved-lists'], queryFn: () => api.getSavedLists(), staleTime: 30_000 });
+}
+
+/** وضعیت نشان‌بودن یک کاربر برای من — لیست‌ها + پرچم saved هرکدام (مودال CRM).
+ *  فقط با ورود؛ هدف = ObjectId فروشنده/خریدار. */
+export function useMarkState(targetUserId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ['mark-state', targetUserId],
+    queryFn: () => api.getSavedLists(targetUserId),
+    enabled: enabled && Boolean(targetUserId),
+    staleTime: 15_000,
+  });
+}
+
+/** مودال CRM نشان‌کردن — سینک چندلیستی + وضعیت؛ کش لیست‌ها و وضعیت را بیات می‌کند */
+export function useMarkUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.markUser,
+    onSuccess: (_r, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['panel-saved-lists'] });
+      queryClient.invalidateQueries({ queryKey: ['mark-state', vars.targetUserId] });
+      queryClient.invalidateQueries({ queryKey: ['panel-saved-users'] });
+    },
+  });
 }
 
 export function useSavedListUsers(listId: string) {
@@ -566,62 +601,6 @@ export function useAddSellerReview() {
       void queryClient.invalidateQueries({ queryKey: ['seller-reviews', input.userName] });
       void queryClient.invalidateQueries({ queryKey: ['seller', input.userName] });
     },
-  });
-}
-
-// ─── علاقه‌مندی‌ها — نشان آگهی + ذخیره فروشنده (۳۰-۱۰) ──────────────────────
-
-/** آگهی‌های نشان‌شده من — شناسه‌ها برای وضعیت اولیه دکمه‌ها */
-export function useMyProductFavoriteIds(enabled: boolean) {
-  return useQuery({
-    queryKey: ['favorite-product-ids'] as const,
-    queryFn: api.getMyProductFavoriteIds,
-    enabled,
-    staleTime: 120_000,
-  });
-}
-
-/** نشان/حذف نشان آگهی — invalidate فهرست علاقه‌مندی‌ها */
-export function useToggleProductFavorite() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: api.toggleProductFavorite,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['favorite-product-ids'] });
-      void queryClient.invalidateQueries({ queryKey: ['my-favorites'] });
-    },
-  });
-}
-
-/** آیا این فروشنده ذخیره شده؟ (دکمه پروفایل) */
-export function useIsSellerSaved(userName: string, enabled: boolean) {
-  return useQuery({
-    queryKey: ['seller-saved', userName] as const,
-    queryFn: () => api.isSellerSaved(userName),
-    enabled: enabled && Boolean(userName),
-    staleTime: 120_000,
-  });
-}
-
-/** ذخیره/حذف فروشنده */
-export function useToggleSellerFavorite() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: api.toggleSellerFavorite,
-    onSuccess: (_d, userName) => {
-      void queryClient.invalidateQueries({ queryKey: ['seller-saved', userName] });
-      void queryClient.invalidateQueries({ queryKey: ['my-favorites'] });
-    },
-  });
-}
-
-/** آگهی‌ها + فروشندگان ذخیره‌شده من — صفحه علاقه‌مندی‌ها */
-export function useMyFavorites(enabled: boolean) {
-  return useQuery({
-    queryKey: ['my-favorites'] as const,
-    queryFn: api.getMyFavorites,
-    enabled,
-    staleTime: 60_000,
   });
 }
 

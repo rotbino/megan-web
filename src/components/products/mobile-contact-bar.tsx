@@ -46,7 +46,8 @@ export function MobileContactBar({
           className="flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-primary text-sm font-bold text-primary-foreground shadow-[0_2px_6px_rgba(166,38,38,0.3)] transition-colors hover:bg-primary-deep"
         >
           <Phone size={17} />
-          شماره تماس
+          {/* موبایل: «تماس» (خواسته مالک ۱-۱۱ دور هفتم) — این نار فقط موبایل است */}
+          تماس
         </button>
       </PhoneReveal>
     </div>
