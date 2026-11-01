@@ -111,7 +111,9 @@ export function SellerProductsRail({
         aria-label={`محصولات دیگر ${sellerName}`}
       >
         {products.map((p) => (
-          <div key={p.id} data-rail-card role="listitem" className="w-56 shrink-0 md:w-60">
+          // هم‌قدی کارت‌ها (RULES.md §۱): wrapper کش می‌آید و article با flex-1
+          // کل ارتفاعش را پر می‌کند — کارت با متن کوتاه/بلند هم‌قد می‌ماند
+          <div key={p.id} data-rail-card role="listitem" className="flex w-56 shrink-0 flex-col md:w-60 [&>article]:flex-1">
             <ProductCard product={p} priority={false} />
           </div>
         ))}
