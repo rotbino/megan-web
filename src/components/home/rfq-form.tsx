@@ -176,10 +176,11 @@ export function RfqForm() {
                   </div>
                 </div>
 
-                {/* دکمه — هم‌قدِ فیلدها (۴۸px)؛ سبز مکمل برای زیبایی فرم (خواسته مالک ۱-۱۱) */}
+                {/* دکمه — هم‌قدِ فیلدها (۴۸px)؛ رنگ برند (خواسته مالک ۲-۱۱:
+                    سبزِ مکمل معنی نداشت — دکمه‌های عملکردی همیشه رنگ برندند، RULES.md §۱-ب) */}
                 <Button
                   type="submit"
-                  className="h-12 w-full rounded-md bg-success text-sm hover:bg-success-deep active:bg-success-deep"
+                  className="h-12 w-full rounded-md text-sm"
                   disabled={mutation.isPending || !category || !amount}
                 >
                   {mutation.isPending && <Loader2 className="animate-spin" size={18} />}

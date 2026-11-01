@@ -33,6 +33,16 @@ export function dateFa(iso: string): string {
   }).format(new Date(iso));
 }
 
+/**
+ * تاریخ‌های بک‌اند (باسکول-قالب) «YYYY-MM-DD HH:mm:ss» در UTC هستند اما
+ * نشان منطقهٔ زمانی ندارند — مرورگر آن را زمانِ محلی می‌خواند و
+ * «۱ روز پیش» ساعت‌ها خطا می‌زند. این تابع Z مناسب را می‌چسباند
+ * (خواسته مالک ۲-۱۱: زمان به‌روزرسانی به اندازهٔ خود قیمت مهم است).
+ */
+export function parseServerDate(s: string): string {
+  return /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s) ? `${s.replace(' ', 'T')}Z` : s;
+}
+
 /** «۳ روز پیش»، «۲ ساعت پیش» */
 export function timeAgoFa(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();

@@ -10,7 +10,7 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AlertTriangle, BarChart3, Eye, ImageIcon, Pencil, Trash2, TrendingUp, Wallet } from 'lucide-react';
+import { AlertTriangle, BarChart3, Eye, History, ImageIcon, Pencil, Trash2, TrendingUp, Wallet } from 'lucide-react';
 import { useDeleteMyProduct, useLadderProduct, useMyProducts, usePanelProfile } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
 import { NeedPackageModal } from '@/components/shared/need-package-modal';
 import { LADDER_MAX_MONTHS, LADDER_MONTHLY_PRICE, REJECTION_REASONS, ladderMonthsLabel } from '@/lib/mock/data';
-import { priceFa, stockFa, toFa } from '@/lib/format';
+import { priceFa, stockFa, toFa, parseServerDate, timeAgoFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { Product, ProductStatus } from '@/lib/types';
 
@@ -195,6 +195,13 @@ function MyProductsPageInner() {
                     </span>
                     <span>
                       کف قیمت: <b>{priceFa(p.minSalePrice)}</b>
+                    </span>
+                    {/* زمان به‌روزرسانی — کنار قیمت، همه‌جا (خواسته مالک ۲-۱۱) */}
+                    <span
+                      className="flex items-center gap-1 text-muted-foreground"
+                      title={`آخرین به‌روزرسانی قیمت: ${timeAgoFa(parseServerDate(p.updatedAt))}`}
+                    >
+                      <History size={13} /> به‌روزرسانی {timeAgoFa(parseServerDate(p.updatedAt))}
                     </span>
                     <span className="flex items-center gap-1 text-muted-foreground">
                       <Eye size={13} /> {toFa(p.viewCount)} بازدید
