@@ -46,6 +46,7 @@ export function UnitInput({
   ariaLabel,
   maxLength = 12,
   className,
+  inputClassName,
 }: {
   /** رشته ارقام با جداکننده هزارگان (فونت FaNum ارقام را فارسی نشان می‌دهد) */
   value: string;
@@ -60,6 +61,8 @@ export function UnitInput({
   ariaLabel?: string;
   maxLength?: number;
   className?: string;
+  /** کلاس اضافهٔ خودِ Input — مثلاً هم‌قدسازی ارتفاع با بقیهٔ فیلدهای فرم */
+  inputClassName?: string;
 }) {
   const digits = Number(value.replace(/[^\d]/g, '')) || 0;
   const badge = unitBadgeText(digits, kind, unit);
@@ -76,6 +79,7 @@ export function UnitInput({
           'font-num h-13 text-center text-base font-bold tabular-nums md:h-14 md:text-lg',
           unit && 'ps-3 pe-20',
           invalid && 'border-red-400 focus-visible:ring-red-300',
+          inputClassName,
         )}
         value={value}
         placeholder={placeholder}

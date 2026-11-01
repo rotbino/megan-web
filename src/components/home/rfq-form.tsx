@@ -6,7 +6,7 @@ import { CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CategoryPicker } from '@/components/shared/category-picker';
-import { UnitInput } from '@/components/shared/unit-input';
+import { UnitInput, unitBadgeText } from '@/components/shared/unit-input';
 import { useSubmitBuyRequest } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
 import { savePendingRfq, PANEL_RFQ_DEST } from '@/lib/pending-rfq';
@@ -33,6 +33,9 @@ export function RfqForm() {
   const { requireAuth } = useAuth();
 
   const unit = category?.unit ?? 'کیلوگرم';
+
+  /** تبدیل زندهٔ واحد — در ردیف عنوان فیلد نمایش داده می‌شود (نه شناور) */
+  const convBadge = unitBadgeText(Number(amount.replace(/[^\d]/g, '')) || 0, 'weight', unit);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,7 +107,7 @@ export function RfqForm() {
           <div className="rounded-md border bg-card p-4 shadow-sm sm:p-5">
             {done ? (
               <div className="flex flex-col items-center gap-3 py-8 text-center">
-                <span className="grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
+                <span className="grid size-12 place-items-center rounded-full bg-success/10 text-success">
                   <CheckCircle2 size={24} />
                 </span>
                 <p className="text-sm font-bold">درخواست خرید شما ثبت شد.</p>
@@ -114,36 +117,69 @@ export function RfqForm() {
               </div>
             ) : (
               <form onSubmit={submit} className="space-y-3">
-                <CategoryPicker
-                  value={category}
-                  onChange={(c) => {
-                    setCategory(c);
-                    setProductType('');
-                  }}
-                />
-                <Input
-                  value={productType}
-                  onChange={(e) => setProductType(e.target.value)}
-                  placeholder={
-                    category
-                      ? category.example
-                        ? `مثلاً ${category.example}`
-                        : 'نوع کالا مورد نیاز خود را وارد کنید.'
-                      : 'ابتدا دسته‌بندی را انتخاب کنید.'
-                  }
-                  className="rounded-md"
-                  disabled={!category}
-                  aria-label="نوع کالا"
-                />
-                <UnitInput
-                  kind="weight"
-                  unit={unit}
-                  value={amount}
-                  onValueChange={setAmount}
-                  placeholder="میزان نیازمندی محصول را وارد کنید."
-                  ariaLabel="میزان نیازمندی محصول"
-                />
-                <Button type="submit" size="lg" className="w-full rounded-md" disabled={mutation.isPending || !category || !amount}>
+                {/* ردیف ۱ — دسته‌بندی محصول (تمام‌عرض؛ عنوان بالای فیلد) */}
+                <div>
+                  <span className="mb-1.5 flex h-[18px] items-center text-xs font-medium text-foreground/75">
+                    دسته‌بندی محصول
+                  </span>
+                  <CategoryPicker
+                    value={category}
+                    onChange={(c) => {
+                      setCategory(c);
+                      setProductType('');
+                    }}
+                  />
+                </div>
+
+                {/* ردیف ۲ — نوع کالا + میزان نیازمندی (کنارِ هم؛ عنوان بالای هر فیلد) */}
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <div className="min-w-0">
+                    <span className="mb-1.5 flex h-[18px] items-center text-xs font-medium text-foreground/75">
+                      نوع کالا
+                    </span>
+                    <Input
+                      value={productType}
+                      onChange={(e) => setProductType(e.target.value)}
+                      placeholder={
+                        category
+                          ? category.example
+                            ? `مثلاً ${category.example}`
+                            : 'نوع کالا را وارد کنید.'
+                          : 'نوع کالا را وارد کنید.'
+                      }
+                      className="h-12 rounded-md md:h-12"
+                      disabled={!category}
+                      aria-label="نوع کالا"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    {/* عنوان + تبدیل زندهٔ واحد (≈ ۱ تن) — در همان ردیف عنوان */}
+                    <span className="mb-1.5 flex h-[18px] items-center justify-between gap-1 text-xs font-medium text-foreground/75">
+                      میزان نیازمندی
+                      {convBadge && (
+                        <span className="font-num inline-flex items-center rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-primary-foreground" aria-live="polite">
+                          ≈ {convBadge}
+                        </span>
+                      )}
+                    </span>
+                    <UnitInput
+                      kind="plain"
+                      unit={unit}
+                      value={amount}
+                      onValueChange={setAmount}
+                      placeholder="مثلاً ۵۰۰"
+                      inputClassName="h-12 pe-14 md:h-12 md:text-base"
+                      ariaLabel="میزان نیازمندی محصول"
+                    />
+                  </div>
+                </div>
+
+                {/* دکمه — هم‌قدِ فیلدها (۴۸px)؛ سبز مکمل برای زیبایی فرم (خواسته مالک ۱-۱۱) */}
+                <Button
+                  type="submit"
+                  className="h-12 w-full rounded-md bg-success text-sm hover:bg-success-deep active:bg-success-deep"
+                  disabled={mutation.isPending || !category || !amount}
+                >
                   {mutation.isPending && <Loader2 className="animate-spin" size={18} />}
                   {mutation.isPending ? 'در حال ثبت…' : 'ثبت درخواست خرید'}
                 </Button>

@@ -463,7 +463,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
           <button
             type="button"
             onClick={openCategoriesSheet}
-            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground/85 transition-colors hover:border-foreground/30"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground/85 transition-colors hover:border-foreground/30"
           >
             <List size={14} className="text-muted-foreground" />
             دسته ها
@@ -472,7 +472,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
             type="button"
             onClick={() => setSheet('period')}
             className={cn(
-              'flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border bg-card px-3 py-2 text-xs font-medium transition-colors',
+              'flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border bg-card px-3 py-2 text-xs font-medium transition-colors',
               period === 'all'
                 ? 'border-border text-foreground/85 hover:border-foreground/30'
                 : 'border-primary/45 bg-primary/5 font-bold text-primary',
@@ -485,7 +485,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
             type="button"
             onClick={() => setSheet('location')}
             className={cn(
-              'flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border bg-card px-3 py-2 text-xs font-medium transition-colors',
+              'flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border bg-card px-3 py-2 text-xs font-medium transition-colors',
               provinceId == null
                 ? 'border-border text-foreground/85 hover:border-foreground/30'
                 : 'border-primary/45 bg-primary/5 font-bold text-primary',
@@ -501,7 +501,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
               type="button"
               onClick={clearCategory}
               aria-label={`حذف فیلتر دسته ${categoryLabel}`}
-              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-primary/45 bg-primary/5 px-3 py-2 text-xs font-bold text-primary"
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-primary/45 bg-primary/5 px-3 py-2 text-xs font-bold text-primary"
             >
               {categoryLabel}
               <X size={13} />
@@ -512,7 +512,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
               type="button"
               onClick={() => setS('')}
               aria-label="حذف جستجو"
-              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-primary/45 bg-primary/5 px-3 py-2 text-xs font-bold text-primary"
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-primary/45 bg-primary/5 px-3 py-2 text-xs font-bold text-primary"
             >
               «{s}»
               <X size={13} />
@@ -659,7 +659,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
               <button
                 type="button"
                 onClick={() => pickCategory(sheetLevel)}
-                className="flex w-full items-center justify-between gap-2 rounded-lg bg-primary/5 px-3 py-3 text-start text-sm font-bold text-primary transition-colors hover:bg-primary/10"
+                className="flex w-full items-center justify-between gap-2 rounded-md bg-primary/5 px-3 py-3 text-start text-sm font-bold text-primary transition-colors hover:bg-primary/10"
               >
                 <span>انتخاب همهٔ «{sheetLevel.categoryName}»</span>
                 <ChevronLeft size={16} />
@@ -672,7 +672,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
                 type="button"
                 onClick={() => selectMobileCategory(c)}
                 className={cn(
-                  'flex w-full items-center justify-between gap-2 rounded-lg px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
+                  'flex w-full items-center justify-between gap-2 rounded-md px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
                   c.id === categoryId ? 'font-bold text-primary' : 'font-medium',
                 )}
               >
@@ -699,7 +699,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
                   setSheet(null);
                 }}
                 className={cn(
-                  'flex w-full items-center justify-between gap-2 rounded-lg px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
+                  'flex w-full items-center justify-between gap-2 rounded-md px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
                   period === p ? 'font-bold text-primary' : 'font-medium',
                 )}
               >
@@ -822,7 +822,7 @@ function CategoryNav({
         type="button"
         onClick={onClear}
         className={cn(
-          'block w-full rounded-lg px-2.5 py-1.5 text-start transition-colors',
+          'block w-full rounded-md px-2.5 py-1.5 text-start transition-colors',
           activeId == null
             ? 'bg-accent font-bold text-accent-foreground'
             : 'text-muted-foreground hover:bg-secondary',
@@ -836,7 +836,7 @@ function CategoryNav({
           type="button"
           onClick={() => onPick(root)}
           className={cn(
-            'flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-start transition-colors',
+            'flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-start transition-colors',
             root.id === highlightId || root.id === activeId
               ? 'font-bold text-primary'
               : 'font-medium text-foreground/85 hover:bg-secondary',
@@ -867,7 +867,7 @@ function CategoryNav({
       <button
         type="button"
         onClick={() => (backTarget ? onPick(backTarget) : onClear())}
-        className="mb-2 flex w-full items-center gap-1 rounded-lg bg-secondary px-2.5 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        className="mb-2 flex w-full items-center gap-1 rounded-md bg-secondary px-2.5 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       >
         <ChevronRight size={14} aria-hidden />
         بازگشت به {backTarget?.categoryName ?? 'همه دسته‌ها'}
@@ -891,7 +891,7 @@ function CategoryNav({
                 onClick={() => onPick(c)}
                 aria-current={active ? 'true' : undefined}
                 className={cn(
-                  'flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-start text-sm transition-colors',
+                  'flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-start text-sm transition-colors',
                   active
                     ? 'font-bold text-primary'
                     : 'text-muted-foreground hover:bg-secondary',

@@ -37,13 +37,13 @@ export function MobileContactBar({
         sellerId={sellerId}
         sellerName={sellerName}
         productName={productName}
-        className="flex h-12 flex-1 items-center justify-center gap-2 rounded-lg border border-primary bg-white text-sm font-bold text-primary transition-colors hover:bg-primary/5"
+        className="flex h-12 flex-1 items-center justify-center gap-2 rounded-md border border-primary bg-white text-sm font-bold text-primary transition-colors hover:bg-primary/5"
         buttonLabel="چت با فروشنده"
       />
       <PhoneReveal sellerName={sellerName} productId={productId}>
         <button
           type="button"
-          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-bold text-primary-foreground shadow-[0_2px_6px_rgba(166,38,38,0.3)] transition-colors hover:bg-primary-deep"
+          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-md bg-primary text-sm font-bold text-primary-foreground shadow-[0_2px_6px_rgba(166,38,38,0.3)] transition-colors hover:bg-primary-deep"
         >
           <Phone size={17} />
           شماره تماس

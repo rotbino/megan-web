@@ -116,7 +116,7 @@ export function HeaderUserMenu({ variant = 'desktop' }: { variant?: 'desktop' | 
         aria-expanded={open}
         aria-label={`منوی کاربر ${displayName}`}
         className={cn(
-          'flex items-center gap-2 rounded-xl text-foreground transition-colors hover:bg-accent',
+          'flex items-center gap-2 rounded-md text-foreground transition-colors hover:bg-accent',
           variant === 'desktop'
             ? 'max-w-56 py-1 pe-2.5 ps-1.5'
             : 'p-1 nav-desktop:hidden',

@@ -70,7 +70,7 @@ export function CategoryPicker({
           type="button"
           onClick={() => setOpen(true)}
           className={cn(
-            'flex h-10 w-full items-center gap-2 rounded-md border border-input bg-card px-3 text-start text-sm shadow-xs transition-colors hover:border-foreground/30',
+            'flex h-12 w-full items-center gap-2 rounded-md border border-input bg-card px-3 text-start text-sm shadow-xs transition-colors hover:border-foreground/30',
             !value && 'text-muted-foreground',
           )}
           aria-haspopup="dialog"

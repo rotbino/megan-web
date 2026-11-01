@@ -199,7 +199,7 @@ export default function AdminChargesPage() {
                   {o.status === 'pending' && (
                     <Button
                       size="sm"
-                      className="h-9 rounded-lg"
+                      className="h-9"
                       onClick={() => setReviewTarget(o)}
                     >
                       بازبینی
@@ -323,13 +323,13 @@ function ReviewDialog({
         <DialogFooter className="gap-2">
           {rejecting ? (
             <>
-              <Button variant="outline" size="sm" className="h-9 rounded-lg" onClick={() => setRejecting(false)}>
+              <Button variant="outline" size="sm" className="h-9" onClick={() => setRejecting(false)}>
                 بازگشت
               </Button>
               <Button
                 variant="destructive"
                 size="sm"
-                className="h-9 rounded-lg"
+                className="h-9"
                 disabled={pending || reason.trim().length < 3}
                 onClick={() => onReview(false, reason.trim())}
               >
@@ -342,7 +342,7 @@ function ReviewDialog({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-lg"
+                className="h-9"
                 disabled={pending}
                 onClick={() => setRejecting(true)}
               >
@@ -351,7 +351,7 @@ function ReviewDialog({
               </Button>
               <Button
                 size="sm"
-                className="h-9 rounded-lg"
+                className="h-9"
                 disabled={pending}
                 onClick={() => onReview(true)}
               >

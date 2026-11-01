@@ -102,7 +102,7 @@ export default function AdminAdminsPage() {
             </p>
           </div>
         </div>
-        <Button size="sm" className="h-9 rounded-lg" onClick={() => setCreateOpen(true)}>
+        <Button size="sm" className="h-9" onClick={() => setCreateOpen(true)}>
           <UserPlus size={15} />
           ادمین جدید
         </Button>
@@ -297,10 +297,10 @@ function CreateAdminDialog({ open, onClose, onDone }: { open: boolean; onClose: 
           {error && <p className="text-[11.5px] font-bold text-destructive">{error}</p>}
         </div>
         <DialogFooter>
-          <Button variant="outline" size="sm" className="h-9 rounded-lg" onClick={onClose}>
+          <Button variant="outline" size="sm" className="h-9" onClick={onClose}>
             انصراف
           </Button>
-          <Button size="sm" className="h-9 rounded-lg" disabled={pending} onClick={submit}>
+          <Button size="sm" className="h-9" disabled={pending} onClick={submit}>
             {pending ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
             ایجاد
           </Button>
@@ -359,10 +359,10 @@ function ResetPasswordDialog({ target, onClose, onDone }: { target: AdminRow | n
           {error && <p className="text-[11.5px] font-bold text-destructive">{error}</p>}
         </div>
         <DialogFooter>
-          <Button variant="outline" size="sm" className="h-9 rounded-lg" onClick={onClose}>
+          <Button variant="outline" size="sm" className="h-9" onClick={onClose}>
             انصراف
           </Button>
-          <Button size="sm" className="h-9 rounded-lg" disabled={pending} onClick={submit}>
+          <Button size="sm" className="h-9" disabled={pending} onClick={submit}>
             {pending ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />}
             ذخیره
           </Button>

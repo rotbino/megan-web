@@ -1,12 +1,13 @@
-import { BadgeCheck, Crown, TrendingUp, AlertTriangle, Clock3 } from 'lucide-react';
+import { BadgeCheck, TrendingUp, AlertTriangle, Clock3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
- * نشان‌های آگهی — نردبان و ویژه از ۳۱-۱۰ قرمز پررنگ شدند (خواسته مالک:
- * «با رنگ قرمز بهتره باشه که مشخص تره») و روی تصویر کارت می‌نشینند (batch).
+ * نشان‌های آگهی — نردبان قرمز کنار عنوان (از روی عکس برداشته شد) و
+ * «فروشنده ویژه» به‌صورت مستطیل/چیپ رنگ برند با متن ریز غیر بولد
+ * (بازطراحی مالک ۱-۱۱ — عین الگوی کارت لیست).
  */
 
-/** نشان «نردبان» — قرمز توپر؛ روی تصویر کارت و جزئیات آگهی */
+/** نشان «نردبان» — قرمز توپر؛ کنار عنوان آگهی (روی عکس دیگر نمی‌نشیند) */
 export function LadderBadge({ className, compact = false }: { className?: string; compact?: boolean }) {
   return (
     <span
@@ -21,17 +22,18 @@ export function LadderBadge({ className, compact = false }: { className?: string
   );
 }
 
-/** نشان «فروشنده ویژه» — قرمز توپر (خواسته مالک ۳۱-۱۰: مشخص‌تر روی لیست آگهی‌ها) */
-export function PremiumSellerBadge({ className, compact = false }: { className?: string; compact?: boolean }) {
+/** نشان «فروشنده ویژه» — مستطیل رنگ برند با متن ریز غیر بولد (خواسته مالک ۱-۱۱:
+ *  آیکون تاج حذف شد؛ روی کارت لیست به‌صورت مستطیل چسبیده به گوشهٔ بالا-چپ عکس
+ *  پیاده شده — این نسخهٔ چیپ برای ردیف عنوان صفحهٔ جزئیات است) */
+export function PremiumSellerBadge({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-sm bg-red-600 px-1.5 py-0.5 text-[11px] font-bold text-white shadow-sm ring-1 ring-red-700/30',
+        'inline-flex items-center rounded-sm bg-primary px-1.5 py-0.5 text-[11px] font-medium text-primary-foreground shadow-sm',
         className,
       )}
     >
-      <Crown size={12} strokeWidth={2.6} />
-      {!compact && 'ویژه'}
+      فروشنده ویژه
     </span>
   );
 }

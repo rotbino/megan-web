@@ -23,7 +23,7 @@ function RootList({ tree, activeSlug }: { tree: Category[]; activeSlug?: string 
     <nav className="space-y-0.5 text-sm">
       <Link
         href="/product-list"
-        className={cn('block rounded-lg px-2.5 py-1.5', !activeSlug ? 'font-bold text-primary' : 'text-muted-foreground hover:bg-secondary')}
+        className={cn('block rounded-md px-2.5 py-1.5', !activeSlug ? 'font-bold text-primary' : 'text-muted-foreground hover:bg-secondary')}
       >
         همه دسته‌ها
       </Link>
@@ -35,7 +35,7 @@ function RootList({ tree, activeSlug }: { tree: Category[]; activeSlug?: string 
             href={`/product-list/category/${root.slug}`}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5',
+              'flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5',
               active ? 'font-bold text-primary' : 'font-medium hover:bg-secondary',
             )}
           >
@@ -75,7 +75,7 @@ export function CategoryFilter({ tree, path }: { tree: Category[]; path?: Catego
       {/* بازگشت به دسته بالاتر — عین الگوی سایت قدیم */}
       <Link
         href={backHref}
-        className="mb-2 flex items-center gap-1 rounded-lg bg-secondary px-2.5 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        className="mb-2 flex items-center gap-1 rounded-md bg-secondary px-2.5 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       >
         <ChevronRight size={14} aria-hidden />
         بازگشت به {backTarget?.categoryName ?? 'همه دسته‌ها'}
@@ -98,7 +98,7 @@ export function CategoryFilter({ tree, path }: { tree: Category[]; path?: Catego
                 href={`/product-list/category/${encodeURIComponent(c.slug)}`}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5',
+                  'flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5',
                   active
                     ? 'font-bold text-primary'
                     : 'text-muted-foreground hover:bg-secondary',

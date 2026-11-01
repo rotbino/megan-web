@@ -24,7 +24,7 @@ export function LatestBuyRequests() {
         <h2 id="latest-buyads" className="text-base font-medium leading-7 nav-desktop:text-xl">جدیدترین درخواست های خرید</h2>
         <Link
           href="/buyAd-requests"
-          className="inline-flex h-10 items-center gap-2 rounded-lg px-2 text-sm font-medium text-primary transition-colors hover:bg-secondary"
+          className="inline-flex h-10 items-center gap-2 rounded-md px-2 text-sm font-medium text-primary transition-colors hover:bg-secondary"
         >
           مشاهده همه
           <ChevronLeft size={24} />

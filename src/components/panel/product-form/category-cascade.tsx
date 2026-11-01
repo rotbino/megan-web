@@ -133,7 +133,7 @@ export function CategoryCascade({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="جستجوی سریع دسته بندی — مثلا «سیب»"
-            className="h-11 w-full rounded-lg border bg-card pe-9 ps-9 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary"
+            className="h-11 w-full rounded-md border bg-card pe-9 ps-9 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary"
             aria-label="جستجوی دسته بندی"
           />
           {query ? (

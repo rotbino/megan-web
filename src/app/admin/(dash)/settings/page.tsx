@@ -157,7 +157,7 @@ export default function AdminSettingsPage() {
           )}
           <Button
             size="sm"
-            className="h-9 rounded-lg"
+            className="h-9"
             disabled={changePassword.isPending || !currentPassword || !newPassword || !confirm}
             onClick={submit}
           >

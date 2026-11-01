@@ -37,7 +37,7 @@ export function Hero() {
         </h2>
         <Link
           href="/product-list"
-          className="mt-8 inline-flex h-10 w-[184px] items-center justify-center gap-1.5 rounded-lg bg-white text-xs font-medium text-primary-deep transition-colors hover:bg-white/90 nav-desktop:mt-12 nav-desktop:h-12 nav-desktop:w-[204px] nav-desktop:text-base"
+          className="mt-8 inline-flex h-10 w-[184px] items-center justify-center gap-1.5 rounded-md bg-white text-xs font-medium text-primary-deep transition-colors hover:bg-white/90 nav-desktop:mt-12 nav-desktop:h-12 nav-desktop:w-[204px] nav-desktop:text-base"
         >
           شروع معاملات عمده
           <ChevronsLeft size={20} />

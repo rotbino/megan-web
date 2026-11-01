@@ -250,7 +250,7 @@ function OrdersTab() {
                     <p className="text-[10px] text-muted-foreground">اشتراک {planLabel(o.months)}</p>
                   </div>
                   {o.status === 'pending' && (
-                    <Button size="sm" className="h-9 rounded-lg" onClick={() => setReviewTarget(o)}>
+                    <Button size="sm" className="h-9" onClick={() => setReviewTarget(o)}>
                       بازبینی
                     </Button>
                   )}
@@ -371,13 +371,13 @@ function ReviewDialog({
         <DialogFooter className="gap-2">
           {rejecting ? (
             <>
-              <Button variant="outline" size="sm" className="h-9 rounded-lg" onClick={() => setRejecting(false)}>
+              <Button variant="outline" size="sm" className="h-9" onClick={() => setRejecting(false)}>
                 بازگشت
               </Button>
               <Button
                 variant="destructive"
                 size="sm"
-                className="h-9 rounded-lg"
+                className="h-9"
                 disabled={pending || reason.trim().length < 3}
                 onClick={() => onReview(false, reason.trim())}
               >
@@ -390,7 +390,7 @@ function ReviewDialog({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-lg"
+                className="h-9"
                 disabled={pending}
                 onClick={() => setRejecting(true)}
               >
@@ -399,7 +399,7 @@ function ReviewDialog({
               </Button>
               <Button
                 size="sm"
-                className="h-9 rounded-lg"
+                className="h-9"
                 disabled={pending}
                 onClick={() => onReview(true)}
               >
@@ -703,12 +703,12 @@ function PlanEditDialog({
         )}
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" size="sm" className="h-9 rounded-lg" onClick={onClose}>
+          <Button variant="outline" size="sm" className="h-9" onClick={onClose}>
             انصراف
           </Button>
           <Button
             size="sm"
-            className="h-9 rounded-lg"
+            className="h-9"
             disabled={
               pending ||
               !form ||
@@ -1046,7 +1046,7 @@ function CampaignsTab() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 rounded-lg"
+              className="h-9"
               disabled={setDiscount.isPending}
               onClick={() => discountTarget && setDiscount.mutate({ id: discountTarget.id, manualDiscountPercent: null })}
             >
@@ -1054,7 +1054,7 @@ function CampaignsTab() {
             </Button>
             <Button
               size="sm"
-              className="h-9 rounded-lg"
+              className="h-9"
               disabled={setDiscount.isPending || manualPercent === '' || Number(manualPercent) < 0 || Number(manualPercent) > 100}
               onClick={() =>
                 discountTarget &&
@@ -1107,7 +1107,7 @@ function CampaignsTab() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 rounded-lg"
+              className="h-9"
               disabled={setCount.isPending}
               onClick={() => countTarget && setCount.mutate({ id: countTarget.id, manualPurchaseCount: null })}
             >
@@ -1115,7 +1115,7 @@ function CampaignsTab() {
             </Button>
             <Button
               size="sm"
-              className="h-9 rounded-lg"
+              className="h-9"
               disabled={
                 setCount.isPending ||
                 manualCount === '' ||
@@ -1375,12 +1375,12 @@ function CampaignEditDialog({
         )}
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" size="sm" className="h-9 rounded-lg" onClick={onClose}>
+          <Button variant="outline" size="sm" className="h-9" onClick={onClose}>
             انصراف
           </Button>
           <Button
             size="sm"
-            className="h-9 rounded-lg"
+            className="h-9"
             disabled={
               pending ||
               !form ||

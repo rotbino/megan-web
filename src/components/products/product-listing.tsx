@@ -185,7 +185,7 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
           onClick={clearCategory}
           aria-label={`حذف فیلتر دسته ${categoryName}`}
           title="حذف فیلتر دسته"
-          className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
+          className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
         >
           <span className="truncate">{categoryName}</span>
           <X size={13} className="shrink-0" aria-hidden />
@@ -197,7 +197,7 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
           onClick={removeSearch}
           aria-label="حذف جستجو"
           title="حذف جستجو"
-          className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
+          className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
         >
           <Search size={12} className="shrink-0" aria-hidden />
           <span className="truncate">«{s}»</span>
@@ -210,7 +210,7 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
           onClick={() => setCityId(undefined)}
           aria-label="حذف فیلتر شهر"
           title="حذف فیلتر شهر"
-          className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
+          className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
         >
           <MapPin size={12} className="shrink-0" aria-hidden />
           <span className="truncate">{cityName}</span>
@@ -222,7 +222,7 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
           onClick={() => { setProvinceId(undefined); setCityId(undefined); }}
           aria-label="حذف فیلتر استان"
           title="حذف فیلتر استان"
-          className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
+          className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
         >
           <MapPin size={12} className="shrink-0" aria-hidden />
           <span className="truncate">{provinceName}</span>
@@ -299,13 +299,10 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
 
       {/* لیست */}
       <div className="min-w-0 space-y-4">
-        {/* نوار بالا — دسکتاپ: چیپ فیلترهای فعال + مرتب‌سازی */}
+        {/* نوار بالا — دسکتاپ: چیپ فیلترهای فعال + مرتب‌سازی (بدون شمار آگهی — خواسته مالک ۱-۱۱) */}
         <div className="hidden flex-wrap items-center justify-between gap-3 rounded-md border bg-card p-3 lg:flex">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-sm">
             {chips}
-            <span className="truncate text-muted-foreground">
-              {data ? <b className="text-foreground">{toFa(data.total)}</b> : '—'} آگهی عمده
-            </span>
           </div>
           <div className="flex items-center gap-1.5 text-sm">
             <span className="text-muted-foreground">مرتب سازی بر اساس:</span>
@@ -315,7 +312,7 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
                 type="button"
                 onClick={() => setSort(opt.key)}
                 className={cn(
-                  'rounded-sm px-2 py-1 text-xs font-semibold transition-colors',
+                  'rounded-md px-2 py-1 text-xs font-semibold transition-colors',
                   sort === opt.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-primary',
                 )}
               >
@@ -330,7 +327,7 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
           <button
             type="button"
             onClick={openCategoriesSheet}
-            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground/85 transition-colors hover:border-foreground/30"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground/85 transition-colors hover:border-foreground/30"
           >
             <List size={14} className="text-muted-foreground" />
             دسته ها
@@ -338,7 +335,7 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
           <button
             type="button"
             onClick={() => setSheet('sort')}
-            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground/85 transition-colors hover:border-foreground/30"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground/85 transition-colors hover:border-foreground/30"
           >
             <ArrowDownWideNarrow size={14} className="text-muted-foreground" />
             مرتب سازی
@@ -401,7 +398,7 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
           <Link
             href={`/product-list/category/${encodeURIComponent(categorySlug)}`}
             onClick={closeSheets}
-            className="mb-1 flex items-center justify-between gap-2 rounded-lg bg-primary/5 px-3 py-3 text-sm font-bold text-primary transition-colors hover:bg-primary/10"
+            className="mb-1 flex items-center justify-between gap-2 rounded-md bg-primary/5 px-3 py-3 text-sm font-bold text-primary transition-colors hover:bg-primary/10"
           >
             مشاهده همه محصولات {categoryName}
             <ChevronLeft size={16} aria-hidden />
@@ -413,7 +410,7 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
               <button
                 type="button"
                 onClick={() => selectCategory(c)}
-                className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-3 text-start text-sm font-medium transition-colors hover:bg-accent"
+                className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-3 text-start text-sm font-medium transition-colors hover:bg-accent"
               >
                 <span className="line-clamp-1">{c.categoryName}</span>
                 {c.children?.length ? (
@@ -434,7 +431,7 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
                 type="button"
                 onClick={() => { setSort(opt.key); setSheet(null); }}
                 className={cn(
-                  'flex w-full items-center justify-between gap-2 rounded-lg px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
+                  'flex w-full items-center justify-between gap-2 rounded-md px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
                   sort === opt.key ? 'font-bold text-primary' : 'font-medium',
                 )}
               >

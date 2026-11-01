@@ -24,9 +24,10 @@ export function ProductPrice({
   if (!user) {
     return (
       <Button
+        variant="outline"
         onClick={() => requireAuth()}
         className={cn(
-          'w-full rounded-lg bg-primary font-medium text-primary-foreground hover:bg-primary-deep',
+          'w-full rounded-md font-medium',
           variant === 'page' ? 'h-12 text-base' : 'h-10',
         )}
         aria-label={`مشاهده قیمت ${product.productName}`}
@@ -52,7 +53,7 @@ export function ProductPrice({
   }
 
   return (
-    <div className="flex h-10 w-full items-center justify-center gap-1 rounded-lg bg-secondary font-extrabold text-primary">
+    <div className="flex h-10 w-full items-center justify-center gap-1 rounded-md bg-secondary font-extrabold text-primary">
       {product.minSalePrice ? (
         <>
           <span className="text-base">{priceFa(product.minSalePrice).replace(' تومان', '')}</span>

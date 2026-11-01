@@ -94,6 +94,9 @@
   --color-primary-line: var(--primary-line);
   --color-chip: var(--chip);
   --color-verified: var(--verified);
+  --color-success: var(--success);
+  --color-success-deep: var(--success-deep);
+  --color-success-soft: var(--success-soft);
   --color-ladder: var(--ladder);
   --color-ladder-foreground: var(--ladder-foreground);
   --color-ladder-soft: var(--ladder-soft);
@@ -139,6 +142,11 @@
   --input: #e2e5ea; /* خط اینپوت‌ها کمی پررنگ‌تر */
   --ring: #4c7dd0;
   --verified: #4c7dd0; /* آبیِ فقطِ نشان احراز هویت */
+  /* سبز مکمل (خواسته مالک ۱-۱۱): رنگ برند آبی است اما استفادهٔ محدود و سنجیده از
+     رنگ مکمل برای زیبایی فرم‌ها مجاز — مثلاً CTA «ثبت درخواست خرید» صفحه اصلی */
+  --success: #0e9f6e;
+  --success-deep: #0b8a5f;
+  --success-soft: #e9f7f1;
   --sidebar: #ffffff;
   --sidebar-foreground: #23262b;
   --sidebar-primary: #4c7dd0;
@@ -177,6 +185,9 @@
   --input: #3a3e45;
   --ring: #7ba3e0;
   --verified: #7ba3e0;
+  --success: #2fb98a;
+  --success-deep: #26a37a;
+  --success-soft: #17332a;
   --sidebar: #23262b;
   --sidebar-foreground: #e8eaee;
   --sidebar-primary: #7ba3e0;
@@ -194,6 +205,12 @@
   * {
     @apply border-border outline-ring/50;
     -webkit-tap-highlight-color: transparent;
+  }
+  html {
+    /* انکرِ اسکرول خاموش است تا جمع‌شدن نوار دسته‌بندی هدر (اسکرول به پایین)
+       حلقهٔ بازخورد نسازد: جبرانِ خودکار scrollTop دوباره رویداد اسکرول
+       شلیک می‌کرد و نوار بی‌وقفه باز/بسته می‌شد (خواسته مالک ۱-۱۱). */
+    overflow-anchor: none;
   }
   body {
     @apply bg-background text-foreground;

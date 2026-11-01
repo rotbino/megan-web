@@ -159,7 +159,7 @@ export default function AdminVerificationsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {o.status === 'pending' && (
-                    <Button size="sm" className="h-9 rounded-lg" onClick={() => setReviewTarget(o)}>
+                    <Button size="sm" className="h-9" onClick={() => setReviewTarget(o)}>
                       بازبینی مدارک
                     </Button>
                   )}
@@ -287,13 +287,13 @@ function ReviewDocsDialog({
         <DialogFooter className="gap-2">
           {rejecting ? (
             <>
-              <Button variant="outline" size="sm" className="h-9 rounded-lg" onClick={() => setRejecting(false)}>
+              <Button variant="outline" size="sm" className="h-9" onClick={() => setRejecting(false)}>
                 بازگشت
               </Button>
               <Button
                 variant="destructive"
                 size="sm"
-                className="h-9 rounded-lg"
+                className="h-9"
                 disabled={pending || reason.trim().length < 3}
                 onClick={() => onReview(false, reason.trim())}
               >
@@ -306,14 +306,14 @@ function ReviewDocsDialog({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-lg"
+                className="h-9"
                 disabled={pending}
                 onClick={() => setRejecting(true)}
               >
                 <X size={14} />
                 رد مدارک
               </Button>
-              <Button size="sm" className="h-9 rounded-lg" disabled={pending} onClick={() => onReview(true)}>
+              <Button size="sm" className="h-9" disabled={pending} onClick={() => onReview(true)}>
                 {pending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                 تأیید هویت
               </Button>

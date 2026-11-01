@@ -26,6 +26,8 @@ import type { Category } from '@/lib/types';
  *         جستجو با فاصله ثابت ۱۰px (gap-2.5) به لوگو چسبیده است؛
  *         دکمه‌های انتها با پدینگ ۲۴px (px-6) به منتهی‌الیه چپ هدر می‌چسبند.
  * ردیف ۲ (نوار زیر هدر — فقط دسکتاپ): [دسته بندی (مگامنو) | فروشنده شوید] — هم‌تراز با px-6
+ *         با اسکرول به داخل صفحه جمع می‌شود (فضای بیشتری برای محتوا) و با
+ *         اسکرول به سمت بالا دوباره باز می‌شود (خواسته مالک ۱-۱۱ — در همه صفحات).
  *
  * بعد از ورود (خواسته مالک): لینک ورود/ثبت‌نام حذف و به جایش آواتار + نام و
  * نام خانوادگی + آیکون دراپ‌داون می‌آید (منوی کانتکست نقش‌محور).
@@ -40,8 +42,41 @@ export function Header() {
   const [focused, setFocused] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
   const [activeRoot, setActiveRoot] = useState<number | null>(null);
+  const [barHidden, setBarHidden] = useState(false);
   const searchWrap = useRef<HTMLDivElement>(null);
   const megaWrap = useRef<HTMLDivElement>(null);
+
+  // ─── نوار زیر هدر: با اسکرول به پایین جمع، با اسکرول به بالا باز ───
+  // جهش‌های ریز (کمتر از ۴px) نادیده گرفته می‌شوند؛ بالای صفحه همیشه باز است.
+  // مگامنوی باز هم همراهِ جمع‌شدن نوار بسته می‌شود (بدون افکت — همان رویداد).
+  useEffect(() => {
+    let raf = 0;
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const y = window.scrollY;
+        const dy = y - lastY;
+        lastY = y;
+        if (y <= 64) {
+          setBarHidden(false);
+          return;
+        }
+        if (dy > 4) {
+          setBarHidden(true);
+          setMegaOpen(false);
+        } else if (dy < -4) {
+          setBarHidden(false);
+        }
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
 
   const isSeller = user?.role === 'seller';
 
@@ -84,6 +119,11 @@ export function Header() {
     setActiveRoot(null);
   };
 
+  const openMega = () => {
+    setBarHidden(false);
+    setMegaOpen(true);
+  };
+
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card shadow-[0_2px_12px_rgba(35,38,43,0.08)]">
       {/* ─── ردیف ۱ — هدر اصلی: لوگو |۱۰px| جستجو | دکمه‌های انتها (پدینگ ۲۴px لبه چپ) ── */}
@@ -110,7 +150,7 @@ export function Header() {
             <button
               type="submit"
               aria-label="جستجو"
-              className="my-1 me-1 flex w-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary-deep"
+              className="my-1 me-1 flex w-12 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition-colors hover:bg-primary-deep"
             >
               <Search size={18} strokeWidth={2.4} />
             </button>
@@ -175,7 +215,7 @@ export function Header() {
               {/* فروشنده → دایرکتوری خریداران (خریداران + درخواست‌ها) / خریدار → فروشندگان پیشنهادی */}
               <Link
                 href={isSeller ? '/buyers' : '/panel/suggested-sellers'}
-                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
+                className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
               >
                 {isSeller ? <BuyersIcon size={24} /> : <SellersIcon size={24} />}
                 <span className="mt-1">{isSeller ? 'خریداران' : 'فروشندگان'}</span>
@@ -186,7 +226,7 @@ export function Header() {
                 href="/panel/messages"
                 aria-label={unreadCount > 0 ? `پیام‌ها — ${unreadCount} پیام خوانده‌نشده` : 'پیام‌ها'}
                 title="پیام‌ها"
-                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
+                className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
               >
                 <span className="relative">
                   <MessagesIcon size={24} />
@@ -202,7 +242,7 @@ export function Header() {
             <>
               <Link
                 href="/product-list"
-                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
+                className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
               >
                 <SellersIcon size={24} />
                 <span className="mt-1">فروشندگان</span>
@@ -210,7 +250,7 @@ export function Header() {
               <span className="mx-1 h-9 w-px bg-border" aria-hidden />
               <Link
                 href="/buyers"
-                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
+                className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
               >
                 <BuyersIcon size={24} />
                 <span className="mt-1">خریداران</span>
@@ -218,7 +258,7 @@ export function Header() {
               <span className="mx-1 h-9 w-px bg-border" aria-hidden />
               <Link
                 href="/register"
-                className="flex min-w-20 flex-col items-center rounded-xl px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
+                className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
               >
                 <UserPlusBadge />
                 <span className="mt-1">ورود / ثبت نام</span>
@@ -231,44 +271,58 @@ export function Header() {
         <HeaderUserMenu variant="mobile" />
       </div>
 
-      {/* ─── ردیف ۲ — نوار زیر هدر (دسکتاپ): دسته بندی | فروشنده شوید ── */}
+      {/* ─── ردیف ۲ — نوار زیر هدر (دسکتاپ): دسته بندی | فروشنده شوید ──
+          با اسکرول به داخل صفحه جمع می‌شود (grid-rows 1fr→0fr + محو تدریجی)
+          تا فضای بیشتری برای محتوا باز شود؛ با اسکرول به بالا برمی‌گردد. */}
       <div
-        ref={megaWrap}
-        onMouseLeave={() => setMegaOpen(false)}
-        className="relative hidden items-center gap-2.5 border-t border-border/60 nav-desktop:flex nav-desktop:gap-3 nav-desktop:px-6"
-      >
-        <button
-          type="button"
-          onClick={() => setMegaOpen(true)}
-          onMouseEnter={() => setMegaOpen(true)}
-          aria-expanded={megaOpen}
-          aria-haspopup="true"
-          aria-label="باز کردن دسته‌بندی‌ها"
-          className="flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-        >
-          <LayoutGrid size={17} className="text-primary" />
-          دسته بندی
-          <ChevronDown size={14} className={cn('transition-transform', megaOpen && 'rotate-180')} />
-        </button>
-
-        <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
-
-        <Link
-          href={user ? '/panel/products/new' : '/register'}
-          className="flex h-9 shrink-0 items-center whitespace-nowrap rounded-[10px] px-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary-soft hover:text-primary-deep"
-        >
-          فروشنده شوید
-        </Link>
-
-        {/* مگامنوی دسته‌بندی — چسبیده به نوار (بدون فاصله تا هاور قطع نشود) */}
-        {megaOpen && (
-          <MegaMenu
-            tree={tree}
-            activeRoot={activeRoot}
-            setActiveRoot={setActiveRoot}
-            onNavigate={closeMega}
-          />
+        className={cn(
+          'hidden nav-desktop:grid nav-desktop:transition-[grid-template-rows,opacity] nav-desktop:duration-300 nav-desktop:ease-in-out',
+          barHidden
+            ? 'nav-desktop:grid-rows-[0fr] nav-desktop:opacity-0'
+            : 'nav-desktop:grid-rows-[1fr] nav-desktop:opacity-100',
         )}
+      >
+        <div className="nav-desktop:min-h-0 nav-desktop:overflow-hidden">
+          <div
+            ref={megaWrap}
+            onMouseLeave={() => setMegaOpen(false)}
+            inert={barHidden ? true : undefined}
+            className="relative hidden items-center gap-2.5 border-t border-border/60 nav-desktop:flex nav-desktop:gap-3 nav-desktop:px-6"
+          >
+            <button
+              type="button"
+              onClick={openMega}
+              onMouseEnter={openMega}
+              aria-expanded={megaOpen}
+              aria-haspopup="true"
+              aria-label="باز کردن دسته‌بندی‌ها"
+              className="flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              <LayoutGrid size={17} className="text-primary" />
+              دسته بندی
+              <ChevronDown size={14} className={cn('transition-transform', megaOpen && 'rotate-180')} />
+            </button>
+
+            <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
+
+            <Link
+              href={user ? '/panel/products/new' : '/register'}
+              className="flex h-9 shrink-0 items-center whitespace-nowrap rounded-md px-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary-soft hover:text-primary-deep"
+            >
+              فروشنده شوید
+            </Link>
+
+            {/* مگامنوی دسته‌بندی — چسبیده به نوار (بدون فاصله تا هاور قطع نشود) */}
+            {megaOpen && (
+              <MegaMenu
+                tree={tree}
+                activeRoot={activeRoot}
+                setActiveRoot={setActiveRoot}
+                onNavigate={closeMega}
+              />
+            )}
+          </div>
+        </div>
       </div>
     </header>
   );

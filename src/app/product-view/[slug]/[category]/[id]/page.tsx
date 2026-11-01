@@ -149,11 +149,11 @@ export default async function ProductViewPage({ params }: Props) {
                   priority
                   sizes="(max-width: 640px) 100vw, 420px"
                 />
-                {/* نشان‌های قرمز روی تصویر اصلی — عین کارت لیست (خواسته مالک ۳۱-۱۰) */}
-                {(product.isLadder || product.isElevated) && (
-                  <span className="absolute start-2 top-2 flex flex-col items-start gap-1.5">
-                    {product.isLadder && <LadderBadge />}
-                    {product.isElevated && <PremiumSellerBadge />}
+                {/* «فروشنده ویژه» — مستطیل رنگ برند چسبیده به گوشهٔ بالا-چپ عکس (عین کارت لیست —
+                    خواسته مالک ۱-۱۱)؛ نردبان دیگر روی عکس نیست و فقط کنار عنوان می‌آید */}
+                {product.isElevated && (
+                  <span className="absolute left-0 top-0 rounded-br-[6px] bg-primary px-2.5 py-1.5 text-xs font-medium leading-none text-primary-foreground shadow-sm">
+                    فروشنده ویژه
                   </span>
                 )}
               </div>
@@ -183,7 +183,6 @@ export default async function ProductViewPage({ params }: Props) {
                 <h1 className="text-xl font-bold leading-8 sm:text-2xl">
                   {product.productName}
                 </h1>
-
                 <ul className="grid gap-2.5 rounded-md border bg-card p-4 text-sm">
                   {info.map(({ icon: Icon, label, value }) => (
                     <li key={label} className="flex items-center gap-2.5">
@@ -233,12 +232,10 @@ export default async function ProductViewPage({ params }: Props) {
                     <SellerOnlineBadge userName={product.seller.userName} sellerId={product.myuserId} />
                   </p>
                   <div className="mt-1 flex flex-col items-start gap-1">
-                    {product.seller.isVerified ? (
+                    {product.seller.isVerified && (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
                         <BadgeCheck size={13} /> احراز هویت شده
                       </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">بدون احراز هویت</span>
                     )}
                     <SellerRatingBadge userName={product.seller.userName} />
                   </div>
