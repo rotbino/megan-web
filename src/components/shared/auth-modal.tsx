@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, KeyRound, Loader2, Smartphone, X } from 'lucide-react';
+import { ArrowRight, CheckCircle2, KeyRound, Loader2, Smartphone, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,17 +49,23 @@ export function AuthModal({
   onClose,
   onLoggedIn,
   intent = 'login',
+  initialPhone,
+  notice,
 }: {
   open: boolean;
   onClose: () => void;
   onLoggedIn: () => void;
   /** نیات باز شدن — جملهٔ بالای فرم و فوکوس خودکار روی موبایل */
   intent?: AuthIntent;
+  /** شمارهٔ پیش‌پر (بعد از تعیین/تغییر رمز) — فرم مستقیم روی مرحلهٔ رمز شروع می‌شود */
+  initialPhone?: string;
+  /** اعلان موفقیت بالای فرم — «رمز عبور شما تغییر کرد. لطفاً با رمز جدید وارد شوید» */
+  notice?: string;
 }) {
   const router = useRouter();
   const { login } = useAuth();
-  const [step, setStep] = useState<'phone' | 'password'>('phone');
-  const [phone, setPhone] = useState('');
+  const [step, setStep] = useState<'phone' | 'password'>(initialPhone ? 'password' : 'phone');
+  const [phone, setPhone] = useState(initialPhone ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const phoneRef = useRef<HTMLInputElement>(null);
@@ -151,6 +157,13 @@ export function AuthModal({
 
   const body = (
     <div className="space-y-4 p-1">
+      {/* اعلان «رمز عوض شد» — بالای فرم، سبز و آرام (خواسته مالک ۱-۱۱) */}
+      {notice && (
+        <p className="flex items-center justify-center gap-2 rounded-md bg-success-soft px-3 py-2.5 text-xs font-bold leading-5 text-success-deep">
+          <CheckCircle2 size={16} className="shrink-0" aria-hidden />
+          {notice}
+        </p>
+      )}
       <div className="flex flex-col items-center gap-2 text-center">
         <span className="grid size-11 place-items-center rounded-md bg-primary/10 text-primary">
           {step === 'phone' ? <Smartphone size={20} /> : <KeyRound size={20} />}

@@ -530,12 +530,22 @@ export async function loginWithSession(input: {
   return { ok: true, isNewUser: data.isNewUser, user };
 }
 
-/** تعیین رمز پنل — از بنر قرمز پنل؛ تغییرهای بعدی currentPassword می‌خواهد */
+/** تعیین رمز پنل — از مودال رمز پنل؛ تغییرهای بعدی currentPassword می‌خواهد.
+ *  newPhone (خواسته مالک ۱-۱۱): شماره موبایل ویرایش‌شده در همان مودال —
+ *  فقط وقتی فرستاده می‌شود که تغییر کرده باشد. بک‌اند:
+ *  شمارهٔ رمزدار → خطای PHONE_HAS_PASSWORD؛ شمارهٔ بی‌رمز → جذب حساب؛
+ *  پس از موفقیت همهٔ نشست‌ها باطل می‌شوند (ورود دوباره با رمز جدید). */
 export async function setPasswordRemote(input: {
   password: string;
   currentPassword?: string;
-}): Promise<void> {
-  await apiFetch('/auth/setPassword', input, { auth: true });
+  newPhone?: string;
+}): Promise<{ phone: string }> {
+  const data = await apiFetch<{ hasPassword: boolean; phone: string }>(
+    '/auth/setPassword',
+    input,
+    { auth: true },
+  );
+  return { phone: data.phone };
 }
 
 /** نگاشت user بک‌اند → کاربر نشست فرانت */

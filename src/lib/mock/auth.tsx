@@ -40,6 +40,11 @@ interface AuthContextValue {
   requireAuth: (intent?: AuthIntent) => boolean;
   login: (user: SessionUser) => void;
   logout: () => void;
+  /** خروج نرم + باز شدن مودال ورود با شماره و اعلان داده‌شده —
+   *  بعد از تعیین/تغییر رمز (خواسته مالک ۱-۱۱): کاربر خارج می‌شود و
+   *  «رمز عبور شما تغییر کرد. لطفاً با رمز جدید وارد شوید» می‌بیند؛
+   *  فرم مستقیم روی مرحلهٔ رمز با همان شماره شروع می‌شود. */
+  forceRelogin: (phone: string, notice: string) => void;
   /** تغییر نقش فروشنده/خریدار — هم‌زمان در بک‌اند ماندگار می‌شود */
   setRole: (role: 'seller' | 'buyer') => void;
   /** دریافت دوباره پروفایل از بک‌اند — بعد از ویرایش پروفایل/ثبت‌نام */
@@ -68,6 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [open, setOpen] = useState(false);
   const [intent, setIntent] = useState<AuthIntent>('login');
+  /** اعلان + شمارهٔ پیش‌پر برای ورودِ دوباره بعد از تغییر رمز */
+  const [relogin, setRelogin] = useState<{ phone: string; notice: string } | null>(null);
   const bootedRef = useRef(false);
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -131,25 +138,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [persist, queryClient],
   );
 
-  /** خروج کامل — کلاینت + سرور + انتقال به صفحه اصلی سایت:
-   *  • سرور: ابطال همه نشست‌ها (اکسس‌توکن و همه رفرش‌توکن‌ها) — logoutRemote
-   *  • کلاینت: پاک‌سازی توکن‌ها و کاربر نشست از localStorage،
-   *    تخلیه کامل کش React Query (دیتای پنل برای کاربر بعدی نمی‌ماند)،
-   *    قطع سوکت چت و در پایان ریدایرکت به صفحه اصلی. */
-  const logout = useCallback(() => {
+  /** پاک‌سازی کامل نشست سمت کلاینت — مشترک بین logout و forceRelogin */
+  const clearSessionClient = useCallback(() => {
     setUser(null);
     persist(null);
     // خروج واقعی — ابطال همه نشست‌ها در بک‌اند + پاک‌سازی توکن‌ها
-    void logoutRemote();
+    void logoutRemote().catch(() => undefined);
     // داده کش‌شدهٔ پنل/چت‌ها نباید بعد از خروج قابل مشاهده باشد
     // (cancelQueries: درخواست‌های در حال پرواز را هم لغو می‌کند تا بعد از clear
     // نتیجه‌شان به کش برنگردد)
     queryClient.cancelQueries().catch(() => undefined);
     queryClient.clear();
     closeChatSocket();
+  }, [persist, queryClient]);
+
+  /** خروج کامل — کلاینت + سرور + انتقال به صفحه اصلی سایت:
+   *  سرور: ابطال همه نشست‌ها (اکسس‌توکن و همه رفرش‌توکن‌ها) — logoutRemote */
+  const logout = useCallback(() => {
+    clearSessionClient();
     // خروج = بازگشت به صفحه اصلی سایت (نه ماندن در مسیر پنل)
     router.push('/');
-  }, [persist, queryClient, router]);
+  }, [clearSessionClient, router]);
+
+  /** خروج بدون جابه‌جایی + مودال ورود با شماره/اعلان — الگوی «رمز عوض شد،
+   *  دوباره وارد شو»: کاربر در همان صفحه می‌ماند و مستقیم رمز جدید را می‌زند. */
+  const forceRelogin = useCallback(
+    (phone: string, notice: string) => {
+      clearSessionClient();
+      setIntent('login');
+      setRelogin({ phone, notice });
+      setOpen(true);
+    },
+    [clearSessionClient],
+  );
 
   const setRole = useCallback((role: 'seller' | 'buyer') => {
     setUser((u) => {
@@ -185,20 +206,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const value = useMemo(
-    () => ({ user, requireAuth, login, logout, setRole, refreshUser }),
-    [user, requireAuth, login, logout, setRole, refreshUser],
+    () => ({ user, requireAuth, login, logout, forceRelogin, setRole, refreshUser }),
+    [user, requireAuth, login, logout, forceRelogin, setRole, refreshUser],
   );
 
   return (
     <AuthContext.Provider value={value}>
       {children}
-      {/* چانک مودال فقط لحظه‌ی باز شدن fetch می‌شود (F5) — نیات، جملهٔ فرم را می‌سازد */}
+      {/* چانک مودال فقط لحظه‌ی باز شدن fetch می‌شود (F5) — نیات، جملهٔ فرم را می‌سازد؛
+          بعد از تغییر رمز، شماره + اعلان «با رمز جدید وارد شوید» هم می‌گیرد */}
       {open && (
         <LazyAuthModal
           open={open}
           intent={intent}
-          onClose={() => setOpen(false)}
-          onLoggedIn={() => setOpen(false)}
+          initialPhone={relogin?.phone}
+          notice={relogin?.notice}
+          onClose={() => {
+            setOpen(false);
+            setRelogin(null);
+          }}
+          onLoggedIn={() => {
+            setOpen(false);
+            setRelogin(null);
+          }}
         />
       )}
     </AuthContext.Provider>

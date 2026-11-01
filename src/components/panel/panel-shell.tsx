@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { LogIn, Loader2 } from 'lucide-react';
 import { PanelSidebar } from '@/components/panel/panel-sidebar';
-import { PasswordBanner } from '@/components/panel/password-banner';
+import { PasswordBanner, PasswordLock } from '@/components/panel/password-banner';
 import { usePanelProfile } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,18 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  /** مودال رمز — دست این پوسته است تا با ورود به هر صفحهٔ پنل بدون رمز،
+   *  خودکار باز شود (خواسته مالک: «اگر لینک پنل را زد، به او بگوییم
+   *  قبل از هر کاری رمز تعیین کند») و صفحهٔ قفل هم محتوا را جایگزین کند. */
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const needsPassword = Boolean(user && !user.hasPassword);
+
+  useEffect(() => {
+    // نشست پس از هیدریشن به‌صورت غیرهمگام می‌رسد (fetchAuthUser) — باز شدن
+    // خودکار مودال رمز واکنش به دادهٔ بیرونی است، نه state مشتق‌پذیر
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- الگوی استاندارد واکنش به نشستِ غیرهمگام (همانند auth.tsx)
+    if (needsPassword) setPasswordOpen(true);
+  }, [needsPassword]);
 
   useEffect(() => {
     // نشست ورود پس از هیدریشن بازیابی می‌شود — تا آن لحظه اسکلت نشان می‌دهیم
@@ -101,8 +113,8 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
         <img src="/logo-short.svg" alt="ایمچ" width={80} height={28} className="h-6 w-auto" />
       </header>
 
-      {/* بنر قرمز «رمز عبور تعیین کنید» — تا تعیین رمز در همه صفحات پنل می‌ماند */}
-      <PasswordBanner />
+      {/* بنر قرمز + مودال «رمز عبور تعیین کنید» — تا تعیین رمز در همه صفحات پنل می‌ماند */}
+      <PasswordBanner open={passwordOpen} onOpenChange={setPasswordOpen} />
 
       {/* دراور موبایل */}
       {drawerOpen && (
@@ -128,7 +140,12 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
       >
         {hydrated ? (
           user ? (
-            children
+            // بدون رمز پنل = قفل محتوا (خواسته مالک — «قبل از هر کاری رمز تعیین کن»)
+            needsPassword ? (
+              <PasswordLock onOpen={() => setPasswordOpen(true)} />
+            ) : (
+              children
+            )
           ) : (
             <LoginGate onOpen={() => requireAuth('login')} />
           )

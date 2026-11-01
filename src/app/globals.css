@@ -92,6 +92,11 @@
   --color-primary-deep: var(--primary-deep);
   --color-primary-soft: var(--primary-soft);
   --color-primary-line: var(--primary-line);
+  /* آبی زندهٔ تمایز — فقط CTAهای بازاریابی (فروشنده شوید…)؛ مستقل از رنگ برند کاربر */
+  --color-emphasis: var(--emphasis);
+  --color-emphasis-deep: var(--emphasis-deep);
+  --color-emphasis-foreground: var(--emphasis-foreground);
+  --color-emphasis-soft: var(--emphasis-soft);
   --color-chip: var(--chip);
   --color-verified: var(--verified);
   --color-success: var(--success);
@@ -112,11 +117,13 @@
 
 :root {
   color-scheme: light;
-  /* ─── برندبوک ایمچ v3 — آبی اعتماد (#4c7dd0) ────────────────
-     زمینه سفید خالص؛ کارت‌های سفید با خط‌های ظریف؛ تیل B2B برای دکمه‌ها
-     و لهجه‌ها (اعتماد تجاری + تازگی محصولات کشاورزی)؛ متمایز از نارنجی
-     باسکول؛ مکمل نشان کهربایی «فروشنده ویژه»؛ و دیگر با قرمزِ خطا
-     (destructive) یکی نیست.
+  /* ─── برندبوک ایمچ v4 — آبی نفتی (#245B7A) ────────────────
+     انتخاب مالک (۱-۱۱ دور هشتم): «نسبتاً خنثی اما جدی و زیبا» —
+     زمینه سفید خالص؛ کارت‌های سفید با خط‌های ظریف؛ آبی نفتی برای
+     دکمه‌ها/آیکون‌ها/لهجه‌ها (اعتماد تجاری جدی)؛ آبی زندهٔ قبلی
+     (#4C7DD0) به‌عنوان رنگ «تمایز» (توکن emphasis) فقط برای CTAهای
+     بازاریابی مثل «فروشنده شوید» ماند تا جلب توجه کند.
+     مکمل‌ها: نشان کهربایی «نردبان» + سبز سنجیدهٔ CTA درخواست خرید.
      گردی گوشه‌ها هم‌اندازه: کارت ۱۲ / دکمه-اینپوت ۱۰ / مودال ۱۶ / چیپ گرد کامل */
   --radius: 0.75rem; /* ۱۲px — کارت */
   --background: #ffffff; /* زمینه صفحه — سفید خالص */
@@ -125,12 +132,12 @@
   --card-foreground: #23262b;
   --popover: #ffffff;
   --popover-foreground: #23262b;
-  /* آبی اعتماد (#4c7dd0) — دکمه‌ها و لهجه‌ها؛ انتخاب مالک */
-  --primary: #4c7dd0;
-  --primary-deep: #3a68b8;
+  /* آبی نفتی (#245B7A) — دکمه‌ها و لهجه‌ها؛ انتخاب مالک (پیش‌فرض برند) */
+  --primary: #245b7a;
+  --primary-deep: #1f4d68;
   --primary-foreground: #ffffff;
-  --primary-soft: #eef3fa; /* حالت انتخاب‌شده/فعال */
-  --primary-line: #ccd9ef;
+  --primary-soft: #edf2f4; /* حالت انتخاب‌شده/فعال */
+  --primary-line: #c2d1da;
   --secondary: #f0f1f4; /* چیپ خاکستری */
   --secondary-foreground: #4a505b;
   --muted: #f0f1f4;
@@ -141,8 +148,15 @@
   --destructive: #c62828;
   --border: #e9ebef; /* خط ظریف کارت‌ها */
   --input: #e2e5ea; /* خط اینپوت‌ها کمی پررنگ‌تر */
-  --ring: #4c7dd0;
-  --verified: #4c7dd0; /* آبیِ فقطِ نشان احراز هویت */
+  --ring: #245b7a;
+  --verified: #245b7a; /* رنگ نشان احراز هویت — هم‌رنگ برند */
+  /* آبی زندهٔ تمایز (#4C7DD0) — خوشرنگ و متمایز؛ فقط جاهایی که نوشته
+     باید بیشتر جلب توجه کند (فروشنده شوید، ثبت فروشگاه، تبلیغ رایگان).
+     عمداً از رنگ برند کاربر پیروی نمی‌کند — تمایزِ ثابتِ بازاریابی است. */
+  --emphasis: #4c7dd0;
+  --emphasis-deep: #3a68b8;
+  --emphasis-foreground: #ffffff;
+  --emphasis-soft: #eef3fa;
   /* سبز مکمل (خواسته مالک ۱-۱۱): رنگ برند آبی است اما استفادهٔ محدود و سنجیده از
      رنگ مکمل برای زیبایی فرم‌ها مجاز — مثلاً CTA «ثبت درخواست خرید» صفحه اصلی */
   --success: #0e9f6e;
@@ -150,12 +164,12 @@
   --success-soft: #e9f7f1;
   --sidebar: #ffffff;
   --sidebar-foreground: #23262b;
-  --sidebar-primary: #4c7dd0;
+  --sidebar-primary: #245b7a;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eef3fa;
-  --sidebar-accent-foreground: #4c7dd0;
+  --sidebar-accent: #edf2f4;
+  --sidebar-accent-foreground: #1e4b64;
   --sidebar-border: #e9ebef;
-  --sidebar-ring: #4c7dd0;
+  --sidebar-ring: #245b7a;
   /* کهربایی ملایم — فقط برای نشان «نردبان» (۱۰ هزار تومان در روز) */
   --ladder: #b07818;
   --ladder-foreground: #fffdf7;
@@ -169,11 +183,12 @@
   --card-foreground: #e8eaee;
   --popover: #23262b;
   --popover-foreground: #e8eaee;
-  --primary: #7ba3e0;
-  --primary-deep: #6590c9;
+  /* آبی نفتی در تیره — همان فرمول اسکریپت بوت: روشن‌شده ۲۲٪ سفید */
+  --primary: #6f93a8;
+  --primary-deep: #628194;
   --primary-foreground: #ffffff;
-  --primary-soft: #1f2734;
-  --primary-line: #36425e;
+  --primary-soft: #292f35;
+  --primary-line: #38454e;
   --secondary: #2a2d33;
   --secondary-foreground: #c8ccd4;
   --muted: #2a2d33;
@@ -184,19 +199,24 @@
   --destructive: #e05c5c;
   --border: #33373d;
   --input: #3a3e45;
-  --ring: #7ba3e0;
-  --verified: #7ba3e0;
+  --ring: #6f93a8;
+  --verified: #6f93a8;
+  /* آبی زندهٔ تمایز در تیره */
+  --emphasis: #7ba3e0;
+  --emphasis-deep: #6590c9;
+  --emphasis-foreground: #ffffff;
+  --emphasis-soft: #1f2734;
   --success: #2fb98a;
   --success-deep: #26a37a;
   --success-soft: #17332a;
   --sidebar: #23262b;
   --sidebar-foreground: #e8eaee;
-  --sidebar-primary: #7ba3e0;
+  --sidebar-primary: #6f93a8;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1f2734;
-  --sidebar-accent-foreground: #7ba3e0;
+  --sidebar-accent: #292f35;
+  --sidebar-accent-foreground: #6f93a8;
   --sidebar-border: #33373d;
-  --sidebar-ring: #7ba3e0;
+  --sidebar-ring: #6f93a8;
   --ladder: #d0a04a;
   --ladder-foreground: #26200f;
   --ladder-soft: #3a3118;

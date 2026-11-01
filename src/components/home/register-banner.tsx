@@ -30,17 +30,18 @@ export function RegisterBanner() {
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-8 lg:px-6">
+      {/* CTA بازاریابی — رنگ تمایز (آبی زندهٔ ثابت؛ قانون رنگ RULES.md §۱-رنگ) */}
       <Link
         href={user ? '/panel/products' : '/register'}
         onClick={go}
         aria-label="ساخت فروشگاه آنلاین در ایمچ"
-        className="group block overflow-hidden rounded-lg border border-primary/25 bg-gradient-to-l from-primary/5 via-secondary/60 to-secondary/60 shadow-sm transition-all hover:border-primary/50 hover:shadow-md"
+        className="group block overflow-hidden rounded-lg border border-emphasis/25 bg-gradient-to-l from-emphasis/5 via-secondary/60 to-secondary/60 shadow-sm transition-all hover:border-emphasis/50 hover:shadow-md"
       >
         <div className="flex flex-col-reverse items-center gap-4 px-6 py-6 sm:flex-row sm:gap-6 sm:py-0">
           {/* متن + دکمه */}
           <div className="flex flex-1 flex-col items-center gap-4 py-2 text-center sm:items-start sm:py-8 sm:text-start">
             <div className="flex items-center gap-3">
-              <span className="grid size-12 shrink-0 place-items-center rounded-md bg-primary/10 text-primary ring-1 ring-primary/20">
+              <span className="grid size-12 shrink-0 place-items-center rounded-md bg-emphasis/10 text-emphasis ring-1 ring-emphasis/20">
                 <Store size={24} strokeWidth={1.8} />
               </span>
               <p className="text-base font-extrabold sm:text-xl">
@@ -50,7 +51,7 @@ export function RegisterBanner() {
             <p className="max-w-md text-xs leading-6 text-muted-foreground sm:text-sm">
               محصولات خود را در ایمچ ثبت کنید و خریداران را به ویترین خود جذب کنید.
             </p>
-            <span className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition-colors group-hover:bg-primary-deep">
+            <span className="inline-flex items-center gap-2 rounded-md bg-emphasis px-6 py-3 text-sm font-bold text-emphasis-foreground transition-colors group-hover:bg-emphasis-deep">
               {user ? 'ورود به پنل محصولات' : 'ثبت فروشگاه'}
             </span>
           </div>

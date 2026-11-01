@@ -319,9 +319,10 @@ export function Header() {
 
             <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
 
+            {/* CTA بازاریابی — رنگ تمایز (آبی زندهٔ ثابت، نه رنگ برند کاربر) */}
             <Link
               href={user ? '/panel/products/new' : '/register'}
-              className="flex h-9 shrink-0 items-center whitespace-nowrap rounded-md px-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary-soft hover:text-primary-deep"
+              className="flex h-9 shrink-0 items-center whitespace-nowrap rounded-md px-2.5 text-sm font-bold text-emphasis transition-colors hover:bg-emphasis-soft hover:text-emphasis-deep"
             >
               فروشنده شوید
             </Link>
