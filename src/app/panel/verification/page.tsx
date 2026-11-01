@@ -76,7 +76,7 @@ function UploadBox({
         </>
       ) : (
         <>
-          <span className="grid size-11 place-items-center rounded-full bg-white text-primary shadow-sm">
+          <span className="grid size-11 place-items-center rounded-full bg-card text-primary shadow-sm">
             <FileImage size={20} />
           </span>
           <span className="mt-2 text-sm font-bold">{label}</span>

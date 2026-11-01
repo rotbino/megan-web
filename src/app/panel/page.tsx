@@ -225,7 +225,7 @@ export default function PanelDashboard() {
               {completion.label}
             </span>
           </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background">
             <div
               className={cn(
                 'h-full rounded-full transition-all',

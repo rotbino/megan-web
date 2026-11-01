@@ -172,7 +172,7 @@ function CampaignBanner({ campaign }: { campaign: SalesCampaignInfo }) {
                       'rounded-full px-2.5 py-1 text-[11px] font-bold',
                       campaign.currentTier && t.from === campaign.currentTier.from
                         ? 'bg-red-600 text-white'
-                        : 'bg-white text-red-700/80 ring-1 ring-red-200',
+                        : 'bg-card text-red-700/80 ring-1 ring-red-200',
                     )}
                   >
                     {t.to == null

@@ -394,7 +394,7 @@ export default function WalletPage() {
                   </>
                 ) : (
                   <>
-                    <span className="grid size-12 place-items-center rounded-full bg-white text-primary shadow-sm">
+                    <span className="grid size-12 place-items-center rounded-full bg-card text-primary shadow-sm">
                       <ImagePlus size={22} />
                     </span>
                     <span className="mt-2 flex items-center gap-1.5 text-xs font-bold">

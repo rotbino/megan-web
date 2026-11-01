@@ -86,7 +86,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* هدر موبایل پنل */}
-      <header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-border bg-white px-3 lg:hidden">
+      <header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-border bg-background px-3 lg:hidden">
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}

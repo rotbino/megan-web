@@ -7,6 +7,7 @@ import { PageViewPing } from "@/components/shared/page-view-ping";
 import { BaseDataProvider } from "@/lib/base-data";
 import { getCategoryTreeSSR, getProvincesSSR } from "@/lib/mock/api";
 import { SITE_URL } from "@/lib/site";
+import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -51,7 +52,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#A62626",
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
 };
@@ -95,6 +96,10 @@ export default async function RootLayout({
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
       <body className="font-sans antialiased bg-background text-foreground">
+        {/* تم روشن/تیره + رنگ برند کاربر — قبل از رندر بدنه اعمال می‌شود تا
+            هیچ فلشِ سفید دیده نشود؛ کلاس/استایل روی <html> با suppressHydrationWarning
+            پوشش داده شده است. پیاده‌سازی واحد پالت داخل خود اسکریپت است. */}
+        <script id="theme-boot" dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <Providers>
           <BaseDataProvider tree={tree ?? undefined} provinces={provinces ?? undefined}>
             <div className="flex min-h-screen flex-col">{children}</div>

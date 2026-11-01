@@ -322,7 +322,7 @@ export function PanelSidebar({
             }}
             title="خروج از حساب کاربری"
             className={cn(
-              'flex h-11 w-full items-center gap-3 rounded-md px-3 text-sm text-red-300 transition-colors hover:bg-red-400/10 hover:text-red-200',
+              'flex h-11 w-full items-center gap-3 rounded-md px-3 text-sm text-red-400 transition-colors hover:bg-red-400/10 hover:text-red-500',
               collapsed && 'justify-center px-0',
             )}
           >

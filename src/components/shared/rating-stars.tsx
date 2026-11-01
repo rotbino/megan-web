@@ -41,7 +41,7 @@ export function RatingStars({
               className={cn(
                 'shrink-0',
                 fill === 'full' && 'fill-amber-400 text-amber-400',
-                fill === 'half' && 'fill-amber-200 text-amber-400',
+                fill === 'half' && 'fill-amber-300 text-amber-400',
                 fill === 'empty' && 'fill-muted text-muted-foreground/30',
               )}
             />

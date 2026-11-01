@@ -123,7 +123,7 @@ export default function EditProfilePage() {
   const sections = [
     { label: 'اطلاعات پایه', pct: 15, done: Boolean(form.firstName.trim() && form.lastName.trim() && form.provinceId && form.cityId) },
     { label: 'اطلاعات شما', pct: 8, done: Boolean(form.address.trim()) },
-    { label: 'اطلاعات حقوقی', pct: 8, done: form.isCompany && Boolean(form.companyName.trim()) },
+    { label: 'اطلاعات حقوقی', pct: 8, done: Boolean(form.companyName.trim()) },
     { label: 'درباره کسب و کار', pct: 11, done: form.about.trim().length >= 100 },
     { label: 'تصاویر مربوطه', pct: 8, done: form.gallery.length > 0 },
     { label: 'گواهی‌ها', pct: 8, done: form.certificates.length > 0 },
@@ -230,8 +230,8 @@ export default function EditProfilePage() {
         city_id: form.cityId ? Number(form.cityId) : null,
         address: form.address.trim() || null,
         description: form.about.trim() || null,
-        isCompany: form.isCompany,
-        companyName: form.isCompany ? form.companyName.trim() : '',
+        isCompany: Boolean(form.companyName.trim()),
+        companyName: form.companyName.trim(),
       });
       await refreshUser(); // نام/نقش هدر تازه شود
       await queryClient.invalidateQueries({ queryKey: ['panel-profile'] });
@@ -317,7 +317,7 @@ export default function EditProfilePage() {
               </span>
             </span>
           </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background">
             <div
               className={cn(
                 'h-full rounded-full transition-all',
@@ -332,7 +332,7 @@ export default function EditProfilePage() {
                 key={s.label}
                 className={cn(
                   'rounded-full px-2 py-0.5 text-[10px] font-bold',
-                  s.done ? 'bg-emerald-50 text-emerald-600' : 'bg-white text-muted-foreground',
+                  s.done ? 'bg-emerald-50 text-emerald-600' : 'bg-card text-muted-foreground',
                 )}
               >
                 {s.label} {toFa(s.pct)}٪
@@ -510,48 +510,39 @@ export default function EditProfilePage() {
         </div>
       </PanelCard>
 
-      {/* اطلاعات حقوقی */}
+      {/* اطلاعات حقوقی — همیشه نمایان است (خواستهٔ مالک ۱-۱۱: بخش ویرایش
+          کسب‌وکار از همان اول رندر شود، نه پنهان)؛ پر کردن «نام شرکت» آن را
+          فعال می‌کند و در پروفایل/پروفایل عمومی نمایش داده می‌شود. */}
       <PanelCard className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="flex items-center gap-2 text-sm font-extrabold">
-            <Building2 size={17} className="text-primary" /> افزودن اطلاعات حقوقی
-          </h2>
-          <Button
-            size="sm"
-            variant={form.isCompany ? 'outline' : 'default'}
-            className="rounded-md text-xs"
-            onClick={() => patch({ isCompany: !form.isCompany })}
-          >
-            {form.isCompany ? 'حذف اطلاعات حقوقی' : 'افزودن اطلاعات حقوقی'}
-          </Button>
-        </div>
+        <h2 className="flex items-center gap-2 text-sm font-extrabold">
+          <Building2 size={17} className="text-primary" /> اطلاعات حقوقی
+        </h2>
         <p className="text-xs leading-6 text-muted-foreground">
-          با تکمیل اطلاعات حقوقی، اعتبار حساب خود را بیشتر کنید.
+          با تکمیل اطلاعات حقوقی، اعتبار حساب خود را بیشتر کنید — خالی بماند، در پروفایل شما نمایش داده نمی‌شود.
         </p>
-        {form.isCompany && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="company">نام شرکت <span className="text-red-500">*</span></Label>
-              <Input
-                id="company"
-                value={form.companyName}
-                onChange={(e) => patch({ companyName: e.target.value })}
-                placeholder="نام شرکت یا مجموعه"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="company-reg">شماره ثبت شرکت <span className="text-red-500">*</span></Label>
-              <Input
-                id="company-reg"
-                inputMode="numeric"
-                value={form.companyRegisterNumber}
-                onChange={(e) => patch({ companyRegisterNumber: e.target.value.replace(/[^\d]/g, '').slice(0, 12) })}
-                placeholder="مثلا: ۱۲۳۴۵۶"
-                className="text-center"
-              />
-            </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="company">نام شرکت</Label>
+            <Input
+              id="company"
+              value={form.companyName}
+              onChange={(e) => patch({ companyName: e.target.value, isCompany: e.target.value.trim().length > 0 })}
+              placeholder="نام شرکت یا مجموعه"
+              maxLength={120}
+            />
           </div>
-        )}
+          <div className="space-y-2">
+            <Label htmlFor="company-reg">شماره ثبت شرکت</Label>
+            <Input
+              id="company-reg"
+              inputMode="numeric"
+              value={form.companyRegisterNumber}
+              onChange={(e) => patch({ companyRegisterNumber: e.target.value.replace(/[^\d]/g, '').slice(0, 12) })}
+              placeholder="مثلا: ۱۲۳۴۵۶"
+              className="text-center"
+            />
+          </div>
+        </div>
       </PanelCard>
 
       {/* درباره کسب و کار */}

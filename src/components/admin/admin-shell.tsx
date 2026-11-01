@@ -435,7 +435,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* تاپ‌بار + دراور موبایل */}
-      <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-white px-3 lg:mr-60 lg:px-5">
+      <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-card px-3 lg:mr-60 lg:px-5">
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}

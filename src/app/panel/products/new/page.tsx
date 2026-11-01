@@ -474,7 +474,7 @@ export default function RegisterProductPage() {
             }}
             className="grid cursor-pointer place-items-center rounded-lg border-2 border-dashed border-border bg-secondary/40 p-8 text-center transition-colors hover:border-primary/50 hover:bg-secondary/70"
           >
-            <span className="grid size-12 place-items-center rounded-full bg-white text-primary shadow-sm">
+            <span className="grid size-12 place-items-center rounded-full bg-card text-primary shadow-sm">
               <ImagePlus size={22} />
             </span>
             <p className="mt-3 text-sm font-bold">انتخاب تصویر</p>

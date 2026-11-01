@@ -27,7 +27,7 @@ export function MobileContactBar({
 }) {
   return (
     <div
-      className="fixed inset-x-0 bottom-[58px] z-40 flex h-[72px] items-center gap-4 bg-white px-4 shadow-[0_-1px_8px_rgba(0,0,0,0.1)] nav-desktop:hidden"
+      className="fixed inset-x-0 bottom-[58px] z-40 flex h-[72px] items-center gap-4 bg-card px-4 shadow-[0_-1px_8px_rgba(0,0,0,0.1)] nav-desktop:hidden"
       role="toolbar"
       aria-label="تماس با فروشنده"
     >
@@ -37,7 +37,7 @@ export function MobileContactBar({
         sellerId={sellerId}
         sellerName={sellerName}
         productName={productName}
-        className="flex h-12 flex-1 items-center justify-center gap-2 rounded-md border border-primary bg-white text-sm font-bold text-primary transition-colors hover:bg-primary/5"
+        className="flex h-12 flex-1 items-center justify-center gap-2 rounded-md border border-primary bg-card text-sm font-bold text-primary transition-colors hover:bg-primary/5"
         buttonLabel="چت با فروشنده"
       />
       <PhoneReveal sellerName={sellerName} productId={productId}>

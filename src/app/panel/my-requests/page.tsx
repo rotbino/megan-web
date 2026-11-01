@@ -115,7 +115,7 @@ function RequestRow({ req }: { req: MyBuyRequest }) {
           <span className="flex shrink-0 items-center gap-1">
             <Button
               size="sm"
-              className="rounded-md bg-red-600 text-xs hover:bg-red-700"
+              className="rounded-md bg-red-600 text-xs transition-colors hover:brightness-90"
               disabled={del.isPending}
               onClick={() => del.mutate(req.id)}
             >

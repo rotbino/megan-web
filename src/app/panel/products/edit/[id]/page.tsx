@@ -480,7 +480,7 @@ export default function EditProductPage() {
             }}
             className="grid cursor-pointer place-items-center rounded-lg border-2 border-dashed border-border bg-secondary/40 p-6 text-center transition-colors hover:border-primary/50 hover:bg-secondary/70"
           >
-            <span className="grid size-11 place-items-center rounded-full bg-white text-primary shadow-sm">
+            <span className="grid size-11 place-items-center rounded-full bg-card text-primary shadow-sm">
               <ImagePlus size={20} />
             </span>
             <p className="mt-2.5 text-sm font-bold">انتخاب تصویر</p>
