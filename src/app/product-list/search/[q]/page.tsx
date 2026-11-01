@@ -5,6 +5,7 @@ import { Footer } from '@/components/layout/footer';
 import { ProductListing } from '@/components/products/product-listing';
 import { SearchPing } from '@/components/products/search-ping';
 import { JsonLd } from '@/components/shared/json-ld';
+import { SeoCityLinks } from '@/components/seo/city-links';
 import { getProductsSSR } from '@/lib/mock/api';
 import { searchPath, stripSearchNoise } from '@/lib/popular-searches';
 import { normalizeQuery } from '@/lib/search-log';
@@ -81,6 +82,10 @@ export default async function SearchPage({ params }: Props) {
           </p>
         </div>
         <ProductListing searchQuery={clean} initialData={initial ?? undefined} />
+        {/* لینک‌های داخلی سئو: شهرها × این کالا + انواع — سرور-رندر برای کرال گوگل */}
+        <div className="mt-6">
+          <SeoCityLinks core={clean} />
+        </div>
       </main>
       <Footer />
       {/* ثبت ورودی برای آمار «ورودی‌های گوگل» — بعد از هیدریشن، بی‌صدا */}

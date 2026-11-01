@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Flame, History, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { JsonLd } from '@/components/shared/json-ld';
-import { toFa, timeAgoFa } from '@/lib/format';
-import { searchPath, stripSearchNoise } from '@/lib/popular-searches';
+import { toFa } from '@/lib/format';
+import { stripSearchNoise } from '@/lib/popular-searches';
 import { readGoogleLog, readSearchLog } from '@/lib/search-log';
 import {
   SEARCH_PAGE_SIZE,
@@ -14,6 +14,7 @@ import {
   getCategoryLeaves,
   getSearchUniverse,
   paginate,
+  phraseUrl,
   type SearchIntent,
   type SearchPhrase,
 } from '@/lib/search-universe';
@@ -23,15 +24,17 @@ import { SITE_URL } from '@/lib/site';
 const PAGE_TITLE = 'ورودی ها و جستجوهای کاربران از گوگل';
 
 /**
- * صفحه «ورودی‌ها و جستجوهای کاربران از گوگل» — دایرةالمعارف لینک‌های سئو:
+ * صفحه «ورودی‌ها و جستجوهای کاربران از گوگل» — مینیمال (خواستهٔ مالک
+ * ۱-۱۱ دور جدید): «فقط همان لیست فیلتر دار کافیه … بزار صفحه مینیمال باشه».
  *
- *  · تمام نودهای برگ دسته‌ها × {خرید|فروش} × {—|عمده} × {—|نوع کالا} ×
- *    {—|در شهر} — ده‌ها هزار عبارت یکتا با لینک به صفحات فرود کنونیکال؛
- *  · مینیمال: دو ستون «بیشترین جستجوها» (با تعداد) و «آخرین جستجوها»
- *    (رویدادهای واقعی) + گرید کامل فیلترشدنی و صفحه‌بندی‌شده؛
- *  · شمارش هر عبارت = عدد متناسب برندینگ [۱۰k..۱۰۰k] + رویدادهای واقعی
- *    (جستجوی داخلی + ورودی گوگل — ورودی گوگل +۱ می‌خورد و در جدول
- *    روزانهٔ جدا ثبت می‌شود)؛
+ *  · فقط یک لیست: گرید کامل عبارت‌ها با فیلتر (دسته/شهر/نوع/عبارت) و
+ *    صفحه‌بندی — لیست‌های «بیشترین/آخرین» بالای صفحه حذف شدند؛
+ *  · همهٔ عبارت‌ها «عمده» دارند («خرید برنج» بدون عمده اصلاً وجود ندارد)؛
+ *  · تعداد جستجو به زبان کاربر: «۲۷ بار» (نه عدد خام)؛
+ *  · عبارت‌های شهری به صفحهٔ فرود اختصاصی همان شهر می‌روند
+ *    (/product-list/search/{کالا}/{شهر} — نتایج واقعاً فیلترشده)؛
+ *  · شمارش = عدد متناسب برندینگ [۱۰k..۱۰۰k] + رویدادهای واقعی
+ *    (جستجوی داخلی + ورودی گوگل که +۱ می‌خورد و در جدول روزانه ثبت می‌شود)؛
  *  · همهٔ لینک‌ها سمت سرور رندر می‌شوند تا اولین کرالِ گوگل همه را
  *    ایندکس کند؛ فیلترها با GET خالص (بدون جاوااسکریپت) کار می‌کنند.
  */
@@ -59,7 +62,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   return {
     title: `${PAGE_TITLE} — جستجوهای پرتکرار بازار عمده`,
     description:
-      'جستجوهای پرتکرار کاربران گوگل در بازار عمده ایمچ؛ خرید عمده و فروش عمده هر کالا با قیمت روز از تولیدکنندگان و فروشندگان سراسر ایران.',
+      'جستجوهای پرتکرار کاربران گوگل در بازار عمده ایمچ؛ خرید عمده و فروش عمده هر کالا در شهرهای ایران با قیمت روز از تولیدکنندگان و فروشندگان.',
     alternates: { canonical },
     openGraph: {
       title: PAGE_TITLE,
@@ -89,7 +92,7 @@ export default async function SearchesPage({ searchParams }: Props) {
   const intent = one(sp.intent) === 'خرید' || one(sp.intent) === 'فروش' ? (one(sp.intent) as SearchIntent) : undefined;
   const q = one(sp.q);
 
-  // جهان جستجو (memo پروسه) + جدول‌های واقعی
+  // جهان جستجو (memo پروسه) + جدول‌های واقعی (فقط برای شمارش — لیست جدا نیست)
   const [universe, searchLog, googleLog, leaves] = await Promise.all([
     getSearchUniverse(),
     readSearchLog(),
@@ -112,23 +115,6 @@ export default async function SearchesPage({ searchParams }: Props) {
   const filtered = filterUniverse(universe, { root, city, intent, q });
   filtered.sort((a, b) => countOf(b) - countOf(a) || (a.phrase < b.phrase ? -1 : a.phrase > b.phrase ? 1 : 0));
   const { items, page: safePage, pageCount } = paginate(filtered, page);
-
-  // دو ستون بالای صفحه — مینیمال (خواستهٔ مالک):
-  // جهان از قبل بر اساس شمارش پایه مرتب است؛ عبارت‌های دارای رویداد واقعی
-  // هم به کاندیدها اضافه می‌شوند تا جهششان دیده شود.
-  const realCores = new Set(realCounts.keys());
-  const top = universe
-    .filter((p, i) => i < 40 || realCores.has(p.core))
-    .sort((a, b) => countOf(b) - countOf(a))
-    .slice(0, 12);
-
-  // آخرین رویدادهای واقعی (ورودی گوگل + جستجوی داخلی) — بر اساس واقعیت
-  const recent = [
-    ...googleLog.map((e) => ({ q: e.q, at: e.lastAt, src: 'گوگل' as const })),
-    ...searchLog.filter((e) => e.lastAt > 0).map((e) => ({ q: e.q, at: e.lastAt, src: 'جستجوی داخلی' as const })),
-  ]
-    .sort((a, b) => b.at - a.at)
-    .slice(0, 12);
 
   // دسته‌های ریشه برای فیلتر — از دادهٔ زنده
   const roots = [...new Set(leaves.map((l) => l.root))].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
@@ -153,70 +139,11 @@ export default async function SearchesPage({ searchParams }: Props) {
         <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6 lg:py-8">
           <h1 className="text-lg font-extrabold lg:text-2xl">{PAGE_TITLE}</h1>
 
-          {/* ─── دو ستون مینیمال: بیشترین جستجوها | آخرین جستجوها ─────── */}
-          <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
-            {/* بیشترین جستجوها — ستون اول: تعداد جستجو + عبارت */}
-            <section aria-labelledby="top-searches">
-              <h2 id="top-searches" className="mb-2.5 flex items-center gap-1.5 text-sm font-bold">
-                <Flame size={15} className="text-primary" />
-                بیشترین جستجوها
-              </h2>
-              <ul className="divide-y divide-border/70 rounded-lg border bg-card">
-                {top.map((p) => (
-                  <li key={p.phrase}>
-                    <Link
-                      href={searchPath(p.core)}
-                      className="flex items-center justify-between gap-3 px-3.5 py-2 text-[13px] transition-colors hover:bg-accent/60"
-                    >
-                      <span className="font-num shrink-0 text-xs font-extrabold text-primary">
-                        {toFa(countOf(p))}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-start font-medium">{p.phrase}</span>
-                      <span className="shrink-0 text-[10px] text-muted-foreground">جستجو</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            {/* آخرین جستجوها — رویدادهای واقعی (گوگل + داخلی) */}
-            <section aria-labelledby="recent-searches">
-              <h2 id="recent-searches" className="mb-2.5 flex items-center gap-1.5 text-sm font-bold">
-                <History size={15} className="text-primary" />
-                آخرین جستجوها
-              </h2>
-              <ul className="divide-y divide-border/70 rounded-lg border bg-card">
-                {recent.length === 0 ? (
-                  <li className="px-3.5 py-6 text-center text-xs text-muted-foreground">
-                    هنوز رویداد واقعی ثبت نشده است؛ ورودی‌های گوگل همین‌جا شمرده می‌شوند.
-                  </li>
-                ) : (
-                  recent.map((r, i) => (
-                    <li key={`${r.q}-${i}`}>
-                      <Link
-                        href={searchPath(r.q)}
-                        className="flex items-center justify-between gap-3 px-3.5 py-2 text-[13px] transition-colors hover:bg-accent/60"
-                      >
-                        <span className="min-w-0 flex-1 truncate text-start font-medium">{r.q}</span>
-                        <span className="shrink-0 rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
-                          {r.src}
-                        </span>
-                        <span className="w-20 shrink-0 text-end text-[10px] text-muted-foreground">
-                          {timeAgoFa(new Date(r.at).toISOString())}
-                        </span>
-                      </Link>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </section>
-          </div>
-
           {/* ─── فیلترها — GET خالص (بدون جاوااسکریپت هم کار می‌کند) ─── */}
           <form
             method="GET"
             action="/searches"
-            className="mt-7 flex flex-wrap items-end gap-2 rounded-lg border bg-card p-3 sm:gap-3"
+            className="mt-5 flex flex-wrap items-end gap-2 rounded-lg border bg-card p-3 sm:gap-3"
             aria-label="فیلتر جستجوها"
           >
             <label className="flex min-w-36 flex-1 flex-col gap-1 text-[11px] font-medium text-muted-foreground sm:max-w-44">
@@ -287,7 +214,7 @@ export default async function SearchesPage({ searchParams }: Props) {
             )}
           </form>
 
-          {/* ─── گرید کامل جستجوها — فیلترشده و صفحه‌بندی‌شده ─────── */}
+          {/* ─── لیست کامل جستجوها — فیلترشده و صفحه‌بندی‌شده ─────── */}
           <section className="mt-5" aria-labelledby="all-searches">
             <h2 id="all-searches" className="mb-2.5 flex flex-wrap items-baseline gap-x-2 text-sm font-bold">
               <span className="inline-flex items-center gap-1.5">
@@ -296,7 +223,6 @@ export default async function SearchesPage({ searchParams }: Props) {
               </span>
               <span className="font-num text-[11px] font-medium text-muted-foreground">
                 {toFa(filtered.length)} عبارت
-                {hasFilters ? ' — با فیلتر فعلی' : ' ایندکس‌پذیر'}
               </span>
             </h2>
 
@@ -306,19 +232,20 @@ export default async function SearchesPage({ searchParams }: Props) {
               </p>
             ) : (
               <>
-                {/* هر ردیف: تعداد (ستون اول) + عبارت به‌عنوان لینک + متا */}
+                {/* هر ردیف: عبارت + تعداد جستجو به زبان کاربر («۲۷ بار») —
+                    عبارت شهری به صفحهٔ فرود همان شهر می‌رود */}
                 <ul className="grid grid-cols-1 gap-x-4 gap-y-0.5 rounded-lg border bg-card p-2 sm:grid-cols-2 lg:grid-cols-3">
                   {items.map((p) => (
                     <li key={p.phrase}>
                       <Link
-                        href={searchPath(p.core)}
-                        className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 transition-colors hover:bg-accent/60"
+                        href={phraseUrl(p)}
+                        className="flex items-center justify-between gap-2.5 rounded-md px-2.5 py-1.5 transition-colors hover:bg-accent/60"
                         title={p.phrase}
                       >
-                        <span className="font-num w-16 shrink-0 text-end text-[11px] font-extrabold text-primary">
-                          {toFa(countOf(p))}
-                        </span>
                         <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium leading-6">{p.phrase}</span>
+                        <span className="font-num shrink-0 text-[11px] font-extrabold text-primary">
+                          {toFa(countOf(p))} بار
+                        </span>
                       </Link>
                     </li>
                   ))}
@@ -373,7 +300,7 @@ export default async function SearchesPage({ searchParams }: Props) {
                   </nav>
                 )}
                 <p className="font-num mt-2 text-center text-[11px] text-muted-foreground">
-                  صفحه {toFa(safePage)} از {toFa(pageCount)} — هر صفحه {toFa(SEARCH_PAGE_SIZE)} عبارت
+                  صفحه {toFa(safePage)} از {toFa(pageCount)}
                 </p>
               </>
             )}
@@ -390,7 +317,7 @@ export default async function SearchesPage({ searchParams }: Props) {
           itemListElement: items.slice(0, 100).map((p, i) => ({
             '@type': 'ListItem',
             position: (safePage - 1) * SEARCH_PAGE_SIZE + i + 1,
-            url: `${SITE_URL}${searchPath(p.core)}`,
+            url: `${SITE_URL}${phraseUrl(p)}`,
             name: p.phrase,
           })),
         }}

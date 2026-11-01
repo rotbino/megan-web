@@ -64,9 +64,21 @@ interface ProductListingInnerProps {
   initialData?: Paged<Product>;
   /** سایدبار سرور-رندر (CategoryFilter) — از مرز کلاینت خارج است (F5) */
   sidebar?: ReactNode;
+  /** فیلتر مکان اولیه از URL سئو (صفحهٔ فرود شهری /search/[q]/[city]) —
+   *  فقط seed اولیهٔ state است؛ کاربر بعد از آن آزادانه عوض/حذف می‌کند */
+  initialProvinceId?: number;
+  initialCityId?: number;
 }
 
-function ProductListingInner({ categorySlug, categoryName, searchQuery, initialData, sidebar }: ProductListingInnerProps) {
+function ProductListingInner({
+  categorySlug,
+  categoryName,
+  searchQuery,
+  initialData,
+  sidebar,
+  initialProvinceId,
+  initialCityId,
+}: ProductListingInnerProps) {
   const router = useRouter();
   /** جستجوی پایه — از prop مسیر (صفحه جستجو) یا خالی (لیست/دسته‌بندی) */
   const baseS = searchQuery ?? '';
@@ -74,8 +86,9 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
 
   const [sort, setSort] = useState<SortKey>('related');
   const [page, setPage] = useState(1);
-  const [provinceId, setProvinceId] = useState<number | undefined>();
-  const [cityId, setCityId] = useState<number | undefined>();
+  // فیلتر مکان — از URL سئو (صفحهٔ فرود شهری) seed می‌شود؛ بعد از آن رفتار عادی
+  const [provinceId, setProvinceId] = useState<number | undefined>(initialProvinceId);
+  const [cityId, setCityId] = useState<number | undefined>(initialCityId);
 
   // موبایل — مودال‌های انتخاب (بات‌شیت پایین‌رونده)
   const [sheet, setSheet] = useState<SheetKind>(null);
@@ -108,9 +121,15 @@ function ProductListingInner({ categorySlug, categoryName, searchQuery, initialD
   );
 
   // seed فقط وقتی کوئری فعال عین کوئری پیش‌فرض اولیه باشد (تطبیق ساخت‌یافته — بدون JSON.stringify)؛
-  // در صفحه جستجو initialData با همان s=q پخته شده است
+  // در صفحه جستجو initialData با همان s=q پخته شده است؛ در صفحهٔ فرود شهری با همان
+  // فیلترهای seed (استان/شهرِ URL) — اگر کاربر فیلتر را عوض/بردارد، seed دیگر
+  // نمی‌خورد و fetch تازه با فیلتر جدید می‌رود
   const isDefaultQuery =
-    page === 1 && sort === 'related' && !provinceId && !cityId && s === baseS;
+    page === 1 &&
+    sort === 'related' &&
+    provinceId === initialProvinceId &&
+    cityId === initialCityId &&
+    s === baseS;
   const { data, isFetching, isLoading } = useProducts(query, isDefaultQuery ? initialData : undefined);
   const items = data?.items ?? [];
 
@@ -452,12 +471,16 @@ export function ProductListing({
   searchQuery,
   initialData,
   sidebar,
+  initialProvinceId,
+  initialCityId,
 }: {
   categorySlug?: string;
   categoryName?: string;
   searchQuery?: string;
   initialData?: Paged<Product>;
   sidebar?: ReactNode;
+  initialProvinceId?: number;
+  initialCityId?: number;
 }) {
   // بدون Suspense بیرونی (F5): useSearchParams فقط داخل SearchBridge است؛
   // رندر ایستا کامل (کارت‌ها در HTML) و هیدریشن بدون fallback-swap.
@@ -468,6 +491,8 @@ export function ProductListing({
       searchQuery={searchQuery}
       initialData={initialData}
       sidebar={sidebar}
+      initialProvinceId={initialProvinceId}
+      initialCityId={initialCityId}
     />
   );
 }

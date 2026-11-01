@@ -25,20 +25,46 @@
  * تست‌پذیر باشد؛ fetch دسته‌ها جدا و memo-شده انجام می‌شود.
  */
 
-import { stripSearchNoise } from './popular-searches';
+import { searchPath, stripSearchNoise } from './popular-searches';
 
-/** شهرهای مبادلۀ عمده ایران — بُعد «در {شهر}» عبارت‌ها */
+/**
+ * شهرهای مبادلۀ عمده ایران — مراکز ۳۱ استان (خواستهٔ مالک ۱-۱۱ دور جدید:
+ * «تک تک شهرها با تک تک دسته ها» — ضرب‌ها به هزاران هزار می‌رسد و ایمچ
+ * مرجع عمده خرید در شهرها می‌شود). هر شهر یک صفحهٔ فرود اختصاصی دارد:
+ * /product-list/search/{کالا}/{شهر} که نتایج واقعاً با همان شهر فیلتر می‌شوند.
+ */
 export const SEED_CITIES: readonly string[] = [
   'تهران',
-  'مشهد',
+  'کرج',
   'اصفهان',
   'شیراز',
   'تبریز',
-  'کرمان',
-  'همدان',
+  'ارومیه',
+  'زنجان',
+  'اردبیل',
+  'قزوین',
+  'سمنان',
+  'مشهد',
+  'بجنورد',
+  'بیرجند',
+  'گرگان',
+  'ساری',
   'رشت',
+  'همدان',
+  'کرمانشاه',
+  'خرم آباد',
+  'ایلام',
+  'یزد',
+  'کرمان',
+  'زاهدان',
   'اهواز',
+  'بندرعباس',
   'قم',
+  'اراک',
+  'سنندج',
+  'شهرکرد',
+  'بوشهر',
+  'یاسوج',
 ];
 
 /**
@@ -76,11 +102,9 @@ export interface SearchPhrase {
   /** عبارت هسته‌ای مقصد لینک — «برنج» یا «برنج هاشمی» */
   core: string;
   intent: SearchIntent;
-  /** با کلمهٔ «عمده» */
-  wholesale: boolean;
   /** نوع کالا (مثالِ همان دسته) — null یعنی بدون نوع */
   variety: string | null;
-  /** شهر — null یعنی بدون شهر */
+  /** شهر — null یعنی بدون شهر (صفحهٔ فرود کشوری) */
   city: string | null;
   /** نام دستهٔ ریشه (برای فیلتر دسته‌بندی) */
   rootCategory: string;
@@ -88,6 +112,15 @@ export interface SearchPhrase {
   leaf: string;
   /** شمارش پایهٔ برندینگ [۱۰k..۱۰۰k] — بدون رویدادهای واقعی */
   count: number;
+}
+
+/**
+ * مقصد لینک یک عبارت — عبارت‌های شهری به صفحهٔ فرود اختصاصی همان شهر
+ * می‌روند (نتایج واقعاً فیلترشده؛ کنونیکال مستقل) و بقیه به صفحهٔ هسته‌ای.
+ */
+export function phraseUrl(p: Pick<SearchPhrase, 'core' | 'city'>): string {
+  const base = searchPath(p.core);
+  return p.city ? `${base}/${encodeURIComponent(p.city)}` : base;
 }
 
 /** نود برگ دسته — ورودی ساخت جهان (از API بک‌اند flatten می‌شود) */
@@ -129,28 +162,27 @@ function fnv1a(str: string): number {
   return h >>> 0;
 }
 
-/** ضریب واقع‌گرایانهٔ جستجو — عبارت خاص‌تر = جستجوی کمتر */
-function modifier(wholesale: boolean, variety: boolean, city: boolean): number {
-  return (wholesale ? 0.78 : 1) * (variety ? 0.5 : 1) * (city ? 0.38 : 1);
+/** ضریب واقع‌گرایانهٔ جستجو — عبارت خاص‌تر = جستجوی کمتر (عمده همیشه هست) */
+function modifier(variety: boolean, city: boolean): number {
+  return (variety ? 0.5 : 1) * (city ? 0.38 : 1);
 }
 
 /**
  * شمارش پایهٔ برندینگ یک عبارت — همیشه در [۱۰٬۰۰۰ .. ۱۰۰٬۰۰۰]:
  *  امتیاز بالای دسته → عدد بزرگ‌تر (متناسب با بازار واقعی کالا)؛
- *  عمده/نوع/شهر عدد را به‌صورت نسبی کم می‌کنند؛ جیترِ قطعی ±۱۰٪ از یکنواخت
+ *  نوع/شهر عدد را به‌صورت نسبی کم می‌کنند؛ جیترِ قطعی ±۱۰٪ از یکنواخت
  *  شدن جلوگیری می‌کند. گرد به ۱۰۰ تا «طبیعی» دیده شود.
  */
 export function baseCountFor(
   phrase: string,
   score: number,
-  wholesale: boolean,
   variety: boolean,
   city: boolean,
 ): number {
   const t = Math.min(1, Math.max(0, score / SCORE_REF));
   const head = 10_000 + 90_000 * Math.sqrt(t); // [۱۰k..۱۰۰k]
   const jitter = 0.9 + 0.2 * (fnv1a(phrase) / 0xffff_ffff);
-  const value = 10_000 + (head - 10_000) * modifier(wholesale, variety, city) * jitter;
+  const value = 10_000 + (head - 10_000) * modifier(variety, city) * jitter;
   return Math.round(Math.min(100_000, Math.max(10_000, value)) / 100) * 100;
 }
 
@@ -176,20 +208,21 @@ function cleanVariety(leafName: string, example?: string): { variety: string; co
   return { variety: norm, core: `${leafName} ${norm}` };
 }
 
-/** ترکیب متن عبارت: {نیت} [عمده] {کالا/نوع} [در {شهر}] */
+/** ترکیب متن عبارت: {نیت} عمده {کالا/نوع} [در {شهر}] — «عمده» همیشه هست (خواستهٔ مالک) */
 function composePhrase(
   intent: SearchIntent,
-  wholesale: boolean,
   productName: string,
   city: string | null,
 ): string {
-  const parts = [intent, wholesale ? 'عمده' : '', productName, city ? `در ${city}` : ''];
+  const parts = [intent, 'عمده', productName, city ? `در ${city}` : ''];
   return parts.filter(Boolean).join(' ');
 }
 
 /**
  * ساخت کل جهان جستجو از نودهای برگ — خروجی مرتب‌شده بر اساس شمارش پایه
  * (نزولی) و سپس الفبایی؛ قطعی و پایدار برای صفحه‌بندی.
+ * همهٔ عبارت‌ها «عمده» دارند — «خرید برنج» بدون عمده اصلاً ساخته نمی‌شود
+ * (خواستهٔ مالک: «تمام اینها باید کلمه عمده رو داشته باشند»).
  */
 export function buildSearchUniverse(leaves: LeafCategory[]): SearchPhrase[] {
   const out: SearchPhrase[] = [];
@@ -204,7 +237,7 @@ export function buildSearchUniverse(leaves: LeafCategory[]): SearchPhrase[] {
       .map((v) => cleanVariety(leaf.name, v))
       .filter((v): v is { variety: string; core: string } => v !== null);
 
-    // «نام‌های محصول»: تنها (برنج) + هر نوع (برنج طارم / برنج هاشمی / کشک گاوی)
+    // «نام‌های محصول»: تنها (برنج) + هر نوع (برنج هاشمی / کشک گاوی)
     const productNames: Array<{ name: string; variety: string | null; core: string }> = [
       { name: leaf.name, variety: null, core: leaf.name },
     ];
@@ -212,24 +245,21 @@ export function buildSearchUniverse(leaves: LeafCategory[]): SearchPhrase[] {
 
     for (const p of productNames) {
       for (const intent of ['خرید', 'فروش'] as const) {
-        for (const wholesale of [false, true]) {
-          const cityOptions: Array<string | null> = [null, ...SEED_CITIES];
-          for (const city of cityOptions) {
-            const phrase = composePhrase(intent, wholesale, p.name, city);
-            if (seen.has(phrase)) continue; // امنیت یکتایی (برگ‌های هم‌نام)
-            seen.add(phrase);
-            out.push({
-              phrase,
-              core: p.core,
-              intent,
-              wholesale,
-              variety: p.variety,
-              city,
-              rootCategory: leaf.root,
-              leaf: leaf.name,
-              count: baseCountFor(phrase, leaf.score, wholesale, !!p.variety, !!city),
-            });
-          }
+        const cityOptions: Array<string | null> = [null, ...SEED_CITIES];
+        for (const city of cityOptions) {
+          const phrase = composePhrase(intent, p.name, city);
+          if (seen.has(phrase)) continue; // امنیت یکتایی (برگ‌های هم‌نام)
+          seen.add(phrase);
+          out.push({
+            phrase,
+            core: p.core,
+            intent,
+            variety: p.variety,
+            city,
+            rootCategory: leaf.root,
+            leaf: leaf.name,
+            count: baseCountFor(phrase, leaf.score, !!p.variety, !!city),
+          });
         }
       }
     }
@@ -321,4 +351,68 @@ export async function getSearchUniverse(): Promise<SearchPhrase[]> {
   const universe = buildSearchUniverse(leaves);
   universeCache = { key, universe };
   return universe;
+}
+
+// ─── لینک‌های داخلی صفحات فرود (خواستهٔ مالک: «در صفحه برنج لینک‌های برنج») ───
+
+/** یک لینک داخلی سئو — متن anchor + مقصد */
+export interface LandingLink {
+  phrase: string;
+  url: string;
+}
+
+export interface LandingLinks {
+  /** خرید/فروش عمده {کالا} در {شهر} — صفحات فرود شهری (نتایج فیلترشده) */
+  cityLinks: LandingLink[];
+  /** خرید/فروش عمده {کالا} {نوع} — صفحات فرود انواع کالا */
+  varietyLinks: LandingLink[];
+}
+
+/**
+ * لینک‌های داخلی صفحهٔ فرود یک کالا — «از این جدول در صفحات مربوطه
+ * استفاده کنیم» (خواستهٔ مالک): روی صفحهٔ برنج، لینک‌های برنج×شهرها و
+ * برنج×انواع به‌صورت HTML خالص سرور-رندر می‌شوند تا گوگل با اولین کرال
+ * شبکهٔ داخلی هزاران صفحهٔ شهری را ببیند و ایندکس کند.
+ *
+ *  core = «برنج» → شهرهای برنج + انواع برنج (هاشمی، …)
+ *  core = «برنج هاشمی» → شهرهای همین نوع + انواع هم‌گروه (برادرهای برنج)
+ *  excludeCity = «تهران» (وقتی خودمان روی صفحهٔ تهران هستیم)
+ */
+export function getLandingLinks(
+  universe: SearchPhrase[],
+  core: string,
+  excludeCity?: string,
+): LandingLinks {
+  const cityLinks: LandingLink[] = [];
+  const varietyLinks: LandingLink[] = [];
+  const seenCity = new Set<string>();
+  const seenVariety = new Set<string>();
+
+  // برگِ این هسته — «برنج هاشمی» → برنج (برای یافتن انواع هم‌گروه)
+  let leaf: string | null = null;
+  for (const p of universe) {
+    if (p.core === core) {
+      leaf = p.leaf;
+      break;
+    }
+  }
+
+  for (const p of universe) {
+    // لینک‌های شهری همان هسته — ترتیب طبیعی جهان (بیشترین جستجو اول)
+    if (p.core === core && p.city && p.city !== excludeCity) {
+      const key = `${p.intent}|${p.city}`;
+      if (seenCity.has(key)) continue;
+      seenCity.add(key);
+      cityLinks.push({ phrase: p.phrase, url: phraseUrl(p) });
+    }
+    // انواع هم‌گروه (خرید عمده برنج طارم…) — خودِ هسته نمی‌شود
+    if (leaf && p.leaf === leaf && p.variety && p.core !== core) {
+      const key = `${p.intent}|${p.core}`;
+      if (seenVariety.has(key)) continue;
+      seenVariety.add(key);
+      varietyLinks.push({ phrase: p.phrase, url: phraseUrl(p) });
+    }
+  }
+
+  return { cityLinks, varietyLinks };
 }
