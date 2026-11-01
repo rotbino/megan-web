@@ -741,6 +741,8 @@ export interface AdminQueues {
   pendingCharges: number;
   /** فیش‌های خرید بسته — صفحهٔ «بسته‌ها و کمپین‌ها» */
   pendingPackages: number;
+  /** نظرات در انتظار تحقیق و تأیید (قانون انتشار مالک ۲-۱۱) */
+  pendingReviews: number;
 }
 
 export async function fetchAdminQueues(): Promise<AdminQueues> {
@@ -1259,10 +1261,14 @@ export async function deleteAdminSurveyResponse(id: string): Promise<{ id: strin
 
 // ─── نظرات فروشندگان (admin/reviews) ────────────────────────────────────────
 
+export type AdminReviewStatus = 'pending' | 'approved' | 'rejected';
+
 export interface AdminReviewRow {
   id: string;
   rating: number;
   text: string;
+  /** قانون انتشار (مالک ۲-۱۱): نظر فقط با تأیید ادمین عمومی می‌شود */
+  status: AdminReviewStatus;
   createdAt: string;
   updatedAt: string;
   author: { userName: string; firstName: string; lastName: string; avatarUrl: string | null };
@@ -1277,6 +1283,8 @@ export interface AdminReviewList {
   pageCount: number;
   stats: {
     total: number;
+    /** صف کاری ادمین — نظرات در انتظار تحقیق و تأیید */
+    pending: number;
     avg: number;
     distribution: Array<{ rating: number; count: number }>;
     last7Days: number;
@@ -1286,13 +1294,19 @@ export interface AdminReviewList {
 export interface AdminReviewListFilters {
   search?: string;
   rating?: number;
+  status?: AdminReviewStatus;
   page?: number;
   perPage?: number;
 }
 
-/** فهرست نظرات فروشندگان + آمار امتیاز */
+/** فهرست نظرات فروشندگان + آمار امتیاز (فیلتر وضعیت انتشار) */
 export async function fetchAdminReviewList(filters: AdminReviewListFilters = {}): Promise<AdminReviewList> {
   return adminFetch<AdminReviewList>('/admin/reviews/getReviewList', filters as unknown as Record<string, unknown>);
+}
+
+/** تأیید (approved) یا رد (rejected) نظر — تأیید، تنها راه عمومی شدن است */
+export async function setAdminReviewStatus(id: string, status: AdminReviewStatus): Promise<{ id: string; status: AdminReviewStatus }> {
+  return adminFetch<{ id: string; status: AdminReviewStatus }>('/admin/reviews/setReviewStatus', { id, status });
 }
 
 /** حذف یک نظر (کش پروفایل فروشنده همان لحظه می‌شکند) */

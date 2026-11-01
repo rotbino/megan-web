@@ -1,7 +1,27 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* ─── فونت وزیرمتن (نسخه محلی — فونت پروتوتایپ مرجع تم) ─────────── */
+/* ─── فونت اصلی سایت: ایران‌سنس (فونت‌های فولدر src/fonts مالک) ────────
+   قانون فونت (خواسته مالک ۲-۱۱): «فونت پیش‌فرض باید ایران‌سنس باشد و
+   فونت جایگزین وزیر گوگل» — مثل باسکول (font-family: IRANSans). وزیرمتن
+   فقط fallback است؛ اگر ایران‌سنس لود نشد، وزیر نمایندگی می‌کند. */
+@font-face {
+  font-family: "IRANSans";
+  src: url("../fonts/IRANSansWeb.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IRANSans";
+  src: url("../fonts/IRANSansWeb_Bold.woff2") format("woff2"),
+       url("../fonts/IRANSansWeb_Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─── فونت جایگزین: وزیرمتن (نسخه محلی) ─────────────────────────── */
 @font-face {
   font-family: "Vazirmatn";
   src: url("../fonts/vazirmatn/Vazirmatn-Regular.woff2") format("woff2");
@@ -39,9 +59,10 @@
 }
 
 /* ─── ایران‌سنس نامبر (FaNum) — ارقام لاتین را خودکار فارسی نشان می‌دهد ─────────
-   خواسته مالک: «در تمام سایت برای اعداد از اعداد فارسی استفاده کن».
-   روی کامپوننت‌های عددی (ورودی‌های عدد/قیمت، شماره‌ها) کلاس font-num می‌نشیند؛
-   منطق همچنان ASCII است ولی نمایش همیشه فارسی می‌شود. */
+   خواسته مالک (۲-۱۱): «برای اعداد هم باید همه‌جا از فونت num ایران‌سنس
+   استفاده بشه که اعداد رو فارسی نشون بده». همهٔ جاهای نمایش عدد (قیمت،
+   تاریخ، شمارنده، صفحه‌بندی، شماره‌ها…) کلاس font-num می‌گیرند؛ منطق
+   همچنان ASCII است ولی نمایش همیشه فارسی می‌شود. */
 @font-face {
   font-family: "IRANSansNum";
   src: url("../fonts/IRANSansWeb(FaNum).woff") format("woff");
@@ -51,7 +72,8 @@
 }
 @font-face {
   font-family: "IRANSansNum";
-  src: url("../fonts/IRANSansWeb_Bold.woff") format("woff");
+  src: url("../fonts/IRANSansWeb_Bold.woff2") format("woff2"),
+       url("../fonts/IRANSansWeb_Bold.woff") format("woff");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -66,9 +88,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Vazirmatn", "IRANSans", "Segoe UI", Tahoma, sans-serif;
+  --font-sans: "IRANSans", "Vazirmatn", "Segoe UI", Tahoma, sans-serif;
   --font-mono: ui-monospace, monospace;
-  --font-num: "IRANSansNum", "Vazirmatn", "Segoe UI", Tahoma, sans-serif;
+  --font-num: "IRANSansNum", "IRANSans", "Vazirmatn", "Segoe UI", Tahoma, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -294,7 +316,8 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: "Vazirmatn", "IRANSans", "Segoe UI", Tahoma, sans-serif;
+    /* ایران‌سنس پیش‌فرض، وزیرمتن جایگزین (قانون فونت مالک ۲-۱۱) */
+    font-family: "IRANSans", "Vazirmatn", "Segoe UI", Tahoma, sans-serif;
     letter-spacing: 0;
   }
 

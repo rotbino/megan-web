@@ -48,9 +48,9 @@ export function RatingStars({
           );
         })}
       </span>
-      {showValue && <b className="text-[12px] font-bold">{toFa(v)}</b>}
+      {showValue && <b className="font-num text-[12px] font-bold">{toFa(v)}</b>}
       {count !== undefined && (
-        <span className="text-[11px] text-muted-foreground">
+        <span className="font-num text-[11px] text-muted-foreground">
           {toFa(count)} نظر
         </span>
       )}

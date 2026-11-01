@@ -73,7 +73,7 @@ export function ProductPrice({
   return (
     <div className="w-full">
       {user ? (
-        <div className="flex h-10 w-full items-center justify-center gap-1 rounded-md bg-secondary font-extrabold text-primary">
+        <div className="font-num flex h-10 w-full items-center justify-center gap-1 rounded-md bg-secondary font-extrabold text-primary">
           {product.minSalePrice ? (
             <>
               <span className="text-base">{priceFa(product.minSalePrice).replace(' تومان', '')}</span>

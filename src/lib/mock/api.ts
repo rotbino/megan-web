@@ -1308,6 +1308,8 @@ export interface SellerReviewRow {
   id: string;
   rating: number;
   text: string;
+  /** قانون انتشار (مالک ۲-۱۱): pending = در انتظار تأیید ادمین (فقط نویسنده می‌بیند) */
+  status: 'pending' | 'approved' | 'rejected';
   author: { userName: string; firstName: string; lastName: string; avatarUrl?: string | null };
   createdAt: string;
   updatedAt: string;
@@ -1327,9 +1329,12 @@ export interface SellerReviewsPage {
   myReview: SellerReviewRow | null;
 }
 
-/** نظرات فروشنده + خلاصه امتیاز — عمومی (مهمان هم) */
+/** نظرات فروشنده + خلاصه امتیاز — عمومی (مهمان هم)
+ *  توکن «اختیاری» پیوست می‌شود: بک‌اند OptionalJwtAuthGuard دارد و توکن خراب
+ *  را مثل مهمان ادامه می‌دهد. با توکن، نظر خودِ کاربر (pending/rejected —
+ *  قانون انتشار مالک ۲-۱۱) هم برمی‌گردد تا کارت سنجاق‌شده را ببیند. */
 export async function getSellerReviews(userName: string, page = 1, perPage = 10): Promise<SellerReviewsPage> {
-  return apiFetch<SellerReviewsPage>('/reviews/getSellerReviews', { userName, page, perPage }, { auth: false });
+  return apiFetch<SellerReviewsPage>('/reviews/getSellerReviews', { userName, page, perPage });
 }
 
 /** ثبت/ویرایش نظر من درباره فروشنده (upsert) */

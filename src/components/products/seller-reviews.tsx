@@ -5,10 +5,16 @@
  * خلاصه امتیاز (میانگین + ستاره + توزیع ۵..۱) + لیست نظرات + فرم
  * ثبت/ویرایش نظر خودم (لاگین لازم). مهمان‌ها لیست را می‌بینند، برای نوشتن
  * مودال ورود باز می‌شود.
+ *
+ * قانون انتشار (خواسته مالک ۲-۱۱): نظر فقط پس از «تحقیق و تأیید» ادمین
+ * عمومی می‌شود؛ بلافاصله بعد از ثبت فقط خودِ نویسنده آن را (به‌صورت سنجاق‌شده
+ * بالای لیست) می‌بیند و زیرش نوشته «نظر شما بعد از تحقیق و تایید منتشر
+ * می‌شود». ثبت نظر هم فقط با حداقل یک تماس یا چت با فروشنده ممکن است —
+ * پیام دقیق از بک‌اند (REVIEW_NEEDS_CONTACT) زیر فرم نمایش داده می‌شود.
  */
 
 import { useState } from 'react';
-import { Loader2, MessageSquarePlus, Star, UserRound } from 'lucide-react';
+import { Clock, Loader2, MessageSquarePlus, PencilLine, Star, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,11 +28,30 @@ import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { SellerReviewRow } from '@/lib/mock/api';
 
-/** یک نظر — کارت مؤلف نظر باسکول */
-function ReviewCard({ review }: { review: SellerReviewRow }) {
+/** یادداشت وضعیت زیر نظر خودم — قلب قانون انتشار مالک ۲-۱۱ */
+function MyReviewStatusNote({ status }: { status: SellerReviewRow['status'] }) {
+  if (status === 'approved') return null;
+  if (status === 'rejected') {
+    return (
+      <p className="mt-2.5 flex items-center gap-1.5 rounded-md bg-destructive/5 px-2.5 py-2 text-[11.5px] font-medium text-destructive">
+        <XCircle size={14} className="shrink-0" />
+        این نظر تأیید نشد؛ می‌توانید آن را ویرایش و دوباره بفرستید.
+      </p>
+    );
+  }
+  return (
+    <p className="mt-2.5 flex items-center gap-1.5 rounded-md bg-primary/5 px-2.5 py-2 text-[11.5px] font-medium text-primary">
+      <Clock size={14} className="shrink-0" />
+      نظر شما بعد از تحقیق و تایید منتشر می‌شود.
+    </p>
+  );
+}
+
+/** یک نظر — کارت مؤلف نظر باسکول؛ mine=true برای نظر خودم (سنجاق‌شده بالای لیست) */
+function ReviewCard({ review, mine = false }: { review: SellerReviewRow; mine?: boolean }) {
   const name = `${review.author.firstName} ${review.author.lastName}`.trim() || 'کاربر ایمچ';
   return (
-    <article className="rounded-md border bg-card p-4">
+    <article className={cn('rounded-md border bg-card p-4', mine && 'border-primary/30')}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
           {review.author.avatarUrl ? (
@@ -42,7 +67,10 @@ function ReviewCard({ review }: { review: SellerReviewRow }) {
             </span>
           )}
           <div className="min-w-0">
-            <p className="truncate text-[13px] font-bold">{name}</p>
+            <p className="truncate text-[13px] font-bold">
+              {name}
+              {mine && <span className="ms-1.5 text-[10.5px] font-medium text-primary">(نظر شما)</span>}
+            </p>
             <p className="text-[10.5px] text-muted-foreground">
               <RelativeTime date={review.createdAt} /> — شناسه {review.author.userName}
             </p>
@@ -51,6 +79,7 @@ function ReviewCard({ review }: { review: SellerReviewRow }) {
         <RatingStars value={review.rating} size={13} />
       </div>
       <p className="mt-3 whitespace-pre-line text-[13px] leading-6 text-foreground/90">{review.text}</p>
+      {mine && <MyReviewStatusNote status={review.status} />}
     </article>
   );
 }
@@ -100,7 +129,9 @@ export function SellerReviews({ userName, sellerName }: { userName: string; sell
       {
         onSuccess: () => {
           setFormOpen(false);
-          toast({ description: myReview ? 'نظر شما به‌روزرسانی شد.' : 'نظر شما ثبت شد — سپاس از بازخورد!' });
+          // قانون انتشار (مالک ۲-۱۱): نظر وارد صف تحقیق و تأیید ادمین شد؛
+          // بلافاصله فقط برای خود نویسنده سنجاق‌شده بالای لیست دیده می‌شود.
+          toast({ description: 'نظر شما ثبت شد؛ پس از تحقیق و تأیید منتشر می‌شود.' });
         },
         onError: (err: Error) => setError(err.message),
       },
@@ -112,13 +143,19 @@ export function SellerReviews({ userName, sellerName }: { userName: string; sell
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 id="reviews-title" className="text-base font-extrabold">نظرات کاربران</h2>
         <Button size="sm" className="h-8 rounded-[10px] px-3 text-[11.5px]" onClick={openForm} disabled={isLoading}>
-          {myReview ? <Star size={13} /> : <MessageSquarePlus size={13} />}
+          {myReview ? <PencilLine size={13} /> : <MessageSquarePlus size={13} />}
           {myReview ? 'ویرایش نظر من' : 'ثبت نظر'}
         </Button>
       </div>
 
       <div className="space-y-2.5">
-        {/* خلاصه امتیاز + توزیع */}
+        {/* نظر خودمِ در انتظار تأیید/ردشده — سنجاق‌شده بالای لیست؛ فقط نویسنده
+            آن را می‌بیند (قانون انتشار مالک ۲-۱۱). تأییدشده در خود لیست عمومی است. */}
+        {!isLoading && myReview && myReview.status !== 'approved' && (
+          <ReviewCard review={myReview} mine />
+        )}
+
+        {/* خلاصه امتیاز + توزیع — فقط از نظرهای تأییدشده (سمت سرور فیلتر می‌شود) */}
         {isLoading ? (
           <Skeleton className="h-28 rounded-md" />
         ) : summary && summary.count > 0 ? (
@@ -149,7 +186,9 @@ export function SellerReviews({ userName, sellerName }: { userName: string; sell
           </div>
         ) : (
           <p className="rounded-md border bg-card p-6 text-center text-sm text-muted-foreground">
-            هنوز نظری برای {sellerName} ثبت نشده — اولین نفر باشید.
+            {myReview
+              ? 'نظر شما ثبت شده و پس از تحقیق و تأیید منتشر می‌شود.'
+              : `هنوز نظری برای ${sellerName} ثبت نشده — اولین نفر باشید.`}
           </p>
         )}
 
@@ -223,6 +262,11 @@ export function SellerReviews({ userName, sellerName }: { userName: string; sell
             </Button>
             <span className={cn('ms-auto text-[10.5px] text-muted-foreground')}>{toFa(text.length)}/{toFa(1000)}</span>
           </div>
+          {/* قانون انتشار — انتظار درست از همان لحظهٔ ثبت */}
+          <p className="flex items-center gap-1.5 border-t border-border/70 pt-2.5 text-[10.5px] text-muted-foreground">
+            <Clock size={12} className="shrink-0 text-primary/70" />
+            نظر شما پس از تحقیق و تأیید منتشر می‌شود؛ فقط کاربرانی که با فروشنده تماس یا چت داشته‌اند می‌توانند نظر ثبت کنند.
+          </p>
         </form>
       )}
 

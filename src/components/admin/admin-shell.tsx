@@ -86,7 +86,7 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
     items: [
       { href: '/admin/products', label: 'آگهی‌ها', Icon: Boxes, superOnly: false, badge: 'pendingProducts' },
       { href: '/admin/buy-requests', label: 'درخواست‌های خرید', Icon: ClipboardList, superOnly: false, badge: 'pendingBuyRequests' },
-      { href: '/admin/reviews', label: 'نظرات فروشندگان', Icon: Star, superOnly: false },
+      { href: '/admin/reviews', label: 'نظرات فروشندگان', Icon: Star, superOnly: false, badge: 'pendingReviews' },
       { href: '/admin/verifications', label: 'احراز هویت', Icon: BadgeCheck, superOnly: false, badge: 'pendingVerifications' },
     ],
   },

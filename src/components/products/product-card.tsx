@@ -63,7 +63,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
           </span>
           <span className="inline-flex items-center gap-1">
             <Package size={13} className="shrink-0 text-primary/70" />
-            {stockFa(product.stock, product.unit)}
+            <span className="truncate font-num">{stockFa(product.stock, product.unit)}</span>
           </span>
         </div>
 
