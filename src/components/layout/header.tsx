@@ -145,11 +145,11 @@ export function Header() {
 
           {/* جستجوی دسکتاپ — تپل (h-12)، بدون بکگراند، بوردر طوسی کمرنگ؛
               چسبیده به لوگو (۱۶px) و کشسان تا خود نوار کاربر (مثل باسکول) */}
-          <div ref={searchWrap} className="relative hidden min-w-0 flex-1 nav-desktop:block">
+          <div ref={searchWrap}  className="relative hidden min-w-0 flex-1 nav-desktop:block nav-desktop:max-w-[500px]">
             <form
-              onSubmit={(e) => { e.preventDefault(); submit(); }}
-              className="flex h-12 items-stretch overflow-hidden rounded-xl border border-[#d4d4d8] bg-transparent transition-[border-color,box-shadow] focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10"
-              role="search"
+                onSubmit={(e) => { e.preventDefault(); submit(); }}
+                className="flex h-12 items-stretch overflow-hidden rounded border border-[#d4d4d8] bg-transparent transition-[border-color,box-shadow] focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10"
+                role="search"
             >
               <input
                 value={q}
