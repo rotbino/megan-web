@@ -131,8 +131,10 @@ export function RfqForm() {
                   />
                 </div>
 
-                {/* ردیف ۲ — نوع کالا + میزان نیازمندی (کنارِ هم؛ عنوان بالای هر فیلد) */}
-                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                {/* ردیف ۲ — نوع کالا + میزان نیازمندی
+                    موبایل: زیر هم (عرض کم، عدد و واحد روی هم می‌افتادند — خواسته مالک)
+                    دسکتاپ (sm+): کنار هم با عنوان بالای هر فیلد */}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
                   <div className="min-w-0">
                     <span className="mb-1.5 flex h-[18px] items-center text-xs font-medium text-foreground/75">
                       نوع کالا
@@ -168,7 +170,7 @@ export function RfqForm() {
                       value={amount}
                       onValueChange={setAmount}
                       placeholder="مثلاً ۵۰۰"
-                      inputClassName="h-12 pe-14 md:h-12 md:text-base"
+                      inputClassName="h-12 md:h-12 md:text-base"
                       ariaLabel="میزان نیازمندی محصول"
                     />
                   </div>

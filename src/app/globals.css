@@ -217,6 +217,16 @@
     font-family: "Vazirmatn", "IRANSans", "Segoe UI", Tahoma, sans-serif;
     letter-spacing: 0;
   }
+
+  /* پلیس‌هولدرها همیشه کمرنگ‌تر از متن واقعی — خواستهٔ مالک:
+     «۵۰۰» پیش‌فرض آن‌قدر پررنگ بود که شبیه ورودی واقعی دیده می‌شد.
+     شفافیت + وزن نرمال روی همهٔ اینپوت‌ها/متنی‌ها (روشن و تیره). */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--muted-foreground);
+    opacity: 0.55;
+    font-weight: 400;
+  }
 }
 
 /* اسکرول‌بار ظریف */
