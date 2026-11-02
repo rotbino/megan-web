@@ -186,9 +186,9 @@ export function AddItemFlow({
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="جستجوی کالا؛ مثلاً پسته"
                 aria-label="جستجوی کالا"
-                className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm shadow-xs transition-colors placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary ps-9"
+                className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm shadow-xs transition-colors placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary pe-9"
               />
-              <Search size={15} className="pointer-events-none absolute inset-y-0 start-3 my-auto text-muted-foreground" />
+              <Search size={15} className="pointer-events-none absolute inset-y-0 end-3 my-auto text-muted-foreground" />
             </div>
           </div>
 

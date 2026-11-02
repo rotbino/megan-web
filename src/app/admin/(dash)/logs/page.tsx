@@ -114,12 +114,12 @@ export default function AdminLogsPage() {
       {/* فیلترها */}
       <div className="space-y-2.5 rounded-lg border bg-card p-3">
         <div className="relative">
-          <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
+          <Search size={15} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="جستجوی مسیر عملیات — مثل review یا setLadder…"
-            className="h-9 rounded-md pe-9 font-mono"
+            className="h-9 rounded-md ps-9 font-mono"
             maxLength={80}
             dir="ltr"
           />

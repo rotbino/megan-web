@@ -213,7 +213,7 @@ export default function AdminUsersPage() {
       {/* جستجو + فیلترها */}
       <div className="space-y-2.5 rounded-lg border bg-card p-3">
         <div className="relative">
-          <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
+          <Search size={15} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}

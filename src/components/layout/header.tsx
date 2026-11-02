@@ -199,9 +199,8 @@ export function Header() {
             role="search"
             className="flex min-w-0 flex-1 items-center gap-2 rounded-[10px] bg-secondary px-2 nav-desktop:hidden"
           >
-            <button type="submit" aria-label="جستجو" className="shrink-0 text-muted-foreground">
-              <SearchIconBuskool size={24} />
-            </button>
+            {/* ذره‌بین سمت چپِ اینپوت — متن فارسی از راست شروع می‌شود و
+                زیر آیکون نمی‌رود (خواسته مالک ۲-۱۱) */}
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -209,6 +208,9 @@ export function Header() {
               className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               aria-label="جستجوی محصول"
             />
+            <button type="submit" aria-label="جستجو" className="shrink-0 text-muted-foreground">
+              <SearchIconBuskool size={24} />
+            </button>
             <span className="h-6 w-px shrink-0 bg-border" aria-hidden />
             <button
               type="button"

@@ -258,10 +258,10 @@ function ReceivedOffersPageInner() {
                 setPage(1);
               }}
               placeholder="جستجوی نوع کالا؛ مثلاً آگریا"
-              className="h-9 rounded-md text-xs pe-4 ps-9"
+              className="h-9 rounded-md text-xs ps-4 pe-9"
               aria-label="جستجوی نوع کالا"
             />
-            <Search size={14} className="pointer-events-none absolute inset-y-0 start-3 my-auto text-muted-foreground" />
+            <Search size={14} className="pointer-events-none absolute inset-y-0 end-3 my-auto text-muted-foreground" />
           </form>
         </div>
         <div className="flex flex-wrap items-center gap-2">

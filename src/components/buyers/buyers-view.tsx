@@ -353,10 +353,10 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
                   setPage(1);
                 }}
                 placeholder="جستجو در نیازهای خرید؛ مثلاً پسته"
-                className="rounded-md pe-4 ps-10"
+                className="rounded-md ps-4 pe-10"
                 aria-label="جستجو در نیازهای خرید"
               />
-              <Search size={15} className="pointer-events-none absolute inset-y-0 start-3 my-auto text-muted-foreground" />
+              <Search size={15} className="pointer-events-none absolute inset-y-0 end-3 my-auto text-muted-foreground" />
             </form>
 
             {/* دکمهٔ پیشنهاد گروهی (خواستهٔ مالک ۱-۱۱ دور سوم) — به‌جای چک‌باکس

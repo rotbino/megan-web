@@ -224,7 +224,7 @@ export default function AdminLocationsPage() {
           <div className="overflow-hidden rounded-lg border bg-card">
             <div className="border-b p-3">
               <div className="relative">
-                <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
+                <Search size={15} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
                 <Input
                   value={provinceSearch}
                   onChange={(e) => setProvinceSearch(e.target.value)}
@@ -307,7 +307,7 @@ export default function AdminLocationsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="relative">
-                      <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
+                      <Search size={15} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
                       <Input
                         value={citySearch}
                         onChange={(e) => setCitySearch(e.target.value)}

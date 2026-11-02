@@ -135,7 +135,7 @@ export default function PanelMessagesPage() {
             </p>
           </div>
           <div className="relative mt-3">
-            <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search size={15} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجوی مکالمه…" className="rounded-md pe-9" />
           </div>
           {isLoading ? (

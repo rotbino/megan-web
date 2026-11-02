@@ -397,7 +397,7 @@ export default function AdminCategoriesPage() {
         <>
           {/* جستجوی نوع کالا */}
           <div className="relative">
-            <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
+            <Search size={16} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
             <Input
               value={goodSearch}
               onChange={(e) => {
@@ -534,7 +534,7 @@ export default function AdminCategoriesPage() {
         <>
       {/* جستجو */}
       <div className="relative">
-        <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
+        <Search size={16} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}

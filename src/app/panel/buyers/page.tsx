@@ -123,7 +123,7 @@ export default function PanelBuyersPage() {
 
         <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_220px]">
           <div className="relative">
-            <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search size={16} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={q}
               onChange={(e) => {

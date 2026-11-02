@@ -120,7 +120,7 @@ export default function AdminCallsPage() {
           ))}
         </div>
         <div className="relative ms-auto w-full sm:w-64">
-          <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Search size={15} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}

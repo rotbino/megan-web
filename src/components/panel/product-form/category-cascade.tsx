@@ -129,7 +129,7 @@ export function CategoryCascade({
       {/* ─── جعبه جستجوی دسته — مشترک دسکتاپ/موبایل (خواسته مالک) ─── */}
       <div className="mb-3">
         <div className="relative">
-          <Search size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Search size={16} className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -141,7 +141,7 @@ export function CategoryCascade({
             <button
               type="button"
               onClick={() => setQuery('')}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+              className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
               aria-label="پاک کردن جستجو"
             >
               <X size={15} />
