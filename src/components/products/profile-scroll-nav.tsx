@@ -2,9 +2,9 @@
 
 /**
  * ناوبری بخش‌های پروفایل — عین باسکول (cp-navigation-container):
- * نوار لینک‌های «درباره فروشنده / محصولات / نظرات» داخل همان کارت یکپارچه
- * هدر (بنر + هویت + نوار) نشسته — بدون خط جداکننده بالای نوار؛
- * تب فعال اندیکاتور خط زیرین دارد (cp-nav-button-indicator).
+ * نوار لینک‌ها با خط جداکننده بالایی ۱px (مثل باسکول) داخل همان کارت
+ * یکپارچه هدر؛ تب فعال متن رنگ برند + اندیکاتور خط زیرین ۲px دارد
+ * (cp-nav-button-indicator). دسکتاپ هاور پس‌زمینه ملایم می‌گیرد.
  * کلیک اسکرول نرم به بخش مربوطه می‌برد و scroll-spy تب فعال را هایلایت می‌کند.
  */
 
@@ -40,7 +40,7 @@ export function ProfileScrollNav({ productCount }: { productCount?: number }) {
   }, []);
 
   return (
-    <nav aria-label="بخش‌های پروفایل" className="px-2 sm:px-4">
+    <nav aria-label="بخش‌های پروفایل" className="border-t border-border px-2 pt-0.5 sm:px-4">
       <ul className="flex items-center gap-1 overflow-x-auto">
         {SECTIONS.map(({ id, label }) => (
           <li key={id} className="shrink-0">
@@ -49,16 +49,16 @@ export function ProfileScrollNav({ productCount }: { productCount?: number }) {
               aria-current={active === id ? 'true' : undefined}
               onClick={() => setActive(id)}
               className={cn(
-                // عین cp-nav-button: ارتفاع ثابت + اندیکاتور خط زیرین برای تب فعال
-                'relative flex h-11 items-center border-b-2 px-3.5 text-[13px] font-bold transition-colors',
+                // عین cp-nav-button: پدینگ ۱۴/۱۶ + اندیکاتور خط زیرین برای تب فعال
+                'relative flex items-center rounded-sm px-4 py-3.5 text-sm transition-colors',
                 active === id
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground',
+                  ? 'border-b-2 border-primary font-bold text-primary'
+                  : 'border-b-2 border-transparent font-normal text-muted-foreground hover:text-foreground lg:hover:bg-muted/60',
               )}
             >
               {label}
               {id === 'products' && productCount !== undefined && (
-                <span className="text-[10.5px] font-medium text-muted-foreground">({toFa(productCount)})</span>
+                <span className="text-[11px] font-medium text-muted-foreground">({toFa(productCount)})</span>
               )}
             </a>
           </li>

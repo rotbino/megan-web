@@ -139,11 +139,11 @@ export default async function ProfilePage({ params }: Props) {
     <>
       <Header />
       <main className="flex-1">
-        {/* ─── کارت یکپارچه هدر پروفایل — عین باسکول (cp-header-main-content) ───
-            بنر + هویت فروشنده + نوار لینک بخش‌ها همه یک کارت‌اند؛
-            بدون خط بالای نوار لینک‌ها و با سایه نرم از محتوای زیرین جدا می‌شود. */}
-        <div className="mx-auto max-w-7xl px-4 pt-6 lg:px-6">
-          <div className="overflow-hidden rounded-lg border bg-card shadow-[0_6px_20px_rgba(35,38,43,0.09)]">
+        {/* ─── کارت یکپارچه هدر پروفایل — عین باسکول (cp-header-main-container) ───
+            بنر + هویت فروشنده + نوار لینک بخش‌ها همه یک کارت‌اند؛ سایه نرم
+            ۰/۱px/۸px باسکول (بدون بوردر در تم روشن — در تاریک بوردر ظریف). */}
+        <div className="mx-auto max-w-7xl px-4 pt-4 lg:px-6 lg:pt-6">
+          <div className="overflow-hidden rounded-lg bg-card shadow-[0_1px_8px_rgba(0,0,0,0.1)] dark:border dark:border-border">
             <ProfileHero
               user={user as unknown as Parameters<typeof ProfileHero>[0]['user']}
               shareUrl={`${SITE_URL}/profile/${user.userName}`}
