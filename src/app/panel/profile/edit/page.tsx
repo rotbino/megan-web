@@ -46,6 +46,7 @@ import { PanelCard } from '@/components/panel/panel-parts';
 import { AvatarUpload } from '@/components/panel/avatar-upload';
 import { CompletionMeter } from '@/components/panel/completion-meter';
 import { VerifyCard } from '@/components/panel/verify-card';
+import { PasswordChangeCard } from '@/components/panel/password-change-card';
 import { computeProfileCompletion } from '@/lib/profile-completion';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -598,6 +599,9 @@ export default function EditProfilePage() {
           <Save size={15} /> {save.isPending || uploadingImages ? 'در حال ثبت تصاویر…' : 'ثبت تصاویر'}
         </Button>
       </PanelCard>
+
+      {/* تغییر رمز عبور — فقط کاربرِ رمزدار (خواسته مالک ۲-۱۱) */}
+      <PasswordChangeCard />
 
       {/* میانبر پروفایل عمومی */}
       <PanelCard className="flex flex-wrap items-center justify-between gap-2">
