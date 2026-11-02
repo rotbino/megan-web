@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { ArrowRight, KeyRound, Loader2, MapPin, Smartphone, UserRound } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Button } from '@/components/ui/button';
@@ -309,10 +308,6 @@ export default function RegisterPage() {
                   </p>
                 </form>
               )}
-
-              <p className="mt-6 text-center text-[11px] leading-5 text-muted-foreground">
-                با ورود، <Link href="#" className="text-primary hover:underline">قوانین و مقررات ایمچ</Link> را می‌پذیرید.
-              </p>
             </>
           )}
         </div>

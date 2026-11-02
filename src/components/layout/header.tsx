@@ -10,6 +10,7 @@ import {
   BuyersIcon,
   LocationIconBuskool,
   MessagesIcon,
+  MyAccountIcon,
   SearchIconBuskool,
   SellersIcon,
 } from '@/components/shared/buskool-icons';
@@ -274,7 +275,10 @@ export function Header() {
                 href="/register"
                 className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
               >
-                <UserPlusBadge />
+                {/* نقطه ورود = نارنجی ثابت (خواسته مالک ۲-۱۱ دور دوازدهم) — مثل
+                    طلاییِ فروشنده ویژه از رنگ برند کاربر پیروی نمی‌کند تا در هر تمی
+                    دیده شود؛ آدمک داخل دایره هم‌خانوادهٔ باقی آیکون‌های نوار است */}
+                <MyAccountIcon size={24} className="text-orange-500" />
                 <span className="mt-1">ورود / ثبت نام</span>
               </Link>
             </>
@@ -340,26 +344,6 @@ export function Header() {
         </div>
       </div>
     </header>
-  );
-}
-
-/** آیکون کاربر + نشان مثبت کوچک — الگوی fa-user باسکول */
-function UserPlusBadge() {
-  return (
-    <span className="relative inline-flex" aria-hidden>
-      <svg width="21" height="24" viewBox="0 0 448 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M224 256c70.7 0 128-57.3 128-128S294.7 0 224 0 96 57.3 96 128s57.3 128 128 128zm89.6 32h-16.7c-22.2 10.2-46.9 16-72.9 16s-50.6-5.8-72.9-16h-16.7C60.2 288 0 348.2 0 422.4V464c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48v-41.6c0-74.2-60.2-134.4-134.4-134.4z"
-          fill="currentColor"
-        />
-      </svg>
-      <svg className="absolute -top-1 -end-0.5" width="10" height="10" viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M5 0c.4 0 .7.3.7.7v3.6h3.6c.4 0 .7.3.7.7s-.3.7-.7.7H5.7v3.6c0 .4-.3.7-.7.7s-.7-.3-.7-.7V5.7H.7c-.4 0-.7-.3-.7-.7s.3-.7.7-.7h3.6V.7c0-.4.3-.7.7-.7z"
-          fill="var(--primary)"
-        />
-      </svg>
-    </span>
   );
 }
 
