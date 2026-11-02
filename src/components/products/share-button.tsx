@@ -6,7 +6,8 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 /**
- * آیکون اشتراک‌گذاری کنار عنوان آگهی (خواسته مالک ۱-۱۱ دور هفتم).
+ * آیکون اشتراک‌گذاری کنار آیکون نشان کردن (خواسته مالک ۲-۱۱ دور یازدهم —
+ * از رو‌به‌روی عنوان به کنار نشان آمد و بزرگ/واضح شد: ۴۴px هدف لمسی + آیکون ۲۲).
  * موبایل: Web Share بومی (تلگرام/واتس‌اپ/… خود گوشی)؛ دسکتاپ: کپی لینک.
  */
 export function ShareButton({ url, title }: { url: string; title: string }) {
@@ -42,11 +43,11 @@ export function ShareButton({ url, title }: { url: string; title: string }) {
       aria-label="اشتراک‌گذاری آگهی"
       title="اشتراک‌گذاری آگهی"
       className={cn(
-        'inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary',
+        'inline-flex size-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary',
         copied && 'border-primary/45 text-primary',
       )}
     >
-      {copied ? <Check size={16} /> : <Share2 size={16} />}
+      {copied ? <Check size={22} strokeWidth={2.2} /> : <Share2 size={22} strokeWidth={2.2} />}
     </button>
   );
 }

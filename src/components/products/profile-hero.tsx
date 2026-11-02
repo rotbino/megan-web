@@ -122,7 +122,7 @@ export function ProfileHero({ user, shareUrl }: { user: ProfileHeroUser; shareUr
               <h1 className="text-xl font-extrabold leading-8 sm:text-2xl">{name}</h1>
               {user.isVerified && <VerifiedBadge />}
               {user.activePakageType > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10.5px] font-bold text-amber-600">
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[10.5px] font-bold text-amber-950 shadow-sm ring-1 ring-amber-500/50">
                   <Crown size={11} /> فروشنده ویژه
                 </span>
               )}

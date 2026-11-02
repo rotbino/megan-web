@@ -22,14 +22,16 @@ export function LadderBadge({ className, compact = false }: { className?: string
   );
 }
 
-/** نشان «فروشنده ویژه» — مستطیل رنگ برند با متن ریز غیر بولد (خواسته مالک ۱-۱۱:
- *  آیکون تاج حذف شد؛ روی کارت لیست به‌صورت مستطیل چسبیده به گوشهٔ بالا-چپ عکس
- *  پیاده شده — این نسخهٔ چیپ برای ردیف عنوان صفحهٔ جزئیات است) */
+/** نشان «فروشنده ویژه» — چیپ طلایی (خواسته مالک ۲-۱۱: «رنگش رو طلایی کن»).
+ *  طلایی = رنگ تمایز ثابتِ این مفهوم (مثل قرمزِ نردبان) — عمداً از رنگ برند
+ *  کاربر پیروی نمی‌کند تا در هر تمی یکسان دیده و شناخته شود؛ روی کارت لیست
+ *  به‌صورت مستطیل چسبیده به گوشهٔ بالا-چپ عکس پیاده شده — این نسخهٔ چیپ
+ *  برای کنار نام فروشنده در صفحهٔ جزئیات است */
 export function PremiumSellerBadge({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-sm bg-primary px-1.5 py-0.5 text-[11px] font-medium text-primary-foreground shadow-sm',
+        'inline-flex items-center rounded-sm bg-amber-400 px-1.5 py-0.5 text-[11px] font-bold text-amber-950 shadow-sm ring-1 ring-amber-500/50',
         className,
       )}
     >

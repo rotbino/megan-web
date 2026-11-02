@@ -28,10 +28,10 @@ export function ProductCard({ product, priority = false }: { product: Product; p
           iconSize={48}
           priority={priority}
         />
-        {/* «فروشنده ویژه» — مستطیل رنگ برند چسبیده به گوشهٔ بالا-چپ عکس؛
-            فقط گوشهٔ آخر (پایین-راست) کمی گرد است (خواسته مالک ۱-۱۱) */}
+        {/* «فروشنده ویژه» — مستطیل طلایی چسبیده به گوشهٔ بالا-چپ عکس (خواسته مالک
+            ۲-۱۱: طلایی = رنگ ثابت این نشان)؛ فقط گوشهٔ آخر (پایین-راست) کمی گرد است */}
         {product.isElevated && (
-          <span className="absolute left-0 top-0 rounded-br-[6px] bg-primary px-2 py-1 text-[10px] font-medium leading-none text-primary-foreground shadow-sm">
+          <span className="absolute left-0 top-0 rounded-br-[6px] bg-amber-400 px-2 py-1 text-[10px] font-bold leading-none text-amber-950 shadow-sm ring-1 ring-amber-500/50">
             فروشنده ویژه
           </span>
         )}

@@ -321,8 +321,10 @@ export function MarkUserSheet({
 /**
  * دکمهٔ «نشان کردن» + مودال — یک‌تکه. مهمان → مودال ورود (نیات save).
  * variant:
- *  · compact — کنار بازدید صفحهٔ آگهی (آیکون + متن)
+ *  · compact — دکمه متن‌دار ریز (پیش‌فرض)
  *  · block — تمام‌عرض h-11 کنار دکمه‌های سایدبار پروفایل
+ *  · icon — مربع ۴۴px فقط آیکون؛ کنار آیکون اشتراک‌گذاری صفحهٔ آگهی
+ *    (خواسته مالک ۲-۱۱: آیکون‌های بزرگ و واضح کنار هم)
  */
 export function MarkUserButton({
   target,
@@ -330,7 +332,7 @@ export function MarkUserButton({
   className,
 }: {
   target: MarkTarget;
-  variant?: 'compact' | 'block';
+  variant?: 'compact' | 'block' | 'icon';
   className?: string;
 }) {
   const { user, requireAuth } = useAuth();
@@ -338,6 +340,7 @@ export function MarkUserButton({
   const { data: lists } = useMarkState(target.targetUserId, Boolean(user));
 
   const marked = Boolean(user && (lists ?? []).some((l) => l.saved));
+  const iconSize = variant === 'block' ? 16 : variant === 'icon' ? 22 : 14;
 
   return (
     <>
@@ -349,15 +352,23 @@ export function MarkUserButton({
         title={marked ? `نشان شده — مدیریت در نشان شده ها` : 'نشان کردن برای پیگیری'}
         className={cn(
           'inline-flex items-center justify-center gap-1.5 rounded-md border font-bold transition-colors',
-          variant === 'block' ? 'h-11 w-full text-sm' : 'h-9 px-3 text-xs',
+          variant === 'block'
+            ? 'h-11 w-full text-sm'
+            : variant === 'icon'
+              ? 'size-11 shrink-0'
+              : 'h-9 px-3 text-xs',
           marked
             ? 'border-primary/45 bg-primary/10 text-primary'
             : 'border-border bg-card text-foreground/85 hover:border-primary/40',
           className,
         )}
       >
-        {marked ? <BookmarkCheck size={variant === 'block' ? 16 : 14} /> : <Bookmark size={variant === 'block' ? 16 : 14} />}
-        {marked ? 'نشان شده' : 'نشان کردن'}
+        {marked ? (
+          <BookmarkCheck size={iconSize} strokeWidth={variant === 'icon' ? 2.2 : 2} />
+        ) : (
+          <Bookmark size={iconSize} strokeWidth={variant === 'icon' ? 2.2 : 2} />
+        )}
+        {variant !== 'icon' && (marked ? 'نشان شده' : 'نشان کردن')}
       </button>
 
       {open && <MarkUserSheet open={open} onClose={() => setOpen(false)} target={target} />}

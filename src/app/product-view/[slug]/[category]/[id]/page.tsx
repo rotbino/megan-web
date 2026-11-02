@@ -93,9 +93,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // کنونیکال همیشه به آدرس رسمی (slug واقعی محصول) — ورودی شنی سیگنال‌ها را
   // روی همان URL جمع می‌کند (قانون سئو RULES.md §۴)
   const canonical = `/product-view/${product.slug}/${product.categoryName}/${product.id}`;
-  // عنوان عمده‌محور (RULES.md §۴): خرید عمده {کالا} در {شهر} | قیمت عمده — ایمچ
+  // عنوان عمده‌محور (RULES.md §۴): فروش عمده {کالا} در {شهر} | قیمت عمده — ایمچ
+  // (آگهی ثبت‌شده «فروش» است — خواسته مالک ۲-۱۱: «در عنوان آگهی‌های فروش
+  // خرید زدی؛ باید بزنی فروش»؛ «خرید عمده» در توضیحات/کلیدواژه‌ها می‌ماند)
   // (قالب layout خودش « | ایمچ» می‌چسباند — اینجا تکرار نشود)
-  const title = `خرید عمده ${product.productName} در ${city} | قیمت عمده ${product.subCategoryName}`;
+  const title = `فروش عمده ${product.productName} در ${city} | قیمت عمده ${product.subCategoryName}`;
   const description =
     `خرید عمده ${product.productName} از ${sellerName} در ${city}، ${product.provinceName}؛ ` +
     `موجودی ${stockFa(product.stock, product.unit)}، حداقل فروش ${stockFa(product.minSaleAmount, product.unit)}. ` +
@@ -212,7 +214,7 @@ export default async function ProductViewPage({ params }: Props) {
               <div className="relative aspect-square w-full max-w-[420px] overflow-hidden rounded-md border">
                 <ProductImage
                   photos={product.photos}
-                  alt={`خرید عمده ${product.productName} در ${city}`}
+                  alt={`فروش عمده ${product.productName} در ${city}`}
                   className="object-cover"
                   iconSize={96}
                   priority
@@ -249,13 +251,11 @@ export default async function ProductViewPage({ params }: Props) {
               </div>
 
               <div className="space-y-4">
-                {/* عنوان + اشتراک‌گذاری رو‌به‌روی عنوان (خواسته مالک ۱-۱۱ دور هفتم) */}
-                <div className="flex items-start justify-between gap-2">
-                  <h1 className="text-xl font-bold leading-8 sm:text-2xl">
-                    خرید عمده {product.productName}
-                  </h1>
-                  <ShareButton url={productUrl} title={`خرید عمده ${product.productName} در ${city}`} />
-                </div>
+                {/* عنوان آگهی فروش — «فروش عمده …» (خواسته مالک ۲-۱۱: خرید زدی؛
+                    آگهی فروش است)؛ آیکون‌های اشتراک/نشان پایین‌تر کنار هم‌اند */}
+                <h1 className="text-xl font-bold leading-8 sm:text-2xl">
+                  فروش عمده {product.productName}
+                </h1>
                 {product.isOld && <OldAdBadge />}
 
                 <ul className="grid gap-2.5 rounded-md border bg-card p-4 text-sm">
@@ -272,18 +272,24 @@ export default async function ProductViewPage({ params }: Props) {
 
                 <ProductPrice product={product} variant="page" />
 
-                {/* بازدید + نشان کردن (CRM) — هم‌قد (قانون تناسب) */}
+                {/* بازدید + نشان کردن و اشتراک‌گذاری — دو آیکون بزرگ ۴۴px کنار هم
+                    (خواسته مالک ۲-۱۱: اشتراک از رو‌به‌روی عنوان آمد کنار نشان؛
+                    بزرگ‌تر و واضح‌تر — هدف لمسی RULES.md §۱) */}
                 <div className="flex items-center justify-between gap-2">
                   <p className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Eye size={13} /> {toFa(product.viewCount)} بازدید
                   </p>
-                  <MarkUserButton
-                    target={{
-                      targetUserId: product.myuserId,
-                      targetName: sellerName,
-                      isVerified: product.seller.isVerified,
-                    }}
-                  />
+                  <div className="flex items-center gap-2">
+                    <ShareButton url={productUrl} title={`فروش عمده ${product.productName} در ${city}`} />
+                    <MarkUserButton
+                      variant="icon"
+                      target={{
+                        targetUserId: product.myuserId,
+                        targetName: sellerName,
+                        isVerified: product.seller.isVerified,
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
