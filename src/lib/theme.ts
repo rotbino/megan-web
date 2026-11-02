@@ -17,10 +17,10 @@
  * - یک پیاده‌سازی واحد: محاسبه پالت (روشن/تیره) فقط داخل خودِ اسکریپت بوت
  *   است و به‌صورت window.__aimchTheme در دسترس ری‌اکت قرار می‌گیرد؛
  *   این ماژول فقط پوشش TypeScript/UI روی همان توابع است.
- * - ذخیره: localStorage «aimch:theme» = {"m":"light|dark","a":"نام رنگ|#hex"}
+ * - ذخیره: localStorage «aimch:theme» = {"m":"light|dark|mono","a":"نام رنگ|#hex"}
  */
 
-export type ThemeMode = 'light' | 'dark';
+export type ThemeMode = 'light' | 'dark' | 'mono';
 
 /** خانوادهٔ رنگ — چیپ‌های نوار افقی بالای انتخابگر */
 export type AccentFamilyKey =
@@ -167,7 +167,7 @@ export function readTheme(): ThemeState {
     if (raw) {
       const t = JSON.parse(raw) as { m?: unknown; a?: unknown };
       return {
-        mode: t?.m === 'dark' ? 'dark' : 'light',
+        mode: t?.m === 'dark' ? 'dark' : t?.m === 'mono' ? 'mono' : 'light',
         accent:
           typeof t?.a === 'string' && t.a ? normalizeAccent(t.a) : DEFAULT_ACCENT,
       };
@@ -243,6 +243,12 @@ window.__aimchTheme={apply:function(t){
 var root=document.documentElement;
 var dark=!!(t&&t.m==='dark');
 root.classList.toggle('dark',dark);
+/* تم روشن تک‌رنگ (خواستهٔ مالک ۲-۱۱): کلاس mono فقط مقیاس خنثی
+   (زمینه/کارت/خط/متن) را در globals.css بازنویسی می‌کند؛ رنگ لهجهٔ
+   کاربر (a) مثل قبل روی همان توکن‌های primary می‌نشیند — پس تک‌رنگ
+   با هر ۴۱ رنگ و رنگ دلخواه کار می‌کند. */
+var mono=!!(t&&t.m==='mono');
+root.classList.toggle('mono',mono);
 var a=t?String(t.a||''):'';
 if(LEGACY[a])a=LEGACY[a];
 var hex=/^#[0-9a-fA-F]{6}$/.test(a)?a.toLowerCase():(ACCENTS[a]||ACCENTS[DEF]);

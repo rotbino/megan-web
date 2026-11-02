@@ -13,7 +13,7 @@
  */
 
 import { useRef, useState } from 'react';
-import { Check, ChevronDown, Moon, Palette, Pipette, RotateCcw, Sun } from 'lucide-react';
+import { Check, ChevronDown, Contrast, Moon, Palette, Pipette, RotateCcw, Sun } from 'lucide-react';
 import { PanelCard } from '@/components/panel/panel-parts';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -68,12 +68,14 @@ export function AppearanceCard() {
         <Palette size={17} className="text-primary" /> ظاهر ایمچ
       </h2>
       <p className="mt-1 text-xs leading-6 text-muted-foreground">
-        حالت نمایش و رنگ ایمچ را به سلیقهٔ خودتان انتخاب کنید — روی همهٔ صفحات اعمال و ذخیره می‌شود.
+        حالت نمایش (روشن، تیره یا روشن تک‌رنگ) و رنگ ایمچ را به سلیقهٔ خودتان انتخاب کنید — روی همهٔ صفحات اعمال و ذخیره می‌شود.
       </p>
 
-      {/* ۱) تم روشن/تیره — کلید دوحالته، همیشه نمایان */}
+      {/* ۱) حالت نمایش — سه گزینه (خواستهٔ مالک ۲-۱۱): روشن / تیره /
+          روشن تک‌رنگ (دوقلوی روشنِ تم تیره — سفید و خاکستری خالص با
+          خط‌های مویی؛ رنگ ایمچ کاربر مثل قبل رویش می‌نشیند) */}
       <div
-        className="mt-3 grid grid-cols-2 gap-1 rounded-lg bg-secondary/70 p-1"
+        className="mt-3 grid grid-cols-3 gap-1 rounded-lg bg-secondary/70 p-1"
         role="radiogroup"
         aria-label="حالت نمایش"
       >
@@ -83,13 +85,13 @@ export function AppearanceCard() {
           aria-checked={mode === 'light'}
           onClick={() => setMode('light')}
           className={cn(
-            'flex h-10 items-center justify-center gap-2 rounded-md text-xs font-bold transition-colors',
+            'flex h-10 items-center justify-center gap-1.5 rounded-md text-[11px] font-bold transition-colors',
             mode === 'light'
               ? 'bg-card text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground',
           )}
         >
-          <Sun size={16} /> روشن
+          <Sun size={15} /> روشن
         </button>
         <button
           type="button"
@@ -97,13 +99,28 @@ export function AppearanceCard() {
           aria-checked={mode === 'dark'}
           onClick={() => setMode('dark')}
           className={cn(
-            'flex h-10 items-center justify-center gap-2 rounded-md text-xs font-bold transition-colors',
+            'flex h-10 items-center justify-center gap-1.5 rounded-md text-[11px] font-bold transition-colors',
             mode === 'dark'
               ? 'bg-card text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground',
           )}
         >
-          <Moon size={16} /> تیره
+          <Moon size={15} /> تیره
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={mode === 'mono'}
+          onClick={() => setMode('mono')}
+          title="تم روشن تک‌رنگ — سفید و خاکستری خالص با خط‌های مویی و سایه‌های ظریف؛ رنگ ایمچ شما روی همین بوم خنثی می‌نشیند"
+          className={cn(
+            'flex h-10 items-center justify-center gap-1.5 rounded-md text-[11px] font-bold transition-colors',
+            mode === 'mono'
+              ? 'bg-card text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          <Contrast size={15} /> روشن تک‌رنگ
         </button>
       </div>
 

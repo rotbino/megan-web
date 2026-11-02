@@ -303,6 +303,36 @@
   --color-neutral-800: #c8ccd4;
 }
 
+/* ─── تم روشن تک‌رنگ (خواستهٔ مالک ۲-۱۱) ────────────────────────
+   دوقلوی تم تیره در نیمهٔ روشن: همان انضباط و عمق، فقط با طیف سفید/
+   خاکستری خالص (الگوی Notion/Linear/Vercel Geist):
+   • زمینهٔ صفحه شیرفروش (off-white) + کارت سفید خالص = پلهٔ روشنایی؛
+   • خط مویی خاکستری + سایهٔ بسیار ظریف = هم‌ارزِ بوردر درخشان تیره؛
+   • نردبان متن خالص: zinc-900/500 بدون هیچ ته‌رنگ آبی؛
+   • رنگ لهجه (توکن‌های primary) دست‌نخورده می‌ماند — رنگ ایمچ کاربر
+     روی همین بوم خنثی می‌نشیند؛ پس تک‌رنگ با هر ۴۱ رنگ + دلخواه کار
+     می‌کند (هزینهٔ صفر — سیستم رنگ مستقل از مقیاس خنثی است). */
+html.mono {
+  --background: #fafafa; /* زمینه صفحه — off-white (کارت‌ها از آن بلند می‌شوند) */
+  --foreground: #18181b; /* zinc-900 — متن اصلی خالص */
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+  --secondary: #f4f4f5; /* zinc-100 */
+  --secondary-foreground: #3f3f46; /* zinc-700 */
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a; /* zinc-500 — متن فرعی */
+  --accent: #f4f4f5; /* هاور چیپ */
+  --accent-foreground: #18181b;
+  --chip: #f4f4f5;
+  --border: #e4e4e7; /* zinc-200 — خط مویی */
+  --input: #d4d4d8; /* zinc-300 — خط اینپوت */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #18181b;
+  --sidebar-border: #e4e4e7;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

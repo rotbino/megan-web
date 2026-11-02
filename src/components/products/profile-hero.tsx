@@ -128,10 +128,10 @@ export function ProfileHero({ user, shareUrl }: { user: ProfileHeroUser; shareUr
       </div>
 
       {/* ─── ردیف هویت — آواتار روی بنر + نام + متا + دکمه‌ها (cp-header-container) ─── */}
-      <div className="px-4 pb-5 lg:px-8 lg:pb-6">
+      <div className="px-4 pb-5 pt-0 lg:px-8 lg:pb-6 lg:pt-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:gap-6">
           {/* آواتار — ۵۴٪ روی بنر افتاده مثل باسکول (۸۵px/-46px و ۱۳۰px/-70px) */}
-          <div className="relative -mt-[46px] size-[85px] shrink-0 lg:-mt-[70px] lg:size-[130px]">
+          <div className="relative -mt-[46px] size-[85px] shrink-0 lg:-mt-[80px] lg:size-[130px] lg:self-start">
             {user.avatarUrl ? (
               <img
                 src={user.avatarUrl}
