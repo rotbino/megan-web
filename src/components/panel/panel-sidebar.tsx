@@ -1,8 +1,12 @@
 'use client';
 
 /**
- * سایدبار پنل — عین الگوی باسکول، دو منوی جدا برای فروشنده و خریدار:
- * هدر (برگر + لوگو) → پروفایل (تصویر/نام/نقش/شهر) → کیف پول → سوییچ فروشنده/خریدار → منو → خروج.
+ * سایدبار پنل — عین باسکول (خواسته مالک ۲-۱۱ دور سیزدهم):
+ * هدر (برگر + لوگو) → پروفایل (تصویر/نام/نقش/شهر) → کیف پول → سوییچ فروشنده/خریدار → منوی کوتاه.
+ * فروشنده فقط ۹ آیتم دارد (دقیقاً منوی باسکول): ایمچ من، ثبت محصول، پیام ها، خریداران،
+ * خریداران پیشنهادی، محصولات من، احراز هویت، ارتقا عضویت، نشان شده ها.
+ * بقیه (داشبورد/تراکنش‌ها/ویرایش پروفایل/پرداخت امن/راهنما/پشتیبانی/نظرسنجی/خروج)
+ * در صفحهٔ «ایمچ من» (AccountLinks) زندگی می‌کنند — مثل باسکول من.
  * دسکتاپ: ستون ثابت سمت راست (max 250px) با حالت جمع‌شونده (آیکون‌ها).
  * موبایل: همان محتوا داخل دراور بازشو از راست.
  */
@@ -11,29 +15,22 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   BadgeCheck,
+  BookOpenText,
   Bookmark,
   ChevronLeft,
   FileText,
-  Handshake,
-  HelpCircle,
   Inbox,
-  LifeBuoy,
-  LogOut,
   Medal,
   Menu,
   MessageSquare,
   Package,
-  Pencil,
   PlusSquare,
-  ScrollText,
   ShieldCheck,
   ShoppingCart,
   Sparkles,
-  TrendingUp,
   UserRound,
   Users,
   Wallet,
-  BookOpenText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toFa } from '@/lib/format';
@@ -49,43 +46,32 @@ interface PanelNavItem {
   exact?: boolean;
 }
 
-/** منوی فروشنده — آیتم‌های فروش + صفحات مشترک (دفتر خرید فقط در پنل خریدار است) */
+/** منوی فروشنده — ۹ آیتم، ترتیب و برچسب عین باسکول (ارتقا عضویت نه «بسته‌های اشتراک») */
 export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel', label: 'ایمچ من', icon: UserRound, exact: true },
   { href: '/panel/products/new', label: 'ثبت محصول', icon: PlusSquare, exact: true },
-  { href: '/panel/products', label: 'محصولات من', icon: Package },
+  { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
   { href: '/panel/buyers', label: 'خریداران', icon: Users },
   { href: '/panel/suggested-buyers', label: 'خریداران پیشنهادی', icon: BadgeCheck },
-  { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
-  { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
-  { href: '/panel/secure-deals', label: 'معاملات پرداخت امن', icon: Handshake },
-  { href: '/panel/profile', label: 'پروفایل', icon: UserRound },
-  { href: '/panel/profile/edit', label: 'ویرایش پروفایل', icon: Pencil },
+  { href: '/panel/products', label: 'محصولات من', icon: Package },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
-  { href: '/panel/pricing', label: 'بسته‌های اشتراک', icon: TrendingUp },
-  { href: '/help', label: 'راهنما', icon: HelpCircle },
-  { href: '/panel/support', label: 'پشتیبانی', icon: LifeBuoy },
-  { href: '/panel/survey', label: 'نظرسنجی', icon: ScrollText },
+  { href: '/panel/pricing', label: 'ارتقا عضویت', icon: Medal },
+  { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
 ];
 
-/** منوی خریدار — دفتر خرید بالاتر، درست زیر ایمچ من (خواسته مالک ۳۱-۱۰)؛
- *  «پیشنهادهای تامین» بعد از درخواست‌های من — پاسخ فروشندگان به نیازها */
+/** منوی خریدار — جمع‌شده به همان سبک؛ دفتر خرید (تمایز ما با باسکول) بالاتر از همهٔ
+ *  آیتم‌های خرید (خواسته مالک ۳۱-۱۰)؛ لینک‌های حساب مشترک در «ایمچ من» است */
 export const BUYER_NAV: PanelNavItem[] = [
   { href: '/panel', label: 'ایمچ من', icon: UserRound, exact: true },
   { href: '/panel/buyer-book', label: 'دفتر خرید من', icon: BookOpenText },
   { href: '/panel/buy-requests/new', label: 'ثبت درخواست خرید', icon: ShoppingCart, exact: true },
   { href: '/panel/my-requests', label: 'درخواست های من', icon: FileText },
   { href: '/panel/received-offers', label: 'پیشنهادهای تامین', icon: Inbox },
-  { href: '/panel/suggested-sellers', label: 'پیشنهادی', icon: Sparkles },
-  { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
+  { href: '/panel/suggested-sellers', label: 'فروشندگان پیشنهادی', icon: Sparkles },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
-  { href: '/panel/secure-deals', label: 'معاملات پرداخت امن', icon: Handshake },
-  { href: '/panel/profile', label: 'پروفایل', icon: UserRound },
-  { href: '/panel/profile/edit', label: 'ویرایش پروفایل', icon: Pencil },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
-  { href: '/help', label: 'راهنما', icon: HelpCircle },
-  { href: '/panel/support', label: 'پشتیبانی', icon: LifeBuoy },
-  { href: '/panel/survey', label: 'نظرسنجی', icon: ScrollText },
+  { href: '/panel/pricing', label: 'ارتقا عضویت', icon: Medal },
+  { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
 ];
 
 export function PanelSidebar({
@@ -100,7 +86,7 @@ export function PanelSidebar({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname() ?? '';
-  const { user, setRole, logout } = useAuth();
+  const { user, setRole } = useAuth();
   const role = user?.role ?? 'seller';
   const nav = role === 'buyer' ? BUYER_NAV : SELLER_NAV;
 
@@ -308,25 +294,6 @@ export function PanelSidebar({
             );
           })}
         </nav>
-
-        {/* خروج از حساب کاربری */}
-        <div className={cn('mt-2 border-t border-border px-3 pt-2', collapsed && 'px-2')}>
-          <button
-            type="button"
-            onClick={() => {
-              logout();
-              onNavigate?.();
-            }}
-            title="خروج از حساب کاربری"
-            className={cn(
-              'flex h-11 w-full items-center gap-3 rounded-md px-3 text-sm text-red-400 transition-colors hover:bg-red-400/10 hover:text-red-500',
-              collapsed && 'justify-center px-0',
-            )}
-          >
-            <LogOut size={19} className="shrink-0" />
-            {!collapsed && <span className="truncate">خروج از حساب کاربری</span>}
-          </button>
-        </div>
       </div>
     </div>
   );

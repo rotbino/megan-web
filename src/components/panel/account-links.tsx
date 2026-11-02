@@ -1,34 +1,24 @@
 'use client';
 
 /**
- * لینک‌های پایین صفحه «ایمچ من» — عین menu-list صفحه my-buskool باسکول،
- * در دو حالت خریدار/فروشنده (خواسته کاربر: این لینک‌ها مخصوصاً در موبایل کاربردی‌اند).
- * خریدار: دفتر خرید من / پروفایل / نشان شده ها / درخواست های من / پیشنهادی /
- *          معاملات پرداخت امن / پیام ها / ویرایش پروفایل / احراز هویت / راهنما /
- *          پشتیبانی / نظرسنجی / خروج
- * فروشنده: پروفایل / نشان شده ها / خریداران / خریداران پیشنهادی / پیام ها /
- *          ویرایش پروفایل / احراز هویت / راهنما / پشتیبانی / نظرسنجی / خروج
+ * لینک‌های «حساب کاربری» پایین صفحه ایمچ من — عین menu-list صفحه my-buskool
+ * باسکول (خواسته مالک ۲-۱۱ دور سیزدهم): این‌ها از سایدبار بیرون آمده‌اند و
+ * فقط اینجا زندگی می‌کنند — داشبورد، تاریخچه تراکنش‌ها، ویرایش پروفایل،
+ * معاملات پرداخت امن، راهنما، پشتیبانی، نظرسنجی، خروج.
+ * نقش‌مستقل است — آیتم‌های خرید/فروشِ نقش‌محور در سایدبار همان‌جا می‌مانند.
  */
 
 import Link from 'next/link';
 import {
-  BadgeCheck,
-  BookOpenText,
-  Bookmark,
   ChevronLeft,
   ClipboardList,
-  FileText,
   Handshake,
-  Headphones,
   HelpCircle,
+  History,
   LifeBuoy,
   LogOut,
-  MessageSquare,
   Pencil,
-  ShieldCheck,
-  Sparkles,
-  UserRound,
-  Users,
+  Settings,
 } from 'lucide-react';
 import { useAuth } from '@/lib/mock/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -40,48 +30,26 @@ interface LinkItem {
   icon: React.ElementType;
 }
 
-export function AccountLinks() {
-  const { user, logout } = useAuth();
-  const { toast } = useToast();
-  const isBuyer = user?.role === 'buyer';
+const ACCOUNT_LINKS: LinkItem[] = [
+  { href: '/panel', label: 'داشبورد', icon: Settings },
+  { href: '/panel/wallet', label: 'تاریخچه تراکنش‌ها', icon: History },
+  { href: '/panel/profile/edit', label: 'ویرایش پروفایل', icon: Pencil },
+  { href: '/panel/secure-deals', label: 'معاملات پرداخت امن', icon: Handshake },
+  { href: '/help', label: 'راهنما', icon: HelpCircle },
+  { href: '/panel/support', label: 'پشتیبانی', icon: LifeBuoy },
+  { href: '/panel/survey', label: 'نظرسنجی', icon: ClipboardList },
+  { label: 'خروج از حساب کاربری', icon: LogOut },
+];
 
-  const items: LinkItem[] = isBuyer
-    ? [
-        // دفتر خرید — اولین لینک، هم‌تراز با سایدبار دسکتاپ (خواسته مالک ۳۱-۱۰:
-        // لینک دفتر خرید باید در منوی موبایل پنل هم دیده شود)
-        { href: '/panel/buyer-book', label: 'دفتر خرید من', icon: BookOpenText },
-        { href: '/panel/profile', label: 'پروفایل', icon: UserRound },
-        { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
-        { href: '/panel/my-requests', label: 'درخواست های من', icon: FileText },
-        { href: '/panel/suggested-sellers', label: 'پیشنهادی', icon: Sparkles },
-        { href: '/panel/secure-deals', label: 'معاملات پرداخت امن', icon: Handshake },
-        { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare },
-        { href: '/panel/profile/edit', label: 'ویرایش پروفایل', icon: Pencil },
-        { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
-        { href: '/help', label: 'راهنما', icon: HelpCircle },
-        { href: '/panel/support', label: 'پشتیبانی', icon: LifeBuoy },
-        { href: '/panel/survey', label: 'نظرسنجی', icon: ClipboardList },
-        { label: 'خروج از حساب کاربری', icon: LogOut },
-      ]
-    : [
-        { href: '/panel/profile', label: 'پروفایل', icon: UserRound },
-        { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
-        { href: '/panel/buyers', label: 'خریداران', icon: Users },
-        { href: '/panel/suggested-buyers', label: 'خریداران پیشنهادی', icon: BadgeCheck },
-        { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare },
-        { href: '/panel/profile/edit', label: 'ویرایش پروفایل', icon: Pencil },
-        { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
-        { href: '/help', label: 'راهنما', icon: HelpCircle },
-        { href: '/panel/support', label: 'پشتیبانی', icon: LifeBuoy },
-        { href: '/panel/survey', label: 'نظرسنجی', icon: ClipboardList },
-        { label: 'خروج از حساب کاربری', icon: LogOut },
-      ];
+export function AccountLinks() {
+  const { logout } = useAuth();
+  const { toast } = useToast();
 
   return (
     <PanelCard>
       <p className="mb-2 text-sm font-bold">حساب کاربری</p>
       <nav className="divide-y divide-border/70" aria-label="لینک‌های حساب کاربری">
-        {items.map(({ href, label, icon: Icon }) =>
+        {ACCOUNT_LINKS.map(({ href, label, icon: Icon }) =>
           href ? (
             <Link
               key={label}

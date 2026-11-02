@@ -16,17 +16,12 @@ import {
   Coins,
   Crown,
   FileText,
-  History,
-  LogOut,
-  MessageSquare,
   Package,
   Pencil,
-  Settings,
   ShieldCheck,
   ShoppingCart,
   Smartphone,
   Sparkles,
-  TrendingUp,
 } from 'lucide-react';
 import { useMyBuyRequests, useMyPackage, useMyProducts, usePanelProfile, useSavedLists, useUpdatePanelProfile } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
@@ -123,26 +118,6 @@ function VipDonut({ daysLeft, totalDays, size = 104 }: { daysLeft: number; total
   );
 }
 
-const SELLER_ACCOUNT_MENU = [
-  { href: '/panel', label: 'داشبورد', icon: Settings },
-  { href: '/panel/wallet', label: 'تاریخچه تراکنش‌ها', icon: History },
-  { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare },
-  { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
-  { href: '/panel/pricing', label: 'بسته‌های اشتراک', icon: TrendingUp },
-  { href: '/panel/products', label: 'محصولات من', icon: Package },
-  { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
-] as const;
-
-const BUYER_ACCOUNT_MENU = [
-  { href: '/panel', label: 'داشبورد', icon: Settings },
-  { href: '/panel/wallet', label: 'تاریخچه تراکنش‌ها', icon: History },
-  { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare },
-  { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
-  { href: '/panel/my-requests', label: 'درخواست های من', icon: FileText },
-  { href: '/panel/buy-requests/new', label: 'ثبت درخواست خرید', icon: ShoppingCart },
-  { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
-] as const;
-
 export default function PanelDashboard() {
   const { data: profile } = usePanelProfile();
   const { data: saved } = useSavedLists();
@@ -169,7 +144,6 @@ export default function PanelDashboard() {
   const confirmedCount = mine?.counts.confirmed ?? 0;
   const savedCount = saved?.reduce((a, l) => a + l.cnt, 0) ?? 0;
   const confirmedRequests = myRequests?.counts.confirmed ?? 0;
-  const ACCOUNT_MENU = isBuyer ? BUYER_ACCOUNT_MENU : SELLER_ACCOUNT_MENU;
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">

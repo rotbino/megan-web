@@ -8,7 +8,8 @@
  */
 
 import { useEffect, useState } from 'react';
-import { LogIn, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { Crown, Home, LogIn, Loader2 } from 'lucide-react';
 import { PanelSidebar } from '@/components/panel/panel-sidebar';
 import { PasswordBanner, PasswordLock } from '@/components/panel/password-banner';
 import { usePanelProfile } from '@/lib/mock/hooks';
@@ -138,6 +139,31 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
           collapsed ? 'lg:mr-[68px]' : 'lg:mr-[250px]',
         )}
       >
+        {/* هدر بالای محتوا (دسکتاپ) — الگوی right-menu-header باسکول (خواسته مالک
+            ۲-۱۱ دور سیزدهم): آیکون خانه برای بازگشت به سایت + دکمهٔ طلایی
+            «ارتقا به فروشنده ویژه» کنار سایدبار. طلایی = قانون نشان فروشنده ویژه
+            (RULES §۱-ب) — رنگ تمایز ثابت، از رنگ برند کاربر پیروی نمی‌کند. */}
+        {user && (
+          <div className="mb-4 hidden items-center gap-2 lg:flex">
+            <Link
+              href="/"
+              aria-label="رفتن به سایت ایمچ"
+              title="رفتن به سایت ایمچ"
+              className="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              <Home size={20} />
+            </Link>
+            {user.role !== 'buyer' && (
+              <Link
+                href="/panel/pricing"
+                className="flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-amber-400 px-4 text-sm font-extrabold text-amber-950 shadow-[0_2px_8px_rgba(254,239,154,0.5)] ring-1 ring-amber-500/50 transition-colors hover:bg-amber-300"
+              >
+                <Crown size={16} />
+                ارتقا به فروشنده ویژه
+              </Link>
+            )}
+          </div>
+        )}
         {hydrated ? (
           user ? (
             // بدون رمز پنل = قفل محتوا (خواسته مالک — «قبل از هر کاری رمز تعیین کن»)
