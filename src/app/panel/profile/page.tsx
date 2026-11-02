@@ -2,14 +2,15 @@
 
 /**
  * پروفایل — صفحه اختصاصی پروفایل کاربر در پنل (خواسته کاربر):
- * از «ایمچ من» روی پروفایل که بزنی اینجا می‌آی؛ دکمه «ویرایش پروفایل»
- * به فرم ویرایش می‌رود. الگو از صفحه پروفایل عمومی باسکول:
- * نام + نقش + «X روز در ایمچ» + اشتراک‌گذاری + درباره کسب‌وکار + شهر + محصولات + نظرات.
+ * از «آیمچ من» روی پروفایل که بزنی اینجا می‌آی؛ دکمه «ویرایش پروفایل»
+ * به فرم ویرایش می‌رود. الگو از صفحه پروفایل عمومی باسکول.
  *
- * هماهنگ کامل با صفحه ویرایش پروفایل (خواسته مالک ۱-۱۱): هر چیزی که در
- * ویرایش هست اینجا هم دیده می‌شود — میزان تکمیل، موبایل، آدرس، اطلاعات
- * حقوقی، تصاویر مربوطه و گواهی‌ها.
- * + کارت «ظاهر ایمچ» (تم تیره + رنگ دلخواه) جلوی چشم، بالای صفحه.
+ * هماهنگ کامل با صفحه ویرایش پروفایل (خواسته مالک ۱-۱۱ + دور ۱۶):
+ * هر چیزی که در ویرایش هست اینجا هم دیده می‌شود — میزان تکمیل (دونی قابل
+ * باز شدن)، موبایل، آدرس، اطلاعات کسب و کار (+ شماره ثبت)، تصاویر مربوطه
+ * و گواهی‌ها. آواتار همین‌جا قابل تعویض است (دور ۱۶) و به‌جای «ارسال برای
+ * دوستان»، «مشاهده پیش‌نمایش» پروفایل عمومی داریم (دور ۱۶).
+ * + کارت «ظاهر ایمچ» (تم تیره + رنگ دلخواه) — نمای اولیه جمع‌شده (دور ۱۶).
  */
 
 import { useState } from 'react';
@@ -18,7 +19,7 @@ import {
   BadgeCheck,
   Building2,
   Check,
-  Copy,
+  Eye,
   FileCheck2,
   ImageIcon,
   MapPin,
@@ -26,25 +27,25 @@ import {
   Package,
   Pencil,
   Phone,
-  ShieldCheck,
   Star,
   UserRound,
 } from 'lucide-react';
 import { usePanelProfile, useMyProducts } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
-import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
 import { AppearanceCard } from '@/components/panel/appearance-card';
+import { AvatarUpload } from '@/components/panel/avatar-upload';
+import { CompletionMeter } from '@/components/panel/completion-meter';
+import { VerifyCard } from '@/components/panel/verify-card';
+import { computeProfileCompletion } from '@/lib/profile-completion';
 import { dateFa, toFa } from '@/lib/format';
-import { cn } from '@/lib/utils';
 
 export default function PanelProfilePage() {
   const { data: profile } = usePanelProfile();
   const { data: mine } = useMyProducts();
   const { user } = useAuth();
-  const { toast } = useToast();
   // پیش‌نمایش تمام‌صفحهٔ تصویر/گواهی
   const [preview, setPreview] = useState<{ url: string; alt: string } | null>(null);
 
@@ -59,27 +60,20 @@ export default function PanelProfilePage() {
   );
   const confirmedCount = mine?.counts.confirmed ?? 0;
 
-  // ─── میزان تکمیل — همان وزن‌گذاری صفحهٔ ویرایش (۸ بخش) ───
-  const sections = [
-    { label: 'اطلاعات پایه', pct: 15, done: Boolean(u.firstName.trim() && u.lastName.trim() && u.provinceId && u.cityId) },
-    { label: 'اطلاعات شما', pct: 8, done: Boolean((pf.address ?? '').trim()) },
-    { label: 'اطلاعات حقوقی', pct: 8, done: pf.isCompany && Boolean(pf.companyName.trim()) },
-    { label: 'درباره کسب و کار', pct: 11, done: (pf.description ?? '').trim().length >= 100 },
-    { label: 'تصاویر مربوطه', pct: 8, done: profile.gallery.length > 0 },
-    { label: 'گواهی‌ها', pct: 8, done: profile.certificates.length > 0 },
-    { label: 'احراز هویت', pct: 34, done: u.isVerified },
-  ];
-  const completion = Math.min(100, sections.reduce((a, s) => a + (s.done ? s.pct : 0), 0));
-  const completionLabel = completion >= 85 ? 'عالی' : completion >= 55 ? 'متوسط' : 'ضعیف';
-
-  const copyProfileLink = async () => {
-    try {
-      await navigator.clipboard.writeText(`${window.location.origin}/profile/${u.userName}`);
-      toast({ description: 'کپی شد.' });
-    } catch {
-      toast({ description: `لینک پروفایل: /profile/${u.userName}` });
-    }
-  };
+  // ─── میزان تکمیل — همان سنجهٔ مشترک صفحهٔ ویرایش (وزن‌ها = ۱۰۰) ───
+  const { pct, quality, sections } = computeProfileCompletion({
+    firstName: u.firstName,
+    lastName: u.lastName,
+    provinceId: u.provinceId,
+    cityId: u.cityId,
+    address: pf.address,
+    companyName: pf.companyName,
+    about: pf.description,
+    avatarUrl: u.avatarUrl,
+    galleryCount: profile.gallery.length,
+    certificatesCount: profile.certificates.length,
+    isVerified: u.isVerified,
+  });
 
   /** آدرس ذخیره‌شده «تهران - تهران» → نمایش «تهران، تهران» */
   const addressText = (pf.address ?? '').trim().replace(' - ', '، ');
@@ -89,14 +83,14 @@ export default function PanelProfilePage() {
       {/* کارت هویت */}
       <PanelCard>
         <div className="flex flex-wrap items-center gap-4">
-          {u.avatarUrl ? (
-            // آواتار واقعی — آپلودی از ویرایش پروفایل
-            <img src={u.avatarUrl} alt={`تصویر ${u.firstName}`} className="grid size-16 shrink-0 rounded-full object-cover" />
-          ) : (
-            <span className="grid size-16 shrink-0 place-items-center rounded-full bg-primary/10 text-xl font-extrabold text-primary">
-              {u.firstName.charAt(0)}
-            </span>
-          )}
+          {/* آواتار — همین‌جا قابل تعویض است (خواسته مالک دور ۱۶) */}
+          <AvatarUpload
+            userId={u.id}
+            name={u.firstName}
+            avatarUrl={u.avatarUrl}
+            className="size-16"
+            title="تنظیم یا تعویض تصویر پروفایل"
+          />
           <div className="min-w-0 flex-1">
             <p className="flex flex-wrap items-center gap-2 text-lg font-extrabold">
               {u.firstName} {u.lastName}
@@ -120,51 +114,23 @@ export default function PanelProfilePage() {
                 <Pencil size={15} /> ویرایش پروفایل
               </Link>
             </Button>
-            <Button variant="outline" className="rounded-md" onClick={() => void copyProfileLink()}>
-              <Copy size={15} /> ارسال برای دوستان
+            {/* پیش‌نمایش پروفایل عمومی — به‌جای «ارسال برای دوستان» (دور ۱۶) */}
+            <Button asChild variant="outline" className="rounded-md">
+              <Link href={`/profile/${u.userName}`} target="_blank" rel="noreferrer">
+                <Eye size={15} /> مشاهده پیش نمایش
+              </Link>
             </Button>
           </div>
         </div>
 
-        {/* میزان تکمیل پروفایل — همان سنجهٔ صفحهٔ ویرایش */}
-        <div className="mt-4 rounded-md bg-secondary/70 p-3">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold">میزان تکمیل پروفایل</span>
-            <span className="font-extrabold">
-              {toFa(completion)}٪ —{' '}
-              <span className={cn(
-                completionLabel === 'عالی' ? 'text-emerald-600' : completionLabel === 'متوسط' ? 'text-amber-600' : 'text-red-500',
-              )}>
-                {completionLabel}
-              </span>
-            </span>
-          </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background">
-            <div
-              className={cn(
-                'h-full rounded-full transition-all',
-                completionLabel === 'عالی' ? 'bg-emerald-500' : completionLabel === 'متوسط' ? 'bg-amber-500' : 'bg-red-400',
-              )}
-              style={{ width: `${Math.max(8, completion)}%` }}
-            />
-          </div>
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
-            {sections.map((s) => (
-              <span
-                key={s.label}
-                className={cn(
-                  'rounded-full px-2 py-0.5 text-[10px] font-bold',
-                  s.done ? 'bg-emerald-50 text-emerald-600' : 'bg-card text-muted-foreground',
-                )}
-              >
-                {s.label} {toFa(s.pct)}٪
-              </span>
-            ))}
-          </div>
-        </div>
+        {/* میزان تکمیل پروفایل — دونی فشرده؛ ریز درصدها با کلیک باز می‌شوند (دور ۱۶) */}
+        <CompletionMeter className="mt-4" pct={pct} quality={quality} sections={sections} />
       </PanelCard>
 
-      {/* ظاهر ایمچ — تم تیره + رنگ دلخواه (جلوی چشم، بالای صفحه) */}
+      {/* احراز هویت — باکس بلندتر با متن بهتر؛ فقط برای احرازنشده (دور ۱۶) */}
+      {!u.isVerified && <VerifyCard />}
+
+      {/* ظاهر ایمچ — تم تیره + رنگ دلخواه (نمای اولیه جمع‌شده — دور ۱۶) */}
       <AppearanceCard />
 
       {/* درباره کسب‌وکار */}
@@ -202,15 +168,25 @@ export default function PanelProfilePage() {
               {addressText || '—'}
             </dd>
           </div>
+          {/* اطلاعات کسب و کار — نام + شماره ثبت (واژهٔ «حقوقی» کنار رفت — دور ۱۶) */}
           {pf.isCompany && pf.companyName && (
-            <div className="flex items-center gap-2 rounded-md bg-secondary/50 p-3 text-xs sm:col-span-2">
-              <Building2 size={15} className="shrink-0 text-muted-foreground" />
-              <dt className="text-muted-foreground">شرکت:</dt>
-              <dd className="font-bold">{pf.companyName}</dd>
-              <span className="ms-auto flex items-center gap-1 text-[10px] font-bold text-emerald-600">
-                <ShieldCheck size={13} /> اطلاعات حقوقی ثبت شده
-              </span>
-            </div>
+            <>
+              <div className="flex items-center gap-2 rounded-md bg-secondary/50 p-3 text-xs sm:col-span-2">
+                <Building2 size={15} className="shrink-0 text-muted-foreground" />
+                <dt className="text-muted-foreground">شرکت:</dt>
+                <dd className="font-bold">{pf.companyName}</dd>
+                <span className="ms-auto flex items-center gap-1 text-[10px] font-bold text-emerald-600">
+                  <BadgeCheck size={13} /> اطلاعات کسب و کار ثبت شده
+                </span>
+              </div>
+              {pf.companyRegisterNumber && (
+                <div className="flex items-center gap-2 rounded-md bg-secondary/50 p-3 text-xs sm:col-span-2">
+                  <FileCheck2 size={15} className="shrink-0 text-muted-foreground" />
+                  <dt className="text-muted-foreground">شماره ثبت شرکت:</dt>
+                  <dd dir="ltr" className="font-num font-bold">{toFa(pf.companyRegisterNumber)}</dd>
+                </div>
+              )}
+            </>
           )}
         </dl>
       </PanelCard>

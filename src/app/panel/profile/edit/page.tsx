@@ -4,22 +4,21 @@
  * ویرایش پروفایل — عین صفحه buyer/profile باسکول + اطلاعات پایه (خواسته مالک):
  * ۱) اطلاعات پایه: نقش (رادیو فروشنده/خریدار — سیستم با آن تطبیق می‌یابد)،
  *    نام/نام‌خانوادگی، استان/شهر (مکان پیش‌فرض فرم‌های ثبت آگهی)
- * ۲) آواتار پروفایل (آپلود واقعی — هدر و پنل از آن استفاده می‌کنند)
- * ۳) سنجه میزان تکمیل + اطلاعات شما (موبایل/آدرس) + سوییچ نمایش شماره
- * ۴) اطلاعات حقوقی + درباره کسب‌وکار + تصاویر مربوطه + گواهی‌ها
+ * ۲) آواتار پروفایل (آپلود واقعی — کامپوننت مشترک با ویو؛ دور ۱۶)
+ * ۳) سنجه میزان تکمیل (دونی مشترک — وزن‌های ۱۰۰) + اطلاعات شما (موبایل/آدرس)
+ * ۴) اطلاعات کسب و کار (نام + شماره ثبت — نامانوسِ «حقوقی» کنار رفت، دور ۱۶)
+ *    + درباره کسب‌وکار + تصاویر مربوطه + گواهی‌ها
  */
 
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  BadgeCheck,
   Building2,
   Camera,
   FileCheck2,
   ImageIcon,
   Info,
-  Loader2,
   Pencil,
   Save,
   ShoppingCart,
@@ -44,6 +43,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { PanelCard } from '@/components/panel/panel-parts';
+import { AvatarUpload } from '@/components/panel/avatar-upload';
+import { CompletionMeter } from '@/components/panel/completion-meter';
+import { VerifyCard } from '@/components/panel/verify-card';
+import { computeProfileCompletion } from '@/lib/profile-completion';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -82,11 +85,9 @@ export default function EditProfilePage() {
   const { user, setRole, refreshUser } = useAuth();
   const [form, setForm] = useState<FormState | null>(null);
   const [error, setError] = useState('');
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const galleryRef = useRef<HTMLInputElement>(null);
   const certRef = useRef<HTMLInputElement>(null);
-  const avatarRef = useRef<HTMLInputElement>(null);
 
   const { data: provinces } = useProvinces();
   const { data: cities } = useCities(form?.provinceId ? Number(form.provinceId) : undefined);
@@ -108,7 +109,7 @@ export default function EditProfilePage() {
       address: (pf.address ?? '').replace(' - ', '، '),
       isCompany: pf.isCompany,
       companyName: pf.companyName ?? '',
-      companyRegisterNumber: '',
+      companyRegisterNumber: pf.companyRegisterNumber ?? '',
       about: pf.description ?? '',
       // گالری/گواهی‌ها از سرور — تصاویر ذخیره‌شده قبلی دیده و قابل حذف‌اند
       gallery: profile.gallery.map((f) => ({ id: f.id, url: f.thumbUrl ?? f.url })),
@@ -119,18 +120,21 @@ export default function EditProfilePage() {
 
   const patch = (p: Partial<FormState>) => setForm((f) => (f ? { ...f, ...p } : f));
 
-  // ─── میزان تکمیل پروفایل — وزن‌گذاری عین باسکول (٪ بخش‌ها) ───
-  const sections = [
-    { label: 'اطلاعات پایه', pct: 15, done: Boolean(form.firstName.trim() && form.lastName.trim() && form.provinceId && form.cityId) },
-    { label: 'اطلاعات شما', pct: 8, done: Boolean(form.address.trim()) },
-    { label: 'اطلاعات حقوقی', pct: 8, done: Boolean(form.companyName.trim()) },
-    { label: 'درباره کسب و کار', pct: 11, done: form.about.trim().length >= 100 },
-    { label: 'تصاویر مربوطه', pct: 8, done: form.gallery.length > 0 },
-    { label: 'گواهی‌ها', pct: 8, done: form.certificates.length > 0 },
-    { label: 'احراز هویت', pct: 34, done: u.isVerified },
-  ];
-  const completion = Math.min(100, sections.reduce((a, s) => a + (s.done ? s.pct : 0), 0));
-  const completionLabel = completion >= 85 ? 'عالی' : completion >= 55 ? 'متوسط' : 'ضعیف';
+  // ─── میزان تکمیل پروفایل — سنجهٔ مشترک با ویو (وزن‌ها = ۱۰۰؛ دور ۱۶)؛
+  // از فرم زنده محاسبه می‌شود تا کاربر اثر هر فیلد را همان لحظه ببیند ───
+  const { pct, quality, sections } = computeProfileCompletion({
+    firstName: form.firstName,
+    lastName: form.lastName,
+    provinceId: form.provinceId || null,
+    cityId: form.cityId || null,
+    address: form.address,
+    companyName: form.companyName,
+    about: form.about,
+    avatarUrl: u.avatarUrl,
+    galleryCount: form.gallery.length,
+    certificatesCount: form.certificates.length,
+    isVerified: u.isVerified,
+  });
 
   const addImages = (files: FileList | null, key: 'gallery' | 'certificates') => {
     if (!files) return;
@@ -171,34 +175,6 @@ export default function EditProfilePage() {
     }
   };
 
-  /** آپلود آواتار واقعی — uploads/uploadImage (User/avatar) + updateProfile */
-  const uploadAvatar = async (file: File) => {
-    if (!/^image\/(jpeg|jpg|png|webp)$/.test(file.type)) {
-      toast({ description: 'تصویر از نوع jpeg، jpg، png یا webp باشد.' });
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ description: 'حجم تصویر باید کمتر از ۵ مگابایت باشد.' });
-      return;
-    }
-    setUploadingAvatar(true);
-    try {
-      const uploaded = await uploadImage(file, {
-        model: 'User',
-        modelId: u.id,
-        key: 'avatar',
-        replace: true,
-      });
-      await save.mutateAsync({ avatar_url: uploaded.url });
-      await refreshUser(); // آواتار هدر همان لحظه به‌روز شود
-      toast({ description: 'تصویر پروفایل به‌روزرسانی شد.' });
-    } catch (err) {
-      toast({ description: err instanceof Error ? err.message : 'آپلود تصویر ناموفق بود.' });
-    } finally {
-      setUploadingAvatar(false);
-    }
-  };
-
   const saveAll = async () => {
     setError('');
     if (form.firstName.trim().length < 2 || form.lastName.trim().length < 2) {
@@ -232,6 +208,9 @@ export default function EditProfilePage() {
         description: form.about.trim() || null,
         isCompany: Boolean(form.companyName.trim()),
         companyName: form.companyName.trim(),
+        // شماره ثبت شرکت — ماندگار در پروفایل embedded (دور ۱۶؛ قبلاً بی‌صدا
+        // گم می‌شد و در ویو نمایش داده نمی‌شد)
+        companyRegisterNumber: form.companyRegisterNumber.trim(),
       });
       await refreshUser(); // نام/نقش هدر تازه شود
       await queryClient.invalidateQueries({ queryKey: ['panel-profile'] });
@@ -254,43 +233,19 @@ export default function EditProfilePage() {
   };
 
   const role = user?.role ?? (u.isSeller ? 'seller' : 'buyer');
-  const avatarNode = u.avatarUrl ? (
-    // آواتار واقعی — آپلودی همین فرم
-    <img src={u.avatarUrl} alt="تصویر پروفایل" className="size-full rounded-full object-cover" />
-  ) : (
-    <span className="grid size-full place-items-center rounded-full bg-primary/10 text-xl font-extrabold text-primary">
-      {(form.firstName || 'ک').charAt(0)}
-    </span>
-  );
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <PanelCard>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4">
-            {/* آواتار — کلیک = آپلود تصویر جدید */}
-            <button
-              type="button"
-              onClick={() => avatarRef.current?.click()}
-              aria-label="تغییر تصویر پروفایل"
-              title="تغییر تصویر پروفایل"
-              className="group relative grid size-16 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full"
-            >
-              {avatarNode}
-              <span className="absolute inset-0 grid place-items-center rounded-full bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100">
-                {uploadingAvatar ? <Loader2 size={20} className="animate-spin" /> : <Camera size={20} />}
-              </span>
-            </button>
-            <input
-              ref={avatarRef}
-              type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void uploadAvatar(file);
-                e.target.value = '';
-              }}
+            {/* آواتار — کلیک = آپلود تصویر جدید (کامپوننت مشترک با ویو — دور ۱۶) */}
+            <AvatarUpload
+              userId={u.id}
+              name={form.firstName}
+              avatarUrl={u.avatarUrl}
+              className="size-16"
+              initialClass="text-xl"
             />
             <div>
               <h1 className="text-base font-extrabold sm:text-lg">ویرایش پروفایل</h1>
@@ -304,57 +259,12 @@ export default function EditProfilePage() {
           </Button>
         </div>
 
-        {/* میزان تکمیل پروفایل */}
-        <div className="mt-4 rounded-md bg-secondary/70 p-3">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold">میزان تکمیل پروفایل</span>
-            <span className="font-extrabold">
-              {toFa(completion)}٪ —{' '}
-              <span className={cn(
-                completionLabel === 'عالی' ? 'text-emerald-600' : completionLabel === 'متوسط' ? 'text-amber-600' : 'text-red-500',
-              )}>
-                {completionLabel}
-              </span>
-            </span>
-          </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background">
-            <div
-              className={cn(
-                'h-full rounded-full transition-all',
-                completionLabel === 'عالی' ? 'bg-emerald-500' : completionLabel === 'متوسط' ? 'bg-amber-500' : 'bg-red-400',
-              )}
-              style={{ width: `${Math.max(8, completion)}%` }}
-            />
-          </div>
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
-            {sections.map((s) => (
-              <span
-                key={s.label}
-                className={cn(
-                  'rounded-full px-2 py-0.5 text-[10px] font-bold',
-                  s.done ? 'bg-emerald-50 text-emerald-600' : 'bg-card text-muted-foreground',
-                )}
-              >
-                {s.label} {toFa(s.pct)}٪
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* احراز هویت */}
-        {!u.isVerified && (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-sky-200 bg-sky-50 p-3">
-            <p className="text-xs leading-5 text-sky-800">
-              اطلاعات هویتی شما احراز نشده است. با احراز هویت، برای طرف مقابل مطمئن‌تر باشید.
-            </p>
-            <Button asChild size="sm" className="rounded-md">
-              <Link href="/panel/verification">
-                <BadgeCheck size={15} /> احراز هویت کنید
-              </Link>
-            </Button>
-          </div>
-        )}
+        {/* میزان تکمیل پروفایل — دونی فشرده؛ ریز درصدها با کلیک (دور ۱۶) */}
+        <CompletionMeter className="mt-4" pct={pct} quality={quality} sections={sections} />
       </PanelCard>
+
+      {/* احراز هویت — باکس مشترک با ویو؛ فقط برای احرازنشده (دور ۱۶) */}
+      {!u.isVerified && <VerifyCard />}
 
       {/* اطلاعات پایه — نقش + نام + مکان پیش‌فرض */}
       <PanelCard className="space-y-4">
@@ -512,15 +422,15 @@ export default function EditProfilePage() {
         </div>
       </PanelCard>
 
-      {/* اطلاعات حقوقی — همیشه نمایان است (خواستهٔ مالک ۱-۱۱: بخش ویرایش
-          کسب‌وکار از همان اول رندر شود، نه پنهان)؛ پر کردن «نام شرکت» آن را
-          فعال می‌کند و در پروفایل/پروفایل عمومی نمایش داده می‌شود. */}
+      {/* اطلاعات کسب و کار — واژهٔ نامانوس «حقوقی» کنار رفت (خواستهٔ مالک دور ۱۶)؛
+          همیشه نمایان است (خواستهٔ مالک ۱-۱۱)؛ پر کردن «نام شرکت» آن را
+          فعال می‌کند و در پروفایل/پروفایل عمومی + شماره ثبت نمایش داده می‌شود. */}
       <PanelCard className="space-y-4">
         <h2 className="flex items-center gap-2 text-sm font-extrabold">
-          <Building2 size={17} className="text-primary" /> اطلاعات حقوقی
+          <Building2 size={17} className="text-primary" /> اطلاعات کسب و کار
         </h2>
         <p className="text-xs leading-6 text-muted-foreground">
-          با تکمیل اطلاعات حقوقی، اعتبار حساب خود را بیشتر کنید — خالی بماند، در پروفایل شما نمایش داده نمی‌شود.
+          با تکمیل اطلاعات کسب و کار، اعتبار حساب خود را بیشتر کنید — خالی بماند، در پروفایل شما نمایش داده نمی‌شود.
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">

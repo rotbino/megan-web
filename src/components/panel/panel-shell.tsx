@@ -1,16 +1,18 @@
 'use client';
 
 /**
- * پوسته پنل فروشنده (کلاینت) — عین الگوی باسکول:
- * دسکتاپ: سایدبار ثابت تیره سمت راست (max 250px، قابل جمع‌شدن) + ناحیه محتوای روشن.
- * موبایل: هدر چسبان (برگر → دراور منو) + محتوا + نوار پایین اپ (در root layout).
- * بدون هدر اصلی سایت — پنل چرم مستقل دارد.
+ * پوسته پنل (کلاینت) — دسکتاپ: سایدبار ثابت سمت راست (max 250px، قابل
+ * جمع‌شدن) + ناحیه محتوا. موبایل: هدر چسبان سبک (خواسته مالک ۲-۱۱ دور ۱۶):
+ * بدون برگر و بدون دراور — فقط نشان ایمچ + «عنوان صفحه» (آیمچ من / ویرایش
+ * پروفایل / محصولات من و…)؛ ناوبری موبایل از منوی درون‌صفحهٔ آیمچ من و
+ * نوار پایین اپ انجام می‌شود.
  */
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Crown, Home, LogIn, Loader2 } from 'lucide-react';
-import { PanelSidebar } from '@/components/panel/panel-sidebar';
+import { PanelSidebar, BUYER_NAV, SELLER_NAV } from '@/components/panel/panel-sidebar';
 import { PasswordBanner, PasswordLock } from '@/components/panel/password-banner';
 import { usePanelProfile, useMyPackage } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
@@ -36,12 +38,37 @@ function LoginGate({ onOpen }: { onOpen: () => void }) {
   );
 }
 
+/** عنوان صفحهٔ پنل برای هدر موبایل (خواسته مالک دور ۱۶: «وقتی توی آیمچ من
+ *  هستی عنوان میشه آیمچ من، وقتی توی ویرایش پروفایل هستی میشه ویرایش پروفایل»)
+ *  — آیتم‌های هر دو منو + لینک‌های حساب با طولانی‌ترین مسیرِ منطبق پیدا می‌شوند */
+const PAGE_TITLES: Array<{ href: string; label: string; exact?: boolean }> = [
+  ...SELLER_NAV,
+  ...BUYER_NAV,
+  { href: '/panel/profile', label: 'پروفایل' },
+  { href: '/panel/profile/edit', label: 'ویرایش پروفایل' },
+  { href: '/panel/wallet', label: 'کیف پول' },
+  { href: '/panel/secure-deals', label: 'معاملات پرداخت امن' },
+  { href: '/panel/support', label: 'پشتیبانی' },
+  { href: '/panel/survey', label: 'نظرسنجی' },
+  { href: '/panel/received-offers', label: 'پیشنهادهای تامین' },
+  { href: '/panel/buy-requests', label: 'درخواست های خرید' },
+];
+
+function panelPageTitle(pathname: string): string {
+  const matches = PAGE_TITLES.filter((t) =>
+    t.exact ? pathname === t.href : pathname === t.href || pathname.startsWith(`${t.href}/`),
+  );
+  // طولانی‌ترین مسیرِ منطبق = دقیق‌ترین عنوان (ویرایش پروفایل ≠ پروفایل)
+  const best = matches.sort((a, b) => b.href.length - a.href.length)[0];
+  return best?.label ?? 'پنل کاربری';
+}
+
 export function PanelShell({ children }: { children: React.ReactNode }) {
   const { user, requireAuth } = useAuth();
   const { data: profile } = usePanelProfile();
   const { data: myPackage } = useMyPackage();
+  const pathname = usePathname() ?? '';
   const [collapsed, setCollapsed] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   /** مودال رمز — دست این پوسته است تا با ورود به هر صفحهٔ پنل بدون رمز،
    *  خودکار باز شود (خواسته مالک: «اگر لینک پنل را زد، به او بگوییم
@@ -62,26 +89,6 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(t);
   }, []);
 
-  // بستن دراور با Escape
-  useEffect(() => {
-    if (!drawerOpen) return;
-    const esc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDrawerOpen(false);
-    };
-    window.addEventListener('keydown', esc);
-    return () => window.removeEventListener('keydown', esc);
-  }, [drawerOpen]);
-
-  // دراور باز = قفل اسکرول بدنه
-  useEffect(() => {
-    if (!drawerOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [drawerOpen]);
-
   return (
     <div className="min-h-screen bg-background">
       {/* سایدبار دسکتاپ — ستون ثابت راست */}
@@ -99,39 +106,17 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
         />
       </aside>
 
-      {/* هدر موبایل پنل */}
-      <header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-border bg-background px-3 lg:hidden">
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          aria-label="باز کردن منوی پنل"
-          className="grid size-9 place-items-center rounded-sm text-muted-foreground transition-colors hover:bg-secondary"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path d="M3 5.5h18M3 12h18M3 18.5h18" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-          </svg>
-        </button>
-        {/* لوگوی SVG برند */}
-        <img src="/logo-short.svg" alt="ایمچ" width={80} height={28} className="h-6 w-auto" />
+      {/* هدر موبایل پنل (دور ۱۶): نشان ایمچ + عنوان صفحهٔ جاری — بدون برگر */}
+      <header className="sticky top-0 z-20 flex h-12 items-center gap-2.5 border-b border-border bg-background px-3 lg:hidden">
+        <Link href="/panel" aria-label="آیمچ من" className="flex shrink-0 items-center">
+          {/* نشان ایمچ (لوگوی کوتاه) — در هدر موبایل جای وردمارک کامل را می‌گیرد */}
+          <img src="/logo-short.svg" alt="ایمچ" width={30} height={29} className="h-[26px] w-auto" />
+        </Link>
+        <h1 className="truncate text-[15px] font-extrabold">{panelPageTitle(pathname)}</h1>
       </header>
 
       {/* بنر قرمز + مودال «رمز عبور تعیین کنید» — تا تعیین رمز در همه صفحات پنل می‌ماند */}
       <PasswordBanner open={passwordOpen} onOpenChange={setPasswordOpen} />
-
-      {/* دراور موبایل */}
-      {drawerOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="منوی پنل">
-          <button
-            type="button"
-            aria-label="بستن منو"
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setDrawerOpen(false)}
-          />
-          <div className="absolute inset-y-0 right-0 w-[268px] max-w-[82vw] shadow-2xl">
-            <PanelSidebar profile={profile ?? null} onNavigate={() => setDrawerOpen(false)} />
-          </div>
-        </div>
-      )}
 
       {/* محتوا */}
       <main

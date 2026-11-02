@@ -1,17 +1,15 @@
 'use client';
 
 /**
- * سایدبار پنل — عین باسکول (خواسته مالک ۲-۱۱ دور سیزدهم و چهاردهم):
- * هدر (برگر + لوگو) → پروفایل (تصویر/نام/نقش/شهر) → کیف پول (کارت برجسته — فقط
- * فروشنده؛ باسکول خریدار کیف پول ندارد) → سوییچ فروشنده/خریدار → منوی کوتاه.
- * فروشنده فقط ۹ آیتم دارد (دقیقاً منوی باسکول). خریدار ۸ آیتم دارد (۷ آیتم باسکول
- * + «دفتر خرید من» تمایز ما) — «پیشنهادهای تامین» و «ارتقا عضویت» خریدار به
- * صفحه ایمچ من رفتند (آیتم‌های خارج از سایدبار در باسکول من زندگی می‌کنند).
- * بقیه (تراکنش‌ها/ویرایش پروفایل/پرداخت امن/راهنما/پشتیبانی/نظرسنجی/خروج)
- * در صفحهٔ «ایمچ من» (AccountLinks) زندگی می‌کنند — مثل باسکول من.
+ * سایدبار پنل — خلوت (خواسته مالک ۲-۱۱ دور شانزدهم):
+ * هدر (برگر + لوگوی کامل ایمچ) → کیف پول (هر دو نقش — جای باکس نام/شهرِ حذف‌شده
+ * نشسته؛ نام و شهر توی هدر دسکتاپ و صفحهٔ آیمچ من هست، اینجا تکرار بود) →
+ * سوییچر «پنل فروش/پنل خرید» با رادیو → منوی کوتاه با «آیمچ من» اول از همه.
+ * فروشنده ۸ آیتم دارد، خریدار ۷ آیتم (ساختار دور ۱۵ دست‌نخورده؛ فقط آیمچ من
+ * اول شد). بقیهٔ لینک‌های حساب در صفحهٔ «آیمچ من» (AccountLinks) زندگی می‌کنند.
  * دسکتاپ: ستون ثابت سمت راست (max 250px) با حالت جمع‌شونده (آیکون‌ها).
- * موبایل: همان محتوا داخل دراور بازشو از راست (صفحه ایمچ من خودش هم منوی
- * کامل دارد — الگوی menu-list باسکول).
+ * موبایل: سایدبار فقط دسکتاپ است — ناوبری موبایل از منوی درون‌صفحهٔ آیمچ من
+ * و نوار پایین اپ انجام می‌شود (برگر حذف شد — دور ۱۶).
  */
 
 import Link from 'next/link';
@@ -20,10 +18,8 @@ import {
   BadgeCheck,
   BookOpenText,
   Bookmark,
-  ChevronLeft,
   FileText,
   Medal,
-  Menu,
   MessageSquare,
   Package,
   ShieldCheck,
@@ -37,6 +33,7 @@ import { toFa } from '@/lib/format';
 import { useAuth } from '@/lib/mock/auth';
 import { useMyPackage, useUnreadMessagesCount } from '@/lib/mock/hooks';
 import { UnreadBadge } from '@/components/shared/unread-badge';
+import { RoleSwitcher } from '@/components/panel/role-switcher';
 import type { PanelProfile } from '@/lib/types';
 
 interface PanelNavItem {
@@ -46,13 +43,10 @@ interface PanelNavItem {
   exact?: boolean;
 }
 
-/** منوی فروشنده — ۸ آیتم (خواسته مالک ۲-۱۱ دور پانزدهم): «ثبت محصول»
- *  حذف شد («کاملاً اضافیه — داخل محصولات من دکمهٔ ثبت هست») و «محصولات من»
- *  اول از همه آمد تا کاربر کمتر گیج شود. «ارتقا عضویت» فقط وقتی بستهٔ فعال
- *  ندارد نمایش داده می‌شود (فیلتر در رندر) */
+/** منوی فروشنده — ۸ آیتم (دور ۱۵)؛ دور ۱۶: «آیمچ من» اول از همه (هر دو پنل) */
 export const SELLER_NAV: PanelNavItem[] = [
+  { href: '/panel', label: 'آیمچ من', icon: UserRound, exact: true },
   { href: '/panel/products', label: 'محصولات من', icon: Package },
-  { href: '/panel', label: 'ایمچ من', icon: UserRound, exact: true },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
   { href: '/panel/buyers', label: 'خریداران', icon: Users },
   { href: '/panel/suggested-buyers', label: 'خریداران پیشنهادی', icon: BadgeCheck },
@@ -61,15 +55,10 @@ export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
 ];
 
-/** منوی خریدار — ۷ آیتم (خواسته مالک دور ۱۵): «ثبت درخواست خرید» حذف شد
- *  (دکمه‌اش داخل «درخواست های من» هست) و «درخواست های من» اول از همه آمد؛
- *  «پیشنهادهای تامین» لینک مستقل ندارد — با کلیک روی کالاهای دفتر خرید
- *  به همان صفحه با فیلتر دسته می‌رویم. در موبایل، سه‌تای مهم (نشان شده ها،
- *  دفتر خرید، درخواستهای خرید) از منوی عمودی بیرون‌اند و افقی بالای منو
- *  می‌نشینند (الگوی top-menu باسکول) */
+/** منوی خریدار — ۷ آیتم (دور ۱۵)؛ دور ۱۶: «آیمچ من» اول از همه */
 export const BUYER_NAV: PanelNavItem[] = [
+  { href: '/panel', label: 'آیمچ من', icon: UserRound, exact: true },
   { href: '/panel/my-requests', label: 'درخواست های من', icon: FileText },
-  { href: '/panel', label: 'ایمچ من', icon: UserRound, exact: true },
   { href: '/panel/buyer-book', label: 'دفتر خرید من', icon: BookOpenText },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
   { href: '/panel/suggested-sellers', label: 'فروشندگان پیشنهادی', icon: Sparkles },
@@ -81,12 +70,10 @@ export function PanelSidebar({
   profile,
   collapsed,
   onToggleCollapse,
-  onNavigate,
 }: {
   profile: PanelProfile | null;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
-  onNavigate?: () => void;
 }) {
   const pathname = usePathname() ?? '';
   const { user, setRole } = useAuth();
@@ -103,8 +90,6 @@ export function PanelSidebar({
   const { data: unread } = useUnreadMessagesCount(Boolean(user));
   const unreadCount = unread?.count ?? 0;
 
-  const fullName = profile ? `${profile.userInfo.firstName} ${profile.userInfo.lastName}` : 'کاربر ایمچ';
-  const city = profile ? `${profile.userInfo.province} - ${profile.userInfo.city}` : '';
   const wallet = profile?.userInfo.walletBalance ?? 0;
 
   // فقط یک آیتم فعال: طولانی‌ترین مسیرِ منطبق برمی‌گرد (ثبت محصول در
@@ -123,7 +108,8 @@ export function PanelSidebar({
 
   return (
     <div className="flex h-full flex-col border-e border-border bg-card text-foreground">
-      {/* هدر — برگر + لوگو */}
+      {/* هدر — برگر + لوگوی کامل ایمچ (خواسته مالک دور ۱۶: به‌جای نشان
+          مختصر، وردمارک کامل) */}
       <div className="flex h-[59px] shrink-0 items-center gap-3 border-b border-border px-4">
         {onToggleCollapse && (
           <button
@@ -132,129 +118,54 @@ export function PanelSidebar({
             aria-label={collapsed ? 'باز کردن منو' : 'جمع کردن منو'}
             className="grid size-8 place-items-center rounded-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
-            <Menu size={18} />
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M3 5.5h18M3 12h18M3 18.5h18" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+            </svg>
           </button>
         )}
         {!collapsed && (
-          <Link href="/" className="flex items-center" onClick={onNavigate}>
-            {/* لوگوی SVG برند */}
-            <img src="/logo-short.svg" alt="ایمچ" width={86} height={30} className="h-[26px] w-auto" />
+          <Link href="/" className="flex items-center" aria-label="رفتن به سایت ایمچ">
+            {/* وردمارک کامل ایمچ (logo2) — نشانهٔ برند، دسکتاپ */}
+            <img src="/logo2.svg" alt="ایمچ" width={96} height={38} className="h-[27px] w-auto" />
           </Link>
         )}
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-4">
-        {/* پروفایل → صفحه اختصاصی پروفایل */}
-        <Link
-          href="/panel/profile"
-          onClick={onNavigate}
-          title="پروفایل"
-          className={cn(
-            'flex items-center gap-3 border-b border-border px-4 py-4 transition-colors hover:bg-secondary/60',
-            collapsed && 'justify-center px-0',
-          )}
-        >
-          {profile?.userInfo.avatarUrl ? (
-            // آواتار واقعی — آپلودی از ویرایش پروفایل
-            <img src={profile.userInfo.avatarUrl} alt="" className="grid size-11 shrink-0 place-items-center rounded-full object-cover" />
-          ) : (
-            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-extrabold text-primary">
-              {profile ? profile.userInfo.firstName.charAt(0) : '؟'}
-            </span>
-          )}
-          {!collapsed && (
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-2">
-                <span className="truncate text-sm font-bold">{fullName}</span>
-                <span className="shrink-0 rounded-full bg-verified/10 px-1.5 py-0.5 text-[10px] font-bold text-verified">
-                  {role === 'buyer' ? 'خریدار' : 'فروشنده'}
+        {/* کیف پول — بالای سایدبار، هر دو نقش (دور ۱۶): باکس نام/شهر حذف شد
+            (تکرار بود — توی هدر دسکتاپ و آیمچ من هست) و همین کارت جایش نشست؛
+            کارت ساده با سایهٔ ظریف (دور ۱۵: «رنگی نکن، فقط یکم سایه») */}
+        <div className={cn('px-4 pt-4', collapsed && 'px-2')}>
+          <Link
+            href="/panel/wallet"
+            className={cn(
+              'flex w-full items-center gap-2.5 rounded-lg border border-border bg-card p-3 text-start shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-shadow hover:shadow-md',
+              collapsed && 'justify-center p-2',
+            )}
+            title="شارژ کیف پول"
+          >
+            <Wallet size={19} className="shrink-0 text-primary" />
+            {!collapsed && (
+              <span className="min-w-0 flex-1 text-xs">
+                <span className="block text-muted-foreground">موجودی کیف پول</span>
+                <span className="block text-sm font-extrabold font-num text-foreground">
+                  {toFa(wallet)} <span className="text-[10px] font-normal text-muted-foreground">تومان</span>
                 </span>
               </span>
-              <span className="block truncate text-xs text-muted-foreground">{city}</span>
-            </span>
-          )}
-          {!collapsed && <ChevronLeft size={16} className="shrink-0 text-muted-foreground/60" />}
-        </Link>
+            )}
+          </Link>
+        </div>
 
-        {/* کیف پول — کارت ساده با سایهٔ ظریف (خواسته مالک دور ۱۵: «رنگی نکن،
-            زشت شده. فقط یکم سایه»). فقط فروشنده — باسکول برای خریدار کیف
-            پول در سایدبار ندارد؛ خریدار از «تاریخچه تراکنش‌ها» در ایمچ من
-            به کیف پول می‌رسد */}
-        {role !== 'buyer' && (
-          <div className={cn('px-4 pt-4', collapsed && 'px-2')}>
-            <Link
-              href="/panel/wallet"
-              onClick={onNavigate}
-              className={cn(
-                'flex w-full items-center gap-2.5 rounded-lg border border-border bg-card p-3 text-start shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-shadow hover:shadow-md',
-                collapsed && 'justify-center p-2',
-              )}
-              title="شارژ کیف پول"
-            >
-              <Wallet size={19} className="shrink-0 text-primary" />
-              {!collapsed && (
-                <span className="min-w-0 flex-1 text-xs">
-                  <span className="block text-muted-foreground">موجودی</span>
-                  <span className="block text-sm font-extrabold font-num text-foreground">
-                    {toFa(wallet)} <span className="text-[10px] font-normal text-muted-foreground">تومان</span>
-                  </span>
-                </span>
-              )}
-            </Link>
-          </div>
-        )}
-
-        {/* سوییچ فروشنده / خریدار — درشت و تابلوتر (خواسته مالک): سمت فعال
-            پررنگ/پرشده دیده می‌شود تا کاربر بفهمد کدام پنل را می‌بیند.
-            سوییچ = سوییچ پنل: دراور موبایل هم بسته می‌شود و (طبق خواستهٔ دور ۱۵)
-            اگر صفحه‌ای جز آیمچ من باشیم به آیمچ من برمی‌گردیم (setRole داخل auth) */}
-        {!collapsed && (
-          <div className="px-4 pt-3">
-            <div
-              className="flex rounded-lg border border-border bg-secondary p-1.5"
-              role="radiogroup"
-              aria-label="نوع حساب کاربری"
-            >
-              {(
-                [
-                  { key: 'seller', label: 'فروشنده' },
-                  { key: 'buyer', label: 'خریدار' },
-                ] as const
-              ).map(({ key, label }) => {
-                const active = role === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => {
-                      setRole(key);
-                      onNavigate?.();
-                    }}
-                    className={cn(
-                      'flex-1 rounded-md py-2 text-sm font-extrabold transition-all',
-                      active
-                        ? 'bg-primary text-primary-foreground shadow-md'
-                        : 'text-muted-foreground hover:bg-card hover:text-foreground',
-                    )}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="mt-1.5 text-center text-[10px] leading-4 text-muted-foreground">
-              پنل {role === 'buyer' ? 'خریدار' : 'فروشنده'} ایمچ
-            </p>
-          </div>
-        )}
+        {/* سوییچر «پنل فروش / پنل خرید» با رادیو (دور ۱۶) — جملهٔ «نوع حساب
+            شما … است» حذف شد؛ دکمهٔ فعال خودش گویاست. سوییچ = بازگشت به
+            آیمچ من (setRole داخل auth — دور ۱۵) */}
+        {!collapsed && <RoleSwitcher className="mx-4 mt-3" />}
         {collapsed && (
           <div className="flex flex-col gap-1 px-2 pt-3">
             {(
               [
-                { key: 'seller', label: 'ف', title: 'پنل فروشنده' },
-                { key: 'buyer', label: 'خ', title: 'پنل خریدار' },
+                { key: 'seller', label: 'ف', title: 'پنل فروش' },
+                { key: 'buyer', label: 'خ', title: 'پنل خرید' },
               ] as const
             ).map(({ key, label, title }) => {
               const active = role === key;
@@ -268,7 +179,6 @@ export function PanelSidebar({
                   aria-label={title}
                   onClick={() => {
                     setRole(key);
-                    onNavigate?.();
                   }}
                   className={cn(
                     'grid size-9 place-items-center rounded-md text-sm font-extrabold transition-colors',
@@ -292,7 +202,6 @@ export function PanelSidebar({
               <Link
                 key={href}
                 href={href}
-                onClick={onNavigate}
                 title={label}
                 className={cn(
                   'relative flex h-11 items-center gap-3 rounded-md px-3 text-sm transition-colors',
