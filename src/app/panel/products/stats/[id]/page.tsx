@@ -1,12 +1,15 @@
 'use client';
 
 /**
- * آمار آگهی (خواسته مالک ۳۰-۱۰) — از دکمه «آمار» هر آگهی در «محصولات من»:
+ * آمار آگهی (خواسته مالک ۳۰-۱۰ + ۲-۱۱ دور ۱۸) — از دکمه «آمار» هر آگهی در «محصولات من»:
  *  • چه کسانی آگهی را دیدند، چند بار و در چه تاریخی
  *  • چه کسانی دکمه تماس را زدند
  *  • چه کسانی آگهی را ذخیره کردند
- * هویت بینندگان (نام/شماره/لینک پروفایل) فقط برای مالکِ دارای اشتراک ویژه؛
- * مالک رایگان شمارنده‌ها را می‌بیند و هویت‌ها قفل‌اند + دکمه خرید اشتراک.
+ *  • چه کسانی درباره این آگهی چت کردند (تب جدید ۲-۱۱ دور ۱۸ — کاربرانی که
+ *    درباره این آگهی سؤال پرسیدند؛ چت همان مکالمهٔ آگهی را باز می‌کند)
+ * هویت بینندگان فقط برای مالکِ دارای اشتراک ویژه. به‌جای شماره تلفن، سه
+ * دکمهٔ اقدام هر ردیف: نشان کردن (مهم‌ترین — مودال CRM) + چت + تماس
+ * (خواسته مالک ۲-۱۱ دور ۱۸).
  */
 
 import Link from 'next/link';
@@ -18,7 +21,9 @@ import {
   Crown,
   Eye,
   Lock,
+  MessageSquareText,
   Package,
+  Phone,
   PhoneCall,
   Users,
 } from 'lucide-react';
@@ -27,29 +32,98 @@ import { useMyProductStats } from '@/lib/mock/hooks';
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ChatDialog } from '@/components/products/chat-dialog';
+import { MarkUserButton } from '@/components/shared/mark-user-sheet';
+import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { dateFa, dateTimeFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import type { StatsIdentity } from '@/lib/mock/api';
+
+type StatsTab = 'views' | 'chats' | 'calls' | 'saves';
 
 /** ردیف هویت — باز است یا قفل (گیت اشتراک ویژه مالک) */
-function IdentityCell({ user }: { user: { firstName: string; lastName: string; userName: string; phone: string } | null }) {
-  if (user) {
-    const name = `${user.firstName} ${user.lastName}`.trim() || 'کاربر ایمچ';
+function UserCell({
+  user,
+  meta,
+  productId,
+  productName,
+  threadId,
+}: {
+  user: StatsIdentity | null;
+  /** خط متای زیر نام — «۳ بار بازدید»، «۲ پیام» و… */
+  meta: string;
+  productId: number;
+  productName: string;
+  /** مکالمهٔ موجود درباره همین آگهی (تب چت‌کنندگان) */
+  threadId?: string;
+}) {
+  if (!user) {
     return (
-      <div className="min-w-0">
+      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <Lock size={12} /> امکان مشاهده فقط برای کاربران ویژه
+      </span>
+    );
+  }
+  const name = `${user.firstName} ${user.lastName}`.trim() || 'کاربر ایمچ';
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      {/* هویت — نام + متا */}
+      <div className="min-w-0 flex-1 sm:flex-none">
         <Link href={`/profile/${user.userName}`} className="font-bold text-primary hover:underline">
           {name}
         </Link>
-        <p className="font-num mt-0.5 text-[11px] text-muted-foreground" dir="ltr">
-          {user.phone}
-        </p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">{meta}</p>
       </div>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-      <Lock size={12} /> امکان مشاهده فقط برای کاربران ویژه
-    </span>
+
+      {/* دکمه‌های اقدام — نشان کردن (مهم‌ترین) + چت + تماس (۲-۱۱ دور ۱۸) */}
+      <div className="flex items-center gap-2">
+        <MarkUserButton
+          target={{
+            targetUserId: user.id,
+            targetName: name,
+            isVerified: user.isVerified,
+            avatarUrl: user.avatarUrl,
+            defaultListName: productName,
+          }}
+        />
+        <ChatDialog
+          sellerUserName={user.userName}
+          sellerId={user.id}
+          sellerName={name}
+          sellerAvatarUrl={user.avatarUrl}
+          productName={productName}
+          threadId={threadId}
+          /** productId فقط با مکالمهٔ موجود (چت‌کنندگان) — نمایش «دربارهٔ همین آگهی»؛
+           *  در بقیهٔ تب‌ها startThread با productId مالکِ خودش خطای SELF_CHAT می‌دهد */
+          productId={threadId != null ? productId : undefined}
+          buttonLabel={`چت با ${name}`}
+          buttonVariant="outline"
+          buttonSize="icon"
+          className="size-9 shrink-0 rounded-md"
+        />
+        {/* تماس با خودِ کاربر ردیف — فقط userName؛ productId مسیر «شماره مالک
+            آگهی» است و اینجا شمارهٔ اشتباه (خودِ مالک) برمی‌گرداند */}
+        <PhoneReveal sellerName={name} userName={user.userName}>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            title={`تماس با ${name}`}
+            aria-label={`تماس با ${name}`}
+            className="size-9 shrink-0 rounded-md"
+          >
+            <Phone size={16} />
+          </Button>
+        </PhoneReveal>
+      </div>
+    </div>
   );
+}
+
+/** یک ردیف لیست — قالب مشترک همه تب‌ها (حداقل‌گرایانه، موبایل‌دوست) */
+function StatsRow({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-wrap items-center gap-2 px-4 py-3.5 hover:bg-secondary/30">{children}</div>;
 }
 
 export default function ProductStatsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -57,7 +131,7 @@ export default function ProductStatsPage({ params }: { params: Promise<{ id: str
   const productId = Number(id);
   const { user } = useAuth();
   const { data, isLoading, error } = useMyProductStats(productId, Boolean(user));
-  const [tab, setTab] = useState<'views' | 'calls' | 'saves'>('views');
+  const [tab, setTab] = useState<StatsTab>('views');
 
   if (isLoading) {
     return (
@@ -85,14 +159,22 @@ export default function ProductStatsPage({ params }: { params: Promise<{ id: str
     );
   }
 
-  const { product, totals, daily, viewers, callers, savers, canSeeIdentity } = data;
+  const { product, totals, daily, viewers, callers, savers, chatters, canSeeIdentity } = data;
   const maxDaily = Math.max(1, ...daily.map((d) => d.count));
 
   const cards = [
     { icon: Eye, label: 'بازدید', value: totals.views, hint: `${toFa(totals.uniqueViewers)} بیننده یکتا` },
     { icon: Users, label: 'بیننده یکتا', value: totals.uniqueViewers, hint: 'کاربر + مهمان' },
+    { icon: MessageSquareText, label: 'چت', value: chatters.length, hint: 'مکالمه درباره این آگهی' },
     { icon: PhoneCall, label: 'کلیک تماس', value: totals.contactClicks, hint: 'دکمه شماره تماس' },
     { icon: Bookmark, label: 'ذخیره آگهی', value: totals.saves, hint: 'علاقه‌مندی کاربران' },
+  ];
+
+  const tabs: { key: StatsTab; label: string; icon: typeof Eye; count: number }[] = [
+    { key: 'views', label: 'بینندگان', icon: Eye, count: viewers.length },
+    { key: 'chats', label: 'چت کنندگان', icon: MessageSquareText, count: chatters.length },
+    { key: 'calls', label: 'تماس‌ها', icon: PhoneCall, count: callers.length },
+    { key: 'saves', label: 'ذخیره‌کنندگان', icon: Bookmark, count: savers.length },
   ];
 
   return (
@@ -126,10 +208,11 @@ export default function ProductStatsPage({ params }: { params: Promise<{ id: str
                 <Crown size={18} />
               </span>
               <div className="min-w-0">
-                <p className="text-sm font-extrabold text-amber-800">نام و شماره تماس بینندگان قفل است</p>
+                <p className="text-sm font-extrabold text-amber-800">نام و اطلاعات بینندگان قفل است</p>
                 <p className="mt-1 text-xs leading-6 text-amber-700/90">
                   امکان مشاهده فقط برای کاربران ویژه است — با خرید بسته اشتراک ویژه، هویت کامل
-                  بینندگان، تماس‌گیرندگان و ذخیره‌کنندگان این آگهی را ببینید.
+                  بینندگان، چت‌کنندگان، تماس‌گیرندگان و ذخیره‌کنندگان این آگهی را ببینید و با
+                  آن‌ها چت، تماس و نشان کردن انجام دهید.
                 </p>
               </div>
             </div>
@@ -143,7 +226,7 @@ export default function ProductStatsPage({ params }: { params: Promise<{ id: str
       )}
 
       {/* کارت‌های مجموع */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {cards.map(({ icon: Icon, label, value, hint }) => (
           <div key={label} className="rounded-lg border bg-card p-4">
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -156,15 +239,27 @@ export default function ProductStatsPage({ params }: { params: Promise<{ id: str
         ))}
       </div>
 
-      {/* نمودار روزانه — میله‌های CSS سبک */}
+      {/* نمودار روزانه — میله‌های CSS سبک + تعداد بازدید بالای هر میله (۲-۱۱ دور ۱۸) */}
       <PanelCard>
         <p className="text-sm font-extrabold">بازدید ۱۴ روز اخیر</p>
         <div className="mt-4 flex h-32 items-end gap-1.5" dir="ltr">
           {daily.map((d) => (
-            <div key={d.date} className="group relative flex h-full flex-1 flex-col justify-end" title={`${d.count} بازدید`}>
+            <div
+              key={d.date}
+              className="group relative flex h-full flex-1 flex-col items-center justify-end gap-1"
+              title={`${d.count} بازدید`}
+            >
+              <span
+                className={cn(
+                  'font-num text-[9.5px] leading-none',
+                  d.count > 0 ? 'font-bold text-foreground/75' : 'text-muted-foreground/50',
+                )}
+              >
+                {toFa(d.count)}
+              </span>
               <div
                 className={cn(
-                  'rounded-t-sm transition-colors',
+                  'w-full rounded-t-sm transition-colors',
                   d.count > 0 ? 'bg-primary/70 group-hover:bg-primary' : 'bg-secondary',
                 )}
                 style={{ height: `${Math.max(6, (d.count / maxDaily) * 100)}%` }}
@@ -178,13 +273,9 @@ export default function ProductStatsPage({ params }: { params: Promise<{ id: str
         </div>
       </PanelCard>
 
-      {/* تب‌های جزئیات */}
+      {/* تب‌های جزئیات — چت‌کنندگان جدید (۲-۱۱ دور ۱۸) */}
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {[
-          { key: 'views' as const, label: `بینندگان (${toFa(viewers.length)})`, icon: Eye },
-          { key: 'calls' as const, label: `تماس‌ها (${toFa(callers.length)})`, icon: PhoneCall },
-          { key: 'saves' as const, label: `ذخیره‌کنندگان (${toFa(savers.length)})`, icon: Bookmark },
-        ].map(({ key, label, icon: Icon }) => (
+        {tabs.map(({ key, label, icon: Icon, count }) => (
           <button
             key={key}
             type="button"
@@ -196,102 +287,127 @@ export default function ProductStatsPage({ params }: { params: Promise<{ id: str
                 : 'bg-card text-muted-foreground hover:border-primary/40',
             )}
           >
-            <Icon size={14} /> {label}
+            <Icon size={14} /> {label}{' '}
+            <span
+              className={cn(
+                'font-num rounded-full px-1.5 py-0.5 text-[10px]',
+                tab === key ? 'bg-primary-foreground/20' : 'bg-secondary',
+              )}
+            >
+              ({toFa(count)})
+            </span>
           </button>
         ))}
       </div>
 
-      {/* جدول بینندگان */}
-      {tab === 'views' ? (
-        <PanelCard className="overflow-x-auto p-0">
-          {viewers.length === 0 ? (
-            <p className="p-8 text-center text-xs text-muted-foreground">
-              هنوز بازدیدی برای این آگهی ثبت نشده است (بازدید خود شما شمرده نمی‌شود).
-            </p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-secondary/40 text-[11px] text-muted-foreground">
-                  <th className="px-4 py-2.5 text-right font-medium">بیننده</th>
-                  <th className="px-2 py-2.5 text-right font-medium">تعداد بازدید</th>
-                  <th className="hidden px-2 py-2.5 text-right font-medium sm:table-cell">اولین بازدید</th>
-                  <th className="px-4 py-2.5 text-right font-medium">آخرین بازدید</th>
-                </tr>
-              </thead>
-              <tbody>
+      {/* لیست‌ها — ردیف‌های ساده با دکمه‌های نشان/چت/تماس به‌جای شماره تلفن */}
+      <PanelCard className="p-0">
+        {tab === 'views' && (
+          <>
+            {viewers.length === 0 ? (
+              <p className="p-8 text-center text-xs text-muted-foreground">
+                هنوز بازدیدی برای این آگهی ثبت نشده است (بازدید خود شما شمرده نمی‌شود).
+              </p>
+            ) : (
+              <div className="divide-y">
                 {viewers.map((v, i) => (
-                  <tr key={i} className="border-b last:border-0 hover:bg-secondary/30">
-                    <td className="px-4 py-3">
-                      {v.isGuest ? (
+                  <StatsRow key={i}>
+                    {v.isGuest ? (
+                      <>
                         <span className="text-xs text-muted-foreground">کاربر مهمان</span>
-                      ) : (
-                        <IdentityCell user={v.user} />
-                      )}
-                    </td>
-                    <td className="font-num px-2 py-3 text-xs font-bold">{toFa(v.views)} بار</td>
-                    <td className="hidden px-2 py-3 text-xs text-muted-foreground sm:table-cell">{dateTimeFa(v.firstAt)}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{dateTimeFa(v.lastAt)}</td>
-                  </tr>
+                        <span className="font-num ms-auto text-[11px] text-muted-foreground">
+                          {toFa(v.views)} بار · {dateTimeFa(v.lastAt)}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <UserCell
+                          user={v.user}
+                          meta={`${toFa(v.views)} بار بازدید · آخرین: ${dateTimeFa(v.lastAt)}`}
+                          productId={product.id}
+                          productName={product.productName}
+                        />
+                      </>
+                    )}
+                  </StatsRow>
                 ))}
-              </tbody>
-            </table>
-          )}
-        </PanelCard>
-      ) : tab === 'calls' ? (
-        <PanelCard className="overflow-x-auto p-0">
-          {callers.length === 0 ? (
-            <p className="p-8 text-center text-xs text-muted-foreground">
-              هنوز کسی دکمه «شماره تماس» این آگهی را نزده است.
-            </p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-secondary/40 text-[11px] text-muted-foreground">
-                  <th className="px-4 py-2.5 text-right font-medium">تماس‌گیرنده</th>
-                  <th className="px-4 py-2.5 text-right font-medium">زمان</th>
-                </tr>
-              </thead>
-              <tbody>
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === 'chats' && (
+          <>
+            {chatters.length === 0 ? (
+              <p className="p-8 text-center text-xs leading-6 text-muted-foreground">
+                هنوز کسی درباره این آگهی پیامی ننوشته است.
+                <br />
+                خریدارانی که در چت این آگهی سؤال بپرسند، این‌جا دیده می‌شوند.
+              </p>
+            ) : (
+              <div className="divide-y">
+                {chatters.map((c, i) => (
+                  <StatsRow key={i}>
+                    <UserCell
+                      user={c.user}
+                      meta={`${toFa(c.messages)} پیام · آخرین پیام: ${dateTimeFa(c.lastAt)}`}
+                      productId={product.id}
+                      productName={product.productName}
+                      threadId={c.threadId}
+                    />
+                  </StatsRow>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === 'calls' && (
+          <>
+            {callers.length === 0 ? (
+              <p className="p-8 text-center text-xs text-muted-foreground">
+                هنوز کسی دکمه «شماره تماس» این آگهی را نزده است.
+              </p>
+            ) : (
+              <div className="divide-y">
                 {callers.map((c, i) => (
-                  <tr key={i} className="border-b last:border-0 hover:bg-secondary/30">
-                    <td className="px-4 py-3">
-                      <IdentityCell user={c.user} />
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{dateTimeFa(c.at)}</td>
-                  </tr>
+                  <StatsRow key={i}>
+                    <UserCell
+                      user={c.user}
+                      meta={`زمان کلیک: ${dateTimeFa(c.at)}`}
+                      productId={product.id}
+                      productName={product.productName}
+                    />
+                  </StatsRow>
                 ))}
-              </tbody>
-            </table>
-          )}
-        </PanelCard>
-      ) : (
-        <PanelCard className="overflow-x-auto p-0">
-          {savers.length === 0 ? (
-            <p className="p-8 text-center text-xs text-muted-foreground">
-              هنوز کسی این آگهی را ذخیره نکرده است.
-            </p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-secondary/40 text-[11px] text-muted-foreground">
-                  <th className="px-4 py-2.5 text-right font-medium">ذخیره‌کننده</th>
-                  <th className="px-4 py-2.5 text-right font-medium">زمان</th>
-                </tr>
-              </thead>
-              <tbody>
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === 'saves' && (
+          <>
+            {savers.length === 0 ? (
+              <p className="p-8 text-center text-xs text-muted-foreground">
+                هنوز کسی این آگهی را ذخیره نکرده است.
+              </p>
+            ) : (
+              <div className="divide-y">
                 {savers.map((s, i) => (
-                  <tr key={i} className="border-b last:border-0 hover:bg-secondary/30">
-                    <td className="px-4 py-3">
-                      <IdentityCell user={s.user} />
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{dateTimeFa(s.at)}</td>
-                  </tr>
+                  <StatsRow key={i}>
+                    <UserCell
+                      user={s.user}
+                      meta={`زمان ذخیره: ${dateTimeFa(s.at)}`}
+                      productId={product.id}
+                      productName={product.productName}
+                    />
+                  </StatsRow>
                 ))}
-              </tbody>
-            </table>
-          )}
-        </PanelCard>
-      )}
+              </div>
+            )}
+          </>
+        )}
+      </PanelCard>
 
       <p className="text-center text-[10px] leading-5 text-muted-foreground">
         بازدید هر مرورگر حداکثر یک‌بار در هر ۳۰ دقیقه شمرده می‌شود؛ بازدید خود شما و خزنده‌ها ثبت نمی‌شود.

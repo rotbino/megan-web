@@ -37,6 +37,7 @@ export function ChatWidget({
   sellerName,
   productName,
   bare = false,
+  threadId: threadIdProp,
 }: {
   /** آگهی زمینه — اگر نباشد گفتگوی مستقیم با فروشنده شروع می‌شود */
   productId?: number;
@@ -48,12 +49,22 @@ export function ChatWidget({
   /** نام آگهی زمینه — در گفتگوی مستقیم نمی‌آید */
   productName?: string;
   bare?: boolean;
+  /** مکالمهٔ موجود (۲-۱۱ دور ۱۸) — آمار آگهی: باز کردن مستقیم مکالمهٔ همین آگهی */
+  threadId?: string;
 }) {
   const { user } = useAuth();
   const [loginOpen, setLoginOpen] = useState(false);
   const start = useStartChatThread();
-  const threadId = start.data?.id ?? null;
-  const myId = start.data?.myId ?? null;
+  // id من برای جهت‌دهی حباب پیام‌ها — مسیر عادی از startThread؛ در مسیر
+  // threadId مستقیم (آمار آگهی ۲-۱۱ دور ۱۸) از presence خودم می‌آید
+  const { data: myPresenceItems } = usePresenceStatus(
+    threadIdProp != null && user?.userName ? { userNames: [user.userName] } : {},
+  );
+  const threadId = threadIdProp ?? start.data?.id ?? null;
+  const myId =
+    threadIdProp != null
+      ? myPresenceItems?.find((p) => p.userName === user?.userName)?.id ?? start.data?.myId ?? null
+      : (start.data?.myId ?? null);
   const { data: messages, isLoading: messagesLoading } = useChatThreadMessages(threadId);
   const send = useSendChatMessage();
   const [text, setText] = useState('');
@@ -72,13 +83,15 @@ export function ChatWidget({
   // push لحظه‌ای — WS، پیام تازه را همان لحظه می‌آورد
   useChatSocketEvents();
 
-  // هدف شروع مکالمه — آگهی یا مستقیم
+  // هدف شروع مکالمه — آگهی یا مستقیم؛ با threadId مستقیم نیازی به شروع نیست
   const target =
-    productId != null
-      ? { productId }
-      : sellerUserName
-        ? { userName: sellerUserName }
-        : null;
+    threadIdProp != null
+      ? null
+      : productId != null
+        ? { productId }
+        : sellerUserName
+          ? { userName: sellerUserName }
+          : null;
 
   // شروع مکالمه وقتی کاربر لاگین است
   useEffect(() => {
@@ -102,6 +115,12 @@ export function ChatWidget({
   };
 
   const subject = productName ?? 'فروشنده';
+
+  // مسیر threadId مستقیم (آمار آگهی): startThread اصلاً صدا زده نمی‌شود؛
+  // حالت بارگذاری/خطای «شروع» فقط در مسیر عادی معنا دارد
+  const starting =
+    threadIdProp == null && (start.isPending || (start.data === undefined && !start.isError));
+  const startFailed = threadIdProp == null && start.isError;
 
   // ── هنوز وارد نشده ──
   if (!user || !getTokens()?.accessToken) {
@@ -141,11 +160,11 @@ export function ChatWidget({
 
   const chatBody = (
     <>
-      {start.isPending || (start.data === undefined && !start.isError) ? (
+      {starting ? (
         <div className="space-y-3 p-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-md" />)}
         </div>
-      ) : start.isError ? (
+      ) : startFailed ? (
         <p className="p-6 text-center text-sm text-muted-foreground">
           {start.error instanceof Error ? start.error.message : 'شروع مکالمه ناموفق بود.'}
         </p>

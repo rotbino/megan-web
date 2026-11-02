@@ -36,6 +36,8 @@ export function ChatDialog({
   className,
   buttonLabel = 'چت با فروشنده',
   buttonVariant = 'outline',
+  buttonSize = 'default',
+  threadId,
 }: {
   productId?: number;
   sellerUserName?: string;
@@ -47,6 +49,10 @@ export function ChatDialog({
   className?: string;
   buttonLabel?: string;
   buttonVariant?: 'outline' | 'default';
+  /** اندازه دکمه — icon برای دکمه‌های ریز آمار آگهی (۲-۱۱ دور ۱۸) */
+  buttonSize?: 'default' | 'sm' | 'icon';
+  /** مکالمهٔ موجود — باز کردن مستقیم همان مکالمه (آمار آگهی) */
+  threadId?: string;
 }) {
   const { data: presenceItems } = usePresenceStatus({
     ...(sellerId ? { ids: [sellerId] } : {}),
@@ -61,9 +67,15 @@ export function ChatDialog({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button type="button" variant={buttonVariant} className={className}>
-          <MessageSquareText size={17} />
-          {buttonLabel}
+        <Button
+          type="button"
+          variant={buttonVariant}
+          size={buttonSize}
+          className={className}
+          title={buttonLabel}
+        >
+          <MessageSquareText size={buttonSize === 'icon' ? 18 : 17} />
+          {buttonSize !== 'icon' && buttonLabel}
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -131,6 +143,7 @@ export function ChatDialog({
             sellerId={sellerId}
             sellerName={sellerName}
             productName={productName}
+            threadId={threadId}
             bare
           />
         </div>

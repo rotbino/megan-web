@@ -46,6 +46,8 @@ interface Draft {
   path: Category[];
   leaf: Category | null;
   productType: string;
+  /** برند اختیاری (خواسته مالک ۲-۱۱ دور ۱۸) — به آخر عنوان آگهی می‌چسبد */
+  brand: string;
   provinceId: string;
   cityId: string;
   stock: string;
@@ -60,6 +62,7 @@ const EMPTY_DRAFT: Draft = {
   path: [],
   leaf: null,
   productType: '',
+  brand: '',
   provinceId: '',
   cityId: '',
   stock: '',
@@ -164,9 +167,14 @@ export default function RegisterProductPage() {
       setError(err);
       return;
     }
+    // برند اختیاری به آخر عنوان می‌چسبد (خواسته مالک ۲-۱۱ دور ۱۸):
+    // «تنقلات چیپس چییتوز» — و به‌صورت ویژگی «برند» ذخیره می‌شود تا ویرایش
+    // و جستجوی برند (contains روی نام) هر دو درست کار کنند
+    const brand = draft.brand.trim();
+    const fullName = [draft.leaf!.categoryName, draft.productType.trim(), brand].filter(Boolean).join(' ');
     try {
       const result = await submit.mutateAsync({
-        productName: `${draft.leaf!.categoryName} ${draft.productType.trim()}`,
+        productName: fullName,
         subCategoryId: draft.leaf!.id,
         provinceId: num(draft.provinceId),
         cityId: num(draft.cityId),
@@ -174,7 +182,10 @@ export default function RegisterProductPage() {
         minSaleAmount: num(draft.minSaleAmount),
         minSalePrice: num(draft.minSalePrice),
         description: draft.description,
-        features: draft.features.filter((f) => f.key && f.value.trim()),
+        features: [
+          ...draft.features.filter((f) => f.key && f.value.trim()),
+          ...(brand ? [{ key: 'برند', value: brand }] : []),
+        ],
         photos: draft.photos.map((p) => p.file),
       });
       setFailedPhotos(result.failedPhotos);
@@ -290,7 +301,7 @@ export default function RegisterProductPage() {
           </span>
           <h1 className="mt-4 text-base font-extrabold">محصول شما با موفقیت ثبت شد</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            آگهی «{draft.leaf?.categoryName} {draft.productType}» ثبت شد و پس از بررسی کارشناسان ایمچ، در «محصولات من»
+            آگهی «{[draft.leaf?.categoryName, draft.productType, draft.brand.trim()].filter(Boolean).join(' ')}» ثبت شد و پس از بررسی کارشناسان ایمچ، در «محصولات من»
             و نتایج بازار منتشر می‌شود.
           </p>
 
@@ -367,6 +378,21 @@ export default function RegisterProductPage() {
             />
             <p className="text-[11px] text-muted-foreground">
               {leaf?.example ? `مثلا : ${leaf.example}` : 'نوع/واریته دقیق کالا را بنویسید تا خریداران مرتبط پیدا شوید.'}
+            </p>
+          </div>
+
+          {/* برند اختیاری (خواسته مالک ۲-۱۱ دور ۱۸) — به آخر عنوان اضافه می‌شود */}
+          <div className="space-y-2">
+            <Label htmlFor="product-brand">اگر محصول شما برند دارد وارد کنید</Label>
+            <Input
+              id="product-brand"
+              value={draft.brand}
+              onChange={(e) => patch({ brand: e.target.value })}
+              placeholder="مثلا اپل"
+              maxLength={40}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              اختیاری است — برند به انتهای عنوان آگهی اضافه می‌شود و خریداران با جستجوی نام برند (مثلا «چییتوز») محصول شما را پیدا می‌کنند.
             </p>
           </div>
 
@@ -562,6 +588,14 @@ export default function RegisterProductPage() {
       {/* ─── مرحله ۶: جزئیات نهایی (ویژگی‌های محصول) ─── */}
       {step === 5 && (
         <PanelCard className="space-y-4">
+          {/* عنوان نهایی آگهی — برند به انتهایش چسبیده (خواسته مالک ۲-۱۱ دور ۱۸) */}
+          <div className="rounded-md border border-dashed bg-secondary/50 px-4 py-3">
+            <p className="text-[11px] text-muted-foreground">عنوان آگهی شما:</p>
+            <p className="mt-0.5 text-sm font-extrabold">
+              {[leaf?.categoryName, draft.productType.trim(), draft.brand.trim()].filter(Boolean).join(' ')}
+            </p>
+          </div>
+
           <p className="text-sm leading-6 text-muted-foreground">
             ویژگی‌های محصول خود را با انتخاب «ویژگی» و نوشتن توضیح آن ثبت کنید — مثل: بسته‌بندی / کیسه ۵۰ کیلویی.
             (اختیاری است — تا {toFa(PRODUCT_FEATURE_KEYS.length)} ویژگی می‌توانید اضافه کنید.)

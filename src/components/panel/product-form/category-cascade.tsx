@@ -11,7 +11,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, RotateCcw, Search, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, RotateCcw, Search, X } from 'lucide-react';
 import { useCategoryTree } from '@/lib/mock/hooks';
 import { cn } from '@/lib/utils';
 import type { Category } from '@/lib/types';
@@ -81,7 +81,8 @@ export function CategoryCascade({
     setL1(r.path[0] ?? null);
     setL2(r.path[1] ?? null);
     onChange({ path: r.path, leaf: r.node });
-    setQuery('');
+    // جستجو پاک نمی‌شود (خواسته مالک ۲-۱۱ دور ۱۸): لیست نتایج می‌ماند تا
+    // کاربر انتخابش را روی همان رکورد ببیند و بتواند رکورد دیگری را عوض کند
   };
 
   const pickL1 = (c: Category) => {
@@ -152,7 +153,10 @@ export function CategoryCascade({
           )}
         </div>
 
-        {/* لیست نتایج — مسیر کامل هر برگ: «کشاورزی > میوه > سیب» */}
+        {/* لیست نتایج — مسیر کامل هر برگ + دکمهٔ کوچک «انتخاب» (خواسته مالک ۲-۱۱
+            دور ۱۸): کلیک روی خود رکورد یا دکمه، همان رکورد را انتخاب می‌کند؛
+            رکورد دیگر = انتخاب جدید؛ لیست بعد از انتخاب می‌ماند و رکورد انتخابی
+            روشن است تا «برگشت به حالت پیش‌فرض» حس نشود */}
         {searching && (
           <div className="mt-2 overflow-hidden rounded-lg border bg-card">
             {results.length === 0 ? (
@@ -163,30 +167,52 @@ export function CategoryCascade({
               </p>
             ) : (
               <ul className="max-h-80 divide-y divide-border/60 overflow-y-auto">
-                {results.map((r) => (
-                  <li key={r.node.id}>
-                    <button
-                      type="button"
-                      onClick={() => pickSearchResult(r)}
-                      className="flex w-full items-center gap-1 px-3.5 py-2.5 text-start text-[13px] transition-colors hover:bg-secondary/70"
-                    >
-                      <Search size={13} className="shrink-0 text-muted-foreground/50" />
-                      <span className="flex flex-wrap items-center gap-0.5 leading-6">
-                        {r.path.map((c, i) => {
-                          const last = i === r.path.length - 1;
-                          return (
-                            <span key={c.id} className="flex items-center gap-0.5">
-                              {i > 0 && <ChevronLeft size={11} className="text-muted-foreground/40" aria-hidden />}
-                              <span className={last ? 'font-bold text-primary' : 'text-muted-foreground'}>
-                                {c.categoryName}
+                {results.map((r) => {
+                  const selected = value.leaf?.id === r.node.id;
+                  return (
+                    <li key={r.node.id} className={cn('flex items-stretch gap-1', selected && 'bg-primary/5')}>
+                      <button
+                        type="button"
+                        onClick={() => pickSearchResult(r)}
+                        aria-pressed={selected}
+                        className="flex min-w-0 flex-1 items-center gap-1 px-3.5 py-2.5 text-start text-[13px] transition-colors hover:bg-secondary/70"
+                      >
+                        {selected ? (
+                          <Check size={13} className="shrink-0 text-primary" strokeWidth={3} />
+                        ) : (
+                          <Search size={13} className="shrink-0 text-muted-foreground/50" />
+                        )}
+                        <span className="flex flex-wrap items-center gap-0.5 leading-6">
+                          {r.path.map((c, i) => {
+                            const last = i === r.path.length - 1;
+                            return (
+                              <span key={c.id} className="flex items-center gap-0.5">
+                                {i > 0 && <ChevronLeft size={11} className="text-muted-foreground/40" aria-hidden />}
+                                <span className={cn(last && selected ? 'font-bold text-primary' : last ? 'font-bold' : 'text-muted-foreground')}>
+                                  {c.categoryName}
+                                </span>
                               </span>
-                            </span>
-                          );
-                        })}
-                      </span>
-                    </button>
-                  </li>
-                ))}
+                            );
+                          })}
+                        </span>
+                      </button>
+                      {/* دکمهٔ کوچک انتخاب — کنار هر رکورد */}
+                      <button
+                        type="button"
+                        onClick={() => pickSearchResult(r)}
+                        aria-pressed={selected}
+                        className={cn(
+                          'my-1.5 me-1.5 shrink-0 self-center rounded-md border px-2.5 py-1 text-[11px] font-bold transition-colors',
+                          selected
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-primary/40 bg-card text-primary hover:bg-primary/5',
+                        )}
+                      >
+                        {selected ? 'انتخاب شد' : 'انتخاب'}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

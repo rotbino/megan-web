@@ -93,14 +93,9 @@ function MyProductsPageInner() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
-      {/* سربرگ + دکمهٔ ثبت (دور ۱۵) */}
+      {/* سربرگ + دکمهٔ ثبت (دور ۱۵) — بدون جملهٔ توضیحی اضافه (خواسته مالک ۲-۱۱ دور ۱۸) */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-base font-extrabold sm:text-lg">محصولات من</h1>
-          <p className="mt-1 text-xs leading-6 text-muted-foreground sm:text-sm">
-            آگهی‌های فروش شما و وضعیت بررسی آنها.
-          </p>
-        </div>
+        <h1 className="text-base font-extrabold sm:text-lg">محصولات من</h1>
         <Button asChild className="rounded-md">
           <Link href="/panel/products/new">
             <Plus size={16} />
@@ -269,25 +264,19 @@ function MyProductsPageInner() {
         </div>
       )}
 
-      {/* ظرفیت ثبت — بسته فعال = نامحدود (-۱) */}
-      <PanelCard className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-muted-foreground">
-          {data.capacity === -1 ? (
-            <>
-              ظرفیت ثبت محصول: <b className="text-emerald-600">نامحدود</b>
-              <span className="ms-1.5 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600">بسته فعال</span>
-            </>
-          ) : (
-            <>
-              ظرفیت ثبت محصول: <b className="font-num text-foreground">{toFa(data.items.filter((p) => p.status !== 'deleted').length)}</b> از{' '}
-              <span className="font-num">{toFa(data.capacity)}</span> آگهی بسته رایگان
-            </>
-          )}
-        </p>
-        <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
-          <Link href="/panel/pricing">{data.capacity === -1 ? 'مدیریت بسته اشتراک' : 'افزایش ظرفیت با بسته اشتراک'}</Link>
-        </Button>
-      </PanelCard>
+      {/* ظرفیت ثبت — فقط بستهٔ رایگان (خواسته مالک ۲-۱۱ دور ۱۸): با بستهٔ
+          فعال ظرفیت نامحدود است و این کادر اصلاً نمایش داده نمی‌شود */}
+      {data.capacity !== -1 && (
+        <PanelCard className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            ظرفیت ثبت محصول: <b className="font-num text-foreground">{toFa(data.items.filter((p) => p.status !== 'deleted').length)}</b> از{' '}
+            <span className="font-num">{toFa(data.capacity)}</span> آگهی بسته رایگان
+          </p>
+          <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
+            <Link href="/panel/pricing">افزایش ظرفیت با بسته اشتراک</Link>
+          </Button>
+        </PanelCard>
+      )}
 
       {/* مودال نردبان — ۱ تا ۴ ماه، پرداخت واقعی از کیف پول (خواسته مالک ۳۱-۱۰) */}
       <Dialog

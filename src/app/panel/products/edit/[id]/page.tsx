@@ -55,6 +55,8 @@ interface EditDraft {
   path: Category[];
   leaf: Category | null;
   productType: string;
+  /** برند اختیاری (۲-۱۱ دور ۱۸) — از ویژگی «برند» پیش‌پر می‌شود، به انتهای عنوان می‌چسبد */
+  brand: string;
   provinceId: string;
   cityId: string;
   stock: string;
@@ -119,22 +121,31 @@ export default function EditProductPage() {
   if (detail && tree && !draft) {
     const p = detail.product;
     const { path, leaf } = buildPath(tree, p.subCategoryId);
-    // نام محصول = «{دسته} {نوع}» — نوع را جدا می‌کنیم
+    // برند از ویژگی‌ها جدا می‌شود (round-trip ۲-۱۱ دور ۱۸) — فیلد خودش را دارد
+    const brandFeature = (p.features ?? []).find((f) => f.key === 'برند' && f.value?.trim());
+    const brand = brandFeature?.value.trim() ?? '';
+    // نام محصول = «{دسته} {نوع} {برند}» — نوع و برند را جدا می‌کنیم
     const leafName = leaf?.categoryName ?? '';
-    const productType = p.productName.startsWith(leafName)
+    let remainder = p.productName.startsWith(leafName)
       ? p.productName.slice(leafName.length).trim()
       : p.productName;
+    let productType = remainder;
+    if (brand && remainder.toLowerCase().endsWith(brand.toLowerCase())) {
+      productType = remainder.slice(0, remainder.length - brand.length).trim();
+      remainder = productType;
+    }
     setDraft({
       path,
       leaf,
-      productType,
+      productType: remainder || productType,
+      brand,
       provinceId: String(p.provinceId),
       cityId: String(p.cityId),
       stock: p.stock ? p.stock.toLocaleString('en-US') : '',
       minSaleAmount: p.minSaleAmount ? p.minSaleAmount.toLocaleString('en-US') : '',
       minSalePrice: p.minSalePrice ? p.minSalePrice.toLocaleString('en-US') : '',
       description: p.description ?? '',
-      features: (p.features ?? []).map((f) => ({ ...f })),
+      features: (p.features ?? []).filter((f) => f.key !== 'برند').map((f) => ({ ...f })),
     });
     setExistingPhotos(detail.photoFiles.map((f) => ({ id: f.id, url: f.thumbUrl ?? f.url })));
     // ویرایش = همه مراحل معتبرند؛ از پیش‌پر شده‌اند — پرش آزاد بین مراحل
@@ -180,10 +191,13 @@ export default function EditProductPage() {
       setError(err);
       return;
     }
+    // برند به آخر عنوان می‌چسبد + به‌صورت ویژگی «برند» ذخیره می‌شود (۲-۱۱ دور ۱۸)
+    const brand = draft.brand.trim();
+    const fullName = [draft.leaf.categoryName, draft.productType.trim(), brand].filter(Boolean).join(' ');
     try {
       const result = await submit.mutateAsync({
         id: productId,
-        productName: `${draft.leaf.categoryName} ${draft.productType.trim()}`,
+        productName: fullName,
         subCategoryId: draft.leaf.id,
         provinceId: num(draft.provinceId),
         cityId: num(draft.cityId),
@@ -191,7 +205,10 @@ export default function EditProductPage() {
         minSaleAmount: num(draft.minSaleAmount),
         minSalePrice: num(draft.minSalePrice),
         description: draft.description,
-        features: draft.features.filter((f) => f.key && f.value.trim()),
+        features: [
+          ...draft.features.filter((f) => f.key && f.value.trim()),
+          ...(brand ? [{ key: 'برند', value: brand }] : []),
+        ],
         newPhotos: newPhotos.map((p) => p.file),
         removedPhotoIds,
       });
@@ -373,6 +390,21 @@ export default function EditProductPage() {
             />
             <p className="text-[11px] text-muted-foreground">
               {leaf?.example ? `مثلا : ${leaf.example}` : 'نوع/واریته دقیق کالا را بنویسید تا خریداران مرتبط پیدا شوید.'}
+            </p>
+          </div>
+
+          {/* برند اختیاری (۲-۱۱ دور ۱۸) — پیش‌پر از ویژگی «برند» آگهی */}
+          <div className="space-y-2">
+            <Label htmlFor="product-brand">اگر محصول شما برند دارد وارد کنید</Label>
+            <Input
+              id="product-brand"
+              value={draft.brand}
+              onChange={(e) => patch({ brand: e.target.value })}
+              placeholder="مثلا اپل"
+              maxLength={40}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              اختیاری است — برند به انتهای عنوان آگهی اضافه می‌شود و خریداران با جستجوی نام برند محصول شما را پیدا می‌کنند.
             </p>
           </div>
 
@@ -574,6 +606,14 @@ export default function EditProductPage() {
       {/* ─── مرحله ۶: ویژگی‌ها ─── */}
       {step === 5 && (
         <PanelCard className="space-y-4">
+          {/* عنوان نهایی آگهی — برند به انتهایش چسبیده (۲-۱۱ دور ۱۸) */}
+          <div className="rounded-md border border-dashed bg-secondary/50 px-4 py-3">
+            <p className="text-[11px] text-muted-foreground">عنوان آگهی شما:</p>
+            <p className="mt-0.5 text-sm font-extrabold">
+              {[leaf?.categoryName, draft.productType.trim(), draft.brand.trim()].filter(Boolean).join(' ')}
+            </p>
+          </div>
+
           <p className="text-sm leading-6 text-muted-foreground">
             ویژگی‌های محصول خود را با انتخاب «ویژگی» و نوشتن توضیح آن ثبت کنید — مثل: بسته‌بندی / کیسه ۵۰ کیلویی.
             (اختیاری است — تا {toFa(PRODUCT_FEATURE_KEYS.length)} ویژگی.)

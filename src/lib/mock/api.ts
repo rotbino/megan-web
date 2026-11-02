@@ -1364,12 +1364,16 @@ export function reportProductView(productId: number, sessionId: string): Promise
   return apiFetch<{ counted: boolean }>('/products/reportView', { id: productId, sessionId });
 }
 
-/** هویت بیننده/تماس‌گیرنده/ذخیره‌کننده — فقط با اشتراک ویژه مالک */
+/** هویت بیننده/تماس‌گیرنده/ذخیره‌کننده/چت‌کننده — فقط با اشتراک ویژه مالک.
+ *  id (ObjectId) + آواتار برای دکمه‌های نشان‌کردن/چت (۲-۱۱ دور ۱۸) */
 export interface StatsIdentity {
+  id: string;
   firstName: string;
   lastName: string;
   userName: string;
   phone: string;
+  avatarUrl: string | null;
+  isVerified: boolean;
 }
 
 export interface ProductStatsViewersRow {
@@ -1387,6 +1391,14 @@ export interface ProductStatsCallersRow {
 
 export interface ProductStatsSaversRow {
   at: string;
+  user: StatsIdentity | null;
+}
+
+/** چت‌کننده (۲-۱۱ دور ۱۸) — خریداری که درباره همین آگهی پیام داده */
+export interface ProductStatsChattersRow {
+  threadId: string;
+  messages: number;
+  lastAt: string;
   user: StatsIdentity | null;
 }
 
@@ -1409,6 +1421,7 @@ export interface MyProductStats {
   viewers: ProductStatsViewersRow[];
   callers: ProductStatsCallersRow[];
   savers: ProductStatsSaversRow[];
+  chatters: ProductStatsChattersRow[];
 }
 
 /** آمار کامل آگهی من — چه کسانی دیدند/تماس زدند/ذخیره کردند */
