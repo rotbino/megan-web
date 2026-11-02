@@ -1,11 +1,11 @@
 'use client';
 
 /**
- * لینک‌های «حساب کاربری» پایین صفحه ایمچ من — عین menu-list صفحه my-buskool
+ * لینک‌های «حساب کاربری» در صفحه ایمچ من — عین menu-list صفحه my-buskool
  * باسکول (خواسته مالک ۲-۱۱ دور سیزدهم): این‌ها از سایدبار بیرون آمده‌اند و
- * فقط اینجا زندگی می‌کنند — داشبورد، تاریخچه تراکنش‌ها، ویرایش پروفایل،
+ * فقط اینجا زندگی می‌کنند — تاریخچه تراکنش‌ها، ویرایش پروفایل،
  * معاملات پرداخت امن، راهنما، پشتیبانی، نظرسنجی، خروج.
- * نقش‌مستقل است — آیتم‌های خرید/فروشِ نقش‌محور در سایدبار همان‌جا می‌مانند.
+ * («داشبورد» حذف شد — خود ایمچ من همان داشبورد است؛ لینک به خود صفحه = تکرار)
  */
 
 import Link from 'next/link';
@@ -18,7 +18,6 @@ import {
   LifeBuoy,
   LogOut,
   Pencil,
-  Settings,
 } from 'lucide-react';
 import { useAuth } from '@/lib/mock/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -31,7 +30,6 @@ interface LinkItem {
 }
 
 const ACCOUNT_LINKS: LinkItem[] = [
-  { href: '/panel', label: 'داشبورد', icon: Settings },
   { href: '/panel/wallet', label: 'تاریخچه تراکنش‌ها', icon: History },
   { href: '/panel/profile/edit', label: 'ویرایش پروفایل', icon: Pencil },
   { href: '/panel/secure-deals', label: 'معاملات پرداخت امن', icon: Handshake },
@@ -41,12 +39,12 @@ const ACCOUNT_LINKS: LinkItem[] = [
   { label: 'خروج از حساب کاربری', icon: LogOut },
 ];
 
-export function AccountLinks() {
+export function AccountLinks({ className }: { className?: string }) {
   const { logout } = useAuth();
   const { toast } = useToast();
 
   return (
-    <PanelCard>
+    <PanelCard className={className}>
       <p className="mb-2 text-sm font-bold">حساب کاربری</p>
       <nav className="divide-y divide-border/70" aria-label="لینک‌های حساب کاربری">
         {ACCOUNT_LINKS.map(({ href, label, icon: Icon }) =>

@@ -1,137 +1,72 @@
 'use client';
 
 /**
- * ایمچ من — داشبورد پنل (الگوی «باسکول من»):
- * فروشنده: میان‌برهای آماری فروش + کارت‌های ارتقا.
- * خریدار: درخواست‌های خرید + فروشندگان پیشنهادی + متن‌های مخصوص خریدار
- * (عین MHTML حالت خریدار: «برای فروشندگان، خریدار مطمئن تری باشید»).
- * خوش‌آمد + سنجه تکمیل پروفایل + مودال «درباره شما» + منوی حساب کاربری (موبایل) + خروج.
+ * ایمچ من — خلوت عین «باسکول من» (خواسته مالک ۲-۱۱ دور چهاردهم):
+ * فقط باکس لینک پروفایل + باکس اشتراک، و بلافاصله بعدش آیتم‌های منو.
+ * آمارها/کارت‌های ارتقا/تکمیل پروفایل حذف شدند — «هر عنصر دلیلی برای بودن
+ * باید داشته باشد» (RULES §۱-ب مینیمالیسم).
+ * موبایل: منوی نقش + کیف پول + سوییچ حساب داخل خود صفحه می‌آیند (الگوی
+ * menu-list باسکول — منوی جداگانه منسوخ است)؛ سوییچ عمداً بالاتر از منو
+ * است تا سوییچ سریع بین دو پنل ممکن باشد (خواسته مالک).
  */
 
-import { useState } from 'react';
 import Link from 'next/link';
 import {
-  BarChart3,
+  BadgeCheck,
+  BookOpenText,
   Bookmark,
-  Coins,
+  ChevronLeft,
   Crown,
   FileText,
+  Inbox,
+  Medal,
+  MessageSquare,
   Package,
-  Pencil,
+  PlusSquare,
   ShieldCheck,
   ShoppingCart,
-  Smartphone,
   Sparkles,
+  Users,
+  Wallet,
 } from 'lucide-react';
-import { useMyBuyRequests, useMyPackage, useMyProducts, usePanelProfile, useSavedLists, useUpdatePanelProfile } from '@/lib/mock/hooks';
+import { useMyPackage, usePanelProfile } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
-import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { PanelCard, QuickStat } from '@/components/panel/panel-parts';
+import { PanelCard } from '@/components/panel/panel-parts';
 import { AccountLinks } from '@/components/panel/account-links';
-import { toFa, dateFa } from '@/lib/format';
+import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { PanelProfile } from '@/lib/types';
 
-/** محاسبه سنجه تکمیل پروفایل — مثل باسکول: ضعیف/متوسط/عالی */
-function completionOf(pf: PanelProfile['profile'], isVerified: boolean) {
-  const checks = [
-    Boolean(pf.description && pf.description.length >= 100),
-    Boolean(pf.profilePhoto),
-    Boolean(pf.address),
-    isVerified,
-    pf.isCompany,
-  ];
-  const pct = Math.round((checks.filter(Boolean).length / checks.length) * 100);
-  const label = pct >= 85 ? 'عالی' : pct >= 55 ? 'متوسط' : 'ضعیف';
-  return { pct, label };
-}
-
-/**
- * نمودار دایره‌ای «ویژه بودن» (خواسته مالک ۳۱-۱۰):
- * کل دایره = کل روزهای دوره بسته (مثلاً ۶۰ روز برای دو ماهه)؛
- * کمان رنگی = روزهای باقی‌مانده اعتبار ویژه.
- */
-function VipDonut({ daysLeft, totalDays, size = 104 }: { daysLeft: number; totalDays: number; size?: number }) {
-  const stroke = 9;
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const ratio = totalDays > 0 ? Math.min(1, Math.max(0, daysLeft / totalDays)) : 0;
-  const offset = c * (1 - ratio);
+/** ردیف منوی درون‌صفحه — الگوی list-item باسکول: آیکون + متن + پیکان، جداشده با خط ظریف */
+function MenuRow({
+  href,
+  label,
+  icon: Icon,
+  tone = 'default',
+}: {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  tone?: 'default' | 'gold';
+}) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      role="img"
-      aria-label={`اعتبار ویژه: ${toFa(daysLeft)} روز از ${toFa(totalDays)} روز باقی مانده`}
-      className="shrink-0"
+    <Link
+      href={href}
+      className="flex items-center gap-3 py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
     >
-      {/* مسیر کم‌رنگ = کل دوره */}
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={stroke}
-        className="text-red-100"
-      />
-      {/* کمان قرمز = روزهای باقی‌مانده */}
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={stroke}
-        strokeLinecap="round"
-        strokeDasharray={c}
-        strokeDashoffset={offset}
-        transform={`rotate(-90 ${size / 2} ${size / 2})}`}
-        className="text-red-600 transition-[stroke-dashoffset] duration-700"
-      />
-      {/* شمارنده مرکز */}
-      <text
-        x="50%"
-        y="47%"
-        textAnchor="middle"
-        dominantBaseline="middle"
-        className="fill-foreground font-num"
-        style={{ fontSize: size * 0.26, fontWeight: 800 }}
-      >
-        {toFa(daysLeft)}
-      </text>
-      <text
-        x="50%"
-        y="66%"
-        textAnchor="middle"
-        dominantBaseline="middle"
-        className="fill-muted-foreground"
-        style={{ fontSize: size * 0.13, fontWeight: 700 }}
-      >
-        روز مانده
-      </text>
-    </svg>
+      <Icon size={18} className={cn('shrink-0', tone === 'gold' ? 'text-amber-500' : 'text-muted-foreground/70')} />
+      <span className="flex-1">{label}</span>
+      <ChevronLeft size={15} className="shrink-0 text-muted-foreground/40" />
+    </Link>
   );
 }
 
 export default function PanelDashboard() {
   const { data: profile } = usePanelProfile();
-  const { data: saved } = useSavedLists();
-  const { data: mine } = useMyProducts();
-  const { data: myRequests } = useMyBuyRequests();
   const { data: myPackage } = useMyPackage();
-  const { user, logout } = useAuth();
-  const { toast } = useToast();
-  const aboutMutation = useUpdatePanelProfile();
-  const [aboutOpen, setAboutOpen] = useState(false);
-  const [aboutText, setAboutText] = useState('');
-  const [aboutError, setAboutError] = useState('');
+  const { user, setRole } = useAuth();
 
   const isBuyer = user?.role === 'buyer';
+  const role = isBuyer ? 'buyer' : 'seller';
 
   if (!profile) {
     return (
@@ -139,240 +74,179 @@ export default function PanelDashboard() {
     );
   }
 
-  const { userInfo: u, profile: pf } = profile;
-  const completion = completionOf(pf, u.isVerified);
-  const confirmedCount = mine?.counts.confirmed ?? 0;
-  const savedCount = saved?.reduce((a, l) => a + l.cnt, 0) ?? 0;
-  const confirmedRequests = myRequests?.counts.confirmed ?? 0;
+  const { userInfo: u } = profile;
+  const fullName = `${u.firstName} ${u.lastName}`;
+  const planTitle =
+    myPackage?.planTitle ?? (myPackage?.pakageType === 1 ? 'دو ماهه' : myPackage?.pakageType === 2 ? 'شش ماهه' : 'یک‌ساله');
+
+  /** منوی نقش داخل صفحه — فقط موبایل (دسکتاپ: همین آیتم‌ها در سایدبارند،
+   *  الگوی hidden-in-desktop باسکول). «ایمچ من» خودش حذف می‌شود — همین‌جاییم */
+  const roleMenu = isBuyer
+    ? [
+        { href: '/panel/buyer-book', label: 'دفتر خرید من', icon: BookOpenText },
+        { href: '/panel/buy-requests/new', label: 'ثبت درخواست خرید', icon: ShoppingCart },
+        { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare },
+        { href: '/panel/suggested-sellers', label: 'فروشندگان پیشنهادی', icon: Sparkles },
+        { href: '/panel/my-requests', label: 'درخواست های من', icon: FileText },
+        { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
+        { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
+      ]
+    : [
+        { href: '/panel/products/new', label: 'ثبت محصول', icon: PlusSquare },
+        { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare },
+        { href: '/panel/buyers', label: 'خریداران', icon: Users },
+        { href: '/panel/suggested-buyers', label: 'خریداران پیشنهادی', icon: BadgeCheck },
+        { href: '/panel/products', label: 'محصولات من', icon: Package },
+        { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
+        { href: '/panel/pricing', label: 'ارتقا عضویت', icon: Medal },
+        { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
+      ];
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4">
-      {/* خوش‌آمد + تکمیل پروفایل */}
-        {/* خوش‌آمد + تکمیل پروفایل — نام و آواتار به صفحه پروفایل */}
-      <PanelCard>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href="/panel/profile"
-            className="grid size-12 shrink-0 place-items-center rounded-full bg-primary/10 text-base font-extrabold text-primary transition-colors hover:bg-primary/20"
-            aria-label="مشاهده صفحه پروفایل"
-          >
-            {u.firstName.charAt(0)}
-          </Link>
-          <div className="min-w-0 flex-1">
-            <p className="flex flex-wrap items-center gap-2 text-base font-extrabold">
-              <Link href="/panel/profile" className="transition-colors hover:text-primary">
-                {u.firstName} {u.lastName}
-              </Link>
-              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-600">
-                {isBuyer ? 'خریدار' : 'فروشنده'}
-              </span>
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">{pf.address}</p>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-md"
-            onClick={() => {
-              setAboutText(pf.description ?? '');
-              setAboutOpen(true);
-            }}
-          >
-            <Pencil size={14} /> درباره شما
-          </Button>
-        </div>
-
-        {/* سنجه تکمیل پروفایل — کل کادر به صفحه پروفایل لینک است (خواسته مالک) */}
+    <div className="mx-auto max-w-2xl">
+      {/* باکس لینک پروفایل — مینیمال عین سکشن profile باسکول: تصویر + نام + نقش + پیکان */}
+      <PanelCard className="p-0">
         <Link
           href="/panel/profile"
-          className="mt-4 block rounded-md bg-secondary/70 p-3 transition-colors hover:bg-secondary"
-          aria-label="تکمیل پروفایل — رفتن به صفحه پروفایل"
+          className="flex items-center gap-3 p-4 transition-colors hover:bg-secondary/50"
+          aria-label="مشاهده صفحه پروفایل"
         >
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold">تکمیل پروفایل :</span>
-            <span
-              className={cn(
-                'font-extrabold',
-                completion.label === 'عالی' ? 'text-emerald-600' : completion.label === 'متوسط' ? 'text-amber-600' : 'text-red-500',
-              )}
-            >
-              {completion.label}
+          {u.avatarUrl ? (
+            <img src={u.avatarUrl} alt="" className="size-12 shrink-0 rounded-full object-cover" />
+          ) : (
+            <span className="grid size-12 shrink-0 place-items-center rounded-full bg-primary/10 text-base font-extrabold text-primary">
+              {u.firstName.charAt(0)}
             </span>
-          </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background">
-            <div
-              className={cn(
-                'h-full rounded-full transition-all',
-                completion.label === 'عالی' ? 'bg-emerald-500' : completion.label === 'متوسط' ? 'bg-amber-500' : 'bg-red-400',
-              )}
-              style={{ width: `${Math.max(8, completion.pct)}%` }}
-              aria-label={`تکمیل پروفایل ${toFa(completion.pct)} درصد`}
-            />
-          </div>
-          <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
-            هویت حساب کاربری خود را احراز کنید. با تایید هویت خود، برای{' '}
-            {isBuyer ? 'فروشندگان، خریدار مطمئن‌تری' : 'خریداران، فروشنده مطمئن‌تری'} باشید.
-          </p>
+          )}
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-extrabold">{fullName}</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              {isBuyer ? 'خریدار' : 'فروشنده'}
+              {u.isVerified && <> — <span className="text-verified">هویت احراز شده</span></>}
+            </span>
+          </span>
+          <ChevronLeft size={18} className="shrink-0 text-muted-foreground/50" />
         </Link>
       </PanelCard>
 
-      {/* وضعیت ویژه بودن — نمودار دایره‌ای روزهای باقی‌مانده (خواسته مالک ۳۱-۱۰) */}
-      {myPackage?.isActive ? (
-        <PanelCard className="flex flex-wrap items-center gap-4">
-          <VipDonut
-            daysLeft={myPackage.daysLeft ?? 0}
-            totalDays={myPackage.totalDays ?? myPackage.daysLeft ?? 1}
-          />
-          <div className="min-w-0 flex-1">
-            <p className="flex flex-wrap items-center gap-2 text-sm font-extrabold">
-              <Crown size={16} className="text-red-600" />
-              اشتراک ویژه {myPackage.planTitle ?? (myPackage.pakageType === 1 ? 'دو ماهه' : myPackage.pakageType === 2 ? 'شش ماهه' : 'یک‌ساله')}
-              <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">کاربر ویژه</span>
-            </p>
-            <p className="mt-1.5 text-xs leading-6 text-muted-foreground">
-              {toFa(myPackage.daysLeft ?? 0)} روز از {toFa(myPackage.totalDays ?? myPackage.daysLeft ?? 0)} روز اعتبار شما
-              باقی مانده است{myPackage.expiresAt && <> — اعتبار تا {dateFa(myPackage.expiresAt)}</>}.
-            </p>
-            <Button asChild size="sm" variant="outline" className="mt-2.5 rounded-md text-xs">
-              <Link href="/panel/pricing">تمدید / خرید بسته جدید (رزرو)</Link>
-            </Button>
-          </div>
-        </PanelCard>
-      ) : (
-        <PanelCard className="flex flex-wrap items-center gap-4">
-          <span className="grid size-[104px] shrink-0 place-items-center rounded-full bg-secondary text-muted-foreground">
-            <Crown size={34} className="opacity-50" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-extrabold">حساب شما رایگان است</p>
-            <p className="mt-1.5 text-xs leading-6 text-muted-foreground">
-              با ارتقا به اشتراک ویژه، ثبت نامحدود محصول، دسترسی به همه خریداران، نشان فروشنده ویژه و نمایش بالاتر
-              از رقبا را داشته باشید.
-            </p>
-            <Button asChild size="sm" className="mt-2.5 rounded-md text-xs">
-              <Link href="/panel/pricing">مشاهده بسته‌ها و ارتقا به ویژه</Link>
-            </Button>
-          </div>
-        </PanelCard>
-      )}
-
-      {/* میان‌برهای آماری */}
-      {isBuyer ? (
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-          <QuickStat icon={Bookmark} label="نشان شده ها" value={toFa(savedCount)} href="/panel/saved" />
-          <QuickStat icon={FileText} label="درخواست های من" value={toFa(confirmedRequests)} href="/panel/my-requests" />
-          <QuickStat icon={Sparkles} label="پیشنهادی" value={toFa(2)} href="/panel/suggested-sellers" />
-          <QuickStat icon={Coins} label="موجودی" value={`${toFa(u.walletBalance)} تومان`} href="/panel/wallet" />
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-          <QuickStat icon={Bookmark} label="نشان شده ها" value={toFa(savedCount)} href="/panel/saved" />
-          <QuickStat icon={Package} label="محصولات من" value={toFa(confirmedCount)} href="/panel/products" />
-          <QuickStat icon={BarChart3} label="خریداران" value={toFa(12)} href="/panel/buyers" />
-          <QuickStat icon={Coins} label="موجودی" value={`${toFa(u.walletBalance)} تومان`} href="/panel/wallet" />
-        </div>
-      )}
-
-      {/* دعوت به اقدام خریدار — ثبت درخواست خرید */}
-      {isBuyer && (
-        <PanelCard className="flex flex-wrap items-center gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-md border border-primary/20 bg-primary/5 text-primary">
-            <ShoppingCart size={19} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold leading-6">به دنبال خرید عمده چه محصولی هستید؟</p>
-            <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-              با ثبت یک درخواست خرید، از چندین فروشنده قیمت عمده دریافت کنید.
-            </p>
-          </div>
-          <Button asChild size="sm" className="rounded-md">
-            <Link href="/panel/buy-requests/new">ثبت درخواست خرید</Link>
-          </Button>
-        </PanelCard>
-      )}
-
-      {/* کارت‌های ارتقا — احراز هویت و نصب برنامه */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <PanelCard className="flex flex-col items-start">
-          <span className="grid size-10 place-items-center rounded-md border border-sky-200 bg-sky-50 text-sky-600">
-            <ShieldCheck size={19} />
-          </span>
-          <p className="mt-3 text-sm font-bold leading-6">گام بعدی تا یک پروفایل حرفه‌ای مطمئن، احراز هویت است.</p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            برای جلب اعتماد بیشتر {isBuyer ? 'فروشندگان' : 'خریداران'} در معاملات، همین حالا احراز هویت کنید.
-          </p>
-          <Button asChild size="sm" className="mt-4 rounded-md">
-            <Link href="/panel/verification">احراز هویت</Link>
-          </Button>
-        </PanelCard>
-
-        <PanelCard className="flex flex-col items-start">
-          <span className="grid size-10 place-items-center rounded-md border border-amber-200 bg-amber-50 text-amber-600">
-            <Smartphone size={19} />
-          </span>
-          <p className="mt-3 text-sm font-bold leading-6">نصب برنامه ایمچ</p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            {isBuyer
-              ? 'اطلاع از قیمت لحظه‌ای محصولات — با اپلیکیشن، پاسخ فروشندگان را زودتر ببینید.'
-              : 'شکار لحظه‌ای خریداران — با اپلیکیشن، خریداران جدید را زودتر از همه ببینید.'}
-          </p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="mt-4 rounded-md"
-            onClick={() => toast({ description: 'اپلیکیشن ایمچ به‌زودی در دسترس قرار می‌گیرد.' })}
+      {/* باکس اشتراک — مینیمال (خواسته مالک دور ۱۴): بدون جملهٔ شمارش روز و
+          بدون دکمهٔ تمدید/رزرو؛ کل ردیف به ارتقا عضویت می‌رود */}
+      <PanelCard className="mt-3 p-0">
+        <Link
+          href="/panel/pricing"
+          className="flex items-center gap-3 p-4 transition-colors hover:bg-secondary/50"
+          aria-label="ارتقا عضویت"
+        >
+          <span
+            className={cn(
+              'grid size-10 shrink-0 place-items-center rounded-md',
+              myPackage?.isActive
+                ? 'bg-amber-400 text-amber-950 ring-1 ring-amber-500/50'
+                : 'border border-dashed border-border text-muted-foreground',
+            )}
           >
-            نصب برنامه
-          </Button>
-        </PanelCard>
-      </div>
-
-      {/* لینک‌های حساب کاربری — عین menu-list باسکول (موبایل‌پسند، همه‌جا نمایش) */}
-      <AccountLinks />
-
-      {/* مودال درباره شما — ذخیره واقعی در پروفایل */}
-      <Dialog open={aboutOpen} onOpenChange={(v) => { setAboutOpen(v); if (!v) setAboutError(''); }}>
-        <DialogContent className="rounded-lg sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-start">درباره شما</DialogTitle>
-          </DialogHeader>
-          <p className="text-start text-xs text-muted-foreground">درباره ی خودتان حداقل ۳ تا ۵ خط بنویسید.</p>
-          <Textarea
-            dir="rtl"
-            value={aboutText}
-            onChange={(e) => setAboutText(e.target.value)}
-            rows={7}
-            className="resize-none text-sm leading-7"
-            placeholder="به عنوان مثال: سامی جابر هستم از شهر تهران، عرضه‌کننده عمده پسته و خشکبار…"
-            maxLength={2000}
-          />
-          <div className="flex items-center justify-between">
-            <span className={cn('text-[11px]', aboutText.trim().length >= 100 ? 'text-emerald-600' : 'text-muted-foreground')}>
-              {aboutText.trim().length >= 100 ? 'کافی' : 'کمی طولانی‌تر بنویسید تا اعتماد طرف مقابل جلب شود'}
+            <Crown size={19} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-2 text-sm font-extrabold">
+              {myPackage?.isActive ? <>اشتراک ویژه {planTitle}</> : 'ارتقا به اشتراک ویژه'}
+              {myPackage?.isActive && (
+                <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-amber-950">
+                  کاربر ویژه
+                </span>
+              )}
             </span>
-            <Button
-              className="rounded-md"
-              disabled={aboutMutation.isPending}
-              onClick={() => {
-                setAboutError('');
-                aboutMutation.mutate(
-                  { description: aboutText.trim() },
-                  {
-                    onSuccess: () => {
-                      setAboutOpen(false);
-                      toast({ description: 'متن «درباره شما» ذخیره شد.' });
-                    },
-                    onError: (err: Error) => setAboutError(err.message || 'ذخیره ناموفق بود — دوباره تلاش کنید.'),
-                  },
-                );
-              }}
-            >
-              {aboutMutation.isPending ? 'در حال ذخیره…' : 'ذخیره'}
-            </Button>
-          </div>
-          {aboutError && <p className="text-start text-xs text-destructive">{aboutError}</p>}
-        </DialogContent>
-      </Dialog>
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              {myPackage?.isActive ? 'نشان فروشنده ویژه و مزایای اشتراک فعال است' : 'ثبت نامحدود محصول، دسترسی به همه خریداران'}
+            </span>
+          </span>
+          <ChevronLeft size={18} className="shrink-0 text-muted-foreground/50" />
+        </Link>
+      </PanelCard>
+
+      {/* کیف پول — فقط موبایلِ فروشنده (الگوی ردیف موجودی باسکول؛ خریدار در
+          «تاریخچه تراکنش‌ها» به کیف پول می‌رسد) */}
+      {!isBuyer && (
+        <PanelCard className="mt-3 p-0 lg:hidden">
+          <Link
+            href="/panel/wallet"
+            className="flex items-center gap-3 p-4 transition-colors hover:bg-secondary/50"
+          >
+            <span className="grid size-10 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
+              <Wallet size={18} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs text-muted-foreground">موجودی کیف پول</span>
+              <span className="block font-extrabold font-num">
+                {toFa(u.walletBalance)} <span className="text-xs font-normal text-muted-foreground">تومان</span>
+              </span>
+            </span>
+            <ChevronLeft size={18} className="shrink-0 text-muted-foreground/50" />
+          </Link>
+        </PanelCard>
+      )}
+
+      {/* سوییچ فروشنده/خریدار — فقط موبایل؛ عمداً بالاتر از منو (خواستهٔ
+          مالک: «بهتره بره بالاتر تا کاربر راحت‌تر و سریع‌تر بین دو پنل سوییچ کند») */}
+      <PanelCard className="mt-3 p-0 lg:hidden">
+        <p className="px-4 pb-1.5 pt-3 text-xs text-muted-foreground">
+          نوع حساب کاربری شما{' '}
+          <span className="font-bold text-foreground">{isBuyer ? 'خریدار' : 'فروشنده'}</span> است
+        </p>
+        <div className="flex gap-2 px-4 pb-4 pt-1" role="radiogroup" aria-label="نوع حساب کاربری">
+          {(
+            [
+              { key: 'seller', label: 'فروشنده' },
+              { key: 'buyer', label: 'خریدار' },
+            ] as const
+          ).map(({ key, label }) => {
+            const active = role === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => setRole(key)}
+                className={cn(
+                  'h-11 flex-1 rounded-md text-sm font-extrabold transition-all',
+                  active
+                    ? 'bg-primary text-primary-foreground shadow-md'
+                    : 'border border-border text-muted-foreground hover:bg-secondary hover:text-foreground',
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </PanelCard>
+
+      {/* منوی نقش — فقط موبایل (دسکتاپ: سایدبار) */}
+      <PanelCard className="mt-3 p-0 lg:hidden">
+        <p className="px-4 pb-1 pt-3 text-xs font-bold text-muted-foreground">
+          {isBuyer ? 'منوی خریدار' : 'منوی فروشنده'}
+        </p>
+        <nav className="divide-y divide-border/70 px-4 pb-2" aria-label="منوی پنل">
+          {roleMenu.map(({ href, label, icon }) => (
+            <MenuRow key={href} href={href} label={label} icon={icon} />
+          ))}
+        </nav>
+      </PanelCard>
+
+      {/* لینک‌های نقشیِ خارج از سایدبار خریدار — همهٔ بریک‌پوینت‌ها (الگوی
+          باسکول: آیتم‌هایی که سایدبار ندارند در باسکول من می‌مانند) */}
+      {isBuyer && (
+        <PanelCard className="mt-3 p-0">
+          <nav className="divide-y divide-border/70 px-4 py-2" aria-label="خرید">
+            <MenuRow href="/panel/received-offers" label="پیشنهادهای تامین" icon={Inbox} />
+            <MenuRow href="/panel/pricing" label="ارتقا عضویت" icon={Medal} tone="gold" />
+          </nav>
+        </PanelCard>
+      )}
+
+      {/* لینک‌های حساب کاربری — عین menu-list باسکول (همهٔ بریک‌پوینت‌ها) */}
+      <AccountLinks className="mt-3" />
     </div>
   );
 }

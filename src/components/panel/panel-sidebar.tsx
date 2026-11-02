@@ -1,14 +1,17 @@
 'use client';
 
 /**
- * سایدبار پنل — عین باسکول (خواسته مالک ۲-۱۱ دور سیزدهم):
- * هدر (برگر + لوگو) → پروفایل (تصویر/نام/نقش/شهر) → کیف پول → سوییچ فروشنده/خریدار → منوی کوتاه.
- * فروشنده فقط ۹ آیتم دارد (دقیقاً منوی باسکول): ایمچ من، ثبت محصول، پیام ها، خریداران،
- * خریداران پیشنهادی، محصولات من، احراز هویت، ارتقا عضویت، نشان شده ها.
- * بقیه (داشبورد/تراکنش‌ها/ویرایش پروفایل/پرداخت امن/راهنما/پشتیبانی/نظرسنجی/خروج)
+ * سایدبار پنل — عین باسکول (خواسته مالک ۲-۱۱ دور سیزدهم و چهاردهم):
+ * هدر (برگر + لوگو) → پروفایل (تصویر/نام/نقش/شهر) → کیف پول (کارت برجسته — فقط
+ * فروشنده؛ باسکول خریدار کیف پول ندارد) → سوییچ فروشنده/خریدار → منوی کوتاه.
+ * فروشنده فقط ۹ آیتم دارد (دقیقاً منوی باسکول). خریدار ۸ آیتم دارد (۷ آیتم باسکول
+ * + «دفتر خرید من» تمایز ما) — «پیشنهادهای تامین» و «ارتقا عضویت» خریدار به
+ * صفحه ایمچ من رفتند (آیتم‌های خارج از سایدبار در باسکول من زندگی می‌کنند).
+ * بقیه (تراکنش‌ها/ویرایش پروفایل/پرداخت امن/راهنما/پشتیبانی/نظرسنجی/خروج)
  * در صفحهٔ «ایمچ من» (AccountLinks) زندگی می‌کنند — مثل باسکول من.
  * دسکتاپ: ستون ثابت سمت راست (max 250px) با حالت جمع‌شونده (آیکون‌ها).
- * موبایل: همان محتوا داخل دراور بازشو از راست.
+ * موبایل: همان محتوا داخل دراور بازشو از راست (صفحه ایمچ من خودش هم منوی
+ * کامل دارد — الگوی menu-list باسکول).
  */
 
 import Link from 'next/link';
@@ -19,7 +22,6 @@ import {
   Bookmark,
   ChevronLeft,
   FileText,
-  Inbox,
   Medal,
   Menu,
   MessageSquare,
@@ -59,18 +61,18 @@ export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
 ];
 
-/** منوی خریدار — جمع‌شده به همان سبک؛ دفتر خرید (تمایز ما با باسکول) بالاتر از همهٔ
- *  آیتم‌های خرید (خواسته مالک ۳۱-۱۰)؛ لینک‌های حساب مشترک در «ایمچ من» است */
+/** منوی خریدار — ۸ آیتم: دقیقاً منوی باسکول (۷ آیتم) + «دفتر خرید من» (تمایز ما
+ *  با باسکول، خواسته مالک ۳۱-۱۰). «پیشنهادهای تامین» و «ارتقا عضویت» از سایدبار
+ *  حذف شدند و در صفحه ایمچ من زندگی می‌کنند (دور چهاردهم — باسکول برای خریدار
+ *  نه کیف پول دارد نه ارتقا عضویت در سایدبار) */
 export const BUYER_NAV: PanelNavItem[] = [
   { href: '/panel', label: 'ایمچ من', icon: UserRound, exact: true },
   { href: '/panel/buyer-book', label: 'دفتر خرید من', icon: BookOpenText },
   { href: '/panel/buy-requests/new', label: 'ثبت درخواست خرید', icon: ShoppingCart, exact: true },
-  { href: '/panel/my-requests', label: 'درخواست های من', icon: FileText },
-  { href: '/panel/received-offers', label: 'پیشنهادهای تامین', icon: Inbox },
-  { href: '/panel/suggested-sellers', label: 'فروشندگان پیشنهادی', icon: Sparkles },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
+  { href: '/panel/suggested-sellers', label: 'فروشندگان پیشنهادی', icon: Sparkles },
+  { href: '/panel/my-requests', label: 'درخواست های من', icon: FileText },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
-  { href: '/panel/pricing', label: 'ارتقا عضویت', icon: Medal },
   { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
 ];
 
@@ -167,28 +169,34 @@ export function PanelSidebar({
           {!collapsed && <ChevronLeft size={16} className="shrink-0 text-muted-foreground/60" />}
         </Link>
 
-        {/* کیف پول */}
-        <div className={cn('px-4 pt-4', collapsed && 'px-2')}>
-          <Link
-            href="/panel/wallet"
-            onClick={onNavigate}
-            className={cn(
-              'flex w-full items-center gap-2 rounded-md border border-border px-3 py-2.5 text-start transition-colors hover:bg-secondary',
-              collapsed && 'justify-center px-0',
-            )}
-            title="شارژ کیف پول"
-          >
-            <Wallet size={16} className="shrink-0 text-amber-400" />
-            {!collapsed && (
-              <span className="min-w-0 flex-1 text-xs">
-                <span className="block text-muted-foreground">موجودی</span>
-                <span className="block font-bold">
-                  {toFa(wallet)} <span className="font-normal text-muted-foreground">تومان</span>
+        {/* کیف پول — کارت برجسته با فونت بولد (خواسته مالک دور چهاردهم:
+            «روی باکس کیف پول یه کم جلوه بده، فونتش هم حداقل بولد»). الگوی
+            wallet-main باسکول: کارت رنگی گرد با متن سفید. فقط فروشنده —
+            باسکول برای خریدار کیف پول در سایدبار ندارد؛ خریدار از
+            «تاریخچه تراکنش‌ها» در ایمچ من به کیف پول می‌رسد */}
+        {role !== 'buyer' && (
+          <div className={cn('px-4 pt-4', collapsed && 'px-2')}>
+            <Link
+              href="/panel/wallet"
+              onClick={onNavigate}
+              className={cn(
+                'flex w-full items-center gap-2.5 rounded-xl bg-primary p-3 text-start text-primary-foreground transition-all hover:opacity-90 hover:shadow-md',
+                collapsed && 'justify-center p-2',
+              )}
+              title="شارژ کیف پول"
+            >
+              <Wallet size={19} className="shrink-0" />
+              {!collapsed && (
+                <span className="min-w-0 flex-1 text-xs">
+                  <span className="block opacity-80">موجودی</span>
+                  <span className="block text-sm font-extrabold font-num">
+                    {toFa(wallet)} <span className="text-[10px] font-normal opacity-80">تومان</span>
+                  </span>
                 </span>
-              </span>
-            )}
-          </Link>
-        </div>
+              )}
+            </Link>
+          </div>
+        )}
 
         {/* سوییچ فروشنده / خریدار — درشت و تابلوتر (خواسته مالک): سمت فعال
             پررنگ/پرشده دیده می‌شود تا کاربر بفهمد کدام پنل را می‌بیند */}

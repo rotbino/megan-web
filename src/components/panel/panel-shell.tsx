@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { Crown, Home, LogIn, Loader2 } from 'lucide-react';
 import { PanelSidebar } from '@/components/panel/panel-sidebar';
 import { PasswordBanner, PasswordLock } from '@/components/panel/password-banner';
-import { usePanelProfile } from '@/lib/mock/hooks';
+import { usePanelProfile, useMyPackage } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -39,6 +39,7 @@ function LoginGate({ onOpen }: { onOpen: () => void }) {
 export function PanelShell({ children }: { children: React.ReactNode }) {
   const { user, requireAuth } = useAuth();
   const { data: profile } = usePanelProfile();
+  const { data: myPackage } = useMyPackage();
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -140,28 +141,47 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
         )}
       >
         {/* هدر بالای محتوا (دسکتاپ) — الگوی right-menu-header باسکول (خواسته مالک
-            ۲-۱۱ دور سیزدهم): آیکون خانه برای بازگشت به سایت + دکمهٔ طلایی
-            «ارتقا به فروشنده ویژه» کنار سایدبار. طلایی = قانون نشان فروشنده ویژه
-            (RULES §۱-ب) — رنگ تمایز ثابت، از رنگ برند کاربر پیروی نمی‌کند. */}
+            ۲-۱۱ دور سیزدهم): راست = آیکون خانه + دکمهٔ طلایی «ارتقا به فروشنده ویژه»؛
+            چپ = نام و تصویر پروفایل کاربر (خواسته مالک دور چهاردهم). خط ظریف زیرش
+            هدر را از محتوا جدا می‌کند (خواسته دور چهاردهم). طلایی = قانون نشان
+            فروشنده ویژه (RULES §۱-ب). دکمهٔ ارتقا ظریف است و وقتی بستهٔ فعال
+            است حذف می‌شود (تکرار ممنوع — وضعیت در باکس اشتراک ایمچ من دیده می‌شود). */}
         {user && (
-          <div className="mb-4 hidden items-center gap-2 lg:flex">
-            <Link
-              href="/"
-              aria-label="رفتن به سایت ایمچ"
-              title="رفتن به سایت ایمچ"
-              className="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            >
-              <Home size={20} />
-            </Link>
-            {user.role !== 'buyer' && (
+          <div className="mb-4 hidden items-center justify-between gap-3 border-b border-border pb-3 lg:flex">
+            <div className="flex items-center gap-2">
               <Link
-                href="/panel/pricing"
-                className="flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-amber-400 px-4 text-sm font-extrabold text-amber-950 shadow-[0_2px_8px_rgba(254,239,154,0.5)] ring-1 ring-amber-500/50 transition-colors hover:bg-amber-300"
+                href="/"
+                aria-label="رفتن به سایت ایمچ"
+                title="رفتن به سایت ایمچ"
+                className="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               >
-                <Crown size={16} />
-                ارتقا به فروشنده ویژه
+                <Home size={20} />
               </Link>
-            )}
+              {user.role !== 'buyer' && !myPackage?.isActive && (
+                <Link
+                  href="/panel/pricing"
+                  className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-amber-400 px-3.5 text-[13px] font-bold text-amber-950 shadow-[0_1px_5px_rgba(254,239,154,0.45)] ring-1 ring-amber-500/50 transition-colors hover:bg-amber-300"
+                >
+                  <Crown size={14} />
+                  ارتقا به فروشنده ویژه
+                </Link>
+              )}
+            </div>
+            {/* چپِ هدر = نام + تصویر پروفایل (خواسته مالک دور چهاردهم) */}
+            <Link
+              href="/panel/profile"
+              className="flex min-w-0 items-center gap-2.5 rounded-full p-1 ps-3 text-sm font-bold transition-colors hover:bg-secondary"
+              title="پروفایل"
+            >
+              <span className="max-w-[180px] truncate">{profile ? `${profile.userInfo.firstName} ${profile.userInfo.lastName}` : 'کاربر ایمچ'}</span>
+              {profile?.userInfo.avatarUrl ? (
+                <img src={profile.userInfo.avatarUrl} alt="" className="size-9 shrink-0 rounded-full object-cover" />
+              ) : (
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-extrabold text-primary">
+                  {profile ? profile.userInfo.firstName.charAt(0) : '؟'}
+                </span>
+              )}
+            </Link>
           </div>
         )}
         {hydrated ? (
