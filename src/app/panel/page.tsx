@@ -1,13 +1,15 @@
 'use client';
 
 /**
- * ایمچ من — خلوت عین «باسکول من» (خواسته مالک ۲-۱۱ دور چهاردهم):
+ * ایمچ من — خلوت عین «باسکول من» (خواسته مالک ۲-۱۱ دور چهاردهم و پانزدهم):
  * فقط باکس لینک پروفایل + باکس اشتراک، و بلافاصله بعدش آیتم‌های منو.
- * آمارها/کارت‌های ارتقا/تکمیل پروفایل حذف شدند — «هر عنصر دلیلی برای بودن
- * باید داشته باشد» (RULES §۱-ب مینیمالیسم).
- * موبایل: منوی نقش + کیف پول + سوییچ حساب داخل خود صفحه می‌آیند (الگوی
- * menu-list باسکول — منوی جداگانه منسوخ است)؛ سوییچ عمداً بالاتر از منو
- * است تا سوییچ سریع بین دو پنل ممکن باشد (خواسته مالک).
+ *  • باکس اشتراک (دور ۱۵): تنها یک کادر بسته داریم — با بستهٔ فعال، نمودار
+ *    دایره‌ای روزهای باقی‌مانده (کوچکتر از قبل) + عنوان؛ بی‌بسته، همان کادر
+ *    تبدیل به کال‌تو‌اکشن خرید بسته می‌شود. بدون جملهٔ اضافه و بدون دکمهٔ تمدید.
+ *  • موبایل خریدار (دور ۱۵): سه‌تای مهم (نشان شده ها، دفتر خرید، درخواستهای
+ *    خرید) افقی بالای منوی عمودی — الگوی top-menu باسکول؛ منوی عمودی خلوت‌تر
+ *    می‌شود (این سه + «ثبت درخواست خرید» و «پیشنهادهای تامین» حذف‌شده داخلش نیستند).
+ *  • سوییچ فروشنده/خریدار داخل صفحه (موبایل) — بالاتر از منو برای سوییچ سریع.
  */
 
 import Link from 'next/link';
@@ -18,13 +20,10 @@ import {
   ChevronLeft,
   Crown,
   FileText,
-  Inbox,
   Medal,
   MessageSquare,
   Package,
-  PlusSquare,
   ShieldCheck,
-  ShoppingCart,
   Sparkles,
   Users,
   Wallet,
@@ -36,26 +35,100 @@ import { AccountLinks } from '@/components/panel/account-links';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
+/**
+ * نمودار دایره‌ای روزهای باقی‌ماندهٔ اعتبار ویژه (خواسته مالک ۳۱-۱۰؛ برگشت
+ * دور ۱۵ «چرا دایره روزهای باقی مانده رو برداشتی؟» — این بار فشرده‌تر):
+ * کل دایره = کل روزهای دورهٔ بسته؛ کمان قرمز = روزهای باقی‌مانده.
+ */
+function VipDonut({ daysLeft, totalDays, size = 76 }: { daysLeft: number; totalDays: number; size?: number }) {
+  const stroke = 8;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const ratio = totalDays > 0 ? Math.min(1, Math.max(0, daysLeft / totalDays)) : 0;
+  const offset = c * (1 - ratio);
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      role="img"
+      aria-label={`اعتبار ویژه: ${toFa(daysLeft)} روز از ${toFa(totalDays)} روز باقی مانده`}
+      className="shrink-0"
+    >
+      {/* مسیر کم‌رنگ = کل دوره */}
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={stroke} className="text-red-100" />
+      {/* کمان قرمز = روزهای باقی‌مانده */}
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={offset}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        className="text-red-600 transition-[stroke-dashoffset] duration-700"
+      />
+      {/* شمارندهٔ مرکز */}
+      <text
+        x="50%"
+        y="47%"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        className="fill-foreground font-num"
+        style={{ fontSize: size * 0.27, fontWeight: 800 }}
+      >
+        {toFa(daysLeft)}
+      </text>
+      <text
+        x="50%"
+        y="67%"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        className="fill-muted-foreground"
+        style={{ fontSize: size * 0.13, fontWeight: 700 }}
+      >
+        روز مانده
+      </text>
+    </svg>
+  );
+}
+
 /** ردیف منوی درون‌صفحه — الگوی list-item باسکول: آیکون + متن + پیکان، جداشده با خط ظریف */
 function MenuRow({
   href,
   label,
   icon: Icon,
-  tone = 'default',
 }: {
   href: string;
   label: string;
   icon: React.ElementType;
-  tone?: 'default' | 'gold';
 }) {
   return (
     <Link
       href={href}
       className="flex items-center gap-3 py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
     >
-      <Icon size={18} className={cn('shrink-0', tone === 'gold' ? 'text-amber-500' : 'text-muted-foreground/70')} />
+      <Icon size={18} className="shrink-0 text-muted-foreground/70" />
       <span className="flex-1">{label}</span>
       <ChevronLeft size={15} className="shrink-0 text-muted-foreground/40" />
+    </Link>
+  );
+}
+
+/** آیتم منوی افقی — الگوی top-menu باسکول: دایرهٔ آیکون + برچسب زیرش */
+function QuickTile({ href, label, icon: Icon }: { href: string; label: string; icon: React.ElementType }) {
+  return (
+    <Link
+      href={href}
+      className="group flex h-full flex-col items-center justify-center gap-2 rounded-md py-3 transition-colors hover:bg-secondary/50"
+    >
+      <span className="grid size-11 place-items-center rounded-full border border-border bg-card text-muted-foreground transition-colors group-hover:border-primary/40 group-hover:text-primary">
+        <Icon size={20} />
+      </span>
+      <span className="text-xs">{label}</span>
     </Link>
   );
 }
@@ -78,27 +151,35 @@ export default function PanelDashboard() {
   const fullName = `${u.firstName} ${u.lastName}`;
   const planTitle =
     myPackage?.planTitle ?? (myPackage?.pakageType === 1 ? 'دو ماهه' : myPackage?.pakageType === 2 ? 'شش ماهه' : 'یک‌ساله');
+  const active = Boolean(myPackage?.isActive);
+  // دایره فقط با دادهٔ کامل معنا دارد؛ فعالِ بی‌داده → تاج طلایی جای دایره می‌نشیند
+  const daysLeft = myPackage?.daysLeft ?? null;
+  const totalDays = myPackage?.totalDays ?? null;
+  const hasDonut = active && daysLeft != null && daysLeft >= 0 && totalDays != null && totalDays > 0;
 
-  /** منوی نقش داخل صفحه — فقط موبایل (دسکتاپ: همین آیتم‌ها در سایدبارند،
-   *  الگوی hidden-in-desktop باسکول). «ایمچ من» خودش حذف می‌شود — همین‌جاییم */
+  /** سه‌تای مهم خریدار — افقی بالای منوی عمودی، فقط موبایل (خواسته مالک دور ۱۵) */
+  const buyerQuick = [
+    { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
+    { href: '/panel/buyer-book', label: 'دفتر خرید', icon: BookOpenText },
+    { href: '/panel/my-requests', label: 'درخواستهای خرید', icon: FileText },
+  ];
+
+  /** منوی نقش داخل صفحه — فقط موبایل (دسکتاپ: همین آیتم‌ها در سایدبارند).
+   *  سه‌تای افقی + «ثبت درخواست خرید» و «پیشنهادهای تامین» داخلش نیستند (دور ۱۵).
+   *  «ایمچ من» هم حذف می‌شود — همین‌جاییم. ارتقای فروشنده فقط بی‌بسته. */
   const roleMenu = isBuyer
     ? [
-        { href: '/panel/buyer-book', label: 'دفتر خرید من', icon: BookOpenText },
-        { href: '/panel/buy-requests/new', label: 'ثبت درخواست خرید', icon: ShoppingCart },
         { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare },
         { href: '/panel/suggested-sellers', label: 'فروشندگان پیشنهادی', icon: Sparkles },
-        { href: '/panel/my-requests', label: 'درخواست های من', icon: FileText },
         { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
-        { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
       ]
     : [
-        { href: '/panel/products/new', label: 'ثبت محصول', icon: PlusSquare },
+        { href: '/panel/products', label: 'محصولات من', icon: Package },
         { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare },
         { href: '/panel/buyers', label: 'خریداران', icon: Users },
         { href: '/panel/suggested-buyers', label: 'خریداران پیشنهادی', icon: BadgeCheck },
-        { href: '/panel/products', label: 'محصولات من', icon: Package },
         { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
-        { href: '/panel/pricing', label: 'ارتقا عضویت', icon: Medal },
+        ...(!active ? [{ href: '/panel/pricing', label: 'ارتقا عضویت', icon: Medal }] : []),
         { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
       ];
 
@@ -129,50 +210,67 @@ export default function PanelDashboard() {
         </Link>
       </PanelCard>
 
-      {/* باکس اشتراک — مینیمال (خواسته مالک دور ۱۴): بدون جملهٔ شمارش روز و
-          بدون دکمهٔ تمدید/رزرو؛ کل ردیف به ارتقا عضویت می‌رود */}
+      {/* باکس اشتراک — تنها کادر بستهٔ ما (خواسته مالک دور ۱۵): فعال → دایرهٔ
+          روزهای باقی‌مانده + عنوان (بدون جملهٔ «نشان فروشنده ویژه و مزایای
+          اشتراک فعال است» — حذف شد)؛ بی‌بسته → کال‌تو‌اکشن خرید بسته. تکرار
+          ممنوع: دکمهٔ تمدید/رزرو و لینک ارتقا جداگانه هم حذف شدند */}
       <PanelCard className="mt-3 p-0">
         <Link
           href="/panel/pricing"
-          className="flex items-center gap-3 p-4 transition-colors hover:bg-secondary/50"
-          aria-label="ارتقا عضویت"
+          className="flex items-center gap-4 p-4 transition-colors hover:bg-secondary/50"
+          aria-label={active ? 'جزئیات اشتراک' : 'خرید بسته اشتراک'}
         >
-          <span
-            className={cn(
-              'grid size-10 shrink-0 place-items-center rounded-md',
-              myPackage?.isActive
-                ? 'bg-amber-400 text-amber-950 ring-1 ring-amber-500/50'
-                : 'border border-dashed border-border text-muted-foreground',
-            )}
-          >
-            <Crown size={19} />
-          </span>
+          {active ? (
+            hasDonut ? (
+              <VipDonut daysLeft={daysLeft as number} totalDays={totalDays as number} />
+            ) : (
+              <span className="grid size-11 shrink-0 place-items-center rounded-md bg-amber-400 text-white ring-1 ring-amber-500/50">
+                <Crown size={20} />
+              </span>
+            )
+          ) : (
+            <span className="grid size-11 shrink-0 place-items-center rounded-md bg-amber-400 text-white ring-1 ring-amber-500/50">
+              <Crown size={20} />
+            </span>
+          )}
           <span className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-2 text-sm font-extrabold">
-              {myPackage?.isActive ? <>اشتراک ویژه {planTitle}</> : 'ارتقا به اشتراک ویژه'}
-              {myPackage?.isActive && (
-                <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-amber-950">
+              {active ? <>اشتراک ویژه {planTitle}</> : 'ارتقا به اشتراک ویژه'}
+              {active && (
+                <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-white ring-1 ring-amber-500/50">
                   کاربر ویژه
                 </span>
               )}
             </span>
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              {myPackage?.isActive ? 'نشان فروشنده ویژه و مزایای اشتراک فعال است' : 'ثبت نامحدود محصول، دسترسی به همه خریداران'}
-            </span>
+            {!active && (
+              <span className="mt-0.5 block text-xs text-muted-foreground">ثبت نامحدود محصول، دسترسی به همه خریداران</span>
+            )}
           </span>
           <ChevronLeft size={18} className="shrink-0 text-muted-foreground/50" />
         </Link>
       </PanelCard>
 
+      {/* منوی افقی سه‌تای مهم — فقط موبایل خریدار (خواسته مالک دور ۱۵: «مثل
+          باسکول بصورت افقی بالای منوی عمودی بزار که جلوی چشم باشن») */}
+      {isBuyer && (
+        <PanelCard className="mt-3 p-0 lg:hidden">
+          <div className="grid grid-cols-3">
+            {buyerQuick.map(({ href, label, icon }) => (
+              <QuickTile key={href} href={href} label={label} icon={icon} />
+            ))}
+          </div>
+        </PanelCard>
+      )}
+
       {/* کیف پول — فقط موبایلِ فروشنده (الگوی ردیف موجودی باسکول؛ خریدار در
-          «تاریخچه تراکنش‌ها» به کیف پول می‌رسد) */}
+          «تاریخچه تراکنش‌ها» به کیف پول می‌رسد). کاشی ساده بی‌رنگ (دور ۱۵) */}
       {!isBuyer && (
         <PanelCard className="mt-3 p-0 lg:hidden">
           <Link
             href="/panel/wallet"
             className="flex items-center gap-3 p-4 transition-colors hover:bg-secondary/50"
           >
-            <span className="grid size-10 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
+            <span className="grid size-10 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
               <Wallet size={18} />
             </span>
             <span className="min-w-0 flex-1">
@@ -200,17 +298,17 @@ export default function PanelDashboard() {
               { key: 'buyer', label: 'خریدار' },
             ] as const
           ).map(({ key, label }) => {
-            const active = role === key;
+            const activeRole = role === key;
             return (
               <button
                 key={key}
                 type="button"
                 role="radio"
-                aria-checked={active}
+                aria-checked={activeRole}
                 onClick={() => setRole(key)}
                 className={cn(
                   'h-11 flex-1 rounded-md text-sm font-extrabold transition-all',
-                  active
+                  activeRole
                     ? 'bg-primary text-primary-foreground shadow-md'
                     : 'border border-border text-muted-foreground hover:bg-secondary hover:text-foreground',
                 )}
@@ -233,17 +331,6 @@ export default function PanelDashboard() {
           ))}
         </nav>
       </PanelCard>
-
-      {/* لینک‌های نقشیِ خارج از سایدبار خریدار — همهٔ بریک‌پوینت‌ها (الگوی
-          باسکول: آیتم‌هایی که سایدبار ندارند در باسکول من می‌مانند) */}
-      {isBuyer && (
-        <PanelCard className="mt-3 p-0">
-          <nav className="divide-y divide-border/70 px-4 py-2" aria-label="خرید">
-            <MenuRow href="/panel/received-offers" label="پیشنهادهای تامین" icon={Inbox} />
-            <MenuRow href="/panel/pricing" label="ارتقا عضویت" icon={Medal} tone="gold" />
-          </nav>
-        </PanelCard>
-      )}
 
       {/* لینک‌های حساب کاربری — عین menu-list باسکول (همهٔ بریک‌پوینت‌ها) */}
       <AccountLinks className="mt-3" />

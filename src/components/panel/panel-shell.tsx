@@ -160,7 +160,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
               {user.role !== 'buyer' && !myPackage?.isActive && (
                 <Link
                   href="/panel/pricing"
-                  className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-amber-400 px-3.5 text-[13px] font-bold text-amber-950 shadow-[0_1px_5px_rgba(254,239,154,0.45)] ring-1 ring-amber-500/50 transition-colors hover:bg-amber-300"
+                  className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-amber-400 px-3.5 text-[13px] font-bold text-white shadow-[0_1px_5px_rgba(254,239,154,0.45)] ring-1 ring-amber-500/50 transition-colors hover:bg-amber-300"
                 >
                   <Crown size={14} />
                   ارتقا به فروشنده ویژه

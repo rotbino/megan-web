@@ -26,9 +26,7 @@ import {
   Menu,
   MessageSquare,
   Package,
-  PlusSquare,
   ShieldCheck,
-  ShoppingCart,
   Sparkles,
   UserRound,
   Users,
@@ -37,7 +35,7 @@ import {
 import { cn } from '@/lib/utils';
 import { toFa } from '@/lib/format';
 import { useAuth } from '@/lib/mock/auth';
-import { useUnreadMessagesCount } from '@/lib/mock/hooks';
+import { useMyPackage, useUnreadMessagesCount } from '@/lib/mock/hooks';
 import { UnreadBadge } from '@/components/shared/unread-badge';
 import type { PanelProfile } from '@/lib/types';
 
@@ -48,30 +46,33 @@ interface PanelNavItem {
   exact?: boolean;
 }
 
-/** منوی فروشنده — ۹ آیتم، ترتیب و برچسب عین باسکول (ارتقا عضویت نه «بسته‌های اشتراک») */
+/** منوی فروشنده — ۸ آیتم (خواسته مالک ۲-۱۱ دور پانزدهم): «ثبت محصول»
+ *  حذف شد («کاملاً اضافیه — داخل محصولات من دکمهٔ ثبت هست») و «محصولات من»
+ *  اول از همه آمد تا کاربر کمتر گیج شود. «ارتقا عضویت» فقط وقتی بستهٔ فعال
+ *  ندارد نمایش داده می‌شود (فیلتر در رندر) */
 export const SELLER_NAV: PanelNavItem[] = [
+  { href: '/panel/products', label: 'محصولات من', icon: Package },
   { href: '/panel', label: 'ایمچ من', icon: UserRound, exact: true },
-  { href: '/panel/products/new', label: 'ثبت محصول', icon: PlusSquare, exact: true },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
   { href: '/panel/buyers', label: 'خریداران', icon: Users },
   { href: '/panel/suggested-buyers', label: 'خریداران پیشنهادی', icon: BadgeCheck },
-  { href: '/panel/products', label: 'محصولات من', icon: Package },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
   { href: '/panel/pricing', label: 'ارتقا عضویت', icon: Medal },
   { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
 ];
 
-/** منوی خریدار — ۸ آیتم: دقیقاً منوی باسکول (۷ آیتم) + «دفتر خرید من» (تمایز ما
- *  با باسکول، خواسته مالک ۳۱-۱۰). «پیشنهادهای تامین» و «ارتقا عضویت» از سایدبار
- *  حذف شدند و در صفحه ایمچ من زندگی می‌کنند (دور چهاردهم — باسکول برای خریدار
- *  نه کیف پول دارد نه ارتقا عضویت در سایدبار) */
+/** منوی خریدار — ۷ آیتم (خواسته مالک دور ۱۵): «ثبت درخواست خرید» حذف شد
+ *  (دکمه‌اش داخل «درخواست های من» هست) و «درخواست های من» اول از همه آمد؛
+ *  «پیشنهادهای تامین» لینک مستقل ندارد — با کلیک روی کالاهای دفتر خرید
+ *  به همان صفحه با فیلتر دسته می‌رویم. در موبایل، سه‌تای مهم (نشان شده ها،
+ *  دفتر خرید، درخواستهای خرید) از منوی عمودی بیرون‌اند و افقی بالای منو
+ *  می‌نشینند (الگوی top-menu باسکول) */
 export const BUYER_NAV: PanelNavItem[] = [
+  { href: '/panel/my-requests', label: 'درخواست های من', icon: FileText },
   { href: '/panel', label: 'ایمچ من', icon: UserRound, exact: true },
   { href: '/panel/buyer-book', label: 'دفتر خرید من', icon: BookOpenText },
-  { href: '/panel/buy-requests/new', label: 'ثبت درخواست خرید', icon: ShoppingCart, exact: true },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
   { href: '/panel/suggested-sellers', label: 'فروشندگان پیشنهادی', icon: Sparkles },
-  { href: '/panel/my-requests', label: 'درخواست های من', icon: FileText },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
   { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
 ];
@@ -90,7 +91,13 @@ export function PanelSidebar({
   const pathname = usePathname() ?? '';
   const { user, setRole } = useAuth();
   const role = user?.role ?? 'seller';
-  const nav = role === 'buyer' ? BUYER_NAV : SELLER_NAV;
+
+  // ارتقا عضویت فقط برای بی‌بسته‌ها (خواسته مالک دور ۱۵) — وضعیت بسته از
+  // همان کش react-query خوانده می‌شود؛ سایدبار و ایمچ من همیشه هم‌گام‌اند
+  const { data: myPackage } = useMyPackage(Boolean(user));
+  const nav = (role === 'buyer' ? BUYER_NAV : SELLER_NAV).filter(
+    (item) => item.href !== '/panel/pricing' || !myPackage?.isActive,
+  );
 
   // بج پیام‌های خوانده‌نشده روی آیتم «پیام ها» — زنده با push WS
   const { data: unread } = useUnreadMessagesCount(Boolean(user));
@@ -169,28 +176,27 @@ export function PanelSidebar({
           {!collapsed && <ChevronLeft size={16} className="shrink-0 text-muted-foreground/60" />}
         </Link>
 
-        {/* کیف پول — کارت برجسته با فونت بولد (خواسته مالک دور چهاردهم:
-            «روی باکس کیف پول یه کم جلوه بده، فونتش هم حداقل بولد»). الگوی
-            wallet-main باسکول: کارت رنگی گرد با متن سفید. فقط فروشنده —
-            باسکول برای خریدار کیف پول در سایدبار ندارد؛ خریدار از
-            «تاریخچه تراکنش‌ها» در ایمچ من به کیف پول می‌رسد */}
+        {/* کیف پول — کارت ساده با سایهٔ ظریف (خواسته مالک دور ۱۵: «رنگی نکن،
+            زشت شده. فقط یکم سایه»). فقط فروشنده — باسکول برای خریدار کیف
+            پول در سایدبار ندارد؛ خریدار از «تاریخچه تراکنش‌ها» در ایمچ من
+            به کیف پول می‌رسد */}
         {role !== 'buyer' && (
           <div className={cn('px-4 pt-4', collapsed && 'px-2')}>
             <Link
               href="/panel/wallet"
               onClick={onNavigate}
               className={cn(
-                'flex w-full items-center gap-2.5 rounded-xl bg-primary p-3 text-start text-primary-foreground transition-all hover:opacity-90 hover:shadow-md',
+                'flex w-full items-center gap-2.5 rounded-lg border border-border bg-card p-3 text-start shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-shadow hover:shadow-md',
                 collapsed && 'justify-center p-2',
               )}
               title="شارژ کیف پول"
             >
-              <Wallet size={19} className="shrink-0" />
+              <Wallet size={19} className="shrink-0 text-primary" />
               {!collapsed && (
                 <span className="min-w-0 flex-1 text-xs">
-                  <span className="block opacity-80">موجودی</span>
-                  <span className="block text-sm font-extrabold font-num">
-                    {toFa(wallet)} <span className="text-[10px] font-normal opacity-80">تومان</span>
+                  <span className="block text-muted-foreground">موجودی</span>
+                  <span className="block text-sm font-extrabold font-num text-foreground">
+                    {toFa(wallet)} <span className="text-[10px] font-normal text-muted-foreground">تومان</span>
                   </span>
                 </span>
               )}
@@ -199,7 +205,9 @@ export function PanelSidebar({
         )}
 
         {/* سوییچ فروشنده / خریدار — درشت و تابلوتر (خواسته مالک): سمت فعال
-            پررنگ/پرشده دیده می‌شود تا کاربر بفهمد کدام پنل را می‌بیند */}
+            پررنگ/پرشده دیده می‌شود تا کاربر بفهمد کدام پنل را می‌بیند.
+            سوییچ = سوییچ پنل: دراور موبایل هم بسته می‌شود و (طبق خواستهٔ دور ۱۵)
+            اگر صفحه‌ای جز آیمچ من باشیم به آیمچ من برمی‌گردیم (setRole داخل auth) */}
         {!collapsed && (
           <div className="px-4 pt-3">
             <div
@@ -220,7 +228,10 @@ export function PanelSidebar({
                     type="button"
                     role="radio"
                     aria-checked={active}
-                    onClick={() => setRole(key)}
+                    onClick={() => {
+                      setRole(key);
+                      onNavigate?.();
+                    }}
                     className={cn(
                       'flex-1 rounded-md py-2 text-sm font-extrabold transition-all',
                       active
@@ -255,7 +266,10 @@ export function PanelSidebar({
                   aria-checked={active}
                   title={title}
                   aria-label={title}
-                  onClick={() => setRole(key)}
+                  onClick={() => {
+                    setRole(key);
+                    onNavigate?.();
+                  }}
                   className={cn(
                     'grid size-9 place-items-center rounded-md text-sm font-extrabold transition-colors',
                     active ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground',

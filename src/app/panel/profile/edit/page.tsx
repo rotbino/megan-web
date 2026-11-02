@@ -362,7 +362,9 @@ export default function EditProfilePage() {
           <UserRound size={17} className="text-primary" /> اطلاعات پایه
         </h2>
 
-        {/* نقش فعال — رادیو؛ سیستم (هدر/نوار پایین/منوها) با آن تطبیق می‌یابد */}
+        {/* نقش فعال — رادیو؛ سیستم (هدر/نوار پایین/منوها) با آن تطبیق می‌یابد.
+            keepPage: تغییر نقش اینجا تنظیماتِ فرم است نه سوییچ پنل — کاربر
+            همان‌جا می‌ماند تا بقیهٔ فیلدها را ذخیره کند (خواسته مالک دور ۱۵) */}
         <div>
           <p className="mb-2 text-xs font-bold">نقش شما در ایمچ</p>
           <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="نقش شما در ایمچ">
@@ -370,7 +372,7 @@ export default function EditProfilePage() {
               type="button"
               role="radio"
               aria-checked={role === 'seller'}
-              onClick={() => setRole('seller')}
+              onClick={() => setRole('seller', { keepPage: true })}
               className={cn(
                 'flex items-start gap-2.5 rounded-lg border p-3 text-start transition-colors',
                 role === 'seller'
@@ -390,7 +392,7 @@ export default function EditProfilePage() {
               type="button"
               role="radio"
               aria-checked={role === 'buyer'}
-              onClick={() => setRole('buyer')}
+              onClick={() => setRole('buyer', { keepPage: true })}
               className={cn(
                 'flex items-start gap-2.5 rounded-lg border p-3 text-start transition-colors',
                 role === 'buyer'

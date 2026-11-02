@@ -3,12 +3,14 @@
 /**
  * درخواستهای من — عین MHTML باسکول:
  * تب‌های شمارنده‌دار (تایید شده/در انتظار تایید/رد شده) + ردیف درخواست +
- * جعبه «دلایل رد شدن درخواست های خرید» + حالت خالی با دکمه «ثبت درخواست خرید».
+ * جعبه «دلایل رد شدن درخواست های خرید» + حالت خالی.
+ * دکمهٔ «ثبت درخواست جدید» در سربرگ (خواسته مالک ۲-۱۱ دور ۱۵): لینک مستقل
+ * «ثبت درخواست خرید» از منو حذف شد — این دکمه همان کار را می‌کند.
  */
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, CheckCircle2, Clock3, FileText, Info, Loader2, Pencil, Trash2, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock3, FileText, Info, Loader2, Pencil, Plus, Trash2, XCircle } from 'lucide-react';
 import { useMyBuyRequests, useDeleteMyBuyRequest, useUpdateMyBuyRequest } from '@/lib/mock/hooks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -239,9 +241,18 @@ export default function MyRequestsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
-      <div>
-        <h1 className="text-lg font-extrabold">درخواستهای من</h1>
-        <p className="mt-1 text-sm text-muted-foreground">درخواست‌های خرید ثبت‌شده شما و وضعیت بررسی آنها.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-lg font-extrabold">درخواستهای من</h1>
+          <p className="mt-1 text-sm text-muted-foreground">درخواست‌های خرید ثبت‌شده شما و وضعیت بررسی آنها.</p>
+        </div>
+        {/* ثبت جدید — اینجا زندگی می‌کند چون لینک منو حذف شد (دور ۱۵) */}
+        <Button asChild className="rounded-md">
+          <Link href="/panel/buy-requests/new">
+            <Plus size={16} />
+            ثبت درخواست جدید
+          </Link>
+        </Button>
       </div>
 
       {/* جعبه دلایل رد شدن — عین باسکول */}

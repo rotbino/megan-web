@@ -5,13 +5,16 @@
  *  • همهٔ پیشنهادهایی که فروشندگان برای نیازهای خریدِ «دفتر خرید من» فرستاده‌اند
  *    در یک‌جا، با شرایط ساختاریافته (دسته، نوع کالا، چک، ارسال به محل، حداقل
  *    خرید) به‌صورت چیپ — تا خریدار بتواند پیشنهادها را فیلتر و مقایسه کند.
- *  • فیلترها: دستهٔ کالا (از دسته‌های پیشنهادهای خود کاربر)، جستجوی نوع کالا،
- *    «فقط با چک» و «فقط با ارسال به محل».
+ *  • ورود از دفتر خرید (خواسته مالک ۲-۱۱ دور ۱۵): کلیک روی هر کالا به همین
+ *    صفحه با ?category= همان گروه می‌آید؛ URL منبع حقیقت فیلتر دسته است و
+ *    کاربر همین‌جا هم می‌تواند گروه را عوض کند (بک/فوروارد هم درست کار می‌کند).
+ *  • فیلترهای دیگر: جستجوی نوع کالا، «فقط با چک» و «فقط با ارسال به محل».
  *  • «مشاهدهٔ گفتگو» مستقیم به مکالمهٔ همان پیشنهاد می‌رود (?thread=).
  */
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   BadgeCheck,
   Banknote,
@@ -24,7 +27,7 @@ import {
   Search,
   Truck,
 } from 'lucide-react';
-import { useMyReceivedOffers } from '@/lib/mock/hooks';
+import { useMyBuyerBook, useMyReceivedOffers } from '@/lib/mock/hooks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -162,9 +165,19 @@ function OfferCard({ offer }: { offer: ReceivedOffer }) {
   );
 }
 
-export default function ReceivedOffersPage() {
-  // فیلترها
-  const [categoryId, setCategoryId] = useState<number | null>(null);
+function ReceivedOffersPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // فیلتر دسته از URL می‌آید (لینک کالاهای دفتر خرید) — URL منبع حقیقت است
+  const catParam = searchParams.get('category');
+  const categoryId = catParam && /^\d+$/.test(catParam) ? Number(catParam) : null;
+  const changeCategory = (id: number | null) => {
+    router.replace(id ? `/panel/received-offers?category=${id}` : '/panel/received-offers', { scroll: false });
+    setPage(1);
+  };
+
+  // فیلترهای دیگر
   const [productType, setProductType] = useState('');
   const [hasCheck, setHasCheck] = useState(false);
   const [hasDelivery, setHasDelivery] = useState(false);
@@ -179,6 +192,18 @@ export default function ReceivedOffersPage() {
     perPage: PER_PAGE,
   });
 
+  // گزینه‌های فیلتر دسته = دسته‌های دارای پیشنهاد ∪ گروه‌های دفتر خرید
+  // (همان کش react-query) — این‌طور دستهٔ بدون پیشنهاد هم برچسب دارد و
+  // دراپ‌داون هرگز خالی نمی‌ماند (خواستهٔ مالک: فیلر از طریق کلیک روی ایتم‌های
+  // دفتر خرید ممکن باشد و در همین صفحه هم گروه عوض شود)
+  const { data: book } = useMyBuyerBook();
+  const categoryOptions = (() => {
+    const byId = new Map<number, string>();
+    for (const c of data?.categories ?? []) byId.set(c.id, c.name);
+    for (const i of book?.items ?? []) if (!byId.has(i.categoryId)) byId.set(i.categoryId, i.name);
+    return [...byId].map(([id, name]) => ({ id, name }));
+  })();
+
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / PER_PAGE));
@@ -186,7 +211,7 @@ export default function ReceivedOffersPage() {
     categoryId != null || !!productType.trim() || hasCheck || hasDelivery;
 
   const reset = () => {
-    setCategoryId(null);
+    changeCategory(null);
     setProductType('');
     setHasCheck(false);
     setHasDelivery(false);
@@ -210,8 +235,7 @@ export default function ReceivedOffersPage() {
             dir="rtl"
             value={categoryId ? String(categoryId) : 'all'}
             onValueChange={(v) => {
-              setCategoryId(v === 'all' ? null : Number(v));
-              setPage(1);
+              changeCategory(v === 'all' ? null : Number(v));
             }}
           >
             <SelectTrigger className="h-9 w-full rounded-md text-xs sm:w-52" aria-label="دستهٔ کالا">
@@ -219,7 +243,7 @@ export default function ReceivedOffersPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">همه دسته‌ها</SelectItem>
-              {(data?.categories ?? []).map((c) => (
+              {categoryOptions.map((c) => (
                 <SelectItem key={c.id} value={String(c.id)}>
                   {c.name}
                 </SelectItem>
@@ -343,5 +367,13 @@ export default function ReceivedOffersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ReceivedOffersPage() {
+  return (
+    <Suspense>
+      <ReceivedOffersPageInner />
+    </Suspense>
   );
 }

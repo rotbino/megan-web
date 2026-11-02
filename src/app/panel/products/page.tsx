@@ -5,12 +5,14 @@
  * ردیف آگهی + دکمه نردبان (پرداخت واقعی از کیف پول — wallet/ladderProduct)
  * + دلایل رد شدن + حالت خالی + ویرایش (فرم کامل) + حذف واقعی.
  * تب فعال از ?tab= می‌آید (لینک عمقی صفحه موفقیت ثبت: tab=pending).
+ * دکمهٔ «ثبت محصول» در سربرگ (خواسته مالک دور ۱۵): لینک مستقل منو حذف شد
+ * و «محصولات من» اولین آیتم است — دکمهٔ ثبت همان‌جا زندگی می‌کند.
  */
 
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AlertTriangle, BarChart3, Eye, History, ImageIcon, Pencil, Trash2, TrendingUp, Wallet } from 'lucide-react';
+import { AlertTriangle, BarChart3, Eye, History, ImageIcon, Pencil, Plus, Trash2, TrendingUp, Wallet } from 'lucide-react';
 import { useDeleteMyProduct, useLadderProduct, useMyProducts, usePanelProfile } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -91,6 +93,22 @@ function MyProductsPageInner() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
+      {/* سربرگ + دکمهٔ ثبت (دور ۱۵) */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-base font-extrabold sm:text-lg">محصولات من</h1>
+          <p className="mt-1 text-xs leading-6 text-muted-foreground sm:text-sm">
+            آگهی‌های فروش شما و وضعیت بررسی آنها.
+          </p>
+        </div>
+        <Button asChild className="rounded-md">
+          <Link href="/panel/products/new">
+            <Plus size={16} />
+            ثبت محصول
+          </Link>
+        </Button>
+      </div>
+
       {/* نکته نردبان — عین باسکول */}
       <div className="flex items-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-4 py-3 text-xs leading-5 text-primary">
         <TrendingUp size={16} className="shrink-0" />

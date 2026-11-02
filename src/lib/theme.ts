@@ -212,7 +212,10 @@ function hexRgb(h){var m=/^#?([0-9a-f]{6})$/i.exec(h||'');if(!m)return null;var 
 function toHex(r,g,b){return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
 function mix(a,b,t){var A=hexRgb(a),B=hexRgb(b);if(!A||!B)return a;return toHex(Math.round(A[0]+(B[0]-A[0])*t),Math.round(A[1]+(B[1]-A[1])*t),Math.round(A[2]+(B[2]-A[2])*t));}
 function lum(h){var c=hexRgb(h);if(!c)return 0;function f(v){v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);}return 0.2126*f(c[0])+0.7152*f(c[1])+0.0722*f(c[2]);}
-function fgOf(h){return lum(h)>0.35?'#1f2226':'#ffffff';}
+/* قانون متن سفید (خواسته مالک ۲-۱۱ دور ۱۵): فونتِ هر عنصری که پس‌زمینهٔ
+   رنگی دارد همیشه سفید است — حتی رنگ‌های کمرنگِ تم؛ «رنگ مشکلی زیاد جالب
+   در نمی‌آد». normLight خودش رنگ‌های خیلی روشن را تا حد خوانایی تیره می‌کند */
+function fgOf(){return '#ffffff';}
 function normLight(h){if(lum(h)<=0.5)return h;var c=h;for(var i=0;i<24;i++){c=mix(c,'#000000',0.08);if(lum(c)<=0.5)break;}return c;}
 function normDark(h){if(lum(h)>=0.14)return h;var c=h;for(var i=0;i<24;i++){c=mix(c,'#ffffff',0.08);if(lum(c)>=0.14)break;}return c;}
 function accentVars(hex,dark){

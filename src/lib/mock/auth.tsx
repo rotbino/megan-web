@@ -21,7 +21,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { getTokens } from '@/lib/api/client';
 import { fetchAuthUser, logoutRemote, updateUserRoleRemote } from '@/lib/mock/api';
@@ -45,8 +45,11 @@ interface AuthContextValue {
    *  «رمز عبور شما تغییر کرد. لطفاً با رمز جدید وارد شوید» می‌بیند؛
    *  فرم مستقیم روی مرحلهٔ رمز با همان شماره شروع می‌شود. */
   forceRelogin: (phone: string, notice: string) => void;
-  /** تغییر نقش فروشنده/خریدار — هم‌زمان در بک‌اند ماندگار می‌شود */
-  setRole: (role: 'seller' | 'buyer') => void;
+  /** تغییر نقش فروشنده/خریدار — هم‌زمان در بک‌اند ماندگار می‌شود.
+   *  خواستهٔ مالک ۲-۱۱ دور پانزدهم: سوییچ پنل = بازگشت به آیمچ من — صفحات
+   *  نقش قبلی (مثل محصولات من/درخواست‌ها) برای نقش تازه بی‌معنی‌اند؛ مگر
+   *  فرمی صریحاً بماند (رادیوی نقش در ویرایش پروفایل: keepPage) */
+  setRole: (role: 'seller' | 'buyer', opts?: { keepPage?: boolean }) => void;
   /** دریافت دوباره پروفایل از بک‌اند — بعد از ویرایش پروفایل/ثبت‌نام */
   refreshUser: () => Promise<SessionUser | null>;
 }
@@ -77,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [relogin, setRelogin] = useState<{ phone: string; notice: string } | null>(null);
   const bootedRef = useRef(false);
   const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
 
   const persist = useCallback((u: SessionUser | null) => {
@@ -172,20 +176,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [clearSessionClient],
   );
 
-  const setRole = useCallback((role: 'seller' | 'buyer') => {
-    setUser((u) => {
-      if (!u || u.role === role) return u;
-      const next = { ...u, role };
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        /* حافظه پر است — فقط در state */
-      }
-      // ماندگاری در بک‌اند — بهینه (optimistic)؛ خطا وضعیت محلی را برنمی‌گرداند
-      void updateUserRoleRemote(role).catch(() => undefined);
-      return next;
-    });
-  }, []);
+  const setRole = useCallback(
+    (role: 'seller' | 'buyer', opts?: { keepPage?: boolean }) => {
+      setUser((u) => {
+        if (!u || u.role === role) return u;
+        const next = { ...u, role };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          /* حافظه پر است — فقط در state */
+        }
+        // ماندگاری در بک‌اند — بهینه (optimistic)؛ خطا وضعیت محلی را برنمی‌گرداند
+        void updateUserRoleRemote(role).catch(() => undefined);
+        return next;
+      });
+      // سوییچ پنل = بازگشت به آیمچ من (خواسته مالک دور ۱۵) — صفحات نقش
+      // قبلی برای نقش تازه معنی ندارند؛ فرم‌ها با keepPage می‌مانند
+      if (!opts?.keepPage && pathname !== '/panel') router.push('/panel');
+    },
+    [pathname, router],
+  );
 
   const refreshUser = useCallback(async (): Promise<SessionUser | null> => {
     try {

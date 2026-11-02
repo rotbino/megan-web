@@ -66,9 +66,10 @@ export function AccountLinks({ className }: { className?: string }) {
                 logout();
                 toast({ description: 'از حساب کاربری خود خارج شدید.' });
               }}
-              className="flex w-full items-center gap-3 py-2.5 text-sm text-red-500 transition-colors hover:text-red-600"
+              // خروج هم‌رنگ بقیهٔ ردیف‌هاست (خواسته مالک دور ۱۵) — نباید جلب توجه کند
+              className="flex w-full items-center gap-3 py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              <Icon size={17} className="shrink-0" />
+              <Icon size={17} className="shrink-0 text-muted-foreground/70" />
               <span className="flex-1 text-start">{label}</span>
             </button>
           ),
