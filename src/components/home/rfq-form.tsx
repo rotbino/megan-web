@@ -89,17 +89,17 @@ export function RfqForm() {
             </p>
             {/* آمار (خواسته مالک ۴-۱۱) — فروشندگان/خریداران/اصناف */}
             <div className="mt-6 flex flex-wrap gap-x-10 gap-y-4">
-              <div>
+              <div className={"flex flex-col items-center justify-center"}>
                 <p className="text-xl font-bold text-primary">{toFa(54000)} +</p>
                 <p className="mt-1 text-xs text-muted-foreground">فروشندگان فعال</p>
               </div>
-              <div>
+              <div className={"flex flex-col items-center justify-center"}>
                 <p className="text-xl font-bold text-primary">{toFa(342000)} +</p>
                 <p className="mt-1 text-xs text-muted-foreground">خریداران</p>
               </div>
-              <div>
-                <p className="text-xl font-bold text-primary">{toFa(150)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">اصناف مختلف</p>
+              <div className={"flex flex-col items-center justify-center"}>
+                <p className="text-xl font-bold text-primary">{toFa(160)} +</p>
+                <p className="mt-1 text-xs text-muted-foreground">صنف</p>
               </div>
             </div>
           </div>
