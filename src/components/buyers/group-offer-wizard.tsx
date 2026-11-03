@@ -15,8 +15,10 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Check, CheckCheck, ChevronLeft, ChevronRight, Send, Users, Wallet, X } from 'lucide-react';
 import { useBuyerDirectory } from '@/lib/mock/hooks';
+import { Button } from '@/components/ui/button';
 import { CategoryCascade } from '@/components/panel/product-form/category-cascade';
 import { SupplyOfferForm } from '@/components/buyers/supply-offer-modal';
 import { priceFa, toFa } from '@/lib/format';
@@ -71,6 +73,14 @@ export function GroupOfferWizard({
   }, [open]);
 
   if (!open) return null;
+
+  // گیت کالا (خواسته مالک ۴-۱۱) — فروشنده باید کالای همین دسته را در
+  // محصولات خودش داشته باشد؛ اگر ندارد، همین‌جای گام ۱ پیام روشن می‌گیرد
+  const hasLeafProduct =
+    !leaf ||
+    (products ?? []).some(
+      (p) => (p.status === 'confirmed' || p.status === 'pending') && p.subCategoryId === leaf.id,
+    );
 
   return (
     <div
@@ -136,13 +146,26 @@ export function GroupOfferWizard({
         {/* بدنهٔ گام‌ها */}
         <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
           {step === 1 && (
-            <StepCategory
-              leaf={leaf}
-              onChange={(v) => {
-                setLeaf(v.leaf);
-                setPath(v.path);
-              }}
-            />
+            <div>
+              <StepCategory
+                leaf={leaf}
+                onChange={(v) => {
+                  setLeaf(v.leaf);
+                  setPath(v.path);
+                }}
+              />
+              {/* گیت کالا — دستهٔ انتخاب‌شده را ندارید: پیام + مسیر ثبت محصول */}
+              {leaf && !hasLeafProduct && (
+                <div className="mt-3 rounded-lg border border-dashed border-primary/40 bg-primary/[0.03] p-3.5 text-center">
+                  <p className="text-xs font-extrabold leading-6">
+                    برای ارسال پیشنهاد تامین {leaf.categoryName} باید این کالا را در لیست محصولات خود داشته باشید.
+                  </p>
+                  <Button asChild size="sm" className="mt-2.5 rounded-md">
+                    <Link href="/panel/products/new">ثبت محصول</Link>
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
           {step === 2 && leaf && (
             <StepPickBuyers
@@ -188,7 +211,7 @@ export function GroupOfferWizard({
               )}
             </ButtonStep>
             {step === 1 ? (
-              <ButtonStep variant="next" disabled={!leaf} onClick={() => setStep(2)}>
+              <ButtonStep variant="next" disabled={!leaf || !hasLeafProduct} onClick={() => setStep(2)}>
                 مرحلهٔ بعد: انتخاب خریداران <ChevronLeft size={15} />
               </ButtonStep>
             ) : (

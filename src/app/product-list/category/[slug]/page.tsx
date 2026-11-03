@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
@@ -78,24 +77,8 @@ export default async function CategoryPage({ params }: Props) {
     <>
       <Header />
       <main className="flex-1">
-        <div className="mx-auto max-w-7xl px-4 pt-4 lg:px-6 lg:pt-6">
-          <h1 className="text-lg font-extrabold lg:text-2xl">خرید {cat.categoryName} عمده</h1>
-          {/* مسیر دسته — قابل‌نمایش برای کاربر و موتور جستجو */}
-          <nav aria-label="مسیر دسته‌بندی" className="mt-1.5 text-xs text-muted-foreground">
-            {path.map((c, i) => (
-              <span key={c.id}>
-                {i > 0 && <span className="mx-1">/</span>}
-                {i < path.length - 1 ? (
-                  <Link href={`/product-list/category/${encodeURIComponent(c.slug)}`} className="hover:text-primary">
-                    {c.categoryName}
-                  </Link>
-                ) : (
-                  <span className="font-medium text-foreground/80">{c.categoryName}</span>
-                )}
-              </span>
-            ))}
-          </nav>
-        </div>
+        {/* عنوان و مسیر بالای محتوا حذف شد (خواسته مالک ۴-۱۱) — تکراری و زشت؛
+            مسیر دسته برای موتور جستجو در JsonLd BreadcrumbList همان‌جا هست */}
         <ProductListing
           categorySlug={decoded}
           categoryName={cat.categoryName}

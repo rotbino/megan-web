@@ -15,12 +15,12 @@
  */
 
 import { useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import {
   CheckCircle2,
   Coins,
   Copy,
   CreditCard,
+  Headset,
   Hourglass,
   ImagePlus,
   PencilRuler,
@@ -41,6 +41,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PanelCard } from '@/components/panel/panel-parts';
+import { SupportCallButton } from '@/components/shared/support-call';
 import { AIMCH_CARD_NUMBER, AIMCH_CARD_OWNER } from '@/lib/mock/data';
 import { dateFa, priceFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -168,7 +169,14 @@ export default function WalletPage() {
       setReceipt(null);
       setCustomAmount('');
     } catch (err) {
-      toast({ description: err instanceof Error ? err.message : 'خطا در ارسال فیش — دوباره تلاش کنید.', variant: 'destructive' });
+      // پیام ناموفق بودن فیش (خواسته مالک ۴-۱۱) — «در زمان دیگر تلاش کنید» هم صریح بیاید
+      toast({
+        description:
+          err instanceof Error && err.message
+            ? `${err.message} — لطفا در زمان دیگری دوباره تلاش کنید.`
+            : 'خطا در ارسال فیش — لطفا در زمان دیگری دوباره تلاش کنید.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -423,31 +431,25 @@ export default function WalletPage() {
         )}
       </PanelCard>
 
-      {/* نردبان آگهی — تبلیغ جدا از شارژ (خواسته مالک ۳۱-۱۰: این مفهوم فقط
-          در کیف پول بماند تا با بسته‌های اشتراک قاطی نشود)؛ قیمت از تنظیمات */}
+      {/* پشتیبان مالی (خواسته مالک ۴-۱۱) — جای کادر نردبان؛ شارژ کیف پول فقط
+          برای نردبان نیست (ارسال گروهی پیشنهاد تامین و مصرف‌کننده‌های آینده هم
+          از همین کیف برمی‌دارند)؛ متن اطمینان + دکمه تماس: موبایل مستقیم
+          شماره‌گیری، دسکتاپ شماره در مدال — خود شماره در صفحه چسبان نیست */}
       <PanelCard className="space-y-3">
         <div className="flex items-start gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-md bg-amber-500/10 text-amber-600">
-            <TrendingUp size={20} />
+          <span className="grid size-11 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+            <Headset size={20} />
           </span>
           <div className="min-w-0">
-            <p className="flex flex-wrap items-center gap-2 text-sm font-extrabold">
-              نردبان آگهی
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10.5px] font-bold text-amber-700">
-                {priceFa(billing?.ladder.monthlyPrice ?? 50_000)} / ماه — تا {toFa(billing?.ladder.maxMonths ?? 4)} ماه
-              </span>
-            </p>
+            <p className="text-sm font-extrabold">پشتیبان مالی ایمچ</p>
             <p className="mt-1.5 text-xs leading-6 text-muted-foreground">
-              نردبان یعنی قرار گرفتن آگهی در صدر محصولات، حتی بالاتر از آگهی‌های ویژه. هزینه آن جداگانه و از همین کیف
-              پول پرداخت می‌شود؛ برای فعال کردن، از «محصولات من» روی دکمه «نردبان» آگهی مورد نظر بزنید. اگر موجودی
-              کافی ندارید، ابتدا یکی از پکیج‌های شارژ بالا را فعال کنید.
+              شارژ شما بلافاصله بعد از تایید فیش اضافه می‌شود و نیازی به تماس نیست؛ اما در صورت نیاز می‌توانید
+              با پشتیبانی تماس بگیرید.
             </p>
           </div>
         </div>
         <div>
-          <Button asChild size="sm" className="rounded-md text-xs">
-            <Link href="/panel/products">نردبان آگهی از «محصولات من»</Link>
-          </Button>
+          <SupportCallButton label="تماس با پشتیبانی" />
         </div>
       </PanelCard>
 

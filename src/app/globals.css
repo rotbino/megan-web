@@ -303,6 +303,32 @@
   --color-neutral-800: #c8ccd4;
 }
 
+/* ─── پیام‌های شناور (توست) — دیده‌شدن بهتر در تم شب (خواسته مالک ۴-۱۱) ──
+   مینیمال و حرفه‌ای: نوار رنگیِ ابتدای پیام (primary / سفید روی قرمز)،
+   در تم تیره یک پله روشن‌تر از کارت + حاشیهٔ روشن‌تر + سایهٔ عمیق‌تر؛
+   بدون شلوغی و بدون تغییر رفتار. */
+.aimch-toast {
+  border-inline-start-width: 3px;
+  border-inline-start-color: var(--primary);
+}
+.aimch-toast.destructive {
+  border-inline-start-color: color-mix(in srgb, #fff 55%, var(--destructive));
+}
+.dark .aimch-toast {
+  background: #2c313a; /* یک پله روشن‌تر از کارت (#23262b) — از صفحه جدا دیده شود */
+  border-color: #454c57;
+  /* نوار رنگی ابتدا در تیره هم برند بماند ( shorthand border-color بالا را می‌پوشاند) */
+  border-inline-start-color: var(--primary);
+  box-shadow:
+    0 10px 30px rgb(0 0 0 / 0.5),
+    0 2px 8px rgb(0 0 0 / 0.4);
+}
+.dark .aimch-toast.destructive {
+  background: var(--destructive);
+  border-color: color-mix(in srgb, #fff 30%, var(--destructive));
+  border-inline-start-color: #fff;
+}
+
 /* ─── تم روشن تک‌رنگ (خواستهٔ مالک ۲-۱۱) ────────────────────────
    دوقلوی تم تیره در نیمهٔ روشن: همان انضباط و عمق، فقط با طیف سفید/
    خاکستری خالص (الگوی Notion/Linear/Vercel Geist):

@@ -229,9 +229,10 @@ export function Header() {
         <nav className="hidden shrink-0 items-center nav-desktop:flex" aria-label="حساب کاربری">
           {user ? (
             <>
-              {/* فروشنده → دایرکتوری خریداران (خریداران + درخواست‌ها) / خریدار → فروشندگان پیشنهادی */}
+              {/* فروشنده → خریداران پنل (سورت امتیاز تطابق — خواسته مالک ۴-۱۱) /
+                  خریدار → فروشندگان پیشنهادی */}
               <Link
-                href={isSeller ? '/buyers' : '/panel/suggested-sellers'}
+                href={isSeller ? '/panel/buyers' : '/panel/suggested-sellers'}
                 className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
               >
                 {isSeller ? <BuyersIcon size={24} /> : <SellersIcon size={24} />}

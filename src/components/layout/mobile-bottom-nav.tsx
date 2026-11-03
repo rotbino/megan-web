@@ -55,12 +55,13 @@ const isMyAimach = (p: string) =>
 /** منوی فروشنده */
 const sellerItems: NavItem[] = [
   { href: '/product-list', label: 'بازار', Icon: Store, match: isMarket },
-  // دایرکتوری خریداران (خریداران + درخواست‌های خرید — دو تب) — و خریداران پیشنهادی
+  // خریداران — برای فروشندهٔ واردشده نسخهٔ پنل (سورت امتیاز تطابق — خواسته
+  // مالک ۴-۱۱)؛ برای بقیه همان صفحهٔ عمومی. خریداران پیشنهادی هم همین‌جا روشن می‌ماند (ریدایرکت)
   {
     href: '/buyers',
     label: 'خریداران',
     Icon: BuyersIcon,
-    match: (p) => isSuggestedBuyers(p) || p === '/buyers' || p.startsWith('/buyers/') || p === '/buyAd-requests' || p.startsWith('/buyAd-requests/'),
+    match: (p) => isSuggestedBuyers(p) || p === '/buyers' || p.startsWith('/buyers/') || p.startsWith('/panel/buyers') || p === '/buyAd-requests' || p.startsWith('/buyAd-requests/'),
   },
   { href: '/panel/products/new', label: 'ثبت محصول', Icon: AddProductIcon, match: (p) => p === '/panel/products/new' },
   { href: '/panel/messages', label: 'پیام ها', Icon: MessagesIcon, match: isMessages },
@@ -96,6 +97,8 @@ export function MobileBottomNav() {
   // پنل ادمین پوسته و ناوبری خودش را دارد — نوار پایین اپ عمومی آنجا نیست
   if (pathname.startsWith('/admin')) return null;
   const items = !user ? loggedOutItems : user.role === 'buyer' ? buyerItems : sellerItems;
+  // فروشندهٔ واردشده → خریدارانِ پنل (با سورت تطابق)؛ لاگین‌نشده → صفحهٔ عمومی
+  const resolveHref = (href: string) => (user && user.role !== 'buyer' && href === '/buyers' ? '/panel/buyers' : href);
   return (
     <nav
       aria-label="ناوبری موبایل ایمچ"
@@ -108,7 +111,7 @@ export function MobileBottomNav() {
           return (
             <Link
               key={label}
-              href={href}
+              href={resolveHref(href)}
               aria-current={active ? 'page' : undefined}
               aria-label={showUnread && unreadCount > 0 ? `پیام‌ها — ${unreadCount} پیام خوانده‌نشده` : undefined}
               className={cn(

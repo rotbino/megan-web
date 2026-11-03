@@ -67,7 +67,7 @@ const FREE_ROWS: Array<{ label: string; included: boolean }> = [
   { label: 'انتشار آگهی در بازار ایمچ', included: true },
   { label: `تماس روزانه با تا ${toFa(FREE_PACKAGE.features.dailyCallLimit)} کاربر`, included: true },
   { label: 'دسترسی به شماره تماس خریداران', included: false },
-  { label: 'خریداران پیشنهادی (تطبیق با آگهی‌های شما)', included: false },
+  { label: 'خریداران مرتب‌شده بر اساس تطابق با آگهی‌های شما', included: false },
   { label: 'نشان فروشنده ویژه روی محصولات و پروفایل', included: false },
 ];
 

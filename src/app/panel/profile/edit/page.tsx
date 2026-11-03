@@ -27,6 +27,7 @@ import {
   ImageIcon,
   Info,
   Pencil,
+  PhoneOff,
   Save,
   ShieldCheck,
   Trash2,
@@ -46,6 +47,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { PanelCard } from '@/components/panel/panel-parts';
 import { AvatarUpload } from '@/components/panel/avatar-upload';
@@ -66,6 +68,8 @@ interface FormState {
   companyRegisterNumber: string;
   /** صنف کسب‌وکار (خواسته مالک ۳-۱۱) — سوپرمارکت/قنادی/… */
   businessCategory: string;
+  /** امکان تماس (خواسته مالک ۴-۱۱) — خاموش = فقط چت برای دیگران */
+  allowCalls: boolean;
   about: string;
   gallery: ProfileImage[]; // تصاویر مربطه — سروری + آپلودی تازه
   certificates: ProfileImage[]; // گواهی‌ها — سروری + آپلودی تازه
@@ -165,6 +169,8 @@ export default function EditProfilePage() {
       companyName: pf.companyName ?? '',
       companyRegisterNumber: pf.companyRegisterNumber ?? '',
       businessCategory: pf.businessCategory ?? '',
+      // امکان تماس (خواسته مالک ۴-۱۱) — اسناد قدیمی بدون فیلد = روشن
+      allowCalls: u.allowCalls !== false,
       about: pf.description ?? '',
       // گالری/گواهی‌ها از سرور — تصاویر ذخیره‌شده قبلی دیده و قابل حذف‌اند
       gallery: profile.gallery.map((f) => ({ id: f.id, url: f.thumbUrl ?? f.url })),
@@ -463,11 +469,35 @@ export default function EditProfilePage() {
             «شماره تماس» و پس از ورود به ایمچ آن را می‌بینند (سهمیهٔ تماس روزانهٔ اعضا اعمال می‌شود).
           </p>
         </div>
+
+        {/* امکان تماس (خواسته مالک ۴-۱۱) — خیلی‌ها فقط چت را می‌خواهند؛
+            خاموش = دکمهٔ تماس برای دیگران کار نمی‌کند و پیام روشن می‌گیرند */}
+        <div className="flex items-start justify-between gap-3 rounded-md border p-3.5">
+          <div className="min-w-0">
+            <Label htmlFor="allow-calls" className="flex items-center gap-1.5 text-sm">
+              <PhoneOff size={15} className="text-muted-foreground/70" /> امکان تماس
+            </Label>
+            <p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">
+              اگر خاموش کنید، دکمهٔ تماس برای دیگران غیرفعال می‌شود و فقط می‌توانند با شما چت کنند.
+            </p>
+          </div>
+          <Switch
+            id="allow-calls"
+            checked={form.allowCalls}
+            onCheckedChange={(v) => patch({ allowCalls: v })}
+            aria-label="امکان تماس"
+            className="mt-1 shrink-0"
+          />
+        </div>
         <CardFooter
           card="contact"
-          label="ذخیره آدرس"
+          label="ذخیره آدرس و تنظیمات تماس"
           onClick={() =>
-            void persist('contact', { address: form.address.trim() || null }, 'آدرس ذخیره شد.')
+            void persist(
+              'contact',
+              { address: form.address.trim() || null, allow_calls: form.allowCalls },
+              'آدرس و تنظیمات تماس ذخیره شد.',
+            )
           }
           savingCard={savingCard}
           errorMsg={errOf('contact')}

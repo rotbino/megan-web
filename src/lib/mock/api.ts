@@ -653,6 +653,8 @@ export async function getPanelProfile(): Promise<PanelProfile> {
       walletBalance: raw.user.wallet_balance,
       productCount: raw.user.product_count,
       createdAt: (raw.user.created_at ?? '').slice(0, 10),
+      // امکان تماس (خواسته مالک ۴-۱۱) — اسناد قدیمی بدون فیلد = روشن
+      allowCalls: (raw.user as { allow_calls?: boolean }).allow_calls !== false,
     },
   };
 }
@@ -667,6 +669,8 @@ export async function updatePanelProfile(
     /** نقش فعال — روی is_seller/is_buyer بک‌اند ماندگار می‌شود */
     role?: 'seller' | 'buyer';
     avatar_url?: string;
+    /** امکان تماس (خواسته مالک ۴-۱۱) — خاموش = فقط چت */
+    allow_calls?: boolean;
   },
 ): Promise<{ ok: true }> {
   const body: Record<string, unknown> = {};
@@ -679,6 +683,7 @@ export async function updatePanelProfile(
     body.is_buyer = input.role === 'buyer';
   }
   if (input.avatar_url !== undefined) body.avatar_url = input.avatar_url;
+  if (input.allow_calls !== undefined) body.allow_calls = input.allow_calls;
   if (input.description !== undefined) body.business_desc = input.description;
   await apiFetch('/users/updateProfile', {
     ...body,
@@ -818,7 +823,7 @@ export async function updateMyProduct(input: {
   features: { key: string; value: string }[];
   newPhotos?: File[];
   removedPhotoIds?: string[];
-}): Promise<{ ok: true; id: number; status: 'pending'; failedPhotos: File[] }> {
+}): Promise<{ ok: true; id: number; status: ProductStatus; failedPhotos: File[] }> {
   const updated = await apiFetch<{ id: number; status: string }>('/products/updateMyProduct', {
     id: input.id,
     productName: input.productName,
@@ -851,7 +856,14 @@ export async function updateMyProduct(input: {
     }
   }
 
-  return { ok: true, id: updated.id, status: 'pending', failedPhotos };
+  return { ok: true, id: updated.id, status: (updated.status as ProductStatus) ?? 'pending', failedPhotos };
+}
+
+/** تغییر گروهی قیمت/موجودی (خواسته مالک ۴-۱۱) — بدون تایید مجدد */
+export async function bulkUpdatePrices(
+  items: { id: number; minSalePrice: number; stock: number }[],
+): Promise<{ updated: number; total: number }> {
+  return apiFetch<{ updated: number; total: number }>('/products/bulkUpdatePrices', { items });
 }
 
 /** خرید نردبان ۱ تا ۴ ماه — کسر واقعی از کیف پول (خواسته مالک ۳۱-۱۰) */
@@ -1467,6 +1479,8 @@ import type {
   ReceivedOffersPage,
   ReceivedOffersQuery,
   SendOfferResult,
+  SentOffersPage,
+  SentOffersQuery,
   SupplyOfferTerms,
 } from '@/lib/types';
 
@@ -1538,5 +1552,15 @@ export async function getMyReceivedOffers(q: ReceivedOffersQuery): Promise<Recei
     hasDelivery: q.hasDelivery,
     page: q.page ?? 1,
     perPage: q.perPage ?? 10,
+  });
+}
+
+/** پیشنهادهای تامین ارسالی من (خواسته مالک ۴-۱۱) — پنل فروشنده؛
+ *  فیلتر دسته برای صفحهٔ «خریداران این کالا» + آخرین پیام گفتگو */
+export async function getMySentOffers(q: SentOffersQuery = {}): Promise<SentOffersPage> {
+  return apiFetch<SentOffersPage>('/buyers/getMySentOffers', {
+    categoryId: q.categoryId,
+    page: q.page ?? 1,
+    perPage: q.perPage ?? 20,
   });
 }

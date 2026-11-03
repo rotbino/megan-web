@@ -199,6 +199,8 @@ export interface PanelProfile {
     walletBalance: number; // تومان
     productCount: number; // آگهی‌های فعال
     createdAt: string;
+    /** امکان تماس (خواسته مالک ۴-۱۱) — خاموش = فقط چت برای دیگران */
+    allowCalls: boolean;
   };
   /** تصاویر مربوطه/گواهی‌های کسب‌وکار — آپلودی همان کاربر (اسلات‌های User) */
   gallery: Array<{ id: string; url: string; thumbUrl: string }>;
@@ -602,6 +604,43 @@ export interface ReceivedOffersPage {
   page: number;
   perPage: number;
   /** دسته‌های یکتای پیشنهادهای دریافتی — برای فیلتر انتخابی بالای صفحه */
+  categories: { id: number; name: string }[];
+}
+
+/** پیشنهاد تامین ارسالی من — کارت پنل فروشنده (خواسته مالک ۴-۱۱):
+ *  چه کالایی، به چه کسی، چه شد — آخرین پیام گفتگوی مرتبط برای پیگیری */
+export interface SentOffer {
+  id: string;
+  buyerId: string;
+  buyerName: string;
+  buyerUserName: string | null;
+  buyerVerified: boolean;
+  categoryId: number | null;
+  categoryName: string | null;
+  categoryPath: string | null;
+  productType: string | null;
+  message: string;
+  isGroup: boolean;
+  fee: number;
+  threadId: string | null;
+  createdAt: string;
+  /** آخرین پیام گفتگو — «بعدش چه شد» روی کارت */
+  lastMessage: { text: string; at: string; mine: boolean } | null;
+}
+
+/** فیلتر پیشنهادهای ارسالی من */
+export interface SentOffersQuery {
+  categoryId?: number;
+  page?: number;
+  perPage?: number;
+}
+
+/** پاسخ getMySentOffers */
+export interface SentOffersPage {
+  items: SentOffer[];
+  total: number;
+  page: number;
+  perPage: number;
   categories: { id: number; name: string }[];
 }
 

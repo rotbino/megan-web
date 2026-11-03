@@ -21,11 +21,13 @@ import {
   Eye,
   History,
   ImageIcon,
+  Layers,
   MoreVertical,
   Pencil,
   Plus,
   Trash2,
   TrendingUp,
+  Users,
 } from 'lucide-react';
 import { useDeleteMyProduct, useMyProducts, usePanelProfile } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
@@ -154,6 +156,9 @@ function MyProductsPageInner() {
 
   const items = data.items.filter((p) => p.status === tab);
   const balance = profile?.userInfo.walletBalance ?? 0;
+  // دکمهٔ «تغییر قیمت گروهی» فقط با بیش از یک آگهی (خواسته مالک ۴-۱۱) —
+  // با یک آگهی ویرایش تکی خودش کفایت می‌کند
+  const activeCount = data.items.filter((p) => p.status !== 'deleted').length;
 
   const changeTab = (key: ProductStatus) => {
     setTab(key);
@@ -166,12 +171,22 @@ function MyProductsPageInner() {
       {/* سربرگ + دکمهٔ ثبت (دور ۱۵) — بدون جملهٔ توضیحی اضافه (خواسته مالک ۲-۱۱ دور ۱۸) */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-base font-extrabold sm:text-lg">محصولات من</h1>
-        <Button asChild className="rounded-md">
-          <Link href="/panel/products/new">
-            <Plus size={16} />
-            ثبت محصول
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* تغییر گروهی قیمت/موجودی (خواسته مالک ۴-۱۱) — فقط با ۲+ آگهی */}
+          {activeCount > 1 && (
+            <Button asChild size="sm" variant="outline" className="rounded-md text-xs h-9">
+              <Link href="/panel/products/bulk-price" title="آپدیت سریع قیمت و موجودی همهٔ آگهی‌ها در یک صفحه">
+                <Layers size={14} /> تغییر قیمت گروهی
+              </Link>
+            </Button>
+          )}
+          <Button asChild size="sm" className="rounded-md text-xs h-9">
+            <Link href="/panel/products/new">
+              <Plus size={16} />
+              ثبت محصول
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* نکته نردبان — عین باسکول */}
@@ -310,6 +325,17 @@ function MyProductsPageInner() {
                 <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
                   <Link href={`/panel/products/edit/${p.id}`}>
                     <Pencil size={14} /> ویرایش
+                  </Link>
+                </Button>
+                {/* خریداران این کالا (خواسته مالک ۴-۱۱) — خریدهای دوره‌ای و فوری
+                    همین دسته + پیشنهادهای ارسالی من برای این کالا؛ همه‌جا هست
+                    (موبایل و دسکتاپ) و نه فقط موبایل */}
+                <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
+                  <Link
+                    href={`/panel/products/buyers/${p.id}`}
+                    title={`خریداران و درخواست‌های خرید «${p.productName}»`}
+                  >
+                    <Users size={14} /> خریداران
                   </Link>
                 </Button>
                 {/* حذف زیر سه‌نقطه + تأیید (خواسته مالک ۳-۱۱) */}

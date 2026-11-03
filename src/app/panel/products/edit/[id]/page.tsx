@@ -1,29 +1,29 @@
 'use client';
 
 /**
- * ویرایش آگهی — همان ویزارد ۶ مرحله‌ای، با پیش‌پر شدن از getMyProductDetail:
- * دسته/نوع کالا/استان‌شهر/موجودی‌وقیمت/تصاویر موجود (قابل حذف) + تصاویر جدید/
- * توضیحات. بعد از ذخیره، آگهی مثل باسکول دوباره «در انتظار تایید»
- * می‌شود تا کارشناس بازبینی کند.
- *
- * خواسته مالک ۳-۱۱ (هم‌ارز ویزارد ثبت):
- *  - خطای اعتبارسنجی به محض اصلاح ورودی پاک می‌شود (derived state).
- *  - پلیس‌هولدر برند حذف + پاک‌سازی واژهٔ «برند» موقع blur و ذخیره.
- *  - دکمهٔ «ادامه» بزرگ‌تر با فلش رو‌به‌بیرون؛ بخش ویژگی‌ها موقتاً خاموش.
+ * ویرایش آگهی — فرم بازِ تک‌صفحه‌ای (خواسته مالک ۴-۱۱؛ جایگزین ویزارد):
+ *  • همهٔ بخش‌های ویزارد زیر هم آمده‌اند و کاربر هر بخش را که خواست جداگانه
+ *    ویرایش می‌کند — دسکتاپ دو ستونه (ویرایش راحت‌تر)، موبایل تک‌ستونه.
+ *  • بدون تایید مجدد: آگهی تاییدشده تاییدشده می‌ماند و تغییرات بلافاصله
+ *    زنده است؛ فقط آگهی ردشده برای بازبینی اصلاحات «در انتظار» می‌شود.
+ *  • خطای اعتبارسنجی هر بخش زیر همان بخش می‌نشیند و به محض اصلاح ورودی
+ *    همان لحظه پاک می‌شود (قانون §۹ RULES — derived state).
+ *  • برند: پاک‌سازی واژهٔ «برند» موقع blur و ذخیره (خواسته مالک ۳-۱۱).
  */
 
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  ArrowLeft,
   ArrowRight,
   ImageIcon,
   ImagePlus,
   Loader2,
   PartyPopper,
-  Plus,
+  Save,
+  Tag,
   Trash2,
+  Warehouse,
 } from 'lucide-react';
 import { useCategoryTree, useCities, useMyProductDetail, useProvinces, useUpdateMyProduct } from '@/lib/mock/hooks';
 import { retryProductPhotos } from '@/lib/mock/api';
@@ -33,22 +33,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ProductStepper } from '@/components/panel/product-form/stepper';
 import { CategoryCascade } from '@/components/panel/product-form/category-cascade';
 import { PanelCard } from '@/components/panel/panel-parts';
 import { UnitInput } from '@/components/shared/unit-input';
-import { PRODUCT_FEATURE_KEYS } from '@/lib/mock/data';
 import { optimizeProductImage } from '@/lib/image-optimize';
 import { toFa } from '@/lib/format';
 import { cn, stripBrandWord } from '@/lib/utils';
-import type { Category, ProductFeature } from '@/lib/types';
+import type { Category, ProductFeature, ProductStatus } from '@/lib/types';
 
 const num = (v: string) => Number(v.replace(/[^\d]/g, '')) || 0;
 
 const DESCRIPTION_MAX = 3000;
-
-/** بخش ویژگی‌ها موقتاً خاموش (خواسته مالک ۳-۱۱) — مثل ویزارد ثبت محصول */
-const FEATURES_STEP_ENABLED = false;
 
 interface ExistingPhoto {
   id: string;
@@ -64,7 +59,7 @@ interface EditDraft {
   path: Category[];
   leaf: Category | null;
   productType: string;
-  /** برند اختیاری (۲-۱۱ دور ۱۸) — از ویژگی «برند» پیش‌پر می‌شود، به انتهای عنوان می‌چسبد */
+  /** برند اختیاری — از ویژگی «برند» پیش‌پر می‌شود، به انتهای عنوان می‌چسبد */
   brand: string;
   provinceId: string;
   cityId: string;
@@ -108,49 +103,42 @@ export default function EditProductPage() {
   const { data: provinces } = useProvinces();
   const submit = useUpdateMyProduct();
 
-  const [step, setStep] = useState(0);
-  const [maxReached, setMaxReached] = useState(0);
   const [draft, setDraft] = useState<EditDraft | null>(null);
   const [existingPhotos, setExistingPhotos] = useState<ExistingPhoto[]>([]);
   const [removedPhotoIds, setRemovedPhotoIds] = useState<string[]>([]);
   const [newPhotos, setNewPhotos] = useState<NewPhoto[]>([]);
-  const [done, setDone] = useState(false);
-  // عکس‌های ناموفق آپلود در ویرایش — هشدار + تلاش دوباره (مثل ثبت جدید)
+  /** وضعیت پس از ذخیره — بدون تایید مجدد: تاییدشده همان‌جا زنده می‌ماند */
+  const [doneStatus, setDoneStatus] = useState<ProductStatus | null>(null);
+  // عکس‌های ناموفق آپلود در ویرایش — هشدار + تلاش دوباره
   const [failedPhotos, setFailedPhotos] = useState<File[]>([]);
   const [retryingPhotos, setRetryingPhotos] = useState(false);
-  /** خطاهای لحظه‌ای (مثل رد تصویر) — ولیدیشن مرحله derived است */
+  /** خطاهای لحظه‌ای (مثل رد تصویر) — ولیدیشنِ بخش‌ها derived است */
   const [error, setError] = useState('');
-  /** تلاش برای عبور از مرحلهٔ فعلی — خطا تا اصلاحِ ورودی می‌ماند و همان
-   *  لحظه پاک می‌شود (خواسته مالک ۳-۱۱ — قانون «رفع فوری خطا») */
+  /** تلاش برای ذخیره — تا آن موقع خطای بخش‌ها نشان داده نمی‌شود و بعد
+   *  از آن، هر خطا به محض اصلاح همان ورودی پاک می‌شود (derived) */
   const [attempted, setAttempted] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const provinceIdNum = draft ? num(draft.provinceId) : 0;
   const { data: cities } = useCities(provinceIdNum || undefined);
 
-  // ─── پیش‌پر کردن فرم از دیتای واقعی آگهی ───
-  // الگوی «تنظیم state هنگام رندر» — دیتای سرور آمده و فرم هنوز خالی است؛
-  // بدون effect (مثل الگوی پیش‌پر کردن استان/شهر از پروفایل در فرم ثبت)
+  // ─── پیش‌پر کردن فرم از دیتای واقعی آگهی (الگوی controlled-late) ───
   if (detail && tree && !draft) {
     const p = detail.product;
     const { path, leaf } = buildPath(tree, p.subCategoryId);
-    // برند از ویژگی‌ها جدا می‌شود (round-trip ۲-۱۱ دور ۱۸) — فیلد خودش را دارد
     const brandFeature = (p.features ?? []).find((f) => f.key === 'برند' && f.value?.trim());
     const brand = brandFeature?.value.trim() ?? '';
-    // نام محصول = «{دسته} {نوع} {برند}» — نوع و برند را جدا می‌کنیم
     const leafName = leaf?.categoryName ?? '';
     let remainder = p.productName.startsWith(leafName)
       ? p.productName.slice(leafName.length).trim()
       : p.productName;
-    let productType = remainder;
     if (brand && remainder.toLowerCase().endsWith(brand.toLowerCase())) {
-      productType = remainder.slice(0, remainder.length - brand.length).trim();
-      remainder = productType;
+      remainder = remainder.slice(0, remainder.length - brand.length).trim();
     }
     setDraft({
       path,
       leaf,
-      productType: remainder || productType,
+      productType: remainder,
       brand,
       provinceId: String(p.provinceId),
       cityId: String(p.cityId),
@@ -161,49 +149,50 @@ export default function EditProductPage() {
       features: (p.features ?? []).filter((f) => f.key !== 'برند').map((f) => ({ ...f })),
     });
     setExistingPhotos(detail.photoFiles.map((f) => ({ id: f.id, url: f.thumbUrl ?? f.url })));
-    // ویرایش = همه مراحل معتبرند؛ از پیش‌پر شده‌اند — پرش آزاد بین مراحل
-    setMaxReached(5);
   }
 
   const patch = (p: Partial<EditDraft>) => setDraft((d) => (d ? { ...d, ...p } : d));
 
-  const goTo = (s: number) => {
-    setStep(s);
-    setMaxReached((m) => Math.max(m, s));
-    setError('');
-    setAttempted(false);
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const totalPhotos = existingPhotos.length + newPhotos.length;
 
-  // ─── اعتبارسنجی هر مرحله ───
-  const stepError = (s: number): string | null => {
-    if (!draft) return 'در حال بارگذاری…';
-    const leaf = draft.leaf;
-    if (s === 0 && !leaf) return 'دسته بندی محصول را انتخاب کنید.';
-    if (s === 1) {
-      if (!draft.productType.trim()) return `نوع ${leaf?.categoryName ?? 'کالا'} خود را وارد کنید.`;
-      if (!draft.provinceId) return 'استان مبدا را انتخاب کنید.';
-      if (!draft.cityId) return 'شهر مبدا را انتخاب کنید.';
-    }
-    if (s === 2) {
-      if (num(draft.stock) < 1) return 'میزان موجودی محصول را وارد کنید.';
-      if (num(draft.minSaleAmount) < 1) return 'حداقل سفارش را وارد کنید.';
-      if (num(draft.minSaleAmount) > num(draft.stock)) return 'حداقل سفارش نمی‌تواند از موجودی بیشتر باشد.';
-      if (num(draft.minSalePrice) < 1000) return 'قیمت صحیح را وارد کنید.';
-    }
-    if (s === 3 && totalPhotos === 0) return 'حداقل یک تصویر برای محصول نگه دارید.';
-    if (s === 4 && draft.description.trim().length < 30) return 'توضیحات محصول را کامل‌تر بنویسید (حداقل ۳۰ حرف).';
-    return null;
+  // ─── اعتبارسنجی هر بخش — derived: با اصلاح ورودی همان لحظه پاک می‌شود ───
+  const sectionErrors = (d: EditDraft | null): Record<string, string | null> => {
+    if (!d) return {};
+    const leaf = d.leaf;
+    return {
+      category: !leaf ? 'دسته بندی محصول را انتخاب کنید.' : null,
+      info: !d.productType.trim()
+        ? `نوع ${leaf?.categoryName ?? 'کالا'} خود را وارد کنید.`
+        : !d.provinceId
+          ? 'استان مبدا را انتخاب کنید.'
+          : !d.cityId
+            ? 'شهر مبدا را انتخاب کنید.'
+            : null,
+      pricing:
+        num(d.stock) < 1
+          ? 'میزان موجودی محصول را وارد کنید.'
+          : num(d.minSaleAmount) < 1
+            ? 'حداقل سفارش را وارد کنید.'
+            : num(d.minSaleAmount) > num(d.stock)
+              ? 'حداقل سفارش نمی‌تواند از موجودی بیشتر باشد.'
+              : num(d.minSalePrice) < 1000
+                ? 'قیمت صحیح را وارد کنید.'
+                : null,
+      photos: totalPhotos === 0 ? 'حداقل یک تصویر برای محصول نگه دارید.' : null,
+      description:
+        d.description.trim().length < 30 ? 'توضیحات محصول را کامل‌تر بنویسید (حداقل ۳۰ حرف).' : null,
+    };
   };
 
-  const finalize = async () => {
+  const save = async () => {
     if (!draft?.leaf) return;
-    const err = stepError(5);
     setAttempted(true);
-    if (err) return;
-    // برند به آخر عنوان می‌چسبد + به‌صورت ویژگی «برند» ذخیره می‌شود (۲-۱۱ دور ۱۸)؛
+    const errs = sectionErrors(draft);
+    if (Object.values(errs).some(Boolean)) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    // برند به آخر عنوان می‌چسبد + به‌صورت ویژگی «برند» ذخیره می‌شود؛
     // واژهٔ «برند» ورودی همین‌جا هم پاک می‌شود (خواسته مالک ۳-۱۱)
     const brand = stripBrandWord(draft.brand);
     const fullName = [draft.leaf.categoryName, draft.productType.trim(), brand].filter(Boolean).join(' ');
@@ -226,7 +215,7 @@ export default function EditProductPage() {
         removedPhotoIds,
       });
       setFailedPhotos(result.failedPhotos);
-      setDone(true);
+      setDoneStatus(result.status ?? 'pending');
     } catch (err) {
       toast({ description: err instanceof Error && err.message ? err.message : 'خطا در ذخیره ویرایش — دوباره تلاش کنید.' });
     }
@@ -290,9 +279,6 @@ export default function EditProductPage() {
     })();
   };
 
-  const featureOptions = (currentKey: string) =>
-    PRODUCT_FEATURE_KEYS.filter((k) => !draft || k === currentKey || !draft.features.some((f) => f.key === k));
-
   // ─── حالت‌های بارگذاری/خطا ───
   if (loadingDetail) {
     return (
@@ -309,9 +295,7 @@ export default function EditProductPage() {
             <ImageIcon size={24} />
           </span>
           <h1 className="mt-3 text-base font-extrabold">آگهی یافت نشد</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            این آگهی متعلق به شما نیست یا حذف شده است.
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">این آگهی متعلق به شما نیست یا حذف شده است.</p>
           <Button asChild className="mt-4 rounded-md">
             <Link href="/panel/products">بازگشت به محصولات من</Link>
           </Button>
@@ -320,8 +304,9 @@ export default function EditProductPage() {
     );
   }
 
-  // ─── صفحه موفقیت ───
-  if (done) {
+  // ─── صفحه موفقیت — بدون تایید مجدد (خواسته مالک ۴-۱۱) ───
+  if (doneStatus) {
+    const live = doneStatus === 'confirmed';
     return (
       <div className="mx-auto max-w-xl">
         <PanelCard className="text-center">
@@ -330,7 +315,14 @@ export default function EditProductPage() {
           </span>
           <h1 className="mt-4 text-base font-extrabold">تغییرات آگهی ذخیره شد</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            آگهی «{draft?.leaf?.categoryName} {draft?.productType}» ویرایش شد و دوباره در انتظار تایید کارشناسان ایمچ است.
+            {live ? (
+              <>
+                آگهی «{draft?.leaf?.categoryName} {draft?.productType}» ویرایش شد و تغییرات{' '}
+                <b className="text-emerald-600">بلافاصله</b> روی آگهی شما اعمال شد — نیازی به تایید مجدد نیست.
+              </>
+            ) : (
+              <>آگهی «{draft?.leaf?.categoryName} {draft?.productType}» ویرایش شد و در انتظار تایید کارشناسان ایمچ است.</>
+            )}
           </p>
 
           {/* هشدار عکس‌های ذخیره‌نشده — دیگر بی‌صدا گم نمی‌شوند */}
@@ -354,8 +346,12 @@ export default function EditProductPage() {
           )}
 
           <div className="mt-5 flex flex-wrap justify-center gap-2">
-            <Button className="rounded-md" onClick={() => router.push('/panel/products?tab=pending')}>
+            <Button className="rounded-md" onClick={() => router.push(`/panel/products?tab=${live ? 'confirmed' : 'pending'}`)}>
               مشاهده محصول در لیست محصولات
+            </Button>
+            {/* ادامهٔ ویرایش — فرم باز است، برگشت سریع */}
+            <Button variant="outline" className="rounded-md" onClick={() => setDoneStatus(null)}>
+              ادامه ویرایش
             </Button>
           </div>
         </PanelCard>
@@ -372,386 +368,331 @@ export default function EditProductPage() {
   }
 
   const leaf = draft.leaf;
-  // خطای ولیدیشن مرحله — derived: به محض اصلاح ورودی همان لحظه پاک می‌شود
-  // (خواسته مالک ۳-۱۱)؛ error فقط پیام‌های لحظه‌ای (مثل رد تصویر) است
-  const shownStepError = attempted ? stepError(step) : null;
+  // خطاهای بخش‌ها — فقط بعد از تلاش ذخیره؛ derived و خوداصلاح (قانون §۹)
+  const errs = attempted ? sectionErrors(draft) : {};
+  const SectionError = ({ id }: { id: string }) =>
+    errs[id] ? (
+      <p className="rounded-md bg-red-50 px-3 py-2 text-xs font-bold text-red-600">{errs[id]}</p>
+    ) : null;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      <h1 className="hidden text-lg font-extrabold lg:block">ویرایش محصول</h1>
-      <ProductStepper current={step} maxReached={maxReached} onJump={goTo} />
-
-      {/* ─── مرحله ۱: دسته بندی ─── */}
-      {step === 0 && (
-        <PanelCard>
-          <CategoryCascade
-            value={{ path: draft.path, leaf: draft.leaf }}
-            onChange={(v) => patch({ path: v.path, leaf: v.leaf })}
-          />
-        </PanelCard>
-      )}
-
-      {/* ─── مرحله ۲: اطلاعات محصول ─── */}
-      {step === 1 && (
-        <PanelCard className="space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="product-type">
-              نوع <span className="text-primary">{leaf?.categoryName}</span> خود را وارد کنید <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="product-type"
-              value={draft.productType}
-              onChange={(e) => patch({ productType: e.target.value })}
-              placeholder={leaf?.example ? `مثلا : ${leaf.example}` : 'مثلا : اکبری'}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              {leaf?.example ? `مثلا : ${leaf.example}` : 'نوع/واریته دقیق کالا را بنویسید تا خریداران مرتبط پیدا شوید.'}
-            </p>
-          </div>
-
-          {/* برند اختیاری (۲-۱۱ دور ۱۸) — پیش‌پر از ویژگی «برند» آگهی؛
-              پلیس‌هولدر نمونه حذف شد (خواسته مالک ۳-۱۱) */}
-          <div className="space-y-2">
-            <Label htmlFor="product-brand">اگر محصول شما برند دارد وارد کنید</Label>
-            <Input
-              id="product-brand"
-              value={draft.brand}
-              onChange={(e) => patch({ brand: e.target.value })}
-              onBlur={() => {
-                // «برند چیتوز» → «چیتوز» (خواسته مالک ۳-۱۱)
-                const cleaned = stripBrandWord(draft.brand);
-                if (cleaned !== draft.brand) patch({ brand: cleaned });
-              }}
-              maxLength={40}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              اختیاری است — برند به انتهای عنوان آگهی اضافه می‌شود و خریداران با جستجوی نام برند محصول شما را پیدا می‌کنند.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>
-                استان مبدا <span className="text-red-500">*</span>
-              </Label>
-              <Select value={draft.provinceId} onValueChange={(v) => patch({ provinceId: v, cityId: '' })}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="انتخاب استان" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(provinces ?? []).map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>
-                شهر مبدا <span className="text-red-500">*</span>
-              </Label>
-              <Select value={draft.cityId} onValueChange={(v) => patch({ cityId: v })} disabled={!draft.provinceId}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={draft.provinceId ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {(cities ?? []).map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </PanelCard>
-      )}
-
-      {/* ─── مرحله ۳: موجودی و قیمت ─── */}
-      {step === 2 && (
-        <PanelCard className="space-y-6">
-          <div className="space-y-2.5">
-            <Label htmlFor="stock">
-              میزان موجودی محصول <span className="text-muted-foreground">({leaf?.unit ?? 'کیلوگرم'})</span>{' '}
-              <span className="text-red-500">*</span>
-            </Label>
-            <UnitInput
-              id="stock"
-              kind="weight"
-              value={draft.stock}
-              onValueChange={(v) => patch({ stock: v })}
-              unit={leaf?.unit ?? 'کیلوگرم'}
-            />
-            <p className="text-[11px] text-muted-foreground">مقیاس عمده — مقیاس‌های خرده‌فروشی قابل قبول نیستند.</p>
-          </div>
-          <div className="space-y-2.5">
-            <Label htmlFor="min-amount">
-              حداقل سفارش <span className="text-muted-foreground">({leaf?.unit ?? 'کیلوگرم'})</span>{' '}
-              <span className="text-red-500">*</span>
-            </Label>
-            <UnitInput
-              id="min-amount"
-              kind="weight"
-              value={draft.minSaleAmount}
-              onValueChange={(v) => patch({ minSaleAmount: v })}
-              unit={leaf?.unit ?? 'کیلوگرم'}
-            />
-          </div>
-          <div className="space-y-2.5">
-            <Label htmlFor="price">
-              حداقل قیمت محصول <span className="text-muted-foreground">(تومان)</span> <span className="text-red-500">*</span>
-            </Label>
-            <UnitInput
-              id="price"
-              kind="price"
-              value={draft.minSalePrice}
-              onValueChange={(v) => patch({ minSalePrice: v })}
-              unit={`هر ${leaf?.unit ?? 'کیلوگرم'}`}
-              invalid={Boolean(draft.minSalePrice) && num(draft.minSalePrice) < 1000}
-            />
-            {Boolean(draft.minSalePrice) && num(draft.minSalePrice) < 1000 && (
-              <p className="text-[11px] text-red-500">قیمت صحیح را وارد کنید.</p>
-            )}
-          </div>
-        </PanelCard>
-      )}
-
-      {/* ─── مرحله ۴: تصاویر ─── */}
-      {step === 3 && (
-        <PanelCard>
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label="افزودن تصویر"
-            onClick={() => fileRef.current?.click()}
-            onKeyDown={(e) => e.key === 'Enter' && fileRef.current?.click()}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              addFiles(e.dataTransfer.files);
-            }}
-            className="grid cursor-pointer place-items-center rounded-lg border-2 border-dashed border-border bg-secondary/40 p-6 text-center transition-colors hover:border-primary/50 hover:bg-secondary/70"
-          >
-            <span className="grid size-11 place-items-center rounded-full bg-card text-primary shadow-sm">
-              <ImagePlus size={20} />
-            </span>
-            <p className="mt-2.5 text-sm font-bold">انتخاب تصویر</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              حداکثر ۴ تصویر — {toFa(totalPhotos)} تصویر فعلی
-            </p>
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/jpg"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              addFiles(e.target.files);
-              e.target.value = '';
-            }}
-          />
-
-          {(existingPhotos.length > 0 || newPhotos.length > 0) && (
-            <div className="mt-4 flex flex-wrap gap-3">
-              {existingPhotos.map((ph) => (
-                <div key={ph.id} className="relative size-24 overflow-hidden rounded-md border bg-secondary">
-                  <img src={ph.url} alt="تصویر فعلی محصول" className="size-full object-cover" />
-                  <button
-                    type="button"
-                    aria-label="حذف تصویر"
-                    onClick={() => {
-                      setExistingPhotos((prev) => prev.filter((x) => x.id !== ph.id));
-                      setRemovedPhotoIds((prev) => [...prev, ph.id]);
-                    }}
-                    className="absolute left-1 top-1 grid size-6 place-items-center rounded-full bg-black/60 text-white transition-colors hover:bg-red-500"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))}
-              {newPhotos.map((ph) => (
-                <div key={ph.id} className="relative size-24 overflow-hidden rounded-md border-2 border-primary/40 bg-secondary">
-                  <img src={ph.url} alt="تصویر جدید محصول" className="size-full object-cover" />
-                  <button
-                    type="button"
-                    aria-label="حذف تصویر جدید"
-                    onClick={() => setNewPhotos((prev) => prev.filter((x) => x.id !== ph.id))}
-                    className="absolute left-1 top-1 grid size-6 place-items-center rounded-full bg-black/60 text-white transition-colors hover:bg-red-500"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          <p className="mt-3 text-[11px] text-muted-foreground">
-            تصاویر حذف‌شده بعد از ذخیره نهایی پاک می‌شوند؛ تصاویر جدید مثل ثبت اولیه بهینه می‌شوند (عرض ≤۱۲۰۰، حجم ≤۵۰۰KB).
+    <div className="mx-auto max-w-5xl space-y-4 pb-2">
+      {/* سربرگ — بازگشت + عنوان */}
+      <div className="flex items-center gap-3">
+        <Button
+          asChild
+          variant="outline"
+          size="icon"
+          className="size-10 shrink-0 rounded-full"
+          aria-label="بازگشت به محصولات من"
+          title="بازگشت"
+        >
+          <Link href="/panel/products">
+            <ArrowRight size={17} />
+          </Link>
+        </Button>
+        <div className="min-w-0">
+          <h1 className="text-base font-extrabold sm:text-lg">ویرایش محصول</h1>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            هر بخش را که خواستید جداگانه ویرایش کنید و در پایان ذخیره کنید — بدون تایید مجدد.
           </p>
-        </PanelCard>
-      )}
+        </div>
+      </div>
 
-      {/* ─── مرحله ۵: توضیحات ─── */}
-      {step === 4 && (
-        <PanelCard className="space-y-3">
-          <Label htmlFor="description">توضیحات محصول</Label>
-          <Textarea
-            id="description"
-            dir="rtl"
-            rows={18}
-            value={draft.description}
-            onChange={(e) => {
-              if (e.target.value.length <= DESCRIPTION_MAX) patch({ description: e.target.value });
-            }}
-            className="min-h-72 resize-none text-sm leading-8 md:min-h-80"
-            placeholder="کیفیت ویژگیها، بسته بندی، قیمت در حجم های مختلف، شرایط ارسال، محدوده ارسال، تخفیفات همکاری و هر چیزی که خریداران محصولات شما باید بدانند"
-            maxLength={DESCRIPTION_MAX}
-          />
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="font-num text-muted-foreground">
-              {toFa(draft.description.trim().length)} / {toFa(DESCRIPTION_MAX)} نویسه
-            </span>
-            <span
-              className={cn(
-                'rounded-full px-2.5 py-0.5 font-bold',
-                draft.description.trim().length >= 100 ? 'bg-emerald-50 text-emerald-600' : 'bg-secondary text-muted-foreground',
-              )}
-            >
-              {draft.description.trim().length >= 100 ? 'کافی' : 'کوتاه'}
-            </span>
-          </div>
-        </PanelCard>
-      )}
-
-      {/* ─── مرحله ۶: تایید نهایی ─── */}
-      {step === 5 && (
-        <PanelCard className="space-y-4">
-          {/* عنوان نهایی آگهی — برند به انتهایش چسبیده (۲-۱۱ دور ۱۸) */}
-          <div className="rounded-md border border-dashed bg-secondary/50 px-4 py-3">
-            <p className="text-[11px] text-muted-foreground">عنوان آگهی شما:</p>
-            <p className="mt-0.5 text-sm font-extrabold">
-              {[leaf?.categoryName, draft.productType.trim(), stripBrandWord(draft.brand)].filter(Boolean).join(' ')}
-            </p>
-          </div>
-
-          {/* بخش ویژگی‌ها موقتاً خاموش (خواسته مالک ۳-۱۱) — مثل ویزارد ثبت؛
-              ویژگی‌های ذخیره‌شدهٔ قبلی موقع ذخیره حفظ می‌شوند */}
-          {FEATURES_STEP_ENABLED && (
-            <>
-          <p className="text-sm leading-6 text-muted-foreground">
-            ویژگی‌های محصول خود را با انتخاب «ویژگی» و نوشتن توضیح آن ثبت کنید — مثل: بسته‌بندی / کیسه ۵۰ کیلویی.
-            (اختیاری است — تا {toFa(PRODUCT_FEATURE_KEYS.length)} ویژگی.)
-          </p>
-
-          {draft.features.length === 0 && (
-            <div className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
-              هنوز ویژگی‌ای اضافه نشده است (اختیاری).
-            </div>
-          )}
-
-          {draft.features.map((f, i) => (
-            <div key={i} className="grid gap-2 sm:grid-cols-[220px_1fr_auto]">
-              <Select
-                value={f.key}
-                onValueChange={(v) => {
-                  const features = [...draft.features];
-                  features[i] = { ...features[i], key: v };
-                  patch({ features });
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="یک مورد را انتخاب کنید" />
-                </SelectTrigger>
-                <SelectContent>
-                  {featureOptions(f.key).map((k) => (
-                    <SelectItem key={k} value={k}>
-                      {k}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                value={f.value}
-                onChange={(e) => {
-                  const features = [...draft.features];
-                  features[i] = { ...features[i], value: e.target.value };
-                  patch({ features });
-                }}
-                placeholder="توضیحات"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label="حذف ویژگی"
-                className="text-red-500 hover:bg-red-50 hover:text-red-600"
-                onClick={() => patch({ features: draft.features.filter((_, j) => j !== i) })}
-              >
-                <Trash2 size={16} />
-              </Button>
-            </div>
-          ))}
-
-          {draft.features.length < PRODUCT_FEATURE_KEYS.length && (
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full rounded-md border-dashed"
-              onClick={() => patch({ features: [...draft.features, { key: '', value: '' }] })}
-            >
-              <Plus size={15} /> افزودن ویژگی بیشتر
-              <span className="text-[10px] font-normal text-muted-foreground">
-                ({toFa(draft.features.length)} از {toFa(PRODUCT_FEATURE_KEYS.length)})
+      {/* فرم باز — دسکتاپ دو ستونه، موبایل تک‌ستونه (خواسته مالک ۴-۱۱) */}
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        {/* ستون راست: دسته‌بندی + اطلاعات محصول */}
+        <div className="space-y-4">
+          <PanelCard className="space-y-3">
+            <h2 className="flex items-center gap-2 text-sm font-extrabold">
+              <span className="grid size-7 place-items-center rounded-md bg-primary/10 text-primary">
+                <Tag size={14} />
               </span>
-            </Button>
-          )}
-            </>
-          )}
-        </PanelCard>
-      )}
+              دسته بندی
+            </h2>
+            <CategoryCascade
+              value={{ path: draft.path, leaf: draft.leaf }}
+              onChange={(v) => patch({ path: v.path, leaf: v.leaf })}
+            />
+            <SectionError id="category" />
+          </PanelCard>
 
-      {/* خطا + دکمه‌های ناوبری */}
+          <PanelCard className="space-y-4">
+            <h2 className="flex items-center gap-2 text-sm font-extrabold">
+              <span className="grid size-7 place-items-center rounded-md bg-primary/10 text-primary">
+                <Tag size={14} />
+              </span>
+              اطلاعات محصول
+            </h2>
+            <div className="space-y-2">
+              <Label htmlFor="product-type">
+                نوع <span className="text-primary">{leaf?.categoryName}</span> خود را وارد کنید <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="product-type"
+                value={draft.productType}
+                onChange={(e) => patch({ productType: e.target.value })}
+                placeholder={leaf?.example ? `مثلا : ${leaf.example}` : 'مثلا : اکبری'}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {leaf?.example ? `مثلا : ${leaf.example}` : 'نوع/واریته دقیق کالا را بنویسید تا خریداران مرتبط پیدا شوید.'}
+              </p>
+            </div>
+
+            {/* برند اختیاری — پاک‌سازی واژهٔ «برند» موقع blur (خواسته مالک ۳-۱۱) */}
+            <div className="space-y-2">
+              <Label htmlFor="product-brand">اگر محصول شما برند دارد وارد کنید</Label>
+              <Input
+                id="product-brand"
+                value={draft.brand}
+                onChange={(e) => patch({ brand: e.target.value })}
+                onBlur={() => {
+                  const cleaned = stripBrandWord(draft.brand);
+                  if (cleaned !== draft.brand) patch({ brand: cleaned });
+                }}
+                maxLength={40}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                اختیاری است — برند به انتهای عنوان آگهی اضافه می‌شود و خریداران با جستجوی نام برند محصول شما را پیدا می‌کنند.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>
+                  استان مبدا <span className="text-red-500">*</span>
+                </Label>
+                <Select value={draft.provinceId} onValueChange={(v) => patch({ provinceId: v, cityId: '' })}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="انتخاب استان" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(provinces ?? []).map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>
+                  شهر مبدا <span className="text-red-500">*</span>
+                </Label>
+                <Select value={draft.cityId} onValueChange={(v) => patch({ cityId: v })} disabled={!draft.provinceId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={draft.provinceId ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(cities ?? []).map((c) => (
+                      <SelectItem key={c.id} value={String(c.id)}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <SectionError id="info" />
+          </PanelCard>
+        </div>
+
+        {/* ستون چپ: موجودی و قیمت + تصاویر */}
+        <div className="space-y-4">
+          <PanelCard className="space-y-5">
+            <h2 className="flex items-center gap-2 text-sm font-extrabold">
+              <span className="grid size-7 place-items-center rounded-md bg-primary/10 text-primary">
+                <Warehouse size={14} />
+              </span>
+              موجودی و قیمت
+            </h2>
+            <div className="space-y-2.5">
+              <Label htmlFor="stock">
+                میزان موجودی محصول <span className="text-muted-foreground">({leaf?.unit ?? 'کیلوگرم'})</span>{' '}
+                <span className="text-red-500">*</span>
+              </Label>
+              <UnitInput
+                id="stock"
+                kind="weight"
+                value={draft.stock}
+                onValueChange={(v) => patch({ stock: v })}
+                unit={leaf?.unit ?? 'کیلوگرم'}
+              />
+              <p className="text-[11px] text-muted-foreground">مقیاس عمده — مقیاس‌های خرده‌فروشی قابل قبول نیستند.</p>
+            </div>
+            <div className="space-y-2.5">
+              <Label htmlFor="min-amount">
+                حداقل سفارش <span className="text-muted-foreground">({leaf?.unit ?? 'کیلوگرم'})</span>{' '}
+                <span className="text-red-500">*</span>
+              </Label>
+              <UnitInput
+                id="min-amount"
+                kind="weight"
+                value={draft.minSaleAmount}
+                onValueChange={(v) => patch({ minSaleAmount: v })}
+                unit={leaf?.unit ?? 'کیلوگرم'}
+              />
+            </div>
+            <div className="space-y-2.5">
+              <Label htmlFor="price">
+                حداقل قیمت محصول <span className="text-muted-foreground">(تومان)</span> <span className="text-red-500">*</span>
+              </Label>
+              <UnitInput
+                id="price"
+                kind="price"
+                value={draft.minSalePrice}
+                onValueChange={(v) => patch({ minSalePrice: v })}
+                unit={`هر ${leaf?.unit ?? 'کیلوگرم'}`}
+                invalid={Boolean(draft.minSalePrice) && num(draft.minSalePrice) < 1000}
+              />
+              {Boolean(draft.minSalePrice) && num(draft.minSalePrice) < 1000 && (
+                <p className="text-[11px] text-red-500">قیمت صحیح را وارد کنید.</p>
+              )}
+            </div>
+            <SectionError id="pricing" />
+          </PanelCard>
+
+          <PanelCard className="space-y-3">
+            <h2 className="flex items-center gap-2 text-sm font-extrabold">
+              <span className="grid size-7 place-items-center rounded-md bg-primary/10 text-primary">
+                <ImageIcon size={14} />
+              </span>
+              تصاویر محصول
+            </h2>
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="افزودن تصویر"
+              onClick={() => fileRef.current?.click()}
+              onKeyDown={(e) => e.key === 'Enter' && fileRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                addFiles(e.dataTransfer.files);
+              }}
+              className="grid cursor-pointer place-items-center rounded-lg border-2 border-dashed border-border bg-secondary/40 p-5 text-center transition-colors hover:border-primary/50 hover:bg-secondary/70"
+            >
+              <span className="grid size-10 place-items-center rounded-full bg-card text-primary shadow-sm">
+                <ImagePlus size={18} />
+              </span>
+              <p className="mt-2 text-xs font-bold">انتخاب تصویر</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                حداکثر ۴ تصویر — {toFa(totalPhotos)} تصویر فعلی
+              </p>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/jpg"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                addFiles(e.target.files);
+                e.target.value = '';
+              }}
+            />
+
+            {(existingPhotos.length > 0 || newPhotos.length > 0) && (
+              <div className="flex flex-wrap gap-3">
+                {existingPhotos.map((ph) => (
+                  <div key={ph.id} className="relative size-20 overflow-hidden rounded-md border bg-secondary">
+                    <img src={ph.url} alt="تصویر فعلی محصول" className="size-full object-cover" />
+                    <button
+                      type="button"
+                      aria-label="حذف تصویر"
+                      onClick={() => {
+                        setExistingPhotos((prev) => prev.filter((x) => x.id !== ph.id));
+                        setRemovedPhotoIds((prev) => [...prev, ph.id]);
+                      }}
+                      className="absolute left-1 top-1 grid size-6 place-items-center rounded-full bg-black/60 text-white transition-colors hover:bg-red-500"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+                {newPhotos.map((ph) => (
+                  <div key={ph.id} className="relative size-20 overflow-hidden rounded-md border-2 border-primary/40 bg-secondary">
+                    <img src={ph.url} alt="تصویر جدید محصول" className="size-full object-cover" />
+                    <button
+                      type="button"
+                      aria-label="حذف تصویر جدید"
+                      onClick={() => setNewPhotos((prev) => prev.filter((x) => x.id !== ph.id))}
+                      className="absolute left-1 top-1 grid size-6 place-items-center rounded-full bg-black/60 text-white transition-colors hover:bg-red-500"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              تصاویر حذف‌شده بعد از ذخیره نهایی پاک می‌شوند؛ تصاویر جدید مثل ثبت اولیه بهینه می‌شوند (عرض ≤۱۲۰۰، حجم ≤۵۰۰KB).
+            </p>
+            <SectionError id="photos" />
+          </PanelCard>
+        </div>
+      </div>
+
+      {/* توضیحات — تمام‌عرض */}
+      <PanelCard className="space-y-3">
+        <h2 className="flex items-center gap-2 text-sm font-extrabold">
+          <span className="grid size-7 place-items-center rounded-md bg-primary/10 text-primary">
+            <Tag size={14} />
+          </span>
+          توضیحات محصول
+        </h2>
+        <Textarea
+          dir="rtl"
+          rows={14}
+          value={draft.description}
+          onChange={(e) => {
+            if (e.target.value.length <= DESCRIPTION_MAX) patch({ description: e.target.value });
+          }}
+          className="min-h-56 resize-none text-sm leading-8 md:min-h-64"
+          placeholder="کیفیت ویژگیها، بسته بندی، قیمت در حجم های مختلف، شرایط ارسال، محدوده ارسال، تخفیفات همکاری و هر چیزی که خریداران محصولات شما باید بدانند"
+          maxLength={DESCRIPTION_MAX}
+        />
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="font-num text-muted-foreground">
+            {toFa(draft.description.trim().length)} / {toFa(DESCRIPTION_MAX)} نویسه
+          </span>
+          <span
+            className={cn(
+              'rounded-full px-2.5 py-0.5 font-bold',
+              draft.description.trim().length >= 100 ? 'bg-emerald-50 text-emerald-600' : 'bg-secondary text-muted-foreground',
+            )}
+          >
+            {draft.description.trim().length >= 100 ? 'کافی' : 'کوتاه'}
+          </span>
+        </div>
+        <SectionError id="description" />
+      </PanelCard>
+
+      {/* نوار ذخیره — چسبان پایین؛ فرم باز، همهٔ بخش‌ها یک‌جا ذخیره می‌شوند */}
       <div className="sticky bottom-16 z-10 rounded-lg border bg-card/95 p-3 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] backdrop-blur lg:bottom-4">
-        {/* ولیدیشن مرحله — derived: به محض اصلاح ورودی پاک می‌شود (خواسته مالک ۳-۱۱) */}
-        {shownStepError ?? error ? (
-          <p className="mb-2 rounded-md bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
-            {shownStepError ?? error}
-          </p>
+        {error ? (
+          <p className="mb-2 rounded-md bg-red-50 px-3 py-2 text-xs font-bold text-red-600">{error}</p>
         ) : null}
         <div className="flex items-center justify-between gap-2">
+          <p className="hidden text-[11px] leading-5 text-muted-foreground sm:block">
+            تغییرات بدون تایید مجدد اعمال می‌شود — آگهی تاییدشده همان‌جا زنده می‌ماند.
+          </p>
           <Button
             type="button"
-            variant="outline"
-            className="rounded-md"
-            disabled={step === 0}
-            onClick={() => goTo(Math.max(0, step - 1))}
+            className="h-12 min-w-40 rounded-md px-6 text-sm font-extrabold"
+            onClick={() => void save()}
+            disabled={submit.isPending}
           >
-            <ArrowRight size={15} /> مرحله قبل
+            {submit.isPending ? (
+              <>
+                <Loader2 size={16} className="animate-spin" /> در حال ذخیره…
+              </>
+            ) : (
+              <>
+                <Save size={16} /> ذخیره تغییرات
+              </>
+            )}
           </Button>
-          {step < 5 ? (
-            /* ادامه — بزرگ‌تر + فلش رو‌به‌بیرون/چپ = جهت پیشرفت RTL (خواسته مالک ۳-۱۱) */
-            <Button
-              type="button"
-              className="h-12 min-w-32 rounded-md px-6 text-sm font-extrabold md:h-13"
-              onClick={() => {
-                setAttempted(true);
-                if (stepError(step)) return;
-                goTo(step + 1);
-              }}
-            >
-              ادامه <ArrowLeft size={17} />
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              className="h-12 min-w-32 rounded-md px-6 text-sm font-extrabold md:h-13"
-              onClick={() => void finalize()}
-              disabled={submit.isPending}
-            >
-              {submit.isPending ? 'در حال ذخیره…' : 'ذخیره تغییرات'}
-            </Button>
-          )}
         </div>
       </div>
     </div>

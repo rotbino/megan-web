@@ -87,18 +87,19 @@ export function RfqForm() {
             <p className="max-w-md text-sm leading-7 text-muted-foreground sm:text-base">
               در صورتی که خریدار عمده هستید ، با ثبت یک درخواست خرید، از چندین فروشنده قیمت دریافت کنید.
             </p>
+            {/* آمار (خواسته مالک ۴-۱۱) — فروشندگان/خریداران/اصناف */}
             <div className="mt-6 flex flex-wrap gap-x-10 gap-y-4">
               <div>
-                <p className="text-xl font-bold text-primary">{toFa(24000)} +</p>
+                <p className="text-xl font-bold text-primary">{toFa(54000)} +</p>
                 <p className="mt-1 text-xs text-muted-foreground">فروشندگان فعال</p>
               </div>
               <div>
-                <p className="text-xl font-bold text-primary">{toFa(3200)} +</p>
-                <p className="mt-1 text-xs text-muted-foreground">شرکت های بازرگانی</p>
+                <p className="text-xl font-bold text-primary">{toFa(342000)} +</p>
+                <p className="mt-1 text-xs text-muted-foreground">خریداران</p>
               </div>
               <div>
-                <p className="text-xl font-bold text-primary">{toFa(130)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">صنایع مختلف</p>
+                <p className="text-xl font-bold text-primary">{toFa(150)} صنف</p>
+                <p className="mt-1 text-xs text-muted-foreground">اصناف مختلف</p>
               </div>
             </div>
           </div>

@@ -20,9 +20,12 @@ import { PERIOD_LABELS, type BuyerDirectoryItem } from '@/lib/types';
 export function BookEntryCard({
   entry,
   onOffer,
+  matchBadge,
 }: {
   entry: BuyerDirectoryItem;
   onOffer: () => void;
+  /** بج دقت تطابق (پنل فروشنده — خواسته مالک ۴-۱۱): «دقت تطابق ٪۸۵» */
+  matchBadge?: { score: number; label?: string };
 }) {
   const location = [entry.province, entry.city].filter(Boolean).join(' - ');
   const initial = entry.buyerName.trim().charAt(0) || 'خ';
@@ -49,6 +52,17 @@ export function BookEntryCard({
           </span>
           <h3 className="truncate text-sm font-extrabold sm:text-[15px]">{entry.buyerName}</h3>
         </div>
+        {/* بج تطابق — فقط پنل فروشنده؛ مطابق‌ترین‌ها بالاتر لیست‌اند */}
+        {matchBadge && matchBadge.score > 0 && (
+          <span
+            className={cn(
+              'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold',
+              matchBadge.score >= 85 ? 'bg-emerald-50 text-emerald-600' : 'bg-sky-50 text-sky-600',
+            )}
+          >
+            دقت تطابق ٪{toFa(matchBadge.score)}
+          </span>
+        )}
       </div>
 
       {/* جمله — عین باسکول: خریدار … هستم */}

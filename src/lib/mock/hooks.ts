@@ -703,3 +703,25 @@ export function useMyReceivedOffers(q: import('@/lib/types').ReceivedOffersQuery
     placeholderData: keepPreviousData,
   });
 }
+
+/** پیشنهادهای تامین ارسالی من (خواسته مالک ۴-۱۱) — پنل فروشنده؛
+ *  categoryId اختیاری برای صفحهٔ «خریداران این کالا» */
+export function useMySentOffers(q: import('@/lib/types').SentOffersQuery = {}) {
+  return useQuery({
+    queryKey: ['my-sent-offers', q],
+    queryFn: () => api.getMySentOffers(q),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** تغییر گروهی قیمت/موجودی (خواسته مالک ۴-۱۱) — لیست محصولات تازه شود */
+export function useBulkUpdatePrices() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.bulkUpdatePrices,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-my-products'] });
+      queryClient.invalidateQueries({ queryKey: ['panel-my-product-detail'] });
+    },
+  });
+}

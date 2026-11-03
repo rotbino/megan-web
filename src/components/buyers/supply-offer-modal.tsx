@@ -19,7 +19,8 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Banknote, ChevronDown, Copy, FileText, Loader2, Send, Truck, Users } from 'lucide-react';
+import Link from 'next/link';
+import { Banknote, ChevronDown, Copy, FileText, Loader2, Plus, Send, Truck, Users } from 'lucide-react';
 import { useAuth } from '@/lib/mock/auth';
 import { useGroupSendSupplyOffer, useSendSupplyOffer } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
@@ -222,6 +223,33 @@ export function SupplyOfferForm({
   // الگوی همیشگی ۱-۱۱: کمبود موجودی → مودال «شارژ کیف پول» (بستن + شارژ)
   const [needWallet, setNeedWallet] = useState(false);
 
+  // ─── گیت کالا (خواسته مالک ۴-۱۱) ───
+  // فروشنده باید همان گروه کالا را در محصولات خودش داشته باشد؛ برای نوعِ
+  // واردشده هم همین‌طور — «برای تامین سیب قرمز باید این کالا را داشته باشید»
+  const norm = (s: string) => s.replace(/[\u200c\s]+/g, ' ').trim();
+  const categoryProducts = useMemo(
+    () =>
+      !category
+        ? []
+        : (products ?? []).filter(
+            (p) =>
+              (p.status === 'confirmed' || p.status === 'pending') && p.subCategoryId === category.id,
+          ),
+    [products, category],
+  );
+  const hasCategoryProduct = !category || categoryProducts.length > 0;
+  /** نوع واردشده در محصولات همان دسته هست؟ (آگهیِ فقط‌برگ = هر نوع آن دسته) */
+  const typeOk = useMemo(() => {
+    if (!category || !productType.trim() || !hasCategoryProduct) return true;
+    const t = norm(productType);
+    const leaf = norm(category.categoryName);
+    return categoryProducts.some((p) => {
+      const name = norm(p.productName).replace(leaf, ' ').trim();
+      if (!name) return true; // آگهی فقط‌برگ — نوع مشخصی ندارد
+      return name.includes(t) || t.includes(name) || norm(p.productName).includes(t);
+    });
+  }, [category, productType, hasCategoryProduct, categoryProducts]);
+
   const sellerName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'فروشنده ایمچ';
   // نمونهٔ پارامتریک — هر بار هدف تازه (پدر با key خودش فرم تازه می‌سازد)
   const sample = useMemo(
@@ -230,6 +258,26 @@ export function SupplyOfferForm({
   );
 
   if (targets.length === 0) return null;
+
+  // ─── گیت کالا: کالای این دسته را ندارید — پیام شفاف + مسیر ثبت محصول ───
+  if (!hasCategoryProduct) {
+    return (
+      <div className="rounded-lg border border-dashed border-primary/40 bg-primary/[0.03] p-4 text-center">
+        <p className="text-xs font-extrabold leading-6">
+          برای ارسال پیشنهاد تامین {category?.categoryName ?? 'این کالا'} باید این کالا را در لیست محصولات خود داشته
+          باشید.
+        </p>
+        <p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">
+          ابتدا آگهی همین کالا را ثبت کنید تا خریداران بدانند چه چیزی عرضه می‌کنید؛ سپس پیشنهاد بفرستید.
+        </p>
+        <Button asChild size="sm" className="mt-3 rounded-md">
+          <Link href="/panel/products/new">
+            <Plus size={14} /> ثبت محصول
+          </Link>
+        </Button>
+      </div>
+    );
+  }
 
   const isGroup = targets.length > 1;
   const perRecipient = quota?.groupSend.perRecipientPrice ?? 0;
@@ -280,6 +328,14 @@ export function SupplyOfferForm({
     const text = message.trim();
     if (text.length < 5) {
       toast({ description: 'متن پیشنهاد را کامل کنید (حداقل ۵ نویسه).', variant: 'destructive' });
+      return;
+    }
+    // گیت نوع کالا (خواسته مالک ۴-۱۱) — نوع واردشده باید در محصولات همین دسته باشد
+    if (!typeOk) {
+      toast({
+        description: `برای پیشنهاد تامین نوع «${productType.trim()}» باید همین کالا را در لیست محصولات خود داشته باشید.`,
+        variant: 'destructive',
+      });
       return;
     }
     const terms = buildTerms();
@@ -362,7 +418,14 @@ export function SupplyOfferForm({
               placeholder={category.example ? `مثلا : ${category.example}` : 'مثلا : اکبری'}
               className="h-9 rounded-md text-xs"
               maxLength={60}
+              aria-invalid={!typeOk || undefined}
             />
+            {/* گیت نوع (خواسته مالک ۴-۱۱) — به محض اصلاح/خالی‌کردن، پاک می‌شود */}
+            {!typeOk && (
+              <p className="mt-1 rounded-md bg-red-50 px-2.5 py-1.5 text-[11px] font-bold leading-5 text-red-600">
+                برای پیشنهاد تامین نوع «{productType.trim()}» باید همین کالا را در لیست محصولات خود داشته باشید.
+              </p>
+            )}
           </div>
           <div>
             <label htmlFor="offer-min-order" className="mb-1 block text-[11px] font-bold text-muted-foreground">
@@ -526,7 +589,7 @@ export function SupplyOfferForm({
         <Button
           className="flex-1 rounded-md"
           onClick={send}
-          disabled={pending || message.trim().length < 5}
+          disabled={pending || message.trim().length < 5 || !typeOk}
         >
           {pending ? (
             <>

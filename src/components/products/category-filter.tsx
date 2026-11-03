@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toFa } from '@/lib/format';
 import type { Category } from '@/lib/types';
@@ -13,8 +13,9 @@ import type { Category } from '@/lib/types';
  * رفتار (خواسته مالک):
  * - صفحه اصلی لیست (بدون path) → فقط سطح اول گروه‌بندی (۱۰ دسته ریشه)؛
  *   درخت کامل نمایش داده نمی‌شود — ورود به هر دسته از صفحه خودش است.
- * - صفحه دسته (path) → فقط زیردسته‌های همان دسته + دکمه «بازگشت» به سطح بالا؛
- *   اگر دسته فعلی برگ باشد، هم‌ترازهای خودش (فرزندان والد) نشان داده می‌شوند.
+ * - صفحه دسته (path) → ساختار درختی (خواسته مالک ۴-۱۱): لینک «همه دسته ها»
+ *   با فلش بازگشت و رنگ برندِ بولد؛ سرشاخه با فونت بولد و غلیظ هم‌اندازهٔ
+ *   زیردسته‌ها؛ زیردسته‌ها غیربولد و یک تَب جلوتر (تورفتگی) تا درخت دیده شود.
  */
 
 /** سطح اول گروه‌بندی — «همه دسته‌ها» + ۱۰ دسته ریشه (خواسته مالک: بدون درخت کامل) */
@@ -72,23 +73,25 @@ export function CategoryFilter({ tree, path }: { tree: Category[]; path?: Catego
 
   return (
     <nav aria-label="زیردسته‌ها">
-      {/* بازگشت به دسته بالاتر — عین الگوی سایت قدیم */}
+      {/* همه دسته ها (خواسته مالک ۴-۱۱) — فقط همین متن با فلش بازگشتِ روشن،
+          هم‌رنگ برند (آبی نیلوفتی) و بولد؛ نه «بازگشت به …» */}
       <Link
         href={backHref}
-        className="mb-2 flex items-center gap-1 rounded-md bg-secondary px-2.5 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        className="mb-2 flex items-center gap-1.5 rounded-md px-2.5 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary/5"
       >
-        <ChevronRight size={14} aria-hidden />
-        بازگشت به {backTarget?.categoryName ?? 'همه دسته‌ها'}
+        <ArrowRight size={16} strokeWidth={2.5} aria-hidden />
+        همه دسته ها
       </Link>
 
-      {/* عنوان سطح فعلی + تعداد زیردسته */}
-      <p className="mb-1.5 px-2.5 text-xs font-bold text-foreground/80">
+      {/* سرشاخه — بولد و غلیظ، هم‌اندازهٔ زیردسته‌ها (خواسته مالک ۴-۱۱) */}
+      <p className="mb-1.5 px-2.5 text-sm font-extrabold text-foreground">
         {focus.categoryName}
-        <span className="ms-1 font-normal text-muted-foreground">
+        <span className="ms-1 text-[11px] font-normal text-muted-foreground">
           ({toFa(focus.children?.length ?? 0)} زیردسته)
         </span>
       </p>
 
+      {/* زیردسته‌ها — غیربولد با اندازهٔ فعلی، یک تَب جلوتر از سرشاخه (درخت) */}
       <ul className="max-h-96 space-y-0.5 overflow-y-auto pe-1">
         {(focus.children ?? []).map((c) => {
           const active = c.slug === current.slug;
@@ -98,7 +101,7 @@ export function CategoryFilter({ tree, path }: { tree: Category[]; path?: Catego
                 href={`/product-list/category/${encodeURIComponent(c.slug)}`}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5',
+                  'flex items-center justify-between gap-2 rounded-md ps-7 pe-2.5 py-1.5 text-sm',
                   active
                     ? 'font-bold text-primary'
                     : 'text-muted-foreground hover:bg-secondary',

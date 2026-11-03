@@ -15,13 +15,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  BadgeCheck,
   BookOpenText,
   Bookmark,
   FileText,
   Medal,
   MessageSquare,
   Package,
+  Send,
   ShieldCheck,
   Sparkles,
   UserRound,
@@ -43,13 +43,15 @@ interface PanelNavItem {
   exact?: boolean;
 }
 
-/** منوی فروشنده — ۸ آیتم (دور ۱۵)؛ دور ۱۶: «آیمچ من» اول از همه (هر دو پنل) */
+/** منوی فروشنده — ۸ آیتم (دور ۱۵)؛ دور ۱۶: «آیمچ من» اول از همه (هر دو پنل).
+ *  دور ۱۹+ (خواسته مالک ۴-۱۱): «خریداران پیشنهادی» حذف شد — تطبیق حالا داخل
+ *  صفحهٔ «خریداران» است؛ جای آن «پیشنهادات تامین» (ارسال‌های من) آمد. */
 export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel', label: 'آیمچ من', icon: UserRound, exact: true },
   { href: '/panel/products', label: 'محصولات من', icon: Package },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
   { href: '/panel/buyers', label: 'خریداران', icon: Users },
-  { href: '/panel/suggested-buyers', label: 'خریداران پیشنهادی', icon: BadgeCheck },
+  { href: '/panel/supply-offers', label: 'پیشنهادات تامین', icon: Send },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
   { href: '/panel/pricing', label: 'ارتقا عضویت', icon: Medal },
   { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },

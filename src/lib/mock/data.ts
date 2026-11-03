@@ -127,3 +127,7 @@ export function ladderMonthsLabel(months: number): string {
 /** شماره کارت برای واریز کارت به کارت — به نام مالک سایت (سعید یوسفی) */
 export const AIMCH_CARD_NUMBER = '6037-9975-1234-5678';
 export const AIMCH_CARD_OWNER = 'سعید یوسفی';
+
+/** شماره پشتیبان مالی ایمچ (خواسته مالک ۴-۱۱) — در موبایل مستقیم تماس،
+ *  در دسکتاپ داخل مدال نمایش داده می‌شود؛ خود شماره در UI چسبان نیست */
+export const AIMCH_SUPPORT_PHONE = '09196421264';

@@ -29,6 +29,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import {
+  ArrowRight,
   CalendarClock,
   CalendarDays,
   ChevronLeft,
@@ -864,20 +865,21 @@ function CategoryNav({
 
   return (
     <nav aria-label="زیردسته‌ها">
-      {/* بازگشت به دستهٔ بالاتر — عین الگوی آگهی‌ها */}
+      {/* همه دسته ها (خواسته مالک ۴-۱۱ — الگوی مشترک با سایدبار آگهی‌ها) —
+          فلش بازگشتِ روشن، هم‌رنگ برند و بولد */}
       <button
         type="button"
         onClick={() => (backTarget ? onPick(backTarget) : onClear())}
-        className="mb-2 flex w-full items-center gap-1 rounded-md bg-secondary px-2.5 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        className="mb-2 flex w-full items-center gap-1.5 rounded-md px-2.5 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary/5"
       >
-        <ChevronRight size={14} aria-hidden />
-        بازگشت به {backTarget?.categoryName ?? 'همه دسته‌ها'}
+        <ArrowRight size={16} strokeWidth={2.5} aria-hidden />
+        همه دسته ها
       </button>
 
-      {/* عنوان سطح فعلی + تعداد زیردسته */}
-      <p className="mb-1.5 px-2.5 text-xs font-bold text-foreground/80">
+      {/* سرشاخه — بولد و غلیظ، هم‌اندازهٔ زیردسته‌ها؛ زیردسته‌ها یک تَب جلوتر */}
+      <p className="mb-1.5 px-2.5 text-sm font-extrabold text-foreground">
         {focus.categoryName}
-        <span className="ms-1 font-normal text-muted-foreground">
+        <span className="ms-1 text-[11px] font-normal text-muted-foreground">
           ({toFa(focus.children?.length ?? 0)} زیردسته)
         </span>
       </p>
@@ -892,7 +894,7 @@ function CategoryNav({
                 onClick={() => onPick(c)}
                 aria-current={active ? 'true' : undefined}
                 className={cn(
-                  'flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-start text-sm transition-colors',
+                  'flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-start text-sm transition-colors ps-7',
                   active
                     ? 'font-bold text-primary'
                     : 'text-muted-foreground hover:bg-secondary',
