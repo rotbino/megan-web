@@ -98,7 +98,7 @@ export function RfqForm() {
                 <p className="mt-1 text-xs text-muted-foreground">خریداران</p>
               </div>
               <div>
-                <p className="text-xl font-bold text-primary">{toFa(150)} صنف</p>
+                <p className="text-xl font-bold text-primary">{toFa(150)}</p>
                 <p className="mt-1 text-xs text-muted-foreground">اصناف مختلف</p>
               </div>
             </div>

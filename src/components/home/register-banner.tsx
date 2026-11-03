@@ -45,7 +45,7 @@ export function RegisterBanner() {
                 <Store size={24} strokeWidth={1.8} />
               </span>
               <p className="text-base font-extrabold sm:text-xl">
-                همین حالا فروشگاه آنلاین خود را بسازید!
+                همین حالا فروشگاه تامین آنلاین خود را بسازید!
               </p>
             </div>
             <p className="max-w-md text-xs leading-6 text-muted-foreground sm:text-sm">
