@@ -16,6 +16,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { JsonLd } from '@/components/shared/json-ld';
 import { ProductImage } from '@/components/shared/product-image';
+import { GlassWatermark } from '@/components/shared/glass-watermark';
 import { ProductPrice } from '@/components/shared/product-price';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { LadderBadge, OldAdBadge, PremiumSellerBadge } from '@/components/shared/badges';
@@ -220,6 +221,9 @@ export default async function ProductViewPage({ params }: Props) {
                   priority
                   sizes="(max-width: 640px) 100vw, 420px"
                 />
+                {/* واترمارک شیشه‌ای لوگوی ایمچ (خواسته مالک ۳-۱۱) — ضد دزدی
+                    تصویر؛ جایش هر بار کمی تغییر می‌کند و پشتش دیده می‌شود */}
+                <GlassWatermark key={product.id} seed={product.id ? String(product.id) : undefined} />
                 {/* نردبان روی گوشهٔ عکس (خواسته مالک ۱-۱۱ دور هفتم) — به‌جای
                     «فروشنده ویژه» که فقط کنار نام فروشنده می‌نشیند (بدون تکرار) */}
                 {product.isLadder && (

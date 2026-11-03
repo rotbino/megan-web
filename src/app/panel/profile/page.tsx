@@ -28,6 +28,7 @@ import {
   Pencil,
   Phone,
   Star,
+  Store,
   UserRound,
 } from 'lucide-react';
 import { usePanelProfile, useMyProducts } from '@/lib/mock/hooks';
@@ -168,7 +169,7 @@ export default function PanelProfilePage() {
               {addressText || '—'}
             </dd>
           </div>
-          {/* اطلاعات کسب و کار — نام + شماره ثبت (واژهٔ «حقوقی» کنار رفت — دور ۱۶) */}
+          {/* اطلاعات کسب و کار — نام + صنف + شماره ثبت (خواسته مالک ۳-۱۱: صنف + «شماره ثبت» ساده) */}
           {pf.isCompany && pf.companyName && (
             <>
               <div className="flex items-center gap-2 rounded-md bg-secondary/50 p-3 text-xs sm:col-span-2">
@@ -179,10 +180,17 @@ export default function PanelProfilePage() {
                   <BadgeCheck size={13} /> اطلاعات کسب و کار ثبت شده
                 </span>
               </div>
+              {pf.businessCategory && (
+                <div className="flex items-center gap-2 rounded-md bg-secondary/50 p-3 text-xs sm:col-span-2">
+                  <Store size={15} className="shrink-0 text-muted-foreground" />
+                  <dt className="text-muted-foreground">صنف:</dt>
+                  <dd className="font-bold">{pf.businessCategory}</dd>
+                </div>
+              )}
               {pf.companyRegisterNumber && (
                 <div className="flex items-center gap-2 rounded-md bg-secondary/50 p-3 text-xs sm:col-span-2">
                   <FileCheck2 size={15} className="shrink-0 text-muted-foreground" />
-                  <dt className="text-muted-foreground">شماره ثبت شرکت:</dt>
+                  <dt className="text-muted-foreground">شماره ثبت:</dt>
                   <dd dir="ltr" className="font-num font-bold">{toFa(pf.companyRegisterNumber)}</dd>
                 </div>
               )}

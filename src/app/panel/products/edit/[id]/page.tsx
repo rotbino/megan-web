@@ -3,14 +3,20 @@
 /**
  * ویرایش آگهی — همان ویزارد ۶ مرحله‌ای، با پیش‌پر شدن از getMyProductDetail:
  * دسته/نوع کالا/استان‌شهر/موجودی‌وقیمت/تصاویر موجود (قابل حذف) + تصاویر جدید/
- * توضیحات/ویژگی‌ها. بعد از ذخیره، آگهی مثل باسکول دوباره «در انتظار تایید»
+ * توضیحات. بعد از ذخیره، آگهی مثل باسکول دوباره «در انتظار تایید»
  * می‌شود تا کارشناس بازبینی کند.
+ *
+ * خواسته مالک ۳-۱۱ (هم‌ارز ویزارد ثبت):
+ *  - خطای اعتبارسنجی به محض اصلاح ورودی پاک می‌شود (derived state).
+ *  - پلیس‌هولدر برند حذف + پاک‌سازی واژهٔ «برند» موقع blur و ذخیره.
+ *  - دکمهٔ «ادامه» بزرگ‌تر با فلش رو‌به‌بیرون؛ بخش ویژگی‌ها موقتاً خاموش.
  */
 
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
+  ArrowLeft,
   ArrowRight,
   ImageIcon,
   ImagePlus,
@@ -34,12 +40,15 @@ import { UnitInput } from '@/components/shared/unit-input';
 import { PRODUCT_FEATURE_KEYS } from '@/lib/mock/data';
 import { optimizeProductImage } from '@/lib/image-optimize';
 import { toFa } from '@/lib/format';
-import { cn } from '@/lib/utils';
+import { cn, stripBrandWord } from '@/lib/utils';
 import type { Category, ProductFeature } from '@/lib/types';
 
 const num = (v: string) => Number(v.replace(/[^\d]/g, '')) || 0;
 
 const DESCRIPTION_MAX = 3000;
+
+/** بخش ویژگی‌ها موقتاً خاموش (خواسته مالک ۳-۱۱) — مثل ویزارد ثبت محصول */
+const FEATURES_STEP_ENABLED = false;
 
 interface ExistingPhoto {
   id: string;
@@ -109,7 +118,11 @@ export default function EditProductPage() {
   // عکس‌های ناموفق آپلود در ویرایش — هشدار + تلاش دوباره (مثل ثبت جدید)
   const [failedPhotos, setFailedPhotos] = useState<File[]>([]);
   const [retryingPhotos, setRetryingPhotos] = useState(false);
+  /** خطاهای لحظه‌ای (مثل رد تصویر) — ولیدیشن مرحله derived است */
   const [error, setError] = useState('');
+  /** تلاش برای عبور از مرحلهٔ فعلی — خطا تا اصلاحِ ورودی می‌ماند و همان
+   *  لحظه پاک می‌شود (خواسته مالک ۳-۱۱ — قانون «رفع فوری خطا») */
+  const [attempted, setAttempted] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const provinceIdNum = draft ? num(draft.provinceId) : 0;
@@ -158,6 +171,7 @@ export default function EditProductPage() {
     setStep(s);
     setMaxReached((m) => Math.max(m, s));
     setError('');
+    setAttempted(false);
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -187,12 +201,11 @@ export default function EditProductPage() {
   const finalize = async () => {
     if (!draft?.leaf) return;
     const err = stepError(5);
-    if (err) {
-      setError(err);
-      return;
-    }
-    // برند به آخر عنوان می‌چسبد + به‌صورت ویژگی «برند» ذخیره می‌شود (۲-۱۱ دور ۱۸)
-    const brand = draft.brand.trim();
+    setAttempted(true);
+    if (err) return;
+    // برند به آخر عنوان می‌چسبد + به‌صورت ویژگی «برند» ذخیره می‌شود (۲-۱۱ دور ۱۸)؛
+    // واژهٔ «برند» ورودی همین‌جا هم پاک می‌شود (خواسته مالک ۳-۱۱)
+    const brand = stripBrandWord(draft.brand);
     const fullName = [draft.leaf.categoryName, draft.productType.trim(), brand].filter(Boolean).join(' ');
     try {
       const result = await submit.mutateAsync({
@@ -359,6 +372,9 @@ export default function EditProductPage() {
   }
 
   const leaf = draft.leaf;
+  // خطای ولیدیشن مرحله — derived: به محض اصلاح ورودی همان لحظه پاک می‌شود
+  // (خواسته مالک ۳-۱۱)؛ error فقط پیام‌های لحظه‌ای (مثل رد تصویر) است
+  const shownStepError = attempted ? stepError(step) : null;
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -393,14 +409,19 @@ export default function EditProductPage() {
             </p>
           </div>
 
-          {/* برند اختیاری (۲-۱۱ دور ۱۸) — پیش‌پر از ویژگی «برند» آگهی */}
+          {/* برند اختیاری (۲-۱۱ دور ۱۸) — پیش‌پر از ویژگی «برند» آگهی؛
+              پلیس‌هولدر نمونه حذف شد (خواسته مالک ۳-۱۱) */}
           <div className="space-y-2">
             <Label htmlFor="product-brand">اگر محصول شما برند دارد وارد کنید</Label>
             <Input
               id="product-brand"
               value={draft.brand}
               onChange={(e) => patch({ brand: e.target.value })}
-              placeholder="مثلا اپل"
+              onBlur={() => {
+                // «برند چیتوز» → «چیتوز» (خواسته مالک ۳-۱۱)
+                const cleaned = stripBrandWord(draft.brand);
+                if (cleaned !== draft.brand) patch({ brand: cleaned });
+              }}
               maxLength={40}
             />
             <p className="text-[11px] text-muted-foreground">
@@ -584,7 +605,7 @@ export default function EditProductPage() {
               if (e.target.value.length <= DESCRIPTION_MAX) patch({ description: e.target.value });
             }}
             className="min-h-72 resize-none text-sm leading-8 md:min-h-80"
-            placeholder="کیفیت، بسته‌بندی، شرایط ارسال و هر نکته‌ای که خریدار عمده باید بداند…"
+            placeholder="کیفیت ویژگیها، بسته بندی، قیمت در حجم های مختلف، شرایط ارسال، محدوده ارسال، تخفیفات همکاری و هر چیزی که خریداران محصولات شما باید بدانند"
             maxLength={DESCRIPTION_MAX}
           />
           <div className="flex items-center justify-between text-[11px]">
@@ -603,17 +624,21 @@ export default function EditProductPage() {
         </PanelCard>
       )}
 
-      {/* ─── مرحله ۶: ویژگی‌ها ─── */}
+      {/* ─── مرحله ۶: تایید نهایی ─── */}
       {step === 5 && (
         <PanelCard className="space-y-4">
           {/* عنوان نهایی آگهی — برند به انتهایش چسبیده (۲-۱۱ دور ۱۸) */}
           <div className="rounded-md border border-dashed bg-secondary/50 px-4 py-3">
             <p className="text-[11px] text-muted-foreground">عنوان آگهی شما:</p>
             <p className="mt-0.5 text-sm font-extrabold">
-              {[leaf?.categoryName, draft.productType.trim(), draft.brand.trim()].filter(Boolean).join(' ')}
+              {[leaf?.categoryName, draft.productType.trim(), stripBrandWord(draft.brand)].filter(Boolean).join(' ')}
             </p>
           </div>
 
+          {/* بخش ویژگی‌ها موقتاً خاموش (خواسته مالک ۳-۱۱) — مثل ویزارد ثبت؛
+              ویژگی‌های ذخیره‌شدهٔ قبلی موقع ذخیره حفظ می‌شوند */}
+          {FEATURES_STEP_ENABLED && (
+            <>
           <p className="text-sm leading-6 text-muted-foreground">
             ویژگی‌های محصول خود را با انتخاب «ویژگی» و نوشتن توضیح آن ثبت کنید — مثل: بسته‌بندی / کیسه ۵۰ کیلویی.
             (اختیاری است — تا {toFa(PRODUCT_FEATURE_KEYS.length)} ویژگی.)
@@ -681,12 +706,19 @@ export default function EditProductPage() {
               </span>
             </Button>
           )}
+            </>
+          )}
         </PanelCard>
       )}
 
       {/* خطا + دکمه‌های ناوبری */}
       <div className="sticky bottom-16 z-10 rounded-lg border bg-card/95 p-3 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] backdrop-blur lg:bottom-4">
-        {error && <p className="mb-2 rounded-md bg-red-50 px-3 py-2 text-xs font-bold text-red-600">{error}</p>}
+        {/* ولیدیشن مرحله — derived: به محض اصلاح ورودی پاک می‌شود (خواسته مالک ۳-۱۱) */}
+        {shownStepError ?? error ? (
+          <p className="mb-2 rounded-md bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
+            {shownStepError ?? error}
+          </p>
+        ) : null}
         <div className="flex items-center justify-between gap-2">
           <Button
             type="button"
@@ -698,19 +730,25 @@ export default function EditProductPage() {
             <ArrowRight size={15} /> مرحله قبل
           </Button>
           {step < 5 ? (
+            /* ادامه — بزرگ‌تر + فلش رو‌به‌بیرون/چپ = جهت پیشرفت RTL (خواسته مالک ۳-۱۱) */
             <Button
               type="button"
-              className="rounded-md"
+              className="h-12 min-w-32 rounded-md px-6 text-sm font-extrabold md:h-13"
               onClick={() => {
-                const err = stepError(step);
-                if (err) setError(err);
-                else goTo(step + 1);
+                setAttempted(true);
+                if (stepError(step)) return;
+                goTo(step + 1);
               }}
             >
-              ادامه
+              ادامه <ArrowLeft size={17} />
             </Button>
           ) : (
-            <Button type="button" className="rounded-md" onClick={() => void finalize()} disabled={submit.isPending}>
+            <Button
+              type="button"
+              className="h-12 min-w-32 rounded-md px-6 text-sm font-extrabold md:h-13"
+              onClick={() => void finalize()}
+              disabled={submit.isPending}
+            >
               {submit.isPending ? 'در حال ذخیره…' : 'ذخیره تغییرات'}
             </Button>
           )}

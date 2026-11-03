@@ -562,6 +562,17 @@ export interface AdminProductDetail extends Omit<AdminProductRow, 'seller'> {
   photos: string[];
   seller: AdminProductSellerDetail | null;
   ladder_orders: AdminLadderOrder[];
+  /** تاریخچهٔ تغییرات قیمت/موجودی/حداقل فروش (خواسته مالک ۳-۱۱) — رجوع در اختلاف‌ها */
+  edit_history: AdminProductEditHistory[];
+}
+
+/** یک رخداد تاریخچهٔ آگهی — create | edit | delete با اسنپ‌شات قبل/بعد */
+export interface AdminProductEditHistory {
+  id: string;
+  action: 'create' | 'edit' | 'delete' | string;
+  before: { productName?: string; stock?: number; minSaleAmount?: number; minSalePrice?: number } | null;
+  after: { productName?: string; stock?: number; minSaleAmount?: number; minSalePrice?: number } | null;
+  created_at: string;
 }
 
 /** لیست آگهی‌ها — جستجو/فیلتر/صفحه‌بندی + شمارنده تب‌ها */

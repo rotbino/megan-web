@@ -631,6 +631,8 @@ export async function getPanelProfile(): Promise<PanelProfile> {
       isCompany: (p.isCompany as boolean) ?? false,
       companyName: (p.companyName as string) ?? '',
       companyRegisterNumber: (p.companyRegisterNumber as string) ?? '',
+      // صنف کسب‌وکار (خواسته مالک ۳-۱۱) — embedded در profile کاربر
+      businessCategory: (p.businessCategory as string) ?? '',
       confirmed: raw.user.is_verified,
     },
     userInfo: {
@@ -687,6 +689,7 @@ export async function updatePanelProfile(
       ...(input.isCompany !== undefined ? { isCompany: input.isCompany } : {}),
       ...(input.companyName !== undefined ? { companyName: input.companyName } : {}),
       ...(input.companyRegisterNumber !== undefined ? { companyRegisterNumber: input.companyRegisterNumber } : {}),
+      ...(input.businessCategory !== undefined ? { businessCategory: input.businessCategory } : {}),
     },
   });
   return { ok: true };

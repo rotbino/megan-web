@@ -54,6 +54,8 @@ interface SellerData {
     address?: string | null;
     isCompany?: boolean;
     companyName?: string | null;
+    // صنف کسب‌وکار (خواسته مالک ۳-۱۱) — سوپرمارکت/قنادی/…
+    businessCategory?: string | null;
     gallery?: Array<{ url: string; thumbUrl: string }>;
     certificates?: Array<{ url: string; thumbUrl: string }>;
   };
@@ -134,6 +136,8 @@ export default async function ProfilePage({ params }: Props) {
   const gallery = user.gallery ?? [];
   const certificates = user.certificates ?? [];
   const companyLabel = user.isCompany && user.companyName?.trim() ? user.companyName.trim() : null;
+  // صنف (خواسته مالک ۳-۱۱) — مستقل از نام شرکت نمایش داده می‌شود
+  const categoryLabel = user.businessCategory?.trim() || null;
 
   return (
     <>
@@ -195,6 +199,13 @@ export default async function ProfilePage({ params }: Props) {
                         <Building2 size={13} className="shrink-0 text-primary/70" />
                         <dt className="shrink-0">شرکت:</dt>
                         <dd className="truncate font-bold text-foreground" title={companyLabel}>{companyLabel}</dd>
+                      </div>
+                    )}
+                    {categoryLabel && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Store size={13} className="shrink-0 text-primary/70" />
+                        <dt className="shrink-0">صنف:</dt>
+                        <dd className="truncate font-bold text-foreground" title={categoryLabel}>{categoryLabel}</dd>
                       </div>
                     )}
                     <div className="flex items-center gap-1.5 text-muted-foreground">

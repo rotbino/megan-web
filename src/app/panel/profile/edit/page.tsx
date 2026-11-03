@@ -2,18 +2,25 @@
 
 /**
  * ویرایش پروفایل — عین صفحه buyer/profile باسکول + اطلاعات پایه (خواسته مالک):
- * ۱) اطلاعات پایه: نقش (رادیو فروشنده/خریدار — سیستم با آن تطبیق می‌یابد)،
- *    نام/نام‌خانوادگی، استان/شهر (مکان پیش‌فرض فرم‌های ثبت آگهی)
+ * ۱) اطلاعات پایه: نام/نام‌خانوادگی، استان/شهر (مکان پیش‌فرض فرم‌های ثبت آگهی)
  * ۲) آواتار پروفایل (آپلود واقعی — کامپوننت مشترک با ویو؛ دور ۱۶)
  * ۳) سنجه میزان تکمیل (دونی مشترک — وزن‌های ۱۰۰) + اطلاعات شما (موبایل/آدرس)
- * ۴) اطلاعات کسب و کار (نام + شماره ثبت — نامانوسِ «حقوقی» کنار رفت، دور ۱۶)
- *    + درباره کسب‌وکار + تصاویر مربوطه + گواهی‌ها
+ * ۴) اطلاعات کسب و کار (نام + صنف + شماره ثبت) + درباره کسب‌وکار + تصاویر مربطه + گواهی‌ها
+ *
+ * خواسته مالک ۳-۱۱:
+ *  - هر کارت دکمهٔ ذخیرهٔ مستقل خودش را دارد (نه یک دکمهٔ سراسری) و دکمهٔ
+ *    «ثبت تغییرات» اولِ فرم حذف شد؛ آیکون بازگشت به سربرگ اضافه شد.
+ *  - بخش «نقش شما در ایمچ» حذف شد — نقش از خود پنل (سوییچر آیمچ من) عوض می‌شود.
+ *  - فیلد «صنف» (سوپرمارکت، قنادی، …) در اطلاعات کسب و کار — پایهٔ بازاریابی
+ *    و تبلیغات آینده؛ «شماره ثبت شرکت» هم ساده شد به «شماره ثبت».
+ *  - باکس «درباره کسب و کارتان» دو برابر بلندتر شد.
  */
 
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 import {
+  ArrowRight,
   Building2,
   Camera,
   FileCheck2,
@@ -21,9 +28,7 @@ import {
   Info,
   Pencil,
   Save,
-  ShoppingCart,
   ShieldCheck,
-  Store,
   Trash2,
   UserRound,
 } from 'lucide-react';
@@ -49,7 +54,6 @@ import { VerifyCard } from '@/components/panel/verify-card';
 import { PasswordChangeCard } from '@/components/panel/password-change-card';
 import { computeProfileCompletion } from '@/lib/profile-completion';
 import { toFa } from '@/lib/format';
-import { cn } from '@/lib/utils';
 
 interface FormState {
   firstName: string;
@@ -60,8 +64,10 @@ interface FormState {
   isCompany: boolean;
   companyName: string;
   companyRegisterNumber: string;
+  /** صنف کسب‌وکار (خواسته مالک ۳-۱۱) — سوپرمارکت/قنادی/… */
+  businessCategory: string;
   about: string;
-  gallery: ProfileImage[]; // تصاویر مربوطه — سروری + آپلودی تازه
+  gallery: ProfileImage[]; // تصاویر مربطه — سروری + آپلودی تازه
   certificates: ProfileImage[]; // گواهی‌ها — سروری + آپلودی تازه
 }
 
@@ -78,15 +84,62 @@ const ABOUT_HINTS = [
   '۳- چند سال سابقه فعالیت دارید؟',
 ];
 
+/** پیشنهادهای رایج صنف (خواسته مالک ۳-۱۱) — datalist؛ ورودی آزاد هم مجاز است */
+const BUSINESS_CATEGORY_SUGGESTIONS = [
+  'سوپرمارکت',
+  'قنادی',
+  'خشک‌فروشی',
+  'آجیل و خشکبار',
+  'میوه‌فروشی',
+  'پروتئینی (گوشت و مرغ)',
+  'نانوایی',
+  'رستوران',
+  'کافی‌شاپ',
+  'عمده‌فروشی',
+  'توزیع‌کننده',
+  'تولیدکننده',
+];
+
+/** ورودی فرمت‌شدهٔ ذخیرهٔ هر کارت — کلید همان کارت است که دکمه‌اش را busy نگه می‌دارد */
+type SaveCard = 'base' | 'contact' | 'business' | 'about' | 'gallery' | 'certificates';
+
+/** خطا + دکمهٔ ذخیرهٔ استاندارد پایین هر کارت — هم‌قد اینپوت‌ها (قانون ایمچ) */
+function CardFooter({
+  card,
+  label,
+  onClick,
+  savingCard,
+  errorMsg,
+}: {
+  card: SaveCard;
+  label: string;
+  onClick: () => void;
+  savingCard: SaveCard | null;
+  errorMsg?: string;
+}) {
+  return (
+    <>
+      {errorMsg && <p className="text-xs text-destructive">{errorMsg}</p>}
+      <div className="flex justify-end">
+        <Button className="h-12 rounded-md px-6 md:h-13" onClick={onClick} disabled={savingCard !== null}>
+          <Save size={15} />
+          {savingCard === card ? 'در حال ذخیره…' : label}
+        </Button>
+      </div>
+    </>
+  );
+}
+
 export default function EditProfilePage() {
   const { data: profile } = usePanelProfile();
   const save = useUpdatePanelProfile();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { user, setRole, refreshUser } = useAuth();
+  const { refreshUser } = useAuth();
   const [form, setForm] = useState<FormState | null>(null);
-  const [error, setError] = useState('');
-  const [uploadingImages, setUploadingImages] = useState(false);
+  const [savingCard, setSavingCard] = useState<SaveCard | null>(null);
+  /** خطای مختص همان کارت — زیر دکمه‌اش نمایش داده می‌شود */
+  const [cardError, setCardError] = useState<{ card: SaveCard; msg: string } | null>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const certRef = useRef<HTMLInputElement>(null);
 
@@ -111,6 +164,7 @@ export default function EditProfilePage() {
       isCompany: pf.isCompany,
       companyName: pf.companyName ?? '',
       companyRegisterNumber: pf.companyRegisterNumber ?? '',
+      businessCategory: pf.businessCategory ?? '',
       about: pf.description ?? '',
       // گالری/گواهی‌ها از سرور — تصاویر ذخیره‌شده قبلی دیده و قابل حذف‌اند
       gallery: profile.gallery.map((f) => ({ id: f.id, url: f.thumbUrl ?? f.url })),
@@ -136,6 +190,49 @@ export default function EditProfilePage() {
     certificatesCount: form.certificates.length,
     isVerified: u.isVerified,
   });
+
+  /** ذخیرهٔ مستقل یک کارت (خواسته مالک ۳-۱۱) — فقط فیلدهای همان کارت می‌روند */
+  const persist = async (
+    card: SaveCard,
+    fields: Parameters<typeof save.mutateAsync>[0],
+    okMsg = 'تغییرات با موفقیت ذخیره شد.',
+  ) => {
+    setCardError(null);
+    setSavingCard(card);
+    try {
+      await save.mutateAsync(fields);
+      await refreshUser(); // نام هدر تازه شود
+      await queryClient.invalidateQueries({ queryKey: ['panel-profile'] });
+      toast({ description: okMsg });
+    } catch (err) {
+      setCardError({
+        card,
+        msg: err instanceof Error ? err.message : 'خطا در ذخیره — دوباره تلاش کنید.',
+      });
+    } finally {
+      setSavingCard(null);
+    }
+  };
+
+  const saveBase = () => {
+    if (form.firstName.trim().length < 2 || form.lastName.trim().length < 2) {
+      setCardError({ card: 'base', msg: 'نام و نام خانوادگی را کامل وارد کنید.' });
+      return;
+    }
+    void persist(
+      'base',
+      {
+        first_name: form.firstName.trim(),
+        last_name: form.lastName.trim(),
+        province_id: form.provinceId ? Number(form.provinceId) : null,
+        city_id: form.cityId ? Number(form.cityId) : null,
+      },
+      'اطلاعات پایه ذخیره شد.',
+    );
+  };
+
+  /** خطای مختص کارت — فقط زیر همان کارت دیده می‌شود */
+  const errOf = (card: SaveCard) => (cardError?.card === card ? cardError.msg : undefined);
 
   const addImages = (files: FileList | null, key: 'gallery' | 'certificates') => {
     if (!files) return;
@@ -176,70 +273,64 @@ export default function EditProfilePage() {
     }
   };
 
-  const saveAll = async () => {
-    setError('');
-    if (form.firstName.trim().length < 2 || form.lastName.trim().length < 2) {
-      setError('نام و نام خانوادگی را کامل وارد کنید.');
+  /** ثبت تصاویر تازهٔ یک کارت — آپلود واقعی، بعد نشانه‌گذاری به‌عنوان ذخیره‌شده */
+  const saveImages = async (key: 'gallery' | 'certificates') => {
+    const pending = form[key].filter((i) => i.file);
+    if (pending.length === 0) {
+      toast({ description: 'تصویر تازه‌ای برای ثبت وجود ندارد — ابتدا تصویر انتخاب کنید.' });
       return;
     }
+    setCardError(null);
+    setSavingCard(key);
     try {
-      // تصاویر تازه (گالری/گواهی) — اول آپلود واقعی، بعد ذخیره فیلدها
-      const pending = [
-        ...form.gallery.map((g) => ({ img: g, key: 'gallery' as const })),
-        ...form.certificates.map((c) => ({ img: c, key: 'certificate' as const })),
-      ].filter(({ img }) => img.file);
-      if (pending.length > 0) {
-        setUploadingImages(true);
-        for (const { img, key } of pending) {
-          if (!img.file) continue;
-          await uploadImage(img.file, {
-            model: 'User',
-            modelId: u.id,
-            key,
-            replace: false, // چند‌تایی — اسلات‌ها انباشته می‌شوند
-          });
-        }
+      for (const img of pending) {
+        if (!img.file) continue;
+        await uploadImage(img.file, {
+          model: 'User',
+          modelId: u.id,
+          key: key === 'gallery' ? 'gallery' : 'certificate',
+          replace: false, // چند‌تایی — اسلات‌ها انباشته می‌شوند
+        });
       }
-      await save.mutateAsync({
-        first_name: form.firstName.trim(),
-        last_name: form.lastName.trim(),
-        province_id: form.provinceId ? Number(form.provinceId) : null,
-        city_id: form.cityId ? Number(form.cityId) : null,
-        address: form.address.trim() || null,
-        description: form.about.trim() || null,
-        isCompany: Boolean(form.companyName.trim()),
-        companyName: form.companyName.trim(),
-        // شماره ثبت شرکت — ماندگار در پروفایل embedded (دور ۱۶؛ قبلاً بی‌صدا
-        // گم می‌شد و در ویو نمایش داده نمی‌شد)
-        companyRegisterNumber: form.companyRegisterNumber.trim(),
-      });
-      await refreshUser(); // نام/نقش هدر تازه شود
       await queryClient.invalidateQueries({ queryKey: ['panel-profile'] });
-      // تصاویر آپلودشده تازه → فرم با نسخه سروری (id دار) دوباره پر شود
+      // تصاویر آپلودشده تازه → فرم با نسخهٔ سروری (id دار) دوباره پر شود
       setForm((f) =>
         f
           ? {
               ...f,
-              gallery: f.gallery.map((g) => (g.file ? { ...g, file: undefined } : g)),
-              certificates: f.certificates.map((c) => (c.file ? { ...c, file: undefined } : c)),
+              [key]: f[key].map((i) => (i.file ? { ...i, file: undefined } : i)),
             }
           : f,
       );
-      toast({ description: 'تغییرات پروفایل شما با موفقیت ذخیره شد.' });
+      toast({ description: key === 'gallery' ? 'تصاویر مربطه ثبت شد.' : 'گواهی‌ها ثبت شدند.' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'خطا در ذخیره — دوباره تلاش کنید.');
+      setCardError({
+        card: key,
+        msg: err instanceof Error ? err.message : 'خطا در ثبت تصاویر — دوباره تلاش کنید.',
+      });
     } finally {
-      setUploadingImages(false);
+      setSavingCard(null);
     }
   };
-
-  const role = user?.role ?? (u.isSeller ? 'seller' : 'buyer');
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <PanelCard>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4">
+            {/* بازگشت (خواسته مالک ۳-۱۱) — دایره‌ای، فلش راست‌گرد (قانون ایمچ) */}
+            <Button
+              asChild
+              variant="outline"
+              size="icon"
+              className="size-11 shrink-0 rounded-full"
+              aria-label="بازگشت به آیمچ من"
+              title="بازگشت"
+            >
+              <Link href="/panel">
+                <ArrowRight size={17} />
+              </Link>
+            </Button>
             {/* آواتار — کلیک = آپلود تصویر جدید (کامپوننت مشترک با ویو — دور ۱۶) */}
             <AvatarUpload
               userId={u.id}
@@ -255,9 +346,6 @@ export default function EditProfilePage() {
               </p>
             </div>
           </div>
-          <Button className="rounded-md" onClick={() => void saveAll()} disabled={save.isPending}>
-            <Save size={15} /> {save.isPending ? 'در حال ذخیره…' : 'ثبت تغییرات'}
-          </Button>
         </div>
 
         {/* میزان تکمیل پروفایل — دونی فشرده؛ ریز درصدها با کلیک (دور ۱۶) */}
@@ -267,63 +355,11 @@ export default function EditProfilePage() {
       {/* احراز هویت — باکس مشترک با ویو؛ فقط برای احرازنشده (دور ۱۶) */}
       {!u.isVerified && <VerifyCard />}
 
-      {/* اطلاعات پایه — نقش + نام + مکان پیش‌فرض */}
+      {/* اطلاعات پایه — نام + مکان پیش‌فرض؛ ذخیرهٔ مستقل خودش (خواسته مالک ۳-۱۱) */}
       <PanelCard className="space-y-4">
         <h2 className="flex items-center gap-2 text-sm font-extrabold">
           <UserRound size={17} className="text-primary" /> اطلاعات پایه
         </h2>
-
-        {/* نقش فعال — رادیو؛ سیستم (هدر/نوار پایین/منوها) با آن تطبیق می‌یابد.
-            keepPage: تغییر نقش اینجا تنظیماتِ فرم است نه سوییچ پنل — کاربر
-            همان‌جا می‌ماند تا بقیهٔ فیلدها را ذخیره کند (خواسته مالک دور ۱۵) */}
-        <div>
-          <p className="mb-2 text-xs font-bold">نقش شما در ایمچ</p>
-          <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="نقش شما در ایمچ">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={role === 'seller'}
-              onClick={() => setRole('seller', { keepPage: true })}
-              className={cn(
-                'flex items-start gap-2.5 rounded-lg border p-3 text-start transition-colors',
-                role === 'seller'
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border hover:border-primary/40',
-              )}
-            >
-              <Store size={19} className={cn('mt-0.5 shrink-0', role === 'seller' ? 'text-primary' : 'text-muted-foreground')} />
-              <span>
-                <span className="block text-sm font-bold">فروشنده</span>
-                <span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">
-                  ثبت محصول، فروش به خریداران و مشاهده درخواست‌های خرید
-                </span>
-              </span>
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={role === 'buyer'}
-              onClick={() => setRole('buyer', { keepPage: true })}
-              className={cn(
-                'flex items-start gap-2.5 rounded-lg border p-3 text-start transition-colors',
-                role === 'buyer'
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border hover:border-primary/40',
-              )}
-            >
-              <ShoppingCart size={19} className={cn('mt-0.5 shrink-0', role === 'buyer' ? 'text-primary' : 'text-muted-foreground')} />
-              <span>
-                <span className="block text-sm font-bold">خریدار</span>
-                <span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">
-                  ثبت درخواست خرید و مشاهده فروشندگان پیشنهادی
-                </span>
-              </span>
-            </button>
-          </div>
-          <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
-            با تغییر نقش، منوها و لینک‌های ایمچ خودکار با نقش شما تطبیق می‌یابند.
-          </p>
-        </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
@@ -387,7 +423,13 @@ export default function EditProfilePage() {
         <p className="text-[11px] leading-5 text-muted-foreground">
           استان و شهر شما در فرم ثبت محصول/درخواست خرید به‌صورت پیش‌فرض انتخاب می‌شود؛ در هر ثبت قابل تغییر است.
         </p>
-        {error && <p className="text-xs text-destructive">{error}</p>}
+        <CardFooter
+          card="base"
+          label="ذخیره اطلاعات پایه"
+          onClick={saveBase}
+          savingCard={savingCard}
+          errorMsg={errOf('base')}
+        />
       </PanelCard>
 
       {/* اطلاعات شما */}
@@ -421,10 +463,19 @@ export default function EditProfilePage() {
             «شماره تماس» و پس از ورود به ایمچ آن را می‌بینند (سهمیهٔ تماس روزانهٔ اعضا اعمال می‌شود).
           </p>
         </div>
+        <CardFooter
+          card="contact"
+          label="ذخیره آدرس"
+          onClick={() =>
+            void persist('contact', { address: form.address.trim() || null }, 'آدرس ذخیره شد.')
+          }
+          savingCard={savingCard}
+          errorMsg={errOf('contact')}
+        />
       </PanelCard>
 
-      {/* اطلاعات کسب و کار — واژهٔ نامانوس «حقوقی» کنار رفت (خواستهٔ مالک دور ۱۶)؛
-          همیشه نمایان است (خواستهٔ مالک ۱-۱۱)؛ پر کردن «نام شرکت» آن را
+      {/* اطلاعات کسب و کار — صنف جدید (خواسته مالک ۳-۱۱) + «شماره ثبت» ساده‌شده؛
+          همیشه نمایان است (خواسته مالک ۱-۱۱)؛ پر کردن «نام شرکت» آن را
           فعال می‌کند و در پروفایل/پروفایل عمومی + شماره ثبت نمایش داده می‌شود. */}
       <PanelCard className="space-y-4">
         <h2 className="flex items-center gap-2 text-sm font-extrabold">
@@ -445,7 +496,30 @@ export default function EditProfilePage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="company-reg">شماره ثبت شرکت</Label>
+            {/* صنف (خواسته مالک ۳-۱۱) — پایهٔ بازاریابی/تبلیغات؛ ورودی آزاد + پیشنهادها */}
+            <Label htmlFor="business-category">صنف</Label>
+            <Input
+              id="business-category"
+              value={form.businessCategory}
+              onChange={(e) => patch({ businessCategory: e.target.value })}
+              placeholder="مثلا: سوپرمارکت، قنادی…"
+              maxLength={60}
+              list="business-category-suggestions"
+            />
+            <datalist id="business-category-suggestions">
+              {BUSINESS_CATEGORY_SUGGESTIONS.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+            <p className="text-[11px] text-muted-foreground">
+              حوزهٔ فعالیتتان را بنویسید — برای معرفی بهتر شما به خریداران هم‌صنف کاربرد دارد.
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            {/* «شماره ثبت شرکت» → «شماره ثبت» (خواسته مالک ۳-۱۱) — شخصی هم معنا دارد */}
+            <Label htmlFor="company-reg">شماره ثبت</Label>
             <Input
               id="company-reg"
               inputMode="numeric"
@@ -456,9 +530,28 @@ export default function EditProfilePage() {
             />
           </div>
         </div>
+        <CardFooter
+          card="business"
+          label="ذخیره اطلاعات کسب و کار"
+          onClick={() =>
+            void persist(
+              'business',
+              {
+                isCompany: Boolean(form.companyName.trim()),
+                companyName: form.companyName.trim(),
+                // شماره ثبت — ماندگار در پروفایل embedded (دور ۱۶)
+                companyRegisterNumber: form.companyRegisterNumber.trim(),
+                businessCategory: form.businessCategory.trim(),
+              },
+              'اطلاعات کسب و کار ذخیره شد.',
+            )
+          }
+          savingCard={savingCard}
+          errorMsg={errOf('business')}
+        />
       </PanelCard>
 
-      {/* درباره کسب و کار */}
+      {/* درباره کسب و کار — ارتفاع دو برابر (خواسته مالک ۳-۱۱) */}
       <PanelCard className="space-y-3">
         <h2 className="text-sm font-extrabold">درباره کسب و کارتان بنویسید</h2>
         <div className="rounded-md bg-secondary/60 p-3">
@@ -471,33 +564,37 @@ export default function EditProfilePage() {
         </div>
         <Textarea
           dir="rtl"
-          rows={7}
+          rows={14}
           value={form.about}
           onChange={(e) => patch({ about: e.target.value })}
-          className="resize-none text-sm leading-7"
+          className="min-h-32 resize-none text-sm leading-7"
           placeholder="اینجا بنویسید"
         />
         <div className="flex items-center justify-between text-[11px]">
-          <span className={cn(form.about.trim().length >= 100 ? 'text-emerald-600' : 'text-muted-foreground')}>
+          <span className={form.about.trim().length >= 100 ? 'text-emerald-600' : 'text-muted-foreground'}>
             {form.about.trim().length >= 100 ? 'کافی' : 'کمی طولانی‌تر بنویسید تا اعتماد طرف مقابل جلب شود'}
           </span>
-          <Button size="sm" className="rounded-md" onClick={() => void saveAll()} disabled={save.isPending}>
-            ثبت تغییرات
-          </Button>
         </div>
+        <CardFooter
+          card="about"
+          label="ثبت تغییرات"
+          onClick={() => void persist('about', { description: form.about.trim() || null }, 'متن «درباره کسب و کار» ذخیره شد.')}
+          savingCard={savingCard}
+          errorMsg={errOf('about')}
+        />
       </PanelCard>
 
-      {/* تصاویر مربوطه */}
+      {/* تصاویر مربطه */}
       <PanelCard>
         <h2 className="flex items-center gap-2 text-sm font-extrabold">
-          <Camera size={17} className="text-primary" /> افزودن تصاویر مربوطه
+          <Camera size={17} className="text-primary" /> افزودن تصاویر مربطه
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">(محصولات | شرکت | کارکنان)</p>
         <button
           type="button"
           onClick={() => galleryRef.current?.click()}
           className="mt-3 grid w-full cursor-pointer place-items-center rounded-lg border-2 border-dashed border-border bg-secondary/40 p-6 text-center transition-colors hover:border-primary/50 hover:bg-secondary/70"
-          aria-label="افزودن تصویر مربوطه"
+          aria-label="افزودن تصویر مربطه"
         >
           <ImageIcon size={22} className="text-muted-foreground" />
           <span className="mt-2 text-xs font-bold">انتخاب تصویر</span>
@@ -524,7 +621,7 @@ export default function EditProfilePage() {
             {form.gallery.map((img, i) => (
               <div key={img.id ?? img.url} className="relative size-20 overflow-hidden rounded-md border bg-secondary">
                 {/* تصویر ذخیره‌شده سروری یا پیش‌نمایش محلی آپلود تازه */}
-                <img src={img.url} alt="تصویر مربوطه" className="size-full object-cover" />
+                <img src={img.url} alt="تصویر مربطه" className="size-full object-cover" />
                 {img.file && (
                   <span className="absolute bottom-1 start-1 rounded-full bg-primary px-1.5 text-[9px] font-bold text-primary-foreground">جدید</span>
                 )}
@@ -540,12 +637,21 @@ export default function EditProfilePage() {
             ))}
           </div>
         )}
+        <div className="mt-4 space-y-2">
+          <CardFooter
+            card="gallery"
+            label="ثبت تصاویر"
+            onClick={() => void saveImages('gallery')}
+            savingCard={savingCard}
+            errorMsg={errOf('gallery')}
+          />
+        </div>
       </PanelCard>
 
-      {/* گواهی های مربوطه */}
+      {/* گواهی های مربطه */}
       <PanelCard>
         <h2 className="flex items-center gap-2 text-sm font-extrabold">
-          <FileCheck2 size={17} className="text-primary" /> افزودن گواهی های مربوطه
+          <FileCheck2 size={17} className="text-primary" /> افزودن گواهی های مربطه
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">(گواهی های ثبت شرکت | استاندارد محصول)</p>
         <button
@@ -595,9 +701,15 @@ export default function EditProfilePage() {
             ))}
           </div>
         )}
-        <Button className="mt-4 w-full rounded-md" onClick={() => void saveAll()} disabled={save.isPending || uploadingImages}>
-          <Save size={15} /> {save.isPending || uploadingImages ? 'در حال ثبت تصاویر…' : 'ثبت تصاویر'}
-        </Button>
+        <div className="mt-4 space-y-2">
+          <CardFooter
+            card="certificates"
+            label="ثبت گواهی‌ها"
+            onClick={() => void saveImages('certificates')}
+            savingCard={savingCard}
+            errorMsg={errOf('certificates')}
+          />
+        </div>
       </PanelCard>
 
       {/* تغییر رمز عبور — فقط کاربرِ رمزدار (خواسته مالک ۲-۱۱) */}

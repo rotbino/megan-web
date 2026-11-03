@@ -211,6 +211,55 @@ export function ProductDetailDialog({
                 )}
               </div>
 
+              {/* تاریخچهٔ تغییرات قیمت/موجودی/حداقل فروش (خواسته مالک ۳-۱۱) —
+                  رجوع در موارد اختلاف؛ حذفِ نرم هم اینجا دیده می‌شود */}
+              <div className="rounded-lg border bg-card p-3">
+                <p className="mb-1.5 text-[11px] font-bold text-muted-foreground">
+                  تاریخچهٔ قیمت، موجودی و حداقل فروش ({toFa(p.edit_history?.length ?? 0)})
+                </p>
+                {(p.edit_history?.length ?? 0) === 0 ? (
+                  <p className="text-[12px] text-muted-foreground">
+                    رخدادی ثبت نشده (آگهی‌های قدیمی‌تر از این قابلیت سوابق خودکار ندارند).
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {p.edit_history.map((h) => {
+                      const actionLabel =
+                        h.action === 'create' ? 'ثبت اولیه' : h.action === 'delete' ? 'حذف (نرم)' : 'ویرایش';
+                      const actionCls =
+                        h.action === 'create'
+                          ? 'bg-emerald-500/10 text-emerald-600'
+                          : h.action === 'delete'
+                            ? 'bg-destructive/10 text-destructive'
+                            : 'bg-secondary text-muted-foreground';
+                      const v = h.after ?? h.before;
+                      return (
+                        <div key={h.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-secondary/40 px-2.5 py-1.5 text-[11.5px]">
+                          <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold', actionCls)}>
+                            {actionLabel}
+                          </span>
+                          <span className="font-num text-muted-foreground">
+                            {v ? (
+                              <>
+                                {priceFa(v.minSalePrice ?? 0)} · موجودی {toFa(v.stock ?? 0)} · حداقل {toFa(v.minSaleAmount ?? 0)}
+                              </>
+                            ) : (
+                              '—'
+                            )}
+                          </span>
+                          <span className="text-muted-foreground">{timeAgoFa(h.created_at)}</span>
+                          {h.before && h.after && (h.before.minSalePrice !== h.after.minSalePrice) && (
+                            <span className="text-[10px] text-muted-foreground">
+                              قیمت قبلی: {priceFa(h.before.minSalePrice ?? 0)}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* عملیات */}
               <div className="flex flex-wrap gap-2 border-t pt-3">
                 {p.status === 'pending' && (

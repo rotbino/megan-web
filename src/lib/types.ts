@@ -171,8 +171,10 @@ export interface PanelProfile {
     address: string | null; // «تهران - تهران»
     isCompany: boolean;
     companyName: string;
-    /** شماره ثبت شرکت — embedded در profile کاربر ذخیره می‌شود (دور ۱۶) */
+    /** شماره ثبت — embedded در profile کاربر ذخیره می‌شود (دور ۱۶) */
     companyRegisterNumber: string;
+    /** صنف کسب‌وکار (خواسته مالک ۳-۱۱) — سوپرمارکت/قنادی/…؛ پایهٔ بازاریابی و تبلیغات */
+    businessCategory: string;
     confirmed: boolean;
     /** استان/شهر — فیلدهای اضافی فرم ویرایش پروفایل */
     province?: string;

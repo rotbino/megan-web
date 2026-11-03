@@ -3,14 +3,23 @@
 /**
  * ثبت محصول — ویزارد شش مرحله‌ای عین باسکول:
  * ۱ انتخاب دسته بندی → ۲ اطلاعات محصول (نوع کالا + استان/شهر مبدا) →
- * ۳ موجودی و قیمت → ۴ بارگذاری تصویر → ۵ توضیحات محصول → ۶ جزئیات نهایی (ثبت نهایی).
+ * ۳ موجودی و قیمت → ۴ بارگذاری تصویر → ۵ توضیحات محصول → ۶ تایید نهایی (ثبت نهایی).
  * قواعد دقیق باسکول: حداکثر ۴ تصویر jpeg/jpg زیر ۵ مگ، بالای ۲۰ کیلوبایت و ...
+ *
+ * خواسته مالک ۳-۱۱:
+ *  - خطای اعتبارسنجی به محض اصلاح ورودی همان لحظه پاک می‌شود (derived state —
+ *    قانون کلی قوانین توسعه؛ «اصلاح کردم ولی خطا مونده» گیج‌کننده است).
+ *  - پلیس‌هولدر نمونهٔ برند (اپل) حذف شد — نمونه بی‌ربط به دسته انتخابی است؛
+ *    واژهٔ «برند» ورودی هم موقع blur پاک می‌شود (stripBrandWord).
+ *  - دکمهٔ «ادامه» بزرگ‌تر شد با فلش رو‌به‌بیرون (جهت پیشرفت در RTL = چپ).
+ *  - بخش ویژگی‌ها موقتاً خاموش است — بعداً بهتر پیاده می‌شود.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
+  ArrowLeft,
   ArrowRight,
   ImageIcon,
   ImagePlus,
@@ -35,12 +44,16 @@ import { UnitInput } from '@/components/shared/unit-input';
 import { PRODUCT_FEATURE_KEYS } from '@/lib/mock/data';
 import { optimizeProductImage } from '@/lib/image-optimize';
 import { toFa } from '@/lib/format';
-import { cn } from '@/lib/utils';
+import { cn, stripBrandWord } from '@/lib/utils';
 import type { Category, ProductFeature } from '@/lib/types';
 
 // ─── ورودی عددی — از این پس همه‌جا UnitInput (وسط‌چین + بادکنک تبدیل واحد) ──
 
 const num = (v: string) => Number(v.replace(/[^\d]/g, '')) || 0;
+
+/** بخش ویژگی‌ها (مرحلهٔ آخر) موقتاً خاموش است (خواسته مالک ۳-۱۱) — کاربر اگر
+ *  بخواهد ویژگی‌ها را در توضیحات می‌نویسد؛ بعداً تجربهٔ بهتری پیاده می‌شود. */
+const FEATURES_STEP_ENABLED = false;
 
 interface Draft {
   path: Category[];
@@ -96,7 +109,12 @@ export default function RegisterProductPage() {
   const [maxReached, setMaxReached] = useState(0);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [done, setDone] = useState(false);
+  /** خطاهای لحظه‌ای (مثل رد تصویر) — ولیدیشن مرحله derived است (بelow) */
   const [error, setError] = useState('');
+  /** کاربر روی «ادامه» این مرحله زده و ولیدیشن شکسته دیده شده؟ تا اصلاح،
+   *  پیام می‌ماند؛ به محض درست شدن ورودی همان لحظه پاک می‌شود (خواسته
+   *  مالک ۳-۱۱ — قانون کلی «رفع فوری خطا») */
+  const [attempted, setAttempted] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   // عکس‌هایی که ثبت محصول موفق بود ولی آپلودشان شکست خورد — برای هشدار/تلاش-دوباره
   const [failedPhotos, setFailedPhotos] = useState<File[]>([]);
@@ -128,6 +146,7 @@ export default function RegisterProductPage() {
     setStep(s);
     setMaxReached((m) => Math.max(m, s));
     setError('');
+    setAttempted(false);
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -153,24 +172,21 @@ export default function RegisterProductPage() {
 
   const next = () => {
     const err = stepError(step);
-    if (err) {
-      setError(err);
-      return;
-    }
+    setAttempted(true);
+    if (err) return;
     if (step < 5) goTo(step + 1);
     else void finalize();
   };
 
   const finalize = async () => {
     const err = stepError(5);
-    if (err) {
-      setError(err);
-      return;
-    }
+    setAttempted(true);
+    if (err) return;
     // برند اختیاری به آخر عنوان می‌چسبد (خواسته مالک ۲-۱۱ دور ۱۸):
     // «تنقلات چیپس چییتوز» — و به‌صورت ویژگی «برند» ذخیره می‌شود تا ویرایش
-    // و جستجوی برند (contains روی نام) هر دو درست کار کنند
-    const brand = draft.brand.trim();
+    // و جستجوی برند (contains روی نام) هر دو درست کار کنند؛
+    // واژهٔ «برند» ورودی همین‌جا هم پاک می‌شود (خواسته مالک ۳-۱۱)
+    const brand = stripBrandWord(draft.brand);
     const fullName = [draft.leaf!.categoryName, draft.productType.trim(), brand].filter(Boolean).join(' ');
     try {
       const result = await submit.mutateAsync({
@@ -350,6 +366,9 @@ export default function RegisterProductPage() {
   }
 
   const leaf = draft.leaf;
+  // خطای ولیدیشن مرحله — derived: به محض اصلاح ورودی همان لحظه پاک می‌شود
+  // (خواسته مالک ۳-۱۱)؛ error فقط پیام‌های لحظه‌ای (مثل رد تصویر) است
+  const shownStepError = attempted ? stepError(step) : null;
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -381,14 +400,19 @@ export default function RegisterProductPage() {
             </p>
           </div>
 
-          {/* برند اختیاری (خواسته مالک ۲-۱۱ دور ۱۸) — به آخر عنوان اضافه می‌شود */}
+          {/* برند اختیاری (خواسته مالک ۲-۱۱ دور ۱۸) — به آخر عنوان اضافه می‌شود؛
+              پلیس‌هولدر نمونه حذف شد (خواسته مالک ۳-۱۱: «اپل» به پفک ربطی ندارد) */}
           <div className="space-y-2">
             <Label htmlFor="product-brand">اگر محصول شما برند دارد وارد کنید</Label>
             <Input
               id="product-brand"
               value={draft.brand}
               onChange={(e) => patch({ brand: e.target.value })}
-              placeholder="مثلا اپل"
+              onBlur={() => {
+                // «برند چیتوز» → «چیتوز» (خواسته مالک ۳-۱۱)
+                const cleaned = stripBrandWord(draft.brand);
+                if (cleaned !== draft.brand) patch({ brand: cleaned });
+              }}
               maxLength={40}
             />
             <p className="text-[11px] text-muted-foreground">
@@ -566,7 +590,7 @@ export default function RegisterProductPage() {
               if (e.target.value.length <= DESCRIPTION_MAX) patch({ description: e.target.value });
             }}
             className="min-h-72 resize-none text-sm leading-8 md:min-h-80"
-            placeholder="کیفیت، بسته‌بندی، شرایط ارسال و هر نکته‌ای که خریدار عمده باید بداند…"
+            placeholder="کیفیت ویژگیها، بسته بندی، قیمت در حجم های مختلف، شرایط ارسال، محدوده ارسال، تخفیفات همکاری و هر چیزی که خریداران محصولات شما باید بدانند"
             maxLength={DESCRIPTION_MAX}
           />
           <div className="flex items-center justify-between text-[11px]">
@@ -585,90 +609,121 @@ export default function RegisterProductPage() {
         </PanelCard>
       )}
 
-      {/* ─── مرحله ۶: جزئیات نهایی (ویژگی‌های محصول) ─── */}
+      {/* ─── مرحله ۶: تایید نهایی ─── */}
       {step === 5 && (
         <PanelCard className="space-y-4">
           {/* عنوان نهایی آگهی — برند به انتهایش چسبیده (خواسته مالک ۲-۱۱ دور ۱۸) */}
           <div className="rounded-md border border-dashed bg-secondary/50 px-4 py-3">
             <p className="text-[11px] text-muted-foreground">عنوان آگهی شما:</p>
             <p className="mt-0.5 text-sm font-extrabold">
-              {[leaf?.categoryName, draft.productType.trim(), draft.brand.trim()].filter(Boolean).join(' ')}
+              {[leaf?.categoryName, draft.productType.trim(), stripBrandWord(draft.brand)].filter(Boolean).join(' ')}
             </p>
           </div>
 
-          <p className="text-sm leading-6 text-muted-foreground">
-            ویژگی‌های محصول خود را با انتخاب «ویژگی» و نوشتن توضیح آن ثبت کنید — مثل: بسته‌بندی / کیسه ۵۰ کیلویی.
-            (اختیاری است — تا {toFa(PRODUCT_FEATURE_KEYS.length)} ویژگی می‌توانید اضافه کنید.)
-          </p>
-
-          {draft.features.length === 0 && (
-            <div className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
-              هنوز ویژگی‌ای اضافه نشده است (اختیاری).
+          {/* خلاصهٔ نهایی — مرور سریع قبل از ثبت */}
+          <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+            <div className="rounded-md bg-secondary/50 p-2.5 text-center">
+              <p className="text-[10px] text-muted-foreground">موجودی</p>
+              <p className="mt-1 font-extrabold">{toFa(num(draft.stock))} {leaf?.unit ?? 'کیلوگرم'}</p>
             </div>
-          )}
-
-          {draft.features.map((f, i) => (
-            <div key={i} className="grid gap-2 sm:grid-cols-[220px_1fr_auto]">
-              <Select
-                value={f.key}
-                onValueChange={(v) => {
-                  const features = [...draft.features];
-                  features[i] = { ...features[i], key: v };
-                  patch({ features });
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="یک مورد را انتخاب کنید" />
-                </SelectTrigger>
-                <SelectContent>
-                  {featureOptions(f.key).map((k) => (
-                    <SelectItem key={k} value={k}>
-                      {k}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                value={f.value}
-                onChange={(e) => {
-                  const features = [...draft.features];
-                  features[i] = { ...features[i], value: e.target.value };
-                  patch({ features });
-                }}
-                placeholder="توضیحات"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label="حذف جزئیات"
-                className="text-red-500 hover:bg-red-50 hover:text-red-600"
-                onClick={() => patch({ features: draft.features.filter((_, j) => j !== i) })}
-              >
-                <Trash2 size={16} />
-              </Button>
+            <div className="rounded-md bg-secondary/50 p-2.5 text-center">
+              <p className="text-[10px] text-muted-foreground">حداقل سفارش</p>
+              <p className="mt-1 font-extrabold">{toFa(num(draft.minSaleAmount))} {leaf?.unit ?? 'کیلوگرم'}</p>
             </div>
-          ))}
+            <div className="rounded-md bg-secondary/50 p-2.5 text-center">
+              <p className="text-[10px] text-muted-foreground">کف قیمت</p>
+              <p className="mt-1 font-num font-extrabold">{toFa(num(draft.minSalePrice))}</p>
+            </div>
+            <div className="rounded-md bg-secondary/50 p-2.5 text-center">
+              <p className="text-[10px] text-muted-foreground">تصاویر</p>
+              <p className="mt-1 font-num font-extrabold">{toFa(draft.photos.length)}</p>
+            </div>
+          </div>
 
-          {draft.features.length < PRODUCT_FEATURE_KEYS.length && (
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full rounded-md border-dashed"
-              onClick={() => patch({ features: [...draft.features, { key: '', value: '' }] })}
-            >
-              <Plus size={15} /> افزودن ویژگی بیشتر
-              <span className="text-[10px] font-normal text-muted-foreground">
-                ({toFa(draft.features.length)} از {toFa(PRODUCT_FEATURE_KEYS.length)})
-              </span>
-            </Button>
+          {/* بخش ویژگی‌ها موقتاً خاموش (خواسته مالک ۳-۱۱) — کاربر ویژگی‌ها را در
+              توضیحات می‌نویسد؛ بعداً تجربهٔ بهتر (مثلاً ویژگی‌های ساختاریافتهٔ دسته)
+              پیاده می‌شود. برای فعال‌سازی: FEATURES_STEP_ENABLED = true */}
+          {FEATURES_STEP_ENABLED && (
+            <>
+              <p className="text-sm leading-6 text-muted-foreground">
+                ویژگی‌های محصول خود را با انتخاب «ویژگی» و نوشتن توضیح آن ثبت کنید — مثل: بسته‌بندی / کیسه ۵۰ کیلویی.
+                (اختیاری است — تا {toFa(PRODUCT_FEATURE_KEYS.length)} ویژگی می‌توانید اضافه کنید.)
+              </p>
+
+              {draft.features.length === 0 && (
+                <div className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
+                  هنوز ویژگی‌ای اضافه نشده است (اختیاری).
+                </div>
+              )}
+
+              {draft.features.map((f, i) => (
+                <div key={i} className="grid gap-2 sm:grid-cols-[220px_1fr_auto]">
+                  <Select
+                    value={f.key}
+                    onValueChange={(v) => {
+                      const features = [...draft.features];
+                      features[i] = { ...features[i], key: v };
+                      patch({ features });
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="یک مورد را انتخاب کنید" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {featureOptions(f.key).map((k) => (
+                        <SelectItem key={k} value={k}>
+                          {k}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    value={f.value}
+                    onChange={(e) => {
+                      const features = [...draft.features];
+                      features[i] = { ...features[i], value: e.target.value };
+                      patch({ features });
+                    }}
+                    placeholder="توضیحات"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="حذف جزئیات"
+                    className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                    onClick={() => patch({ features: draft.features.filter((_, j) => j !== i) })}
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                </div>
+              ))}
+
+              {draft.features.length < PRODUCT_FEATURE_KEYS.length && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full rounded-md border-dashed"
+                  onClick={() => patch({ features: [...draft.features, { key: '', value: '' }] })}
+                >
+                  <Plus size={15} /> افزودن ویژگی بیشتر
+                  <span className="text-[10px] font-normal text-muted-foreground">
+                    ({toFa(draft.features.length)} از {toFa(PRODUCT_FEATURE_KEYS.length)})
+                  </span>
+                </Button>
+              )}
+            </>
           )}
         </PanelCard>
       )}
 
       {/* خطا + دکمه‌های ناوبری */}
       <div className="sticky bottom-16 z-10 rounded-lg border bg-card/95 p-3 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] backdrop-blur lg:bottom-4">
-        {error && <p className="mb-2 rounded-md bg-red-50 px-3 py-2 text-xs font-bold text-red-600">{error}</p>}
+        {shownStepError ?? error ? (
+          <p className="mb-2 rounded-md bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
+            {shownStepError ?? error}
+          </p>
+        ) : null}
         <div className="flex items-center justify-between gap-2">
           <Button
             type="button"
@@ -680,11 +735,21 @@ export default function RegisterProductPage() {
             <ArrowRight size={15} /> مرحله قبل
           </Button>
           {step < 5 ? (
-            <Button type="button" className="rounded-md" onClick={next}>
-              ادامه
+            /* ادامه — بزرگ‌تر + فلش رو‌به‌بیرون/چپ = جهت پیشرفت RTL (خواسته مالک ۳-۱۱) */
+            <Button
+              type="button"
+              className="h-12 min-w-32 rounded-md px-6 text-sm font-extrabold md:h-13"
+              onClick={next}
+            >
+              ادامه <ArrowLeft size={17} />
             </Button>
           ) : (
-            <Button type="button" className="rounded-md" onClick={() => void finalize()} disabled={submit.isPending}>
+            <Button
+              type="button"
+              className="h-12 min-w-32 rounded-md px-6 text-sm font-extrabold md:h-13"
+              onClick={() => void finalize()}
+              disabled={submit.isPending}
+            >
               {submit.isPending ? 'در حال ثبت…' : 'ثبت نهایی'}
             </Button>
           )}

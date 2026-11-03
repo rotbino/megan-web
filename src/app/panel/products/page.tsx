@@ -3,21 +3,36 @@
 /**
  * محصولات من — تب‌های وضعیت (تایید شده/در انتظار تایید/حذف شده/رد شده) عین باسکول.
  * ردیف آگهی + دکمه نردبان (پرداخت واقعی از کیف پول — wallet/ladderProduct)
- * + دلایل رد شدن + حالت خالی + ویرایش (فرم کامل) + حذف واقعی.
+ * + دلایل رد شدن + حالت خالی + ویرایش (فرم کامل).
+ * حذف = زیر دکمهٔ سه‌نقطه + دیالوگ تأیید + حذف نرم با حفظ سوابق
+ * (خواسته مالک ۳-۱۱: بدون تأیید حذف نشود؛ فروشندهٔ حقه‌باز نتواند پس از
+ * فروش، آگهی و تاریخچه‌اش را ناپدید کند).
  * تب فعال از ?tab= می‌آید (لینک عمقی صفحه موفقیت ثبت: tab=pending).
  * دکمهٔ «ثبت محصول» در سربرگ (خواسته مالک دور ۱۵): لینک مستقل منو حذف شد
  * و «محصولات من» اولین آیتم است — دکمهٔ ثبت همان‌جا زندگی می‌کند.
  */
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AlertTriangle, BarChart3, Eye, History, ImageIcon, Pencil, Plus, Trash2, TrendingUp } from 'lucide-react';
+import {
+  AlertTriangle,
+  BarChart3,
+  Eye,
+  History,
+  ImageIcon,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Trash2,
+  TrendingUp,
+} from 'lucide-react';
 import { useDeleteMyProduct, useMyProducts, usePanelProfile } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
 import { LadderPayDialog } from '@/components/panel/ladder-pay-dialog';
+import { DeleteProductDialog } from '@/components/panel/delete-product-dialog';
 import { REJECTION_REASONS } from '@/lib/mock/data';
 import { priceFa, stockFa, toFa, parseServerDate, timeAgoFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -50,6 +65,67 @@ function isTabKey(v: string | null): v is ProductStatus {
   return v === 'confirmed' || v === 'pending' || v === 'rejected' || v === 'deleted';
 }
 
+/** دکمهٔ سه‌نقطهٔ ردیف آگهی (خواسته مالک ۳-۱۱) — «حذف» زندگی‌اش اینجاست،
+ *  نه دکمهٔ مستقیم؛ کلیک بیرون یا Escape منو را می‌بندد
+ *  (الگوی book-record-card). */
+function RowMenu({ onDelete, hidden }: { onDelete: () => void; hidden?: boolean }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLSpanElement>(null);
+
+  // بستن منو با کلیک بیرون یا Escape
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [menuOpen]);
+
+  if (hidden) return null;
+  return (
+    <span ref={menuRef} className="relative">
+      <Button
+        variant="outline"
+        size="icon-sm"
+        className="rounded-md"
+        aria-label="گزینه‌های بیشتر"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        onClick={() => setMenuOpen((v) => !v)}
+      >
+        <MoreVertical size={15} />
+      </Button>
+      {menuOpen && (
+        <span
+          role="menu"
+          className="absolute end-0 top-[calc(100%+6px)] z-30 block w-40 rounded-md border bg-card p-1 shadow-lg"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setMenuOpen(false);
+              onDelete();
+            }}
+            className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+          >
+            <Trash2 size={14} />
+            حذف آگهی
+          </button>
+        </span>
+      )}
+    </span>
+  );
+}
+
 function MyProductsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -69,6 +145,8 @@ function MyProductsPageInner() {
   }
 
   const [ladderProduct, setLadderProduct] = useState<Product | null>(null);
+  // هدف دیالوگ تأیید حذف (خواسته مالک ۳-۱۱) — حذف فقط بعد از تأیید صریح
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
 
   if (isLoading || !data) {
     return <div className="h-64 animate-pulse rounded-lg border bg-card" />;
@@ -215,7 +293,7 @@ function MyProductsPageInner() {
                 </div>
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-2 border-t border-dashed pt-3">
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-dashed pt-3">
                 <Button
                   size="sm"
                   className="rounded-md text-xs"
@@ -234,22 +312,8 @@ function MyProductsPageInner() {
                     <Pencil size={14} /> ویرایش
                   </Link>
                 </Button>
-                {p.status !== 'deleted' && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="rounded-md text-xs text-red-500 hover:bg-red-50 hover:text-red-600"
-                    disabled={remove.isPending}
-                    onClick={() =>
-                      remove.mutate(p.id, {
-                        onSuccess: () => toast({ description: `آگهی «${p.productName}» حذف شد.` }),
-                        onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
-                      })
-                    }
-                  >
-                    <Trash2 size={14} /> حذف
-                  </Button>
-                )}
+                {/* حذف زیر سه‌نقطه + تأیید (خواسته مالک ۳-۱۱) */}
+                <RowMenu hidden={p.status === 'deleted'} onDelete={() => setDeleteTarget(p)} />
               </div>
             </article>
           ))}
@@ -273,6 +337,23 @@ function MyProductsPageInner() {
       {/* مودال نردبان — ۱ تا ۴ ماه، پرداخت واقعی از کیف پول (خواسته مالک ۳۱-۱۰)؛
           کامپوننت مشترک با صفحهٔ آمار (خواسته مالک ۳-۱۱) */}
       <LadderPayDialog product={ladderProduct} balance={balance} onClose={() => setLadderProduct(null)} />
+
+      {/* دیالوگ تأیید حذف (خواسته مالک ۳-۱۱) — حذف نرم با حفظ سوابق */}
+      <DeleteProductDialog
+        product={deleteTarget}
+        deleting={remove.isPending}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() =>
+          deleteTarget &&
+          remove.mutate(deleteTarget.id, {
+            onSuccess: () => {
+              toast({ description: `آگهی «${deleteTarget.productName}» حذف شد — به تب «حذف شده» منتقل شد.` });
+              setDeleteTarget(null);
+            },
+            onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
+          })
+        }
+      />
     </div>
   );
 }
