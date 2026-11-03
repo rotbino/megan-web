@@ -1409,13 +1409,31 @@ export interface MyProductStats {
     status: string;
     viewCount: number;
     createdAt: string;
+    /** آخرین به‌روزرسانی (قیمت) — ردیف «روش‌های افزایش بازدید» (خواسته مالک ۳-۱۱) */
+    updatedAt: string;
+    /** نردبان فعال — ردیف «روش‌های افزایش بازدید» */
+    isLadder: boolean;
   };
   canSeeIdentity: boolean;
+  /** مالک احراز هویت شده؟ — ردیف «روش‌های افزایش بازدید» */
+  ownerIsVerified: boolean;
+  /** مجموع‌های کل (از ثبت آگهی) — «بازدید کل» */
   totals: {
     views: number;
     uniqueViewers: number;
     contactClicks: number;
     saves: number;
+    chats: number;
+  };
+  /** بازهٔ فعال بعد از برش به عمر آگهی — برچسب‌های نمودار از این ساخته می‌شود */
+  range: { days: number; from: string; to: string };
+  /** مجموع‌های همین بازه — نشانگر تب‌ها و سربرگ نمودار (خواسته مالک ۳-۱۱) */
+  rangeTotals: {
+    views: number;
+    uniqueViewers: number;
+    contactClicks: number;
+    saves: number;
+    chats: number;
   };
   daily: Array<{ date: string; count: number }>;
   viewers: ProductStatsViewersRow[];
@@ -1424,9 +1442,13 @@ export interface MyProductStats {
   chatters: ProductStatsChattersRow[];
 }
 
-/** آمار کامل آگهی من — چه کسانی دیدند/تماس زدند/ذخیره کردند */
-export async function getMyProductStats(productId: number): Promise<MyProductStats> {
-  return apiFetch<MyProductStats>('/products/getMyProductStats', { id: productId });
+/**
+ * آمار کامل آگهی من — چه کسانی دیدند/تماس زدند/ذخیره کردند.
+ * days: بازهٔ آمار به روز (پیش‌فرض ۱۴)؛ ۰ = کل دورهٔ زندگی آگهی از ثبت —
+ * بازه‌های بلندتر از عمر آگهی به تاریخ ثبت بریده می‌شوند (خواسته مالک ۳-۱۱).
+ */
+export async function getMyProductStats(productId: number, days = 14): Promise<MyProductStats> {
+  return apiFetch<MyProductStats>('/products/getMyProductStats', { id: productId, days });
 }
 
 // ─── تنظیمات پویای صورتحساب + خریداران (۳۱-۱۰) ────────────────────────────

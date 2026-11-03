@@ -72,6 +72,21 @@ export function dateTimeFa(iso: string): string {
   }).format(new Date(iso));
 }
 
+/** تاریخ کوتاه شمسی: 2026-10-21 → «۳۰ مهر» — برچسب‌های نمودار آمار */
+export function dateShortFa(iso: string): string {
+  return new Intl.DateTimeFormat('fa-IR', { month: 'long', day: 'numeric' }).format(new Date(iso));
+}
+
+/** فقط ماه شمسی: 2026-10-21 → «مهر» — سطل‌های ماهانهٔ نمودار */
+export function monthFa(iso: string): string {
+  return new Intl.DateTimeFormat('fa-IR', { month: 'long' }).format(new Date(iso));
+}
+
+/** ماه + سال شمسی: 2026-10-21 → «مهر ۱۴۰۵» — تولتیپ سطل‌های ماهانه */
+export function monthYearFa(iso: string): string {
+  return new Intl.DateTimeFormat('fa-IR', { month: 'long', year: 'numeric' }).format(new Date(iso));
+}
+
 /**
  * راهنمای تبدیل واحد کنار ورودی عدد — مثل «۱۰۰۰ کیلوگرم (≈ ۱ تن)».
  * فقط واحدهای رایج؛ بقیه واحدها راهنمایی ندارند.

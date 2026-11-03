@@ -261,6 +261,8 @@ export function useLadderProduct() {
       queryClient.invalidateQueries({ queryKey: ['panel-my-products'] });
       queryClient.invalidateQueries({ queryKey: ['panel-profile'] });
       queryClient.invalidateQueries({ queryKey: ['panel-wallet-transactions'] });
+      // صفحهٔ آمار هم isLadder را نشان می‌دهد (ردیف «روش‌های افزایش بازدید»)
+      queryClient.invalidateQueries({ queryKey: ['product-stats'] });
     },
   });
 }
@@ -606,13 +608,15 @@ export function useAddSellerReview() {
 
 // ─── آمار آگهی (۳۰-۱۰) ──────────────────────────────────────────────────────
 
-/** آمار کامل آگهی من — صفحه آمار پنل */
-export function useMyProductStats(productId: number, enabled: boolean) {
+/** آمار کامل آگهی من — صفحه آمار پنل؛ days = بازه (۰ = کل دوره از ثبت) —
+ *  تعویض بازه دیتای قبلی را نگه می‌دارد تا نمودار بدون پرش اسکلتون عوض شود */
+export function useMyProductStats(productId: number, enabled: boolean, days = 14) {
   return useQuery({
-    queryKey: ['product-stats', productId] as const,
-    queryFn: () => api.getMyProductStats(productId),
+    queryKey: ['product-stats', productId, days] as const,
+    queryFn: () => api.getMyProductStats(productId, days),
     enabled: enabled && Number.isFinite(productId) && productId > 0,
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 }
 
