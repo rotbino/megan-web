@@ -2,11 +2,12 @@
 
 /**
  * خریداران این کالا (خواسته مالک ۴-۱۱) — از دکمهٔ «خریداران» هر ردیف
- * «محصولات من»: مدیریت بر اساس کالا؛
- *  • خریدهای دوره‌ای همین دسته (دفتر خرید خریداران) → ارسال پیشنهاد تامین
- *    (تکی/گروهی) برای فروشندهٔ دارندهٔ بستهٔ فعال و شارژ
- *  • درخواست‌های فوری همین کالا → تماس/چت با خریدار (عین پنل خریداران)
- *  • پیشنهادهای تامین ارسالی من برای همین کالا — روی همین صفحه دیده می‌شود
+ * «محصولات من»: مدیریت بر اساس کالا؛ سه بخش در تب‌ویو کنار هم
+ * (خواسته مالک ۱۱-۱۱ — تمیزتر و خواناتر از چیدمان زیر هم):
+ *  • تب دوره‌ای: خریدهای دوره‌ای همین دسته (دفتر خرید خریداران) → ارسال
+ *    پیشنهاد تامین (تکی/گروهی) برای فروشندهٔ دارندهٔ بستهٔ فعال و شارژ
+ *  • تب فوری: درخواست‌های فوری همین کالا → تماس/چت با خریدار
+ *  • تب پیشنهادهای من: پیشنهادهای تامین ارسالی من برای همین کالا
  */
 
 import { useMemo, useState } from 'react';
@@ -14,7 +15,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
   ArrowRight,
-  CalendarDays,
+  CalendarClock,
   CheckCircle2,
   ClipboardList,
   Crown,
@@ -43,9 +44,11 @@ import { GroupOfferWizard } from '@/components/buyers/group-offer-wizard';
 import { NeedPackageModal } from '@/components/shared/need-package-modal';
 import { MarkUserSheet, type MarkTarget } from '@/components/shared/mark-user-sheet';
 import { findCategoryPathById } from '@/lib/categories';
-import { dateFa, priceFa, toFa } from '@/lib/format';
+import { dateFa, priceFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { BuyerDirectoryItem, Category } from '@/lib/types';
+
+type ProductBuyersTab = 'periodic' | 'urgent' | 'offers';
 
 export default function ProductBuyersPage() {
   const params = useParams<{ id: string }>();
@@ -63,6 +66,7 @@ export default function ProductBuyersPage() {
   // گیت بسته — مثل پنل خریداران (خواسته مالک)
   const { data: myPackage, isLoading: pkgLoading } = useMyPackage();
 
+  const [tab, setTab] = useState<ProductBuyersTab>('periodic');
   const [offerTarget, setOfferTarget] = useState<BuyerDirectoryItem | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [needPkgOpen, setNeedPkgOpen] = useState(false);
@@ -176,13 +180,35 @@ export default function ProductBuyersPage() {
     };
   };
 
-  const sectionTitle = (icon: React.ReactNode, title: string, count: number) => (
-    <div className="mb-3 flex items-baseline justify-between gap-2">
-      <h2 className="flex items-center gap-2 text-sm font-extrabold">
-        {icon} {title}
-      </h2>
-      <span className="text-[11px] text-muted-foreground">{toFa(count)} مورد</span>
-    </div>
+  /** دکمهٔ تب — عین پنل خریداران (خط زیرین + شمارنده)؛ موبایل: برچسب کوتاه */
+  const tabButton = (
+    key: ProductBuyersTab,
+    icon: React.ReactNode,
+    mobileLabel: string,
+    label: string,
+    count: number,
+  ) => (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={tab === key}
+      onClick={() => setTab(key)}
+      className={cn(
+        '-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-1 pb-2.5 pt-1 text-sm font-bold transition-colors',
+        tab === key
+          ? 'border-primary text-primary'
+          : 'border-transparent text-muted-foreground hover:text-foreground',
+      )}
+    >
+      {icon}
+      <span className="sm:hidden">{mobileLabel}</span>
+      <span className="hidden sm:inline">{label}</span>
+      <span
+        className={cn('font-num text-[11px]', tab === key ? 'text-primary/70' : 'text-muted-foreground/70')}
+      >
+        {count}
+      </span>
+    </button>
   );
 
   return (
@@ -209,148 +235,163 @@ export default function ProductBuyersPage() {
         </div>
       </div>
 
-      {/* ── خریدهای دوره‌ای همین کالا — ارسال پیشنهاد تامین ── */}
-      <section>
-        {sectionTitle(
-          <span className="grid size-7 place-items-center rounded-md bg-primary/10 text-primary">
-            <CalendarDays size={14} />
-          </span>,
-          'خریدهای دوره‌ای',
-          dirItems.length,
+      {/* تب‌ها — عین پنل خریداران (خط زیرین)؛ سه بخش کنار هم به‌جای زیر هم */}
+      <div
+        className="no-scrollbar -mx-1 flex items-center gap-3.5 overflow-x-auto border-b border-border px-1"
+        role="tablist"
+        aria-label="بخش‌های خریداران این کالا"
+      >
+        {tabButton(
+          'periodic',
+          <CalendarClock size={15} className="shrink-0" />,
+          'دوره‌ای',
+          'درخواست‌های دوره‌ای',
+          dirQuery.isLoading && !dirQuery.data ? 0 : dirItems.length,
         )}
+        {tabButton(
+          'urgent',
+          <ClipboardList size={15} className="shrink-0" />,
+          'فوری',
+          'درخواست‌های فوری',
+          reqQuery.isLoading && !reqQuery.data ? 0 : reqItems.length,
+        )}
+        {tabButton(
+          'offers',
+          <Package size={15} className="shrink-0" />,
+          'پیشنهادهای من',
+          'پیشنهادهای من',
+          offersQuery.isLoading && !offersQuery.data ? 0 : myOffers.length,
+        )}
+      </div>
 
-        {dirItems.length > 0 && (
-          <div className="mb-3 flex justify-end">
-            <button
-              type="button"
-              onClick={() => passOfferGates() && setWizardOpen(true)}
-              className="flex shrink-0 items-center gap-1.5 rounded-md border border-input bg-card px-3.5 py-2 text-xs font-bold text-foreground/75 transition-colors hover:border-foreground/30 hover:bg-secondary hover:text-foreground"
-            >
-              <Users size={14} />
-              پیشنهاد تامین گروهی این کالا
-            </button>
-          </div>
-        )}
+      {/* ── تب دوره‌ای: خریدهای دوره‌ای همین کالا — ارسال پیشنهاد تامین ── */}
+      {tab === 'periodic' && (
+        <div role="tabpanel" aria-label="خریدهای دوره‌ای">
+          {dirItems.length > 0 && (
+            <div className="mb-3 flex justify-end">
+              <button
+                type="button"
+                onClick={() => passOfferGates() && setWizardOpen(true)}
+                className="flex shrink-0 items-center gap-1.5 rounded-md border border-input bg-card px-3.5 py-2 text-xs font-bold text-foreground/75 transition-colors hover:border-foreground/30 hover:bg-secondary hover:text-foreground"
+              >
+                <Users size={14} />
+                پیشنهاد تامین گروهی این کالا
+              </button>
+            </div>
+          )}
 
-        {dirQuery.isLoading && !dirQuery.data ? (
-          <div className="grid gap-3">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <div key={i} className="h-36 animate-pulse rounded-lg border bg-card" />
-            ))}
-          </div>
-        ) : dirItems.length === 0 ? (
-          <PanelCard className="py-8 text-center text-sm text-muted-foreground">
-            خرید دوره‌ای برای «{leafName}» ثبت نشده است.
-          </PanelCard>
-        ) : (
-          <ul className="space-y-3">
-            {dirItems.map((b) => (
-              <BookEntryCard key={b.id} entry={b} onOffer={() => startOffer(b)} />
-            ))}
-          </ul>
-        )}
-      </section>
+          {dirQuery.isLoading && !dirQuery.data ? (
+            <div className="grid gap-3">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="h-36 animate-pulse rounded-lg border bg-card" />
+              ))}
+            </div>
+          ) : dirItems.length === 0 ? (
+            <PanelCard className="py-8 text-center text-sm text-muted-foreground">
+              خرید دوره‌ای برای «{leafName}» ثبت نشده است.
+            </PanelCard>
+          ) : (
+            <ul className="space-y-3">
+              {dirItems.map((b) => (
+                <BookEntryCard key={b.id} entry={b} onOffer={() => startOffer(b)} />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
-      {/* ── درخواست‌های فوری همین کالا — تماس/چت ── */}
-      <section>
-        {sectionTitle(
-          <span className="grid size-7 place-items-center rounded-md bg-primary/10 text-primary">
-            <ClipboardList size={14} />
-          </span>,
-          'درخواست‌های خرید فوری',
-          reqItems.length,
-        )}
-        {reqQuery.isLoading && !reqQuery.data ? (
-          <div className="grid gap-3">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <div key={i} className="h-44 animate-pulse rounded-lg border bg-card" />
-            ))}
-          </div>
-        ) : reqItems.length === 0 ? (
-          <PanelCard className="py-8 text-center text-sm text-muted-foreground">
-            درخواست فوری برای «{leafName}» نیست.
-          </PanelCard>
-        ) : (
-          <div className="space-y-3">
-            {reqItems.map((r) => (
-              <BuyerCard
-                key={r.id}
-                request={r}
-                onToggleSave={() =>
-                  setMarkTarget({
-                    targetUserId: r.myuserId,
-                    targetName: `${r.firstName} ${r.lastName}`.trim(),
-                    isVerified: r.isVerified,
-                    defaultListName: r.subcategoryName,
-                  })
-                }
-              />
-            ))}
-          </div>
-        )}
-      </section>
+      {/* ── تب فوری: درخواست‌های فوری همین کالا — تماس/چت ── */}
+      {tab === 'urgent' && (
+        <div role="tabpanel" aria-label="درخواست‌های فوری">
+          {reqQuery.isLoading && !reqQuery.data ? (
+            <div className="grid gap-3">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="h-44 animate-pulse rounded-lg border bg-card" />
+              ))}
+            </div>
+          ) : reqItems.length === 0 ? (
+            <PanelCard className="py-8 text-center text-sm text-muted-foreground">
+              درخواست فوری برای «{leafName}» نیست.
+            </PanelCard>
+          ) : (
+            <div className="space-y-3">
+              {reqItems.map((r) => (
+                <BuyerCard
+                  key={r.id}
+                  request={r}
+                  onToggleSave={() =>
+                    setMarkTarget({
+                      targetUserId: r.myuserId,
+                      targetName: `${r.firstName} ${r.lastName}`.trim(),
+                      isVerified: r.isVerified,
+                      defaultListName: r.subcategoryName,
+                    })
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* ── پیشنهادهای ارسالی من برای این کالا ── */}
-      <section>
-        {sectionTitle(
-          <span className="grid size-7 place-items-center rounded-md bg-primary/10 text-primary">
-            <Package size={14} />
-          </span>,
-          'پیشنهادهای تامین ارسالی شما',
-          myOffers.length,
-        )}
-        {offersQuery.isLoading && !offersQuery.data ? (
-          <div className="h-28 animate-pulse rounded-lg border bg-card" />
-        ) : myOffers.length === 0 ? (
-          <PanelCard className="py-8 text-center text-sm text-muted-foreground">
-            برای «{leafName}» هنوز پیشنهاد تامین نفرستاده‌اید.
-          </PanelCard>
-        ) : (
-          <ul className="space-y-2.5">
-            {myOffers.map((o) => (
-              <li key={o.id} className="rounded-lg border bg-card p-3.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-extrabold">{o.buyerName}</span>
-                  {o.productType && (
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
-                      {o.productType}
-                    </span>
-                  )}
-                  <span
-                    className={cn(
-                      'flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold',
-                      o.isGroup ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-600',
+      {/* ── تب پیشنهادهای من: پیشنهادهای تامین ارسالی برای این کالا ── */}
+      {tab === 'offers' && (
+        <div role="tabpanel" aria-label="پیشنهادهای تامین من">
+          {offersQuery.isLoading && !offersQuery.data ? (
+            <div className="h-28 animate-pulse rounded-lg border bg-card" />
+          ) : myOffers.length === 0 ? (
+            <PanelCard className="py-8 text-center text-sm text-muted-foreground">
+              برای «{leafName}» هنوز پیشنهاد تامین نفرستاده‌اید.
+            </PanelCard>
+          ) : (
+            <ul className="space-y-2.5">
+              {myOffers.map((o) => (
+                <li key={o.id} className="rounded-lg border bg-card p-3.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-extrabold">{o.buyerName}</span>
+                    {o.productType && (
+                      <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
+                        {o.productType}
+                      </span>
                     )}
-                  >
-                    {o.isGroup ? <Users size={12} /> : <CheckCircle2 size={12} />}
-                    {o.isGroup ? 'گروهی' : 'تکی'}
-                  </span>
-                  {o.fee > 0 && <span className="font-num text-[11px] text-muted-foreground">{priceFa(o.fee)} تومان</span>}
-                  <span className="ms-auto text-[11px] text-muted-foreground">{dateFa(o.createdAt)}</span>
-                </div>
-                {o.lastMessage ? (
-                  <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[11px] leading-5">
-                    <MessageSquare size={13} className={o.lastMessage.mine ? 'text-muted-foreground' : 'text-primary'} />
-                    <span className="text-muted-foreground">آخرین پیام:</span>
-                    <span className={cn('truncate', !o.lastMessage.mine && 'font-bold text-foreground')}>
-                      {o.lastMessage.text.length > 80 ? `${o.lastMessage.text.slice(0, 80)}…` : o.lastMessage.text}
+                    <span
+                      className={cn(
+                        'flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold',
+                        o.isGroup ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-600',
+                      )}
+                    >
+                      {o.isGroup ? <Users size={12} /> : <CheckCircle2 size={12} />}
+                      {o.isGroup ? 'گروهی' : 'تکی'}
                     </span>
-                  </p>
-                ) : (
-                  <p className="mt-1.5 line-clamp-1 text-[11px] leading-5 text-muted-foreground">{o.message}</p>
-                )}
-                {o.threadId && (
-                  <Button asChild size="sm" variant="outline" className="mt-2.5 rounded-md text-xs">
-                    <Link href={`/panel/messages?thread=${o.threadId}`}>
-                      <MessageSquare size={13} /> گفتگو
-                    </Link>
-                  </Button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                    {o.fee > 0 && (
+                      <span className="font-num text-[11px] text-muted-foreground">{priceFa(o.fee)} تومان</span>
+                    )}
+                    <span className="ms-auto text-[11px] text-muted-foreground">{dateFa(o.createdAt)}</span>
+                  </div>
+                  {o.lastMessage ? (
+                    <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[11px] leading-5">
+                      <MessageSquare size={13} className={o.lastMessage.mine ? 'text-muted-foreground' : 'text-primary'} />
+                      <span className="text-muted-foreground">آخرین پیام:</span>
+                      <span className={cn('truncate', !o.lastMessage.mine && 'font-bold text-foreground')}>
+                        {o.lastMessage.text.length > 80 ? `${o.lastMessage.text.slice(0, 80)}…` : o.lastMessage.text}
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="mt-1.5 line-clamp-1 text-[11px] leading-5 text-muted-foreground">{o.message}</p>
+                  )}
+                  {o.threadId && (
+                    <Button asChild size="sm" variant="outline" className="mt-2.5 rounded-md text-xs">
+                      <Link href={`/panel/messages?thread=${o.threadId}`}>
+                        <MessageSquare size={13} /> گفتگو
+                      </Link>
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* مودال پیشنهاد تکی — عنوان با نام کالا */}
       <SupplyOfferModal
