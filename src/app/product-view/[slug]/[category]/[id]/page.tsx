@@ -15,14 +15,13 @@ import {
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { JsonLd } from '@/components/shared/json-ld';
-import { ProductImage } from '@/components/shared/product-image';
-import { GlassWatermark } from '@/components/shared/glass-watermark';
 import { ProductPrice } from '@/components/shared/product-price';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
-import { LadderBadge, OldAdBadge, PremiumSellerBadge } from '@/components/shared/badges';
+import { OldAdBadge, PremiumSellerBadge } from '@/components/shared/badges';
 import { MarkUserButton } from '@/components/shared/mark-user-sheet';
 import { ProductViewPing } from '@/components/shared/product-view-ping';
 import { ChatDialog } from '@/components/products/chat-dialog';
+import { ProductGallery } from '@/components/products/product-gallery';
 import { ShareButton } from '@/components/products/share-button';
 import { ProductReviews } from '@/components/products/product-reviews';
 import { SellerProductsRail } from '@/components/products/seller-products-rail';
@@ -211,48 +210,17 @@ export default async function ProductViewPage({ params }: Props) {
           {/* ستون اصلی */}
           <div className="space-y-6">
             <div className="grid gap-6 sm:grid-cols-[minmax(0,420px)_1fr]">
-              <div className="space-y-3">
-              <div className="relative aspect-square w-full max-w-[420px] overflow-hidden rounded-md border">
-                <ProductImage
-                  photos={product.photos}
-                  alt={`فروش عمده ${product.productName} در ${city}`}
-                  className="object-cover"
-                  iconSize={96}
-                  priority
-                  sizes="(max-width: 640px) 100vw, 420px"
-                />
-                {/* واترمارک شیشه‌ای لوگوی ایمچ (خواسته مالک ۳-۱۱) — ضد دزدی
-                    تصویر؛ جایش هر بار کمی تغییر می‌کند و پشتش دیده می‌شود */}
-                <GlassWatermark key={product.id} seed={product.id ? String(product.id) : undefined} />
-                {/* نردبان روی گوشهٔ عکس (خواسته مالک ۱-۱۱ دور هفتم) — به‌جای
-                    «فروشنده ویژه» که فقط کنار نام فروشنده می‌نشیند (بدون تکرار) */}
-                {product.isLadder && (
-                  <span className="absolute left-0 top-0">
-                    <LadderBadge className="rounded-br-[6px] px-2.5 py-1.5 text-xs shadow-sm" />
-                  </span>
-                )}
-                {product.hasVideo && (
-                  <span className="absolute bottom-2 end-2 rounded-sm bg-black/55 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur">
-                    ویدیو دارد
-                  </span>
-                )}
-              </div>
-                {product.photos.length > 1 && (
-                  <div className="grid grid-cols-4 gap-2">
-                    {product.photos.slice(0, 4).map((ph, i) => (
-                      <div key={i} className="relative aspect-square overflow-hidden rounded-md border">
-                        <ProductImage
-                          photos={[ph]}
-                          thumbs={product.photoThumbs ? [product.photoThumbs[i] ?? ph] : undefined}
-                          alt={`${product.productName} — عکس ${toFa(i + 1)}`}
-                          className="object-cover"
-                          iconSize={20}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* گالری سوییپی — بدون تامبنیل؛ فلش + نقطه (بدون نوشته) و
+                  کلیک = تمام‌صفحه (خواسته مالک ۴-۱۱) */}
+              <ProductGallery
+                photos={product.photos}
+                alt={`فروش عمده ${product.productName} در ${city}`}
+                isLadder={product.isLadder}
+                hasVideo={product.hasVideo}
+                watermarkSeed={product.id ? String(product.id) : undefined}
+                priority
+                sizes="(max-width: 640px) 100vw, 420px"
+              />
 
               <div className="space-y-4">
                 {/* عنوان آگهی فروش — «فروش عمده …» (خواسته مالک ۲-۱۱: خرید زدی؛
