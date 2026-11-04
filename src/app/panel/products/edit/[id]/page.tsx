@@ -4,6 +4,8 @@
  * ویرایش آگهی — فرم بازِ تک‌صفحه‌ای (خواسته مالک ۴-۱۱؛ جایگزین ویزارد):
  *  • همهٔ بخش‌های ویزارد زیر هم آمده‌اند و کاربر هر بخش را که خواست جداگانه
  *    ویرایش می‌کند — دسکتاپ دو ستونه (ویرایش راحت‌تر)، موبایل تک‌ستونه.
+ *  • دسته‌بندی فشرده: فقط مسیر فعلی + مداد ویرایش که کسکید انتخاب را باز
+ *    می‌کند و با انتخاب برگ تازه جمع می‌شود (خواسته مالک ۱۱-۱۱).
  *  • بدون تایید مجدد: آگهی تاییدشده تاییدشده می‌ماند و تغییرات بلافاصله
  *    زنده است؛ فقط آگهی ردشده برای بازبینی اصلاحات «در انتظار» می‌شود.
  *  • خطای اعتبارسنجی هر بخش زیر همان بخش می‌نشیند و به محض اصلاح ورودی
@@ -16,10 +18,12 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowRight,
+  ChevronLeft,
   ImageIcon,
   ImagePlus,
   Loader2,
   PartyPopper,
+  Pencil,
   Save,
   Tag,
   Trash2,
@@ -118,6 +122,15 @@ export default function EditProductPage() {
    *  از آن، هر خطا به محض اصلاح همان ورودی پاک می‌شود (derived) */
   const [attempted, setAttempted] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  /** دسته‌بندی فشرده (خواسته مالک ۱۱-۱۱): به‌طور پیش‌فرض فقط مسیر فعلی +
+   *  مداد ویرایش دیده می‌شود؛ مداد کسکید انتخاب را باز می‌کند و «انصراف»
+   *  به دستهٔ لحظهٔ باز شدن برمی‌گرداند */
+  const [catEditing, setCatEditing] = useState(false);
+  const [catBackup, setCatBackup] = useState<{ path: Category[]; leaf: Category | null }>({
+    path: [],
+    leaf: null,
+  });
 
   const provinceIdNum = draft ? num(draft.provinceId) : 0;
   const { data: cities } = useCities(provinceIdNum || undefined);
@@ -376,7 +389,7 @@ export default function EditProductPage() {
     ) : null;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 pb-2">
+    <div className="mx-auto max-w-5xl space-y-4 pb-24 lg:pb-20">
       {/* سربرگ — بازگشت + عنوان */}
       <div className="flex items-center gap-3">
         <Button
@@ -410,10 +423,62 @@ export default function EditProductPage() {
               </span>
               دسته بندی
             </h2>
-            <CategoryCascade
-              value={{ path: draft.path, leaf: draft.leaf }}
-              onChange={(v) => patch({ path: v.path, leaf: v.leaf })}
-            />
+
+            {/* حالت فشرده — فقط دستهٔ فعلی + مداد ویرایش (خواسته مالک ۱۱-۱۱) */}
+            {!catEditing ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setCatBackup({ path: draft.path, leaf: draft.leaf });
+                  setCatEditing(true);
+                }}
+                title="تغییر دسته بندی"
+                aria-label="تغییر دسته بندی محصول"
+                className="group flex w-full items-center gap-2 rounded-md border bg-secondary/40 px-3.5 py-3 text-start transition-colors hover:border-primary/40 hover:bg-secondary/70"
+              >
+                {draft.path.length > 0 ? (
+                  <span className="flex min-w-0 flex-wrap items-center gap-1 text-[13px] font-bold text-primary">
+                    {draft.path.map((c, i) => (
+                      <span key={c.id} className="flex items-center gap-1">
+                        {i > 0 && <ChevronLeft size={12} className="text-muted-foreground/60" aria-hidden />}
+                        {c.categoryName}
+                      </span>
+                    ))}
+                  </span>
+                ) : (
+                  <span className="text-[13px] font-bold text-muted-foreground">انتخاب دسته بندی محصول</span>
+                )}
+                <Pencil
+                  size={15}
+                  className="ms-auto shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
+                  aria-hidden
+                />
+              </button>
+            ) : (
+              /* حالت ویرایش — کسکید کامل + انصراف به دستهٔ قبلی */
+              <div className="space-y-2">
+                <CategoryCascade
+                  value={{ path: draft.path, leaf: draft.leaf }}
+                  onChange={(v) => {
+                    patch({ path: v.path, leaf: v.leaf });
+                    // برگ تازه انتخاب شد → جمع کن و مسیر جدید را فشرده نشان بده
+                    if (v.leaf) setCatEditing(false);
+                  }}
+                />
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      patch({ path: catBackup.path, leaf: catBackup.leaf });
+                      setCatEditing(false);
+                    }}
+                    className="text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    انصراف و بازگشت
+                  </button>
+                </div>
+              </div>
+            )}
             <SectionError id="category" />
           </PanelCard>
 
