@@ -44,9 +44,7 @@ export default async function ProductListPage() {
     <>
       <Header />
       <main className="flex-1">
-        <div className="mx-auto max-w-7xl px-4 pt-6 lg:px-6">
-          <h1 className="text-2xl font-bold">خرید عمده محصولات</h1>
-        </div>
+
         <ProductListing initialData={initial ?? undefined} sidebar={<CategoryFilter tree={tree} />} />
       </main>
       <Footer />

@@ -78,7 +78,7 @@ export default function BuyerBookPage() {
           <h1 className="text-base font-extrabold sm:text-lg">دفتر خرید من</h1>
           <p className="mt-1 max-w-lg text-xs leading-6 text-muted-foreground">
             کالاهایی که به‌طور مستمر می‌خرید را ثبت کنید تا فروشندگان مناسب، پیشنهاد تامینشان را برایتان
-            بفرستند. با کلیک روی هر کالا، پیشنهادهای تامین همان گروه را می‌بینید.
+            بفرستند.
           </p>
         </div>
         <Button className="rounded-md" onClick={() => setAddOpen(true)} disabled={remaining === 0}>

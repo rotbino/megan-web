@@ -256,10 +256,6 @@ function ProductListingInner({
   const filterContent = (
     <>
       <div className="rounded-md border bg-card p-4">
-        <h2 className="mb-3 flex items-center gap-1.5 text-sm font-bold">
-          <Filter size={14} className="text-primary" />
-          دسته بندی محصولات
-        </h2>
         {sidebar}
       </div>
 
