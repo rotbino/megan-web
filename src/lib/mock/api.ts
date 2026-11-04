@@ -1004,9 +1004,24 @@ export async function getChatThreadMessages(threadId: string): Promise<ChatMessa
   return apiFetch<ChatMessage[]>('/chat/getThreadMessages', { threadId });
 }
 
-/** لیست مکالمات من + خوانده‌نشده */
+/** لیست مکالمات من + خوانده‌نشده — هر مخاطب فقط یک‌بار (تضمین سمت کلاینت) */
 export async function getConversations(): Promise<ChatThreadInfo[]> {
-  return apiFetch<ChatThreadInfo[]>('/chat/getConversations', {});
+  const threads = await apiFetch<ChatThreadInfo[]>('/chat/getConversations', {});
+  // بک‌اند جفت‌های تکراری را همان‌جا ادغام می‌کند؛ این تضمین اضافی است
+  // برای بک‌اند کهنه: هر مخاطب یک ردیف — فعال‌ترین مکالمه + مجموع بج
+  const byCounterpart = new Map<string, ChatThreadInfo>();
+  for (const t of threads) {
+    const cur = byCounterpart.get(t.counterpart.id);
+    if (!cur) {
+      byCounterpart.set(t.counterpart.id, t);
+      continue;
+    }
+    const at = (x: ChatThreadInfo) => new Date(x.lastMessage?.at ?? x.updatedAt).getTime() || 0;
+    const [keep, drop] = at(t) >= at(cur) ? [t, cur] : [cur, t];
+    keep.unreadCount += drop.unreadCount;
+    byCounterpart.set(t.counterpart.id, keep);
+  }
+  return [...byCounterpart.values()];
 }
 
 /** علامت خوانده‌شدن بدون واکشی */
