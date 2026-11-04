@@ -859,9 +859,9 @@ export async function updateMyProduct(input: {
   return { ok: true, id: updated.id, status: (updated.status as ProductStatus) ?? 'pending', failedPhotos };
 }
 
-/** تغییر گروهی قیمت/موجودی (خواسته مالک ۴-۱۱) — بدون تایید مجدد */
+/** تغییر گروهی قیمت/موجودی/حداقل سفارش (خواسته مالک ۴-۱۱) — بدون تایید مجدد */
 export async function bulkUpdatePrices(
-  items: { id: number; minSalePrice: number; stock: number }[],
+  items: { id: number; minSalePrice: number; stock: number; minSaleAmount: number }[],
 ): Promise<{ updated: number; total: number }> {
   return apiFetch<{ updated: number; total: number }>('/products/bulkUpdatePrices', { items });
 }
@@ -1051,6 +1051,41 @@ export async function getMyAdminMessages(): Promise<AdminInbox> {
 /** باز کردن مکالمه پشتیبانی = خواندن همه پیام‌های خوانده‌نشده */
 export async function markAdminMessagesRead(): Promise<{ read: number }> {
   return apiFetch<{ read: number }>('/chat/markMyAdminMessagesRead', {});
+}
+
+// ─── مخاطبین گوشی («ارسال به مخاطبین» — خواسته مالک ۴-۱۱) ───────────────────
+
+/** یک مخاطب گوشی — عضویت لحظه‌ای در ایمچ محاسبهٔ سرور است */
+export interface PhoneContact {
+  id: string;
+  name: string | null;
+  phone: string;
+  /** عضو ایمچ است؟ — نمایش متمایز + بدون دکمهٔ دعوت */
+  isMember: boolean;
+  memberUserName: string | null;
+  memberAvatarUrl: string | null;
+}
+
+export interface MyPhoneContacts {
+  items: PhoneContact[];
+  total: number;
+}
+
+/** لود یک‌بارهٔ مخاطبین گوشی (Contact Picker مرورگر) در ایمچ — idempotent */
+export async function importPhoneContacts(
+  items: { name?: string; phone: string }[],
+): Promise<{ imported: number }> {
+  return apiFetch<{ imported: number }>('/contacts/import', { items });
+}
+
+/** لیست مخاطبین من + عضویت در ایمچ */
+export async function getMyPhoneContacts(): Promise<MyPhoneContacts> {
+  return apiFetch<MyPhoneContacts>('/contacts/getMyContacts', {});
+}
+
+/** حذف یک مخاطب از لیست من */
+export async function deletePhoneContact(id: string): Promise<{ deleted: true }> {
+  return apiFetch<{ deleted: true }>('/contacts/delete', { id });
 }
 
 // ─── احراز هویت اسناد (B6 — واقعی) ────────────────────────────────────────

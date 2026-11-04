@@ -31,7 +31,8 @@ import {
   type Product,
 } from '@/lib/types';
 
-const STEP_TITLES = ['دسته‌بندی کالا', 'انتخاب خریداران', 'پیشنهاد تامین'] as const;
+const STEP_TITLES_FULL = ['دسته‌بندی کالا', 'انتخاب خریداران', 'پیشنهاد تامین'] as const;
+const STEP_TITLES_FIXED = ['انتخاب خریداران', 'پیشنهاد تامین'] as const;
 
 export function GroupOfferWizard({
   open,
@@ -39,6 +40,7 @@ export function GroupOfferWizard({
   onSent,
   quota,
   products,
+  category,
 }: {
   open: boolean;
   onClose: () => void;
@@ -46,18 +48,24 @@ export function GroupOfferWizard({
   quota: OfferQuota | null;
   /** آگهی‌های خود فروشنده — برای نمونهٔ پارامتریک */
   products?: Product[];
+  /** دستهٔ ازپیش‌معلوم (صفحهٔ «خریداران این کالا» — خواسته مالک ۴-۱۱):
+   *  کالا مشخص است و گام انتخاب دسته‌بندی کلاً حذف می‌شود */
+  category?: Category | null;
 }) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [leaf, setLeaf] = useState<Category | null>(null);
-  const [path, setPath] = useState<Category[]>([]);
+  // حالت دستهٔ ثابت — دوگامی؛ صفحهٔ خریداران کالا از اینجا می‌آید
+  const fixed = Boolean(category);
+  const STEP_TITLES = fixed ? STEP_TITLES_FIXED : STEP_TITLES_FULL;
+  const [step, setStep] = useState<1 | 2 | 3>(fixed ? 2 : 1);
+  const [leaf, setLeaf] = useState<Category | null>(category ?? null);
+  const [path, setPath] = useState<Category[]>(category ? [category] : []);
   // انتخاب‌ها — Map تا بین صفحه‌های گام ۲ حفظ شود
   const [picked, setPicked] = useState<Map<string, BuyerDirectoryItem>>(new Map());
 
   // بستن ویزار = ریست کامل
   const close = () => {
-    setStep(1);
-    setLeaf(null);
-    setPath([]);
+    setStep(fixed ? 2 : 1);
+    setLeaf(category ?? null);
+    setPath(category ? [category] : []);
     setPicked(new Map());
     onClose();
   };
@@ -198,9 +206,13 @@ export function GroupOfferWizard({
           <div className="flex items-center justify-between gap-2 border-t px-4 py-3 sm:px-5">
             <ButtonStep
               variant="back"
-              onClick={() => (step === 1 ? close() : setStep((s) => (s - 1) as 1 | 2))}
+              onClick={() =>
+                step === 1 || (fixed && step === 2)
+                  ? close()
+                  : setStep((s) => (s - 1) as 1 | 2)
+              }
             >
-              {step === 1 ? (
+              {step === 1 || (fixed && step === 2) ? (
                 <>
                   <X size={15} /> انصراف
                 </>

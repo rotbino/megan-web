@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
 import { PushEnableBanner } from '@/components/shared/push-enable';
+import { SendToContactsButton } from '@/components/shared/send-to-contacts';
 import { UnitInput } from '@/components/shared/unit-input';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -240,7 +241,9 @@ export default function PanelMessagesPage() {
             <p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">
               با معرفی ایمچ به همکارانتان، بازار بزرگ‌تر و قیمت‌های بهتری داشته باشید.
             </p>
-            <div className="mt-2.5 flex items-center gap-2">
+            {/* ارسال به مخاطبین (خواسته مالک ۴-۱۱) — اولین دکمه؛ فقط موبایل */}
+            <SendToContactsButton className="mt-2.5" />
+            <div className="mt-2 flex items-center gap-2">
               <Button
                 size="sm"
                 variant="outline"

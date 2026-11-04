@@ -229,9 +229,6 @@ export default function ProductBuyersPage() {
         </Button>
         <div className="min-w-0 flex-1">
           <h1 className="text-base font-extrabold sm:text-lg">خریداران «{leafName}»</h1>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            آگهی «{product.productName}» — خریدهای دوره‌ای و درخواست‌های فوری همین کالا + پیشنهادهای ارسالی شما.
-          </p>
         </div>
       </div>
 
@@ -275,7 +272,7 @@ export default function ProductBuyersPage() {
                 className="flex shrink-0 items-center gap-1.5 rounded-md border border-input bg-card px-3.5 py-2 text-xs font-bold text-foreground/75 transition-colors hover:border-foreground/30 hover:bg-secondary hover:text-foreground"
               >
                 <Users size={14} />
-                پیشنهاد تامین گروهی این کالا
+                پیشنهاد تامین گروهی
               </button>
             </div>
           )}
@@ -404,8 +401,16 @@ export default function ProductBuyersPage() {
         category={targetCategory(offerTarget) ?? leafCategory}
       />
 
-      {/* ویزار گروهی — دستهٔ همین کالا از قبل معلوم است */}
-      <GroupOfferWizard open={wizardOpen} onClose={() => setWizardOpen(false)} quota={quota} products={products} />
+      {/* ویزار گروهی — کالا مشخص است: گام دسته‌بندی حذف (خواسته مالک ۴-۱۱) */}
+      {leafCategory && (
+        <GroupOfferWizard
+          open={wizardOpen}
+          onClose={() => setWizardOpen(false)}
+          quota={quota}
+          products={products}
+          category={leafCategory}
+        />
+      )}
 
       {/* بدون بستهٔ فعال → مودال خرید اشتراک */}
       <NeedPackageModal

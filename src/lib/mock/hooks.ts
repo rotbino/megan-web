@@ -725,3 +725,35 @@ export function useBulkUpdatePrices() {
     },
   });
 }
+
+// ─── مخاطبین گوشی («ارسال به مخاطبین» — خواسته مالک ۴-۱۱) ───────────────────
+
+/** لیست مخاطبین من + عضویت در ایمچ */
+export function useMyPhoneContacts() {
+  return useQuery({
+    queryKey: ['my-phone-contacts'],
+    queryFn: () => api.getMyPhoneContacts(),
+  });
+}
+
+/** لود یک‌بارهٔ مخاطبین گوشی (Contact Picker) — بعد از درون‌ریزی لیست تازه شود */
+export function useImportPhoneContacts() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.importPhoneContacts,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-phone-contacts'] });
+    },
+  });
+}
+
+/** حذف یک مخاطب */
+export function useDeletePhoneContact() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.deletePhoneContact,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-phone-contacts'] });
+    },
+  });
+}

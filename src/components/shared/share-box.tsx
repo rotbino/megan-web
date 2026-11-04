@@ -8,6 +8,7 @@
 import { Copy, Mail, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { SendToContactsButton } from '@/components/shared/send-to-contacts';
 
 export function ShareBox({ url, hint }: { url: string; hint?: string }) {
   const { toast } = useToast();
@@ -23,7 +24,9 @@ export function ShareBox({ url, hint }: { url: string; hint?: string }) {
       <p className="mt-1.5 text-xs leading-6 text-muted-foreground">
         {hint ?? 'برای ارتباط با من روی دکمه ی ارسال پیام بزنید. خوشحال می شوم پروفایل من را با همکارانتان به اشتراک بگذارید.'}
       </p>
-      <div className="mt-3 flex items-center gap-2">
+      {/* ارسال به مخاطبین (خواسته مالک ۴-۱۱) — اولین دکمه؛ فقط موبایل */}
+      <SendToContactsButton className="mt-3" />
+      <div className="mt-2 flex items-center gap-2">
         <Button size="sm" variant="outline" className={btn} onClick={() => toast({ description: 'به‌زودی: اشتراک‌گذاری در تلگرام' })}>
           تلگرام
         </Button>

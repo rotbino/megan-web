@@ -415,9 +415,6 @@ export default function RegisterProductPage() {
               }}
               maxLength={40}
             />
-            <p className="text-[11px] text-muted-foreground">
-              اختیاری است — برند به انتهای عنوان آگهی اضافه می‌شود و خریداران با جستجوی نام برند (مثلا «چییتوز») محصول شما را پیدا می‌کنند.
-            </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

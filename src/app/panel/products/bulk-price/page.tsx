@@ -1,11 +1,13 @@
 'use client';
 
 /**
- * تغییر قیمت گروهی (خواسته مالک ۴-۱۱) — لیست سادهٔ آگهی‌های فعال خودم:
- * عنوان + قیمت حداقل خرید + موجودی؛ طراحی‌شده برای آپدیت سریع همه در یک صفحه.
- *  • دسکتاپ: گرید لیستی با ردیف‌های هم‌تراز
- *  • موبایل: کارت‌های جمع‌وجور با دو اینپوت کنار هم
+ * تغییر قیمت گروهی (خواسته مالک ۴-۱۱) — لیست آگهی‌های فعال خودم برای
+ * آپدیت سریع همه در یک صفحه:
+ *  • دسکتاپ: عین اکسل — ردیف‌های زیر هم، سه اینپوت کنار هم در همان ردیف
+ *    (قیمت / موجودی / حداقل سفارش) تا کاربر سریع پایین برود و تایپ کند
+ *  • موبایل: کارت‌های جمع‌وجور با سه اینپوت (دو تا کنار هم + حداقل سفارش)
  *  • فقط ردیف‌های تغییر یافته ذخیره می‌شوند؛ بدون تایید مجدد (وضعیت حفظ می‌شود)
+ *  • مینیمال (خواسته مالک ۴-۱۱): بدون جمله‌های توضیحی — فرم سبک و خلوت
  */
 
 import { useMemo, useState } from 'react';
@@ -16,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { PanelCard } from '@/components/panel/panel-parts';
 import { UnitInput } from '@/components/shared/unit-input';
-import { priceFa, toFa } from '@/lib/format';
+import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 const num = (v: string) => Number(v.replace(/[^\d]/g, '')) || 0;
@@ -26,11 +28,13 @@ interface Row {
   id: number;
   productName: string;
   unit: string;
-  /** مقدار اولیهٔ سرور — برای تشخیص تغییر و نمایش قبل/بعد */
+  /** مقدار اولیهٔ سرور — برای تشخیص تغییر */
   basePrice: number;
   baseStock: number;
+  baseMinOrder: number;
   price: string;
   stock: string;
+  minOrder: string;
 }
 
 export default function BulkPricePage() {
@@ -51,15 +55,23 @@ export default function BulkPricePage() {
           unit: p.unit,
           basePrice: p.minSalePrice ?? 0,
           baseStock: p.stock,
+          baseMinOrder: p.minSaleAmount ?? 0,
           price: p.minSalePrice ? p.minSalePrice.toLocaleString('en-US') : '',
           stock: p.stock ? p.stock.toLocaleString('en-US') : '',
+          minOrder: p.minSaleAmount ? p.minSaleAmount.toLocaleString('en-US') : '',
         })),
     );
   }
 
   /** ردیف‌های واقعاً تغییر یافته — فقط همین‌ها ارسال می‌شوند */
   const changed = useMemo(
-    () => (rows ?? []).filter((r) => num(r.price) !== r.basePrice || num(r.stock) !== r.baseStock),
+    () =>
+      (rows ?? []).filter(
+        (r) =>
+          num(r.price) !== r.basePrice ||
+          num(r.stock) !== r.baseStock ||
+          num(r.minOrder) !== r.baseMinOrder,
+      ),
     [rows],
   );
 
@@ -84,14 +96,21 @@ export default function BulkPricePage() {
     }
     try {
       const r = await save.mutateAsync(
-        changed.map((c) => ({ id: c.id, minSalePrice: num(c.price), stock: num(c.stock) })),
+        changed.map((c) => ({
+          id: c.id,
+          minSalePrice: num(c.price),
+          stock: num(c.stock),
+          minSaleAmount: num(c.minOrder),
+        })),
       );
-      toast({ description: `${toFa(r.updated)} آگهی به‌روزرسانی شد — تغییرات بلافاصله اعمال شد.` });
+      toast({ description: `${toFa(r.updated)} آگهی به‌روزرسانی شد.` });
       // مقادیر پایه تازه شوند تا ردیف‌ها «تغییر یافته» از ذهن بیرون بیایند
       setRows((rs) =>
         rs?.map((r) => {
           const c = changed.find((x) => x.id === r.id);
-          return c ? { ...r, basePrice: num(c.price), baseStock: num(c.stock) } : r;
+          return c
+            ? { ...r, basePrice: num(c.price), baseStock: num(c.stock), baseMinOrder: num(c.minOrder) }
+            : r;
         }) ?? rs,
       );
     } catch (err) {
@@ -122,12 +141,7 @@ export default function BulkPricePage() {
             <ArrowRight size={17} />
           </Link>
         </Button>
-        <div className="min-w-0">
-          <h1 className="text-base font-extrabold sm:text-lg">تغییر قیمت گروهی</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            قیمت و موجودی آگهی‌ها را سریع به‌روزرسانی کنید — بدون تایید مجدد، بلافاصله اعمال می‌شود.
-          </p>
-        </div>
+        <h1 className="text-base font-extrabold sm:text-lg">تغییر قیمت گروهی</h1>
       </div>
 
       {rows.length === 0 ? (
@@ -136,36 +150,36 @@ export default function BulkPricePage() {
         </PanelCard>
       ) : (
         <>
-          {/* سربرگ ستون‌ها — فقط دسکتاپ */}
-          <div className="hidden grid-cols-[1fr_180px_170px] gap-3 px-4 pb-1 text-[11px] font-bold text-muted-foreground lg:grid">
+          {/* سربرگ ستون‌ها — فقط دسکتاپ (عین اکسل) */}
+          <div className="hidden grid-cols-[minmax(0,1fr)_160px_150px_150px_84px] gap-3 px-3 pb-1 text-[11px] font-bold text-muted-foreground lg:grid">
             <span>عنوان محصول</span>
-            <span>قیمت حداقل خرید (تومان)</span>
+            <span>قیمت (تومان)</span>
             <span>موجودی</span>
+            <span>حداقل سفارش</span>
+            <span />
           </div>
 
-          {/* لیست — دسکتاپ گرید، موبایل کارت */}
-          <div className="space-y-2.5">
+          {/* ردیف‌ها — دسکتاپ: هر سه اینپوت در همان ردیف کنار هم (عین اکسل) */}
+          <div className="space-y-2">
             {rows.map((r) => {
-              const dirty = num(r.price) !== r.basePrice || num(r.stock) !== r.baseStock;
+              const dirty =
+                num(r.price) !== r.basePrice ||
+                num(r.stock) !== r.baseStock ||
+                num(r.minOrder) !== r.baseMinOrder;
               return (
                 <div
                   key={r.id}
                   className={cn(
-                    'rounded-lg border bg-card p-3.5 transition-colors lg:grid lg:grid-cols-[1fr_180px_170px] lg:items-center lg:gap-3',
+                    'rounded-lg border bg-card p-3 transition-colors lg:grid lg:grid-cols-[minmax(0,1fr)_160px_150px_150px_84px] lg:items-center lg:gap-3 lg:p-2.5',
                     dirty ? 'border-primary/45 bg-primary/[0.04]' : 'border-border',
                   )}
                 >
-                  {/* عنوان + خلاصهٔ قبل */}
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold">{r.productName}</p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      فعلی: <span className="font-num">{r.basePrice > 0 ? priceFa(r.basePrice) : 'تماس بگیرید'}</span> ·{' '}
-                      موجودی <span className="font-num">{toFa(r.baseStock)}</span> {r.unit}
-                    </p>
-                  </div>
+                  {/* عنوان */}
+                  <p className="truncate px-0.5 text-sm font-bold lg:py-1">{r.productName}</p>
 
-                  {/* اینپوت‌ها — موبایل کنار هم، دسکتاپ در ستون خودش */}
-                  <div className="mt-2.5 grid grid-cols-2 gap-2.5 lg:mt-0 lg:grid-cols-1">
+                  {/* اینپوت‌ها — دسکتاپ: هر اینپوت مستقیم در ستون خودش (display:contents)؛
+                      موبایل: دو‌تا کنار هم + حداقل سفارش تمام‌عرض */}
+                  <div className="mt-2.5 grid grid-cols-2 gap-2.5 lg:mt-0 lg:contents">
                     <div>
                       <span className="mb-1 block text-[10px] font-bold text-muted-foreground lg:hidden">
                         قیمت (تومان)
@@ -191,17 +205,29 @@ export default function BulkPricePage() {
                         ariaLabel={`موجودی ${r.productName}`}
                       />
                     </div>
+                    <div className="col-span-2 lg:col-span-1">
+                      <span className="mb-1 block text-[10px] font-bold text-muted-foreground lg:hidden">
+                        حداقل سفارش
+                      </span>
+                      <UnitInput
+                        kind="plain"
+                        value={r.minOrder}
+                        onValueChange={(v) => patchRow(r.id, { minOrder: v })}
+                        unit={r.unit}
+                        ariaLabel={`حداقل سفارش ${r.productName}`}
+                      />
+                    </div>
                   </div>
 
                   {/* نشان تغییر — فقط دسکتاپ */}
                   <span
                     className={cn(
-                      'hidden items-center gap-1 text-[11px] font-bold lg:flex',
+                      'hidden items-center justify-center gap-1 text-[11px] font-bold lg:flex',
                       dirty ? 'text-primary' : 'text-transparent',
                     )}
                     aria-hidden={!dirty}
                   >
-                    <Check size={13} /> تغییر یافت
+                    <Check size={13} /> تغییر
                   </span>
                 </div>
               );
@@ -214,11 +240,9 @@ export default function BulkPricePage() {
               <p className="text-[11px] leading-5 text-muted-foreground">
                 {changed.length > 0 ? (
                   <>
-                    <b className="text-primary">{toFa(changed.length)}</b> آگهی تغییر یافته — قیمت خالی یا ۰ یعنی «تماس بگیرید».
+                    <b className="text-primary">{toFa(changed.length)}</b> آگهی تغییر یافته
                   </>
-                ) : (
-                  'قیمت یا موجودی هر ردیف را که تغییر دهید، همین‌جا آمادهٔ ذخیره می‌شود.'
-                )}
+                ) : null}
               </p>
               <Button
                 className="h-11 min-w-36 rounded-md px-5 text-sm font-extrabold"

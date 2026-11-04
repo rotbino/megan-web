@@ -68,9 +68,10 @@ function isTabKey(v: string | null): v is ProductStatus {
 }
 
 /** دکمهٔ سه‌نقطهٔ ردیف آگهی (خواسته مالک ۳-۱۱) — «حذف» زندگی‌اش اینجاست،
- *  نه دکمهٔ مستقیم؛ کلیک بیرون یا Escape منو را می‌بندد
- *  (الگوی book-record-card). */
-function RowMenu({ onDelete, hidden }: { onDelete: () => void; hidden?: boolean }) {
+ *  نه دکمهٔ مستقیم؛ «ویرایش» هم زیر همین منو رفت (خواسته مالک ۴-۱۱ —
+ *  ردیف شلوغ بود و ویرایش به‌ندرت لازم می‌شود). کلیک بیرون یا Escape منو
+ *  را می‌بندد (الگوی book-record-card). */
+function RowMenu({ editHref, canDelete, onDelete }: { editHref: string; canDelete: boolean; onDelete: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLSpanElement>(null);
 
@@ -91,7 +92,6 @@ function RowMenu({ onDelete, hidden }: { onDelete: () => void; hidden?: boolean 
     };
   }, [menuOpen]);
 
-  if (hidden) return null;
   return (
     <span ref={menuRef} className="relative">
       <Button
@@ -110,18 +110,29 @@ function RowMenu({ onDelete, hidden }: { onDelete: () => void; hidden?: boolean 
           role="menu"
           className="absolute end-0 top-[calc(100%+6px)] z-30 block w-40 rounded-md border bg-card p-1 shadow-lg"
         >
-          <button
-            type="button"
+          <Link
+            href={editHref}
             role="menuitem"
-            onClick={() => {
-              setMenuOpen(false);
-              onDelete();
-            }}
-            className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+            onClick={() => setMenuOpen(false)}
+            className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-xs font-medium transition-colors hover:bg-secondary"
           >
-            <Trash2 size={14} />
-            حذف آگهی
-          </button>
+            <Pencil size={14} />
+            ویرایش آگهی
+          </Link>
+          {canDelete && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false);
+                onDelete();
+              }}
+              className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+            >
+              <Trash2 size={14} />
+              حذف آگهی
+            </button>
+          )}
         </span>
       )}
     </span>
@@ -244,22 +255,51 @@ function MyProductsPageInner() {
         />
       ) : (
         <div className="space-y-3">
-          {items.map((p) => (
+          {items.map((p) => {
+            /* آگهی تاییدشده — لینک عمومی روی عکس/عنوان (خواسته مالک ۴-۱۱):
+               فروشنده محصولش را از دید بقیه کاربران ببیند */
+            const publicHref =
+              p.status === 'confirmed'
+                ? `/product-view/${p.slug}/${p.categoryName}/${p.id}`
+                : null;
+            return (
             <article key={p.id} className="rounded-lg border bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
               <div className="flex gap-3">
-                <div className="relative size-20 shrink-0 overflow-hidden rounded-md border bg-secondary sm:size-24">
-                  {p.photos[0] ? (
-                    <img src={(p.photoThumbs && p.photoThumbs[0]) ?? p.photos[0]} alt={p.productName} className="size-full object-cover" />
-                  ) : (
-                    <span className="grid size-full place-items-center text-muted-foreground/40">
-                      <ImageIcon size={26} />
-                    </span>
-                  )}
-                </div>
+                {publicHref ? (
+                  <Link
+                    href={publicHref}
+                    title={`مشاهدهٔ «${p.productName}» در ایمچ`}
+                    className="relative size-20 shrink-0 overflow-hidden rounded-md border bg-secondary transition-opacity hover:opacity-85 sm:size-24"
+                  >
+                    {p.photos[0] ? (
+                      <img src={(p.photoThumbs && p.photoThumbs[0]) ?? p.photos[0]} alt={p.productName} className="size-full object-cover" />
+                    ) : (
+                      <span className="grid size-full place-items-center text-muted-foreground/40">
+                        <ImageIcon size={26} />
+                      </span>
+                    )}
+                  </Link>
+                ) : (
+                  <div className="relative size-20 shrink-0 overflow-hidden rounded-md border bg-secondary sm:size-24">
+                    {p.photos[0] ? (
+                      <img src={(p.photoThumbs && p.photoThumbs[0]) ?? p.photos[0]} alt={p.productName} className="size-full object-cover" />
+                    ) : (
+                      <span className="grid size-full place-items-center text-muted-foreground/40">
+                        <ImageIcon size={26} />
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="truncate text-sm font-extrabold">{p.productName}</h2>
+                    {publicHref ? (
+                      <Link href={publicHref} title={`مشاهدهٔ «${p.productName}» در ایمچ`} className="truncate text-sm font-extrabold transition-colors hover:text-primary">
+                        {p.productName}
+                      </Link>
+                    ) : (
+                      <h2 className="truncate text-sm font-extrabold">{p.productName}</h2>
+                    )}
                     <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold', STATUS_STYLE[p.status ?? 'confirmed'])}>
                       {STATUS_LABEL[p.status ?? 'confirmed']}
                     </span>
@@ -322,11 +362,6 @@ function MyProductsPageInner() {
                     <BarChart3 size={14} /> آمار
                   </Link>
                 </Button>
-                <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
-                  <Link href={`/panel/products/edit/${p.id}`}>
-                    <Pencil size={14} /> ویرایش
-                  </Link>
-                </Button>
                 {/* خریداران این کالا (خواسته مالک ۴-۱۱) — خریدهای دوره‌ای و فوری
                     همین دسته + پیشنهادهای ارسالی من برای این کالا؛ همه‌جا هست
                     (موبایل و دسکتاپ) و نه فقط موبایل */}
@@ -338,11 +373,16 @@ function MyProductsPageInner() {
                     <Users size={14} /> خریداران
                   </Link>
                 </Button>
-                {/* حذف زیر سه‌نقطه + تأیید (خواسته مالک ۳-۱۱) */}
-                <RowMenu hidden={p.status === 'deleted'} onDelete={() => setDeleteTarget(p)} />
+                {/* ویرایش + حذف زیر سه‌نقطه (خواسته مالک ۴-۱۱ — ردیف خلوت‌تر) */}
+                <RowMenu
+                  editHref={`/panel/products/edit/${p.id}`}
+                  canDelete={p.status !== 'deleted'}
+                  onDelete={() => setDeleteTarget(p)}
+                />
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       )}
 

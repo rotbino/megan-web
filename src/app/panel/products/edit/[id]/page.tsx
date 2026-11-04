@@ -517,9 +517,6 @@ export default function EditProductPage() {
                 }}
                 maxLength={40}
               />
-              <p className="text-[11px] text-muted-foreground">
-                اختیاری است — برند به انتهای عنوان آگهی اضافه می‌شود و خریداران با جستجوی نام برند محصول شما را پیدا می‌کنند.
-              </p>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -656,7 +653,6 @@ export default function EditProductPage() {
                 e.target.value = '';
               }}
             />
-
             {(existingPhotos.length > 0 || newPhotos.length > 0) && (
               <div className="flex flex-wrap gap-3">
                 {existingPhotos.map((ph) => (
@@ -690,9 +686,6 @@ export default function EditProductPage() {
                 ))}
               </div>
             )}
-            <p className="text-[11px] text-muted-foreground">
-              تصاویر حذف‌شده بعد از ذخیره نهایی پاک می‌شوند؛ تصاویر جدید مثل ثبت اولیه بهینه می‌شوند (عرض ≤۱۲۰۰، حجم ≤۵۰۰KB).
-            </p>
             <SectionError id="photos" />
           </PanelCard>
         </div>
@@ -738,10 +731,7 @@ export default function EditProductPage() {
         {error ? (
           <p className="mb-2 rounded-md bg-red-50 px-3 py-2 text-xs font-bold text-red-600">{error}</p>
         ) : null}
-        <div className="flex items-center justify-between gap-2">
-          <p className="hidden text-[11px] leading-5 text-muted-foreground sm:block">
-            تغییرات بدون تایید مجدد اعمال می‌شود — آگهی تاییدشده همان‌جا زنده می‌ماند.
-          </p>
+        <div className="flex items-center justify-end gap-2">
           <Button
             type="button"
             className="h-12 min-w-40 rounded-md px-6 text-sm font-extrabold"
