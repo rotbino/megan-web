@@ -1105,7 +1105,7 @@ export async function deletePhoneContact(id: string): Promise<{ deleted: true }>
 
 // ─── احراز هویت اسناد (B6 — واقعی) ────────────────────────────────────────
 
-/** نوع حساب احراز: حقیقی | حقوقی (حقوقی = آگهی ثبت شرکت هم لازم است) */
+/** نوع حساب احراز: حقیقی | دارای مدرک کسب‌وکار — بک‌اند از وجود جواز کسب/آگهی ثبت استخراج می‌کند */
 export type VerificationAccountType = 'personal' | 'legal';
 
 /** اسلات‌های مدارک — عین باسکول: روی کارت + پشت کارت + سلفی با گواهی (+ آگهی ثبت) */
@@ -1142,11 +1142,10 @@ export async function getMyVerification(): Promise<MyVerification> {
 /**
  * ارسال مدارک — یک درخواست multipart، دو مرحله (عین باسکول):
  * روی کارت + پشت کارت + سلفی همراه با کارت و گواهی دست‌نوشته؛
- * حقوقی: + آگهی ثبت شرکت (روزنامه رسمی).
+ * + جواز کسب یا آگهی ثبت شرکت (اختیاری — اعتبار بیشتر برای کسب‌وکارها).
  * بک‌اند سفارش را اتمیک می‌سازد؛ در خطا هیچ فایلی جامانده نمی‌ماند.
  */
 export async function submitVerification(input: {
-  accountType: VerificationAccountType;
   nationalCardFront: File;
   nationalCardBack: File;
   selfieWithCard: File;
@@ -1158,11 +1157,10 @@ export async function submitVerification(input: {
   }
 
   const form = new FormData();
-  form.append('accountType', input.accountType);
   form.append('nationalCardFront', input.nationalCardFront);
   form.append('nationalCardBack', input.nationalCardBack);
   form.append('selfieWithCard', input.selfieWithCard);
-  if (input.accountType === 'legal' && input.registrationNotice) {
+  if (input.registrationNotice) {
     form.append('registrationNotice', input.registrationNotice);
   }
 

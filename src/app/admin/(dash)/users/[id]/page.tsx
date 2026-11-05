@@ -712,7 +712,7 @@ export default function AdminUserDetailPage() {
                     ['nationalCardFront', 'روی کارت ملی'],
                     ['nationalCardBack', 'پشت کارت ملی'],
                     ['selfieWithCard', 'سلفی با گواهی'],
-                    ['registrationNotice', 'آگهی ثبت شرکت'],
+                    ['registrationNotice', 'جواز کسب / آگهی ثبت'],
                   ] as const).map(([key, label]) => {
                     const doc = data.verification.docs[key];
                     return (

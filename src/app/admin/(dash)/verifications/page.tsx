@@ -50,12 +50,14 @@ function StatusChip({ status }: { status: StatusKey }) {
   return <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-600">ردشده</span>;
 }
 
-/** چیپ نوع حساب — حقوقی‌ها برجسته شوند (آگهی ثبت شرکت دارند) */
+/** چیپ مدرک کسب‌وکار — فقط وقتی کاربر جواز کسب/آگهی ثبت فرستاده باشد */
 function AccountTypeChip({ type }: { type?: string }) {
-  if (type === 'legal') {
-    return <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold text-sky-600">حقوقی</span>;
-  }
-  return <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold text-secondary-foreground">حقیقی</span>;
+  if (type !== 'legal') return null;
+  return (
+    <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold text-sky-600">
+      همراه مدرک کسب‌وکار
+    </span>
+  );
 }
 
 export default function AdminVerificationsPage() {
@@ -240,8 +242,8 @@ function ReviewDocsDialog({
         <DialogHeader>
           <DialogTitle>بازبینی مدارک احراز</DialogTitle>
           <DialogDescription>
-            <span dir="ltr">{target?.user?.phone}</span> —{' '}
-            {target?.accountType === 'legal' ? 'احراز هویت حقوقی (حقیقی + آگهی ثبت شرکت)' : 'احراز هویت حقیقی'}
+            <span dir="ltr">{target?.user?.phone}</span> — کارت ملی (رو/پشت) + سلفی با گواهی
+            {target?.accountType === 'legal' ? ' + مدرک کسب‌وکار' : ''}
           </DialogDescription>
         </DialogHeader>
 
@@ -250,7 +252,7 @@ function ReviewDocsDialog({
             { key: 'nationalCardFront', label: 'روی کارت ملی' },
             { key: 'nationalCardBack', label: 'پشت کارت ملی' },
             { key: 'selfieWithCard', label: 'سلفی با گواهی' },
-            { key: 'registrationNotice', label: 'آگهی ثبت شرکت' },
+            { key: 'registrationNotice', label: 'جواز کسب / آگهی ثبت' },
           ].map(({ key, label }) => {
             const doc = docs[key];
             return (
