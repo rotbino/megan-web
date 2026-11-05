@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * احراز هویت — ویزارد دو مرحله‌ای عین باسکول (خواسته مالک ۵-۱۱ و ۶-۱۱):
+ * احراز هویت — ویزارد دو مرحله‌ای:
  * گام ۱: تصویر روی کارت ملی + پشت کارت ملی (فقط نمونهٔ صحیح کنار فرم؛
  *        نمونه‌های غلط و راهنمای کامل در /help/verify-account)
  * گام ۲: سلفی همراه با کارت ملی و گواهی دست‌نوشته
@@ -52,7 +52,7 @@ const DOC_SLOTS: Array<{ key: VerificationDocKey; label: string }> = [
   { key: 'registrationNotice', label: 'جواز کسب / آگهی ثبت' },
 ];
 
-/** جعبه بارگذاری با پیش‌نمایش واقعی (objectURL) — عین فرم باسکول */
+/** جعبه بارگذاری با پیش‌نمایش واقعی (objectURL) */
 function UploadBox({
   label,
   hint,
@@ -123,7 +123,7 @@ function UploadBox({
   );
 }
 
-/** نمونهٔ صحیح (کراپ‌شده از راهنمای باسکول) — فقط عکس درست کنار فرم؛
+/** نمونهٔ تصویر صحیح (تصویر اختصاصی ایمچ) — فقط عکس درست کنار فرم؛
  * نمونه‌های غلط و راهنمای کامل در صفحهٔ راهنما */
 function SampleImage({ src, caption }: { src: string; caption: string }) {
   return (
@@ -144,7 +144,7 @@ function SampleImage({ src, caption }: { src: string; caption: string }) {
   );
 }
 
-/** متن گواهی دست‌نوشته — با نام خود کاربر + دکمه رونوشت (عین باسکول) */
+/** متن گواهی دست‌نوشته — با نام خود کاربر + دکمه رونوشت */
 function NoteTemplate({ fullName }: { fullName: string }) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
@@ -381,8 +381,8 @@ export default function VerificationPage() {
                 و بدون انعکاس، بدون دست روی متن و بدون تاری.
               </p>
               <SampleImage
-                src="/help-img/verify/sample-card.png"
-                caption="کارت ملی کامل، واضح و مستقیم از روبرو — نمونه از راهنمای باسکول"
+                src="/help-img/verify/sample-card.jpg"
+                caption="نمونهٔ عکس از دو سمت کارت ملی (روی کارت و پشت کارت): کارت کامل در کادر، واضح، بدون انعکاس و بدون دست روی متن"
               />
               <p className="text-center text-[10.5px] text-muted-foreground">
                 نمونه‌های غلط و راهنمای کامل در{' '}
@@ -422,8 +422,8 @@ export default function VerificationPage() {
               </p>
               <NoteTemplate fullName={fullName} />
               <SampleImage
-                src="/help-img/verify/sample-selfie.png"
-                caption="سلفی از نزدیک و واضح همراه با کارت ملی چسبیده به گواهی — نمونه از راهنمای باسکول"
+                src="/help-img/verify/sample-selfie.jpg"
+                caption="سلفی واضح در نور کافی همراه گواهی دست‌نوشته و کارت ملی چسبیده به پایین کاغذ — نوشته درشت و خوانا و چهره کاملاً مشخص"
               />
               <UploadBox
                 label="سلفی با کارت ملی و گواهی"
