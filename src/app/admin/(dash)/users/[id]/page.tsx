@@ -708,9 +708,13 @@ export default function AdminUserDetailPage() {
 
                 {/* مدارک */}
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {(['nationalCard', 'selfie'] as const).map((key) => {
+                  {([
+                    ['nationalCardFront', 'روی کارت ملی'],
+                    ['nationalCardBack', 'پشت کارت ملی'],
+                    ['selfieWithCard', 'سلفی با گواهی'],
+                    ['registrationNotice', 'آگهی ثبت شرکت'],
+                  ] as const).map(([key, label]) => {
                     const doc = data.verification.docs[key];
-                    const label = key === 'nationalCard' ? 'کارت ملی' : 'سلفی';
                     return (
                       <div key={key} className="overflow-hidden rounded-[10px] border">
                         <div className="flex items-center justify-between bg-secondary/40 px-3 py-2">

@@ -50,6 +50,14 @@ function StatusChip({ status }: { status: StatusKey }) {
   return <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-600">ردشده</span>;
 }
 
+/** چیپ نوع حساب — حقوقی‌ها برجسته شوند (آگهی ثبت شرکت دارند) */
+function AccountTypeChip({ type }: { type?: string }) {
+  if (type === 'legal') {
+    return <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold text-sky-600">حقوقی</span>;
+  }
+  return <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold text-secondary-foreground">حقیقی</span>;
+}
+
 export default function AdminVerificationsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -88,7 +96,7 @@ export default function AdminVerificationsPage() {
           <div>
             <h1 className="text-base font-extrabold">احراز هویت کاربران</h1>
             <p className="text-[11px] text-muted-foreground">
-              {data ? `${toFa(data.total)} سفارش — کارت ملی + سلفی` : 'صف بازبینی مدارک'}
+              {data ? `${toFa(data.total)} سفارش — کارت ملی (رو/پشت) + سلفی با گواهی` : 'صف بازبینی مدارک'}
             </p>
           </div>
         </div>
@@ -138,6 +146,7 @@ export default function AdminVerificationsPage() {
                   <div className="min-w-0">
                     <p className="flex flex-wrap items-center gap-1.5 text-[13px] font-bold">
                       <StatusChip status={o.status} />
+                      <AccountTypeChip type={o.accountType} />
                       {o.user ? (
                         <span dir="ltr">{o.user.phone}</span>
                       ) : (
@@ -231,14 +240,17 @@ function ReviewDocsDialog({
         <DialogHeader>
           <DialogTitle>بازبینی مدارک احراز</DialogTitle>
           <DialogDescription>
-            {target?.user ? <span dir="ltr">{target.user.phone}</span> : null} — کارت ملی و سلفی
+            <span dir="ltr">{target?.user?.phone}</span> —{' '}
+            {target?.accountType === 'legal' ? 'احراز هویت حقوقی (حقیقی + آگهی ثبت شرکت)' : 'احراز هویت حقیقی'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-2.5">
           {[
-            { key: 'nationalCard', label: 'کارت ملی' },
-            { key: 'selfie', label: 'سلفی با کارت' },
+            { key: 'nationalCardFront', label: 'روی کارت ملی' },
+            { key: 'nationalCardBack', label: 'پشت کارت ملی' },
+            { key: 'selfieWithCard', label: 'سلفی با گواهی' },
+            { key: 'registrationNotice', label: 'آگهی ثبت شرکت' },
           ].map(({ key, label }) => {
             const doc = docs[key];
             return (

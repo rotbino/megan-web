@@ -397,10 +397,17 @@ export interface AdminUserDetail {
   verification: {
     orderId?: string | null;
     status: string;
+    /** personal | legal */
+    accountType?: string;
     submittedAt?: string;
     reviewedAt?: string | null;
     rejectionReason?: string | null;
-    docs: Partial<Record<'nationalCard' | 'selfie', AdminVerificationDoc | null>>;
+    docs: Partial<
+      Record<
+        'nationalCardFront' | 'nationalCardBack' | 'selfieWithCard' | 'registrationNotice',
+        AdminVerificationDoc | null
+      >
+    >;
   };
 }
 
@@ -1073,6 +1080,8 @@ export async function setAdminCampaignPurchaseCount(
 export interface AdminVerificationOrderRow {
   id: string;
   status: 'pending' | 'approved' | 'rejected';
+  /** personal | legal */
+  accountType?: string;
   createdAt: string;
   reviewedAt?: string | null;
   rejectionReason?: string | null;

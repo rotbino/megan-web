@@ -1105,6 +1105,16 @@ export async function deletePhoneContact(id: string): Promise<{ deleted: true }>
 
 // ─── احراز هویت اسناد (B6 — واقعی) ────────────────────────────────────────
 
+/** نوع حساب احراز: حقیقی | حقوقی (حقوقی = آگهی ثبت شرکت هم لازم است) */
+export type VerificationAccountType = 'personal' | 'legal';
+
+/** اسلات‌های مدارک — عین باسکول: روی کارت + پشت کارت + سلفی با گواهی (+ آگهی ثبت) */
+export type VerificationDocKey =
+  | 'nationalCardFront'
+  | 'nationalCardBack'
+  | 'selfieWithCard'
+  | 'registrationNotice';
+
 export interface VerificationDoc {
   id: string;
   fieldKey: string;
@@ -1116,10 +1126,12 @@ export interface VerificationDoc {
 export interface MyVerification {
   /** none | pending | approved | rejected */
   status: 'none' | 'pending' | 'approved' | 'rejected';
+  /** personal | legal */
+  accountType?: VerificationAccountType;
   submittedAt?: string;
   reviewedAt?: string | null;
   rejectionReason?: string | null;
-  docs: Partial<Record<'nationalCard' | 'selfie', VerificationDoc | null>>;
+  docs: Partial<Record<VerificationDocKey, VerificationDoc | null>>;
 }
 
 /** وضعیت احراز هویت کاربر جاری + مدارک ارسالی */
@@ -1128,12 +1140,17 @@ export async function getMyVerification(): Promise<MyVerification> {
 }
 
 /**
- * ارسال مدارک — یک درخواست multipart با کارت ملی + سلفی (عین باسکول).
+ * ارسال مدارک — یک درخواست multipart، دو مرحله (عین باسکول):
+ * روی کارت + پشت کارت + سلفی همراه با کارت و گواهی دست‌نوشته؛
+ * حقوقی: + آگهی ثبت شرکت (روزنامه رسمی).
  * بک‌اند سفارش را اتمیک می‌سازد؛ در خطا هیچ فایلی جامانده نمی‌ماند.
  */
 export async function submitVerification(input: {
-  nationalCard: File;
-  selfie: File;
+  accountType: VerificationAccountType;
+  nationalCardFront: File;
+  nationalCardBack: File;
+  selfieWithCard: File;
+  registrationNotice?: File | null;
 }): Promise<MyVerification> {
   const tokens = getTokens();
   if (!tokens?.accessToken) {
@@ -1141,8 +1158,13 @@ export async function submitVerification(input: {
   }
 
   const form = new FormData();
-  form.append('nationalCard', input.nationalCard);
-  form.append('selfie', input.selfie);
+  form.append('accountType', input.accountType);
+  form.append('nationalCardFront', input.nationalCardFront);
+  form.append('nationalCardBack', input.nationalCardBack);
+  form.append('selfieWithCard', input.selfieWithCard);
+  if (input.accountType === 'legal' && input.registrationNotice) {
+    form.append('registrationNotice', input.registrationNotice);
+  }
 
   const res = await fetch('/api/verification/submitVerification', {
     method: 'POST',

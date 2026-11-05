@@ -1,19 +1,38 @@
 'use client';
 
 /**
- * احراز هویت — گام «پروفایل حرفه‌ای مطمئن» باسکول (B6، API واقعی):
- * بارگذاری کارت ملی + سلفی → «در حال بررسی» → تأیید/رد ادمین.
- * مدارک در یک درخواست ارسال می‌شوند (اتمیک) — پیش‌نمایش objectURL،
- * آپلود فقط لحظه «ارسال مدارک» (دکترین فایل: نه حدسی وسط فرم).
+ * احراز هویت — ویزارد دو مرحله‌ای عین باسکول (خواسته مالک ۵-۱۱):
+ * گام ۱: تصویر روی کارت ملی + پشت کارت ملی (با نمونه‌های تصویر صحیح/غلط)
+ * گام ۲: سلفی همراه با کارت ملی و گواهی دست‌نوشته
+ *   — حقوقی: در همین گام، آگهی ثبت شرکت (روزنامه رسمی) نیز بارگذاری می‌شود
+ * (طبق راهنمای باسکول؛ لینک راهنمای کامل: /help/verify-account)
+ *
+ * مدارک در یک درخواست multipart ارسال می‌شوند (اتمیک) — پیش‌نمایش objectURL،
+ * آپلود فقط لحظه «ارسال نهایی» (دکترین فایل: نه حدسی وسط فرم).
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
-import { BadgeCheck, FileImage, Loader2, ShieldCheck, XCircle } from 'lucide-react';
+import Link from 'next/link';
+import {
+  BadgeCheck,
+  BookOpen,
+  Building2,
+  Check,
+  Copy,
+  FileImage,
+  Loader2,
+  PenLine,
+  ShieldCheck,
+  UserRound,
+  XCircle,
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { PanelCard } from '@/components/panel/panel-parts';
-import { useMyVerification, useSubmitVerification } from '@/lib/mock/hooks';
+import { useMyVerification, usePanelProfile, useSubmitVerification } from '@/lib/mock/hooks';
+import type { VerificationAccountType, VerificationDocKey } from '@/lib/mock/api';
+import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 /** قواعد تصویر احراز: jpeg/jpg، ۴KB تا ۵MB (کفِ پایین‌تر با بهینه‌سازی کلاینت هماهنگ) */
@@ -26,6 +45,14 @@ function validateImage(file: File): string | null {
   if (file.size < MIN_BYTES) return 'حجم تصویر بسیار کم است — تصویر واضح‌تری انتخاب کنید.';
   return null;
 }
+
+/** برچسب فارسی اسلات‌های مدرک — مشترک با نمای وضعیت */
+const DOC_SLOTS: Array<{ key: VerificationDocKey; label: string }> = [
+  { key: 'nationalCardFront', label: 'روی کارت ملی' },
+  { key: 'nationalCardBack', label: 'پشت کارت ملی' },
+  { key: 'selfieWithCard', label: 'سلفی با گواهی' },
+  { key: 'registrationNotice', label: 'آگهی ثبت شرکت' },
+];
 
 /** جعبه بارگذاری با پیش‌نمایش واقعی (objectURL) — عین فرم باسکول */
 function UploadBox({
@@ -98,92 +125,156 @@ function UploadBox({
   );
 }
 
+/** تصویر راهنما (نمونه باسکول) — قاب جمع با کپشن */
+function GuideImage({ src, caption }: { src: string; caption: string }) {
+  return (
+    <figure className="overflow-hidden rounded-lg border bg-card">
+      <img src={src} alt={caption} loading="lazy" className="mx-auto max-h-72 w-auto object-contain" />
+      <figcaption className="border-t bg-secondary/40 px-3 py-1.5 text-center text-[11px] text-muted-foreground">
+        {caption}
+      </figcaption>
+    </figure>
+  );
+}
+
+/** متن گواهی دست‌نوشته — با نام خود کاربر + دکمه رونوشت (عین باسکول) */
+function NoteTemplate({ fullName }: { fullName: string }) {
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
+  const date = useMemo(() => new Date().toLocaleDateString('fa-IR'), []);
+  const name = fullName.trim() || '................................';
+  const text = `اینجانب ${name}، کارت ملی خود را جهت احراز هویت در ایمچ ارسال می‌نمایم.\nتاریخ: ${date}`;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast({ description: 'رونوشت ممکن نشد — متن را دستی بنویسید.' });
+    }
+  };
+
+  return (
+    <div className="space-y-2 rounded-lg border border-primary/25 bg-primary/5 p-3.5">
+      <p className="flex items-center gap-1.5 text-xs font-extrabold text-primary">
+        <PenLine size={14} /> متن گواهی دست‌نوشته
+      </p>
+      <p className="whitespace-pre-line rounded-md border border-dashed border-primary/35 bg-card px-3 py-2.5 text-center text-[13px] font-bold leading-7">
+        {text}
+      </p>
+      <p className="text-[11px] leading-5 text-muted-foreground">
+        این متن را با ماژیک، درشت و خوانا روی یک کاغذ سفید بنویسید، کارت ملی را به آن بچسبانید و همراه هر دو،
+        از خودتان در نور کافی و بدون تاری سلفی واضح بگیرید (طبق نمونه زیر).
+      </p>
+      <Button type="button" variant="outline" size="sm" className="h-8 rounded-md text-[11px]" onClick={copy}>
+        {copied ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+        {copied ? 'رونوشت شد' : 'رونوشت متن'}
+      </Button>
+    </div>
+  );
+}
+
 export default function VerificationPage() {
   const { toast } = useToast();
   const { data, isLoading } = useMyVerification();
   const submit = useSubmitVerification();
+  const { data: profile } = usePanelProfile();
 
-  const [card, setCard] = useState<File | null>(null);
-  const [selfie, setSelfie] = useState<File | null>(null);
-  const [cardUrl, setCardUrl] = useState<string | null>(null);
-  const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
+  const [accountType, setAccountType] = useState<VerificationAccountType>('personal');
+  const [step, setStep] = useState<1 | 2>(1);
+  const [files, setFiles] = useState<Partial<Record<VerificationDocKey, File>>>({});
+  const [urls, setUrls] = useState<Partial<Record<VerificationDocKey, string>>>({});
   const [error, setError] = useState<string | null>(null);
+
+  // پس از رد، نوع حساب درخواست قبلی روی تاگل پیش‌فرض باشد
+  useEffect(() => {
+    if (data?.accountType) setAccountType(data.accountType);
+  }, [data?.accountType]);
 
   // پیش‌نمایش موقت — cleanup بعد از unmount/تعویض
   useEffect(
     () => () => {
-      if (cardUrl) URL.revokeObjectURL(cardUrl);
-      if (selfieUrl) URL.revokeObjectURL(selfieUrl);
+      for (const u of Object.values(urls)) if (u) URL.revokeObjectURL(u);
     },
-    [cardUrl, selfieUrl],
+    [urls],
   );
 
-  const pick = (which: 'card' | 'selfie', file: File) => {
+  const pick = (key: VerificationDocKey, file: File) => {
     const problem = validateImage(file);
     if (problem) {
       setError(problem);
       return;
     }
     setError(null);
-    const url = URL.createObjectURL(file);
-    if (which === 'card') {
-      setCard((prev) => {
-        if (cardUrl) URL.revokeObjectURL(cardUrl);
-        return file;
-      });
-      setCardUrl(url);
-    } else {
-      setSelfie((prev) => {
-        if (selfieUrl) URL.revokeObjectURL(selfieUrl);
-        return file;
-      });
-      setSelfieUrl(url);
-    }
+    setUrls((prev) => {
+      if (prev[key]) URL.revokeObjectURL(prev[key]!);
+      return { ...prev, [key]: URL.createObjectURL(file) };
+    });
+    setFiles((prev) => ({ ...prev, [key]: file }));
   };
 
-  const clear = (which: 'card' | 'selfie') => {
-    if (which === 'card') {
-      if (cardUrl) URL.revokeObjectURL(cardUrl);
-      setCard(null);
-      setCardUrl(null);
-    } else {
-      if (selfieUrl) URL.revokeObjectURL(selfieUrl);
-      setSelfie(null);
-      setSelfieUrl(null);
-    }
+  const clear = (key: VerificationDocKey) => {
+    setUrls((prev) => {
+      if (prev[key]) URL.revokeObjectURL(prev[key]!);
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setFiles((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   };
+
+  const step1Ready = !!files.nationalCardFront && !!files.nationalCardBack;
+  const step2Ready = !!files.selfieWithCard && (accountType === 'personal' || !!files.registrationNotice);
 
   const send = async () => {
-    if (!card || !selfie || submit.isPending) return;
+    if (!step1Ready || !step2Ready || submit.isPending) return;
     setError(null);
     try {
-      await submit.mutateAsync({ nationalCard: card, selfie });
+      await submit.mutateAsync({
+        accountType,
+        nationalCardFront: files.nationalCardFront!,
+        nationalCardBack: files.nationalCardBack!,
+        selfieWithCard: files.selfieWithCard!,
+        registrationNotice: accountType === 'legal' ? files.registrationNotice ?? null : null,
+      });
       // پیش‌نمایش‌های محلی دیگر لازم نیستند
-      if (cardUrl) URL.revokeObjectURL(cardUrl);
-      if (selfieUrl) URL.revokeObjectURL(selfieUrl);
-      setCard(null);
-      setSelfie(null);
-      setCardUrl(null);
-      setSelfieUrl(null);
+      for (const u of Object.values(urls)) if (u) URL.revokeObjectURL(u);
+      setFiles({});
+      setUrls({});
+      setStep(1);
       toast({ description: 'مدارک شما با موفقیت ارسال شد و در حال بررسی است.' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ارسال مدارک ناموفق بود.');
     }
   };
 
-  const cardDoc = data?.docs?.nationalCard ?? null;
-  const selfieDoc = data?.docs?.selfie ?? null;
+  const fullName = profile
+    ? `${profile.userInfo.firstName ?? ''} ${profile.userInfo.lastName ?? ''}`.trim()
+    : '';
 
   return (
     <div className="mx-auto max-w-xl space-y-4">
       <PanelCard>
-        <span className="grid size-12 place-items-center rounded-md border border-sky-200 bg-sky-50 text-sky-600">
-          <ShieldCheck size={22} />
-        </span>
+        <div className="flex items-start justify-between gap-3">
+          <span className="grid size-12 shrink-0 place-items-center rounded-md border border-sky-200 bg-sky-50 text-sky-600">
+            <ShieldCheck size={22} />
+          </span>
+          <Link
+            href="/help/verify-account"
+            className="flex shrink-0 items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+          >
+            <BookOpen size={13} /> راهنمای کامل احراز هویت
+          </Link>
+        </div>
         <h1 className="mt-3 text-base font-extrabold sm:text-lg">احراز هویت</h1>
         <p className="mt-2 text-xs leading-6 text-muted-foreground">
-          هویت حساب کاربری خود را احراز کنید. با تایید هویت خود، برای خریداران، فروشنده مطمئن‌تری باشید و امکانات بیشتری
-          در ایمچ فعال می‌شود.
+          هویت حساب کاربری خود را در دو مرحله ساده احراز کنید: تصویر کارت ملی و سپس سلفی با گواهی دست‌نوشته.
+          با تایید هویت، برای خریداران و فروشندگان مطمئن‌تر باشید. مدارک شما حداکثر تا ۲ روز کاری بررسی می‌شود.
         </p>
       </PanelCard>
 
@@ -196,28 +287,32 @@ export default function VerificationPage() {
           <div className="rounded-md bg-amber-50 p-4 text-center">
             <BadgeCheck size={26} className="mx-auto text-amber-500" />
             <p className="mt-2 text-sm font-extrabold text-amber-700">مدارک شما در حال بررسی است</p>
-            <p className="mt-1 text-xs leading-6 text-amber-700/80">نتیجه احراز هویت حداکثر تا ۲۴ ساعت آینده اعلام می‌شود.</p>
+            <p className="mt-1 text-xs leading-6 text-amber-700/80">
+              نتیجه احراز هویت حداکثر تا ۲ روز کاری اعلام می‌شود.
+            </p>
           </div>
-          {(cardDoc || selfieDoc) && (
-            <div className="grid grid-cols-2 gap-3">
-              {cardDoc && (
-                <figure className="overflow-hidden rounded-lg border">
+          <div className="grid grid-cols-2 gap-3">
+            {DOC_SLOTS.filter((s) => data.docs[s.key]).map(({ key, label }) => {
+              const doc = data.docs[key]!;
+              return (
+                <figure key={key} className="overflow-hidden rounded-lg border">
                   <div className="relative h-32 w-full bg-secondary">
-                    <Image src={cardDoc.thumbUrl ?? cardDoc.url} alt="کارت ملی ارسالی" fill sizes="220px" className="object-cover" unoptimized />
+                    <Image
+                      src={doc.thumbUrl ?? doc.url}
+                      alt={label}
+                      fill
+                      sizes="220px"
+                      className="object-cover"
+                      unoptimized
+                    />
                   </div>
-                  <figcaption className="bg-secondary/60 px-2 py-1 text-center text-[11px] text-muted-foreground">کارت ملی ارسالی</figcaption>
+                  <figcaption className="bg-secondary/60 px-2 py-1 text-center text-[11px] text-muted-foreground">
+                    {label}
+                  </figcaption>
                 </figure>
-              )}
-              {selfieDoc && (
-                <figure className="overflow-hidden rounded-lg border">
-                  <div className="relative h-32 w-full bg-secondary">
-                    <Image src={selfieDoc.thumbUrl ?? selfieDoc.url} alt="سلفی ارسالی" fill sizes="220px" className="object-cover" unoptimized />
-                  </div>
-                  <figcaption className="bg-secondary/60 px-2 py-1 text-center text-[11px] text-muted-foreground">سلفی ارسالی</figcaption>
-                </figure>
-              )}
-            </div>
-          )}
+              );
+            })}
+          </div>
         </PanelCard>
       ) : data?.status === 'approved' ? (
         <PanelCard>
@@ -241,27 +336,144 @@ export default function VerificationPage() {
               <p className="mt-1 text-xs leading-6 text-red-700/80">مدارک جدید را بارگذاری کنید و دوباره ارسال کنید.</p>
             </div>
           )}
+
+          {/* انتخاب نوع حساب — حقوقی: همان دو مرحله + آگهی ثبت شرکت */}
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                { key: 'personal', label: 'شخص حقیقی', hint: 'کارت ملی + سلفی با گواهی', icon: UserRound },
+                { key: 'legal', label: 'شخص حقوقی', hint: '+ آگهی ثبت شرکت', icon: Building2 },
+              ] as const
+            ).map(({ key, label, hint, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setAccountType(key)}
+                aria-pressed={accountType === key}
+                className={cn(
+                  'rounded-lg border p-3 text-center transition-colors',
+                  accountType === key
+                    ? 'border-primary/50 bg-primary/5 text-primary'
+                    : 'border-input bg-card text-secondary-foreground hover:bg-secondary/50',
+                )}
+              >
+                <Icon size={18} className="mx-auto" />
+                <span className="mt-1.5 block text-[13px] font-extrabold">{label}</span>
+                <span className="mt-0.5 block text-[10.5px] text-muted-foreground">{hint}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* نشانگر گام‌ها */}
+          <div className="flex items-center gap-2">
+            {[
+              { n: 1, label: 'تصویر کارت ملی' },
+              { n: 2, label: 'سلفی با گواهی' },
+            ].map(({ n, label }, i) => (
+              <span key={n} className="flex flex-1 items-center gap-2">
+                <span
+                  className={cn(
+                    'flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold',
+                    step > n
+                      ? 'bg-emerald-500 text-white'
+                      : step === n
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-muted-foreground',
+                  )}
+                >
+                  {step > n ? <Check size={13} /> : toFa(n)}
+                </span>
+                <span
+                  className={cn(
+                    'truncate text-[11.5px] font-bold',
+                    step === n ? 'text-foreground' : 'text-muted-foreground',
+                  )}
+                >
+                  {label}
+                </span>
+                {i === 0 && <span className="mx-1 h-px flex-1 bg-border" aria-hidden />}
+              </span>
+            ))}
+          </div>
+
           {error && <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
-          <UploadBox
-            label="تصویر کارت ملی"
-            hint="کارت ملی روی زمینه روشن و بدون انعکاس — فرمت jpeg یا jpg"
-            file={card}
-            previewUrl={cardUrl}
-            onPick={(f) => pick('card', f)}
-            onClear={() => clear('card')}
-          />
-          <UploadBox
-            label="سلفی همراه کارت ملی"
-            hint="سلفی واضح در کنار کارت ملی"
-            file={selfie}
-            previewUrl={selfieUrl}
-            onPick={(f) => pick('selfie', f)}
-            onClear={() => clear('selfie')}
-          />
-          <Button className="w-full rounded-md" disabled={!card || !selfie || submit.isPending} onClick={send}>
-            {submit.isPending && <Loader2 size={16} className="ml-2 animate-spin" />}
-            ارسال مدارک
-          </Button>
+
+          {step === 1 ? (
+            <>
+              <p className="text-xs font-extrabold">
+                گام {toFa(1)} از {toFa(2)} — تصویر کارت ملی
+              </p>
+              <p className="text-[11.5px] leading-6 text-muted-foreground">
+                تصویر <b>روی کارت</b> و <b>پشت کارت ملی</b> را طبق نمونه‌های صحیح زیر بارگذاری کنید: کارت کامل و
+                بدون بریدگی، واضح و بدون انعکاس، بدون دست روی متن و بدون تاری.
+              </p>
+              <GuideImage
+                src="/help-img/verify/verification-1.png"
+                caption="نمونه تصویر صحیح و نادرست از کارت ملی (راهنمای باسکول)"
+              />
+              <UploadBox
+                label="تصویر روی کارت ملی"
+                hint="سمتِ عکس‌دار کارت — کامل، واضح و بدون انعکاس (فرمت jpeg یا jpg)"
+                file={files.nationalCardFront ?? null}
+                previewUrl={urls.nationalCardFront ?? null}
+                onPick={(f) => pick('nationalCardFront', f)}
+                onClear={() => clear('nationalCardFront')}
+              />
+              <UploadBox
+                label="تصویر پشت کارت ملی"
+                hint="سمت بدون عکس کارت — کامل و بدون بریدگی (فرمت jpeg یا jpg)"
+                file={files.nationalCardBack ?? null}
+                previewUrl={urls.nationalCardBack ?? null}
+                onPick={(f) => pick('nationalCardBack', f)}
+                onClear={() => clear('nationalCardBack')}
+              />
+              <Button
+                className="w-full rounded-md"
+                disabled={!step1Ready}
+                onClick={() => setStep(2)}
+              >
+                ذخیره و ادامه
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-xs font-extrabold">
+                گام {toFa(2)} از {toFa(2)} — سلفی همراه با کارت ملی و گواهی دست‌نوشته
+              </p>
+              <NoteTemplate fullName={fullName} />
+              <GuideImage
+                src="/help-img/verify/verification-2.png"
+                caption="نمونه سلفی صحیح با کارت ملی چسبیده به گواهی دست‌نوشته (راهنمای باسکول)"
+              />
+              <UploadBox
+                label="سلفی با کارت ملی و گواهی"
+                hint="خودتان همراه کارت ملی و کاغذ گواهی — واضح و بدون تاری (فرمت jpeg یا jpg)"
+                file={files.selfieWithCard ?? null}
+                previewUrl={urls.selfieWithCard ?? null}
+                onPick={(f) => pick('selfieWithCard', f)}
+                onClear={() => clear('selfieWithCard')}
+              />
+              {accountType === 'legal' && (
+                <UploadBox
+                  label="آگهی ثبت شرکت (روزنامه رسمی)"
+                  hint="تصویر آگهی ثبت شرکت — کامل و خوانا (فرمت jpeg یا jpg)"
+                  file={files.registrationNotice ?? null}
+                  previewUrl={urls.registrationNotice ?? null}
+                  onPick={(f) => pick('registrationNotice', f)}
+                  onClear={() => clear('registrationNotice')}
+                />
+              )}
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1 rounded-md" onClick={() => setStep(1)}>
+                  مرحله قبل
+                </Button>
+                <Button className="flex-[2] rounded-md" disabled={!step2Ready || submit.isPending} onClick={send}>
+                  {submit.isPending && <Loader2 size={16} className="ml-2 animate-spin" />}
+                  ارسال نهایی
+                </Button>
+              </div>
+            </>
+          )}
         </PanelCard>
       )}
     </div>
