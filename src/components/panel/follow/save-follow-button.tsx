@@ -4,7 +4,7 @@
  * SaveFollowButton — دکمهٔ «ذخیره» + شیت/مودال پیگیری (CRM کوچک ایمچ، خواسته مالک ۶-۱۱).
  *
  * جریان ذخیره (دومرحله‌ای):
- *   ۱) انتخاب پرونده — یا ساخت پروندهٔ جدید (نام پیشنهادی = نام محصول)
+ *   ۱) انتخاب پرونده — یا ساخت پروندهٔ جدید (نام پیشنهادی = دستهٔ کالا، مثل «پفک»)
  *   ۲) وضعیت قیف (پیش‌فرض «در بررسی») + یادداشت اختیاری
  *
  * اگر مورد از قبل ذخیره شده باشد، کلیک حالت «مدیریت» را باز می‌کند:
@@ -17,7 +17,7 @@
  *   icon    — مربع/دایرهٔ ۴۴px فقط آیکون (روی عکس کارت آگهی)
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ArrowRight,
   Bookmark,
@@ -55,7 +55,7 @@ export function SaveFollowButton({
 }: {
   targetType: FollowTargetType;
   targetId: number;
-  /** نام پیشنهادی پروندهٔ جدید — معمولاً نام محصول/دستهٔ درخواست */
+  /** نام پیشنهادی پروندهٔ جدید — دستهٔ کالا (مثل «پفک»/«سیب زمینی»)، نه نام خود کالا (خواسته مالک ۶-۱۱) */
   suggestedFolderName?: string;
   variant?: 'compact' | 'block' | 'icon';
   className?: string;
@@ -185,17 +185,14 @@ function SaveFollowSheet({
   const [folderId, setFolderId] = useState<string | null>(null);
   const [status, setStatus] = useState<FollowStatus>('reviewing');
   const [note, setNote] = useState('');
-  const [creatingNew, setCreatingNew] = useState(false);
-  const [newName, setNewName] = useState('');
+  /** null = خودکار — کاربر هنوز چیزی باز/بسته نکرده؛ فرم ساخت فقط
+   *  وقتی خودکار باز می‌شود که پرونده‌ای وجود نداشته باشد (state مشتق، بدون effect) */
+  const [explicitCreate, setExplicitCreate] = useState<boolean | null>(null);
+  const [newName, setNewName] = useState(suggestedFolderName ?? '');
 
-  // کاربر تازه‌وارد: هیچ پرونده‌ای ندارد — فرم ساخت همان اول باز باشد
-  useEffect(() => {
-    if (mode === 'folder' && !foldersLoading && (folders ?? []).length === 0) {
-      setCreatingNew(true);
-      setNewName(suggestedFolderName ?? '');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, foldersLoading, folders]);
+  // کاربر بدون پرونده: فرم ساخت همان اول باز است؛ وگرنه لیست پرونده‌ها دیده می‌شود
+  const noFolders = !foldersLoading && (folders ?? []).length === 0;
+  const creatingNew = explicitCreate ?? (mode === 'folder' && noFolders);
 
   const createFolder = useCreateFollowFolder();
   const upsert = useUpsertFollow();
@@ -218,7 +215,7 @@ function SaveFollowSheet({
       const folder = await createFolder.mutateAsync({ name });
       setFolderId(folder.id);
       setNewName('');
-      setCreatingNew(false);
+      setExplicitCreate(null);
       if (mode === 'move' && item) {
         await moveMutation.mutateAsync({ itemId: item.id, folderId: folder.id });
         toast({ description: `به پروندهٔ «${folder.name}» منتقل شد.` });
@@ -304,7 +301,7 @@ function SaveFollowSheet({
           <button
             type="button"
             onClick={() => {
-              setCreatingNew(true);
+              setExplicitCreate(true);
               setNewName(suggestedFolderName ?? '');
             }}
             className="inline-flex items-center gap-1 text-xs font-bold text-primary transition-colors hover:text-primary-deep"
@@ -526,7 +523,7 @@ function SaveFollowSheet({
             <button
               type="button"
               onClick={() => {
-                setCreatingNew(false);
+                setExplicitCreate(false);
                 setMode('move');
               }}
               className="inline-flex h-11 items-center gap-1 rounded-md px-3 text-xs font-bold text-primary transition-colors hover:bg-primary/5"

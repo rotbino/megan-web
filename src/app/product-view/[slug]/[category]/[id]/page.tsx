@@ -258,7 +258,7 @@ export default async function ProductViewPage({ params }: Props) {
                       variant="icon"
                       targetType="product"
                       targetId={product.id}
-                      suggestedFolderName={product.productName}
+                      suggestedFolderName={product.subCategoryName || product.productName}
                     />
                   </div>
                 </div>

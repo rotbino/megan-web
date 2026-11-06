@@ -130,15 +130,18 @@ function QueueBadge({ count }: { count: number }) {
 
 function SidebarNav({ onNavigate, superAdmin }: { onNavigate?: () => void; superAdmin?: boolean }) {
   const pathname = usePathname() ?? '/admin';
-  const isActive = (href: string) =>
-    href === '/admin' ? pathname === '/admin' : pathname === href || pathname.startsWith(`${href}/`);
+  const isActive = useCallback(
+    (href: string) =>
+      href === '/admin' ? pathname === '/admin' : pathname === href || pathname.startsWith(`${href}/`),
+    [pathname],
+  );
 
   // گروهِ صفحهٔ فعال — همیشه باز باشد (حتی اگر کاربر گروه دیگری را باز کند،
   // با ناوبری به داخل گروه، همین‌جا باز می‌شود)
   const activeGroupIndex = useMemo(() => {
     const idx = NAV_GROUPS.findIndex((g) => g.items.some((it) => isActive(it.href)));
     return idx === -1 ? null : idx;
-  }, [pathname]);
+  }, [isActive]);
 
   // آکاردئون (خواستهٔ مالک): همهٔ گروه‌ها بسته؛ فقط گروه اول باز است و
   // باز کردن هر گره بقیه را می‌بندد

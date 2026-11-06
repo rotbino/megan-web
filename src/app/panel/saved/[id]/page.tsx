@@ -318,12 +318,18 @@ function ProductTarget({ item }: { item: FollowItem }) {
   const href = `/product-view/${p.slug}/${p.categoryName}/${p.id}`;
   return (
     <div className="flex items-start gap-3">
-      <Link href={href} className="shrink-0" aria-label={p.productName}>
+      {/* تامبنیل ۸۰px — ProductImage با fill رندر می‌شود؛ والد باید relative و
+          دارای ابعاد باشد وگرنه تصویر نزدیک‌ترین جد positioned (کل صفحه) را می‌پوشاند */}
+      <Link
+        href={href}
+        className="relative block size-20 shrink-0 overflow-hidden rounded-md"
+        aria-label={p.productName}
+      >
         <ProductImage
           photos={p.photos}
           thumbs={p.photoThumbs}
           alt={p.productName}
-          className="size-20 rounded-md object-cover"
+          className="object-cover"
           iconSize={26}
         />
       </Link>

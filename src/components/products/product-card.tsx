@@ -50,7 +50,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
           variant="icon"
           targetType="product"
           targetId={product.id}
-          suggestedFolderName={product.productName}
+          suggestedFolderName={product.subCategoryName || product.productName}
           className="absolute bottom-1.5 end-1.5 size-9 md:bottom-2 md:end-2 md:size-11"
         />
       </div>

@@ -185,13 +185,29 @@ export function useFollowFolderItems(folderId: string) {
   });
 }
 
-/** وضعیت دکمهٔ ذخیره — آیا این هدف در پیگیری من است؟ (فقط با ورود) */
-export function useIsFollowing(targetType: FollowTargetType, targetId: number, enabled = true) {
+/** نقشهٔ موارد ذخیره‌شدهٔ یک نوع — یک درخواست مشترک برای همهٔ دکمه‌های ذخیرهٔ صفحه
+ *  (کوئری react-query با کلید مشترک؛ همهٔ کارت‌ها از همان کش می‌خوانند) */
+export function useFollowingMap(targetType: FollowTargetType, enabled = true) {
   return useQuery({
-    queryKey: ['follow-state', targetType, targetId],
-    queryFn: () => api.isFollowing(targetType, targetId),
+    queryKey: ['following-map', targetType],
+    queryFn: () => api.getFollowingMap(targetType),
     enabled,
     staleTime: 15_000,
+  });
+}
+
+/** وضعیت دکمهٔ ذخیره — آیا این هدف در پیگیری من است؟ (فقط با ورود)
+ *  از نقشهٔ مشترک می‌خواند: ۱۶ کارت آگهی = ۱ درخواست، نه ۱۶ درخواست */
+export function useIsFollowing(targetType: FollowTargetType, targetId: number, enabled = true) {
+  return useQuery({
+    queryKey: ['following-map', targetType],
+    queryFn: () => api.getFollowingMap(targetType),
+    enabled,
+    staleTime: 15_000,
+    select: (map: Record<number, FollowItem>) => ({
+      following: Boolean(map[targetId]),
+      item: map[targetId] ?? null,
+    }),
   });
 }
 
@@ -201,7 +217,7 @@ function useInvalidateFollows() {
   return () => {
     queryClient.invalidateQueries({ queryKey: ['follow-folders'] });
     queryClient.invalidateQueries({ queryKey: ['follow-items'] });
-    queryClient.invalidateQueries({ queryKey: ['follow-state'] });
+    queryClient.invalidateQueries({ queryKey: ['following-map'] });
   };
 }
 

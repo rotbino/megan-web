@@ -934,6 +934,15 @@ export async function isFollowing(
   });
 }
 
+/** نقشهٔ همهٔ موارد ذخیره‌شدهٔ یک نوع — یک درخواست مشترک برای همهٔ دکمه‌های
+ *  ذخیرهٔ یک صفحه (به‌جای N درخواست isFollowing به‌ازای هر کارت) */
+export async function getFollowingMap(targetType: FollowTargetType): Promise<Record<number, FollowItem>> {
+  const items = await apiFetch<FollowItem[]>('/follow/getFollowingMap', { targetType });
+  const map: Record<number, FollowItem> = {};
+  for (const it of items) map[it.targetId] = it;
+  return map;
+}
+
 export async function setFollowStatus(itemId: string, status: FollowStatus): Promise<void> {
   await apiFetch('/follow/setItemStatus', { itemId, status });
 }
