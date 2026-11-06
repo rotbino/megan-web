@@ -43,7 +43,6 @@ import { LadderPayDialog } from '@/components/panel/ladder-pay-dialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChatDialog } from '@/components/products/chat-dialog';
-import { MarkUserButton } from '@/components/shared/mark-user-sheet';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { dateFa, dateShortFa, dateTimeFa, monthFa, monthYearFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -155,17 +154,8 @@ function UserCell({
         <p className="mt-0.5 text-[11px] text-muted-foreground">{meta}</p>
       </div>
 
-      {/* دکمه‌های اقدام — نشان کردن (مهم‌ترین) + چت + تماس (۲-۱۱ دور ۱۸) */}
+      {/* دکمه‌های اقدام — چت + تماس */}
       <div className="flex items-center gap-2">
-        <MarkUserButton
-          target={{
-            targetUserId: user.id,
-            targetName: name,
-            isVerified: user.isVerified,
-            avatarUrl: user.avatarUrl,
-            defaultListName: productName,
-          }}
-        />
         <ChatDialog
           sellerUserName={user.userName}
           sellerId={user.id}

@@ -18,7 +18,7 @@ import { JsonLd } from '@/components/shared/json-ld';
 import { ProductPrice } from '@/components/shared/product-price';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { OldAdBadge, PremiumSellerBadge } from '@/components/shared/badges';
-import { MarkUserButton } from '@/components/shared/mark-user-sheet';
+import { SaveFollowButton } from '@/components/panel/follow/save-follow-button';
 import { ProductViewPing } from '@/components/shared/product-view-ping';
 import { ChatDialog } from '@/components/products/chat-dialog';
 import { ProductGallery } from '@/components/products/product-gallery';
@@ -244,22 +244,21 @@ export default async function ProductViewPage({ params }: Props) {
 
                 <ProductPrice product={product} variant="page" />
 
-                {/* بازدید + نشان کردن و اشتراک‌گذاری — دو آیکون بزرگ ۴۴px کنار هم
-                    (خواسته مالک ۲-۱۱: اشتراک از رو‌به‌روی عنوان آمد کنار نشان؛
-                    بزرگ‌تر و واضح‌تر — هدف لمسی RULES.md §۱) */}
+                {/* بازدید + ذخیره در پیگیری‌ها و اشتراک‌گذاری — دو آیکون بزرگ ۴۴px کنار هم
+                    (خواسته مالک ۲-۱۱: اشتراک از رو‌به‌روی عنوان آمد کنار ذخیره؛
+                    بزرگ‌تر و واضح‌تر — هدف لمسی RULES.md §۱) — خریدار آگهی را در پروندهٔ
+                    پیگیری خود ذخیره می‌کند (CRM خریدار، خواسته مالک ۶-۱۱) */}
                 <div className="flex items-center justify-between gap-2">
                   <p className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Eye size={13} /> {toFa(product.viewCount)} بازدید
                   </p>
                   <div className="flex items-center gap-2">
                     <ShareButton url={productUrl} title={`فروش عمده ${product.productName} در ${city}`} />
-                    <MarkUserButton
+                    <SaveFollowButton
                       variant="icon"
-                      target={{
-                        targetUserId: product.myuserId,
-                        targetName: sellerName,
-                        isVerified: product.seller.isVerified,
-                      }}
+                      targetType="product"
+                      targetId={product.id}
+                      suggestedFolderName={product.productName}
                     />
                   </div>
                 </div>

@@ -20,7 +20,6 @@ import { SellerReviews } from '@/components/products/seller-reviews';
 import { ProductCard } from '@/components/products/product-card';
 import { ShareBox } from '@/components/shared/share-box';
 import { RatingStars } from '@/components/shared/rating-stars';
-import { MarkUserButton } from '@/components/shared/mark-user-sheet';
 import { apiBase } from '@/lib/api/client';
 import { SITE_URL } from '@/lib/site';
 import { stockFa, toFa } from '@/lib/format';
@@ -324,19 +323,6 @@ export default async function ProfilePage({ params }: Props) {
                 عضویت از{' '}
                 {new Intl.DateTimeFormat('fa-IR', { dateStyle: 'long' }).format(new Date(user.createdAt))}
               </p>
-              {/* نشان کردن فروشنده = CRM نشان‌شده‌ها (خواسته مالک ۱-۱۱ دور هفتم —
-                  ذخیره/علاقه‌مندی و نشان یکی است؛ مودال CRM باز می‌شود) */}
-              <div className="mt-3">
-                <MarkUserButton
-                  variant="block"
-                  target={{
-                    targetUserId: user.id,
-                    targetName: name,
-                    isVerified: user.isVerified,
-                    avatarUrl: user.avatarUrl,
-                  }}
-                />
-              </div>
             </div>
 
             <ShareBox url={`${SITE_URL}/profile/${user.userName}`} />

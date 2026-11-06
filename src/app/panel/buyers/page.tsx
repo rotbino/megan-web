@@ -46,7 +46,6 @@ import { BookEntryCard } from '@/components/buyers/book-entry-card';
 import { SupplyOfferModal } from '@/components/buyers/supply-offer-modal';
 import { GroupOfferWizard } from '@/components/buyers/group-offer-wizard';
 import { NeedPackageModal } from '@/components/shared/need-package-modal';
-import { MarkUserSheet, type MarkTarget } from '@/components/shared/mark-user-sheet';
 import { matchForBuyRequest, matchForDirectoryItem, sortByMatch } from '@/lib/buyer-match';
 import { findCategoryPathById } from '@/lib/categories';
 import { toFa } from '@/lib/format';
@@ -72,8 +71,6 @@ export default function PanelBuyersPage() {
   const [batch, setBatch] = useState(1);
   const [dirPage, setDirPage] = useState(1);
 
-  // نشان کردن خریدار — مودال CRM
-  const [markTarget, setMarkTarget] = useState<MarkTarget | null>(null);
   // پیشنهاد تکی/گروهی + مودال نیاز به بسته
   const [offerTarget, setOfferTarget] = useState<BuyerDirectoryItem | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -198,15 +195,6 @@ export default function PanelBuyersPage() {
       </div>
     );
   }
-
-  const openMark = (r: (typeof reqItems)[number]) => {
-    setMarkTarget({
-      targetUserId: r.myuserId,
-      targetName: `${r.firstName} ${r.lastName}`.trim(),
-      isVerified: r.isVerified,
-      defaultListName: r.subcategoryName,
-    });
-  };
 
   const tabButton = (key: PanelBuyersTab, icon: React.ReactNode, label: string, count: number) => (
     <button
@@ -360,7 +348,6 @@ export default function PanelBuyersPage() {
                   <BuyerCard
                     key={r.id}
                     request={r}
-                    onToggleSave={() => openMark(r)}
                     matchBadge={m.score > 0 ? { score: m.score, label: 'تطابق' } : undefined}
                     relatedHint={m.relatedProduct ? `مرتبط با آگهی شما: ${m.relatedProduct}` : undefined}
                   />
@@ -450,9 +437,6 @@ export default function PanelBuyersPage() {
           )}
         </div>
       )}
-
-      {/* مودال CRM نشان‌کردن خریدار */}
-      {markTarget && <MarkUserSheet open={!!markTarget} onClose={() => setMarkTarget(null)} target={markTarget} />}
 
       {/* مودال پیشنهاد تکی — عنوان با نام دستهٔ کالا */}
       <SupplyOfferModal

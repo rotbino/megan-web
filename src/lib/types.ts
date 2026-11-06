@@ -207,39 +207,53 @@ export interface PanelProfile {
   certificates: Array<{ id: string; url: string; thumbUrl: string }>;
 }
 
-/** لیست نشان‌شده — پاسخ سرویس: { lists: [{ id, name, cnt, saved?, targetStatus? }] } */
-export interface SavedList {
+// ─────────────────────────────────────────────────────────────
+// پیگیری‌ها — CRM کوچک ایمچ (خواسته مالک ۶-۱۱)
+// فروشنده درخواست‌های خرید و خریدار آگهی‌های فروش را در «پرونده»های نام‌دار
+// ذخیره می‌کند و با قیف تماس + یادداشت‌های زمان‌دار پیگیری می‌کند.
+// جریان ذخیره دومرحله‌ای: ۱) انتخاب/ساخت پرونده ۲) وضعیت + یادداشت اختیاری.
+// ─────────────────────────────────────────────────────────────
+
+/** هدف پیگیری — درخواست خرید (دید فروشنده) یا آگهی فروش (دید خریدار) */
+export type FollowTargetType = 'buy_request' | 'product';
+
+/** قیف پیگیری — از ذخیره تا نتیجه */
+export type FollowStatus =
+  | 'reviewing' // در بررسی
+  | 'contacted' // تماس گرفتم
+  | 'negotiating' // در مذاکره
+  | 'closed' // نهایی شد
+  | 'dropped'; // منصرف شدم
+
+/** یادداشت زمان‌دار روی یک مورد پیگیری */
+export interface FollowNote {
   id: string; // ObjectId
-  name: string; // «سیب زمینی»
-  cnt: number; // تعداد نشان‌شده‌ها
-  /** فقط همراه targetUserId — آیا هدف در این لیست است؟ (مودال CRM) */
-  saved?: boolean;
-  /** وضعیت CRM هدف در همین لیست — فقط همراه targetUserId */
-  targetStatus?: SavedUserStatusKey | null;
+  text: string; // «قیمت ۴۸ گفت، جمعه دوباره زنگ می‌زنم»
+  createdAt: string;
 }
 
-/** وضعیت CRM نشان‌شده — چیپ‌های صفحه جزئیات لیست باسکول */
-export type SavedUserStatusKey =
-  | 'following' // در حال پیگیری
-  | 'not_needed' // فعلا نیاز نداشت
-  | 'unresponsive' // پاسخگو نبود
-  | 'out_of_stock' // موجودی نداشت
-  | 'priority_high' // اولویت زیاد
-  | 'priority_medium' // اولویت متوسط
-  | 'priority_low'; // اولویت کم
-
-export interface SavedUserNote {
-  id: string;
-  text: string; // «یادم باشه زنگ بزنم»
-  createdAt: string; // «۳ آبان ۱۴۰۵ , ۹:۵۲»
+/** پرونده پیگیری — ظرف موارد (مثل «خرید سیب زمینی») */
+export interface FollowFolder {
+  id: string; // ObjectId
+  name: string;
+  itemCount: number;
+  /** خلاصه قیف برای کارت پرونده — { reviewing: 2, contacted: 1 } */
+  statusCounts: Partial<Record<FollowStatus, number>>;
+  updatedAt: string;
 }
 
-/** کاربر نشان‌شده در یک لیست (خریدار) */
-export interface SavedUserItem {
-  id: string;
-  name: string; // «مریم صابری»
-  status: SavedUserStatusKey;
-  notes: SavedUserNote[];
+/** مورد پیگیری — همراه با snapshot کامل هدف (BuyRequest یا Product) */
+export interface FollowItem {
+  id: string; // ObjectId
+  folderId: string;
+  folderName: string;
+  targetType: FollowTargetType;
+  targetId: number; // شناسه عددی درخواست/آگهی
+  status: FollowStatus;
+  notes: FollowNote[];
+  createdAt: string;
+  updatedAt: string;
+  target: BuyRequest | Product;
 }
 
 /**

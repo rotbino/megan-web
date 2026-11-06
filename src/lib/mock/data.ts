@@ -6,7 +6,7 @@
  * دیتابیس واقعی (بک‌اند مگان) می‌آیند — مسیرشان src/lib/mock/api.ts است.
  */
 
-import type { ChargePackage, MembershipPlan, SavedUserStatusKey } from '@/lib/types';
+import type { ChargePackage, MembershipPlan } from '@/lib/types';
 
 // ─── آگهی‌ها ─────────────────────────────────────────────────────────────────
 
@@ -67,18 +67,6 @@ export const PRODUCT_FEATURE_KEYS = [
   'مزایا نسبت به محصولات مشابه',
 ];
 
-// ─── CRM نشان‌شده‌ها ─────────────────────────────────────────────────────────
-
-/** برچسب وضعیت‌های CRM — عین چیپ‌های باسکول */
-export const SAVED_USER_STATUS_LABELS: Record<SavedUserStatusKey, string> = {
-  following: 'در حال پیگیری',
-  not_needed: 'فعلا نیاز نداشت',
-  unresponsive: 'پاسخگو نبود',
-  out_of_stock: 'موجودی نداشت',
-  priority_high: 'اولویت زیاد',
-  priority_medium: 'اولویت متوسط',
-  priority_low: 'اولویت کم',
-};
 
 // ─── درخواست‌های خرید ────────────────────────────────────────────────────────
 

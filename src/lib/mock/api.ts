@@ -601,11 +601,12 @@ export async function logoutRemote(): Promise<void> {
 import { PRODUCT_CAPACITY } from './data';
 import { uploadImage, deleteImage } from '@/lib/api/client';
 import type {
+  FollowFolder,
+  FollowItem,
+  FollowStatus,
+  FollowTargetType,
   PanelProfile,
   ProductStatus,
-  SavedList,
-  SavedUserItem,
-  SavedUserNote,
   SuggestedBuyer,
 } from '@/lib/types';
 
@@ -877,77 +878,77 @@ export async function ladderProduct(input: {
   );
 }
 
-// ─── نشان شده ها (B7 — واقعی) ──────────────────────────────────────────────
+// ─── پیگیری‌ها — CRM کوچک ایمچ (خواسته مالک ۶-۱۱) ───────────────────────────
+// فروشنده درخواست‌های خرید و خریدار آگهی‌های فروش را در «پرونده»های نام‌دار
+// ذخیره می‌کند؛ هر مورد وضعیت قیف تماس + یادداشت‌های زمان‌دار دارد.
+// جریان ذخیره دومرحله‌ای: ۱) انتخاب/ساخت پرونده ۲) وضعیت + یادداشت اختیاری.
 
-/** لیست‌های نشان‌شدهٔ من — با targetUserId: هر لیست پرچم saved و وضعیت هدف
- *  را هم می‌گیرد (پر کردن چک‌باکس‌های مودال CRM نشان‌کردن) */
-export async function getSavedLists(targetUserId?: string): Promise<SavedList[]> {
-  return apiFetch<SavedList[]>('/saved/getSavedLists', { targetUserId });
+/** پرونده‌های من با تعداد و خلاصه قیف وضعیت‌ها */
+export async function getFollowFolders(): Promise<FollowFolder[]> {
+  return apiFetch<FollowFolder[]>('/follow/getFolders', {});
 }
 
-/** مودال CRM نشان‌کردن — سینک عضویت هدف در لیست‌ها + وضعیت پیگیری */
-export async function markUser(input: {
-  targetUserId: string;
-  listIds: string[];
-  status?: SavedUserItem['status'];
-}): Promise<{ added: number; removed: number; marked: boolean; status: SavedUserItem['status'] | null }> {
-  return apiFetch('/saved/markUser', input);
+export async function createFollowFolder(name: string): Promise<FollowFolder> {
+  return apiFetch<FollowFolder>('/follow/createFolder', { name });
 }
 
-export async function getSavedListUsers(listId: string): Promise<SavedUserItem[] | null> {
+export async function renameFollowFolder(folderId: string, name: string): Promise<void> {
+  await apiFetch('/follow/renameFolder', { folderId, name });
+}
+
+/** حذف پرونده — موارد و یادداشت‌های داخلش هم حذف می‌شوند */
+export async function deleteFollowFolder(folderId: string): Promise<void> {
+  await apiFetch('/follow/deleteFolder', { folderId });
+}
+
+/** موارد یک پرونده — با snapshot درخواست خرید/آگیی فروش */
+export async function getFollowFolderItems(folderId: string): Promise<FollowItem[] | null> {
   try {
-    return await apiFetch<SavedUserItem[] | null>('/saved/getSavedListUsers', { listId });
+    return await apiFetch<FollowItem[] | null>('/follow/getFolderItems', { folderId });
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null;
     throw err;
   }
 }
 
-export async function createSavedList(name: string): Promise<SavedList> {
-  return apiFetch<SavedList>('/saved/createSavedList', { name });
+/** ذخیره/به‌روزرسانی (گام ۲ جریان ذخیره) — اگر از قبل ذخیره باشد،
+ *  به پروندهٔ انتخابی منتقل و وضعیتش به‌روز می‌شود؛ یادداشت فقط با متن جدید اضافه می‌شود */
+export async function upsertFollow(input: {
+  folderId: string;
+  targetType: FollowTargetType;
+  targetId: number;
+  status?: FollowStatus;
+  note?: string;
+}): Promise<FollowItem> {
+  return apiFetch<FollowItem>('/follow/upsertItem', input);
 }
 
-export async function updateSavedList(listId: string, name: string): Promise<SavedList> {
-  return apiFetch<SavedList>('/saved/updateSavedList', { listId, name });
+/** وضعیت دکمهٔ ذخیره روی کارت‌ها — آیا این هدف در پیگیری من است؟ */
+export async function isFollowing(
+  targetType: FollowTargetType,
+  targetId: number,
+): Promise<{ following: boolean; item: FollowItem | null }> {
+  return apiFetch<{ following: boolean; item: FollowItem | null }>('/follow/isFollowing', {
+    targetType,
+    targetId,
+  });
 }
 
-export async function deleteSavedList(listId: string): Promise<{ ok: true }> {
-  await apiFetch('/saved/deleteSavedList', { listId });
-  return { ok: true };
+export async function setFollowStatus(itemId: string, status: FollowStatus): Promise<void> {
+  await apiFetch('/follow/setItemStatus', { itemId, status });
 }
 
-/** «نشان کردن» خریدار — لیست مقصد یا نام لیست جدید (عین مودال باسکول) */
-export async function saveBuyerToList(input: {
-  targetUserId: string;
-  listId?: string;
-  listName?: string;
-}): Promise<{ savedUserId: string; listId: string }> {
-  return apiFetch('/saved/saveBuyerToList', input);
+/** انتقال به پرونده دیگر — وضعیت و یادداشت‌ها حفظ می‌شوند */
+export async function moveFollowItem(itemId: string, folderId: string): Promise<void> {
+  await apiFetch('/follow/moveItem', { itemId, folderId });
 }
 
-export async function removeSavedUser(savedUserId: string): Promise<{ ok: true }> {
-  await apiFetch('/saved/removeSavedUser', { savedUserId });
-  return { ok: true };
+export async function addFollowNote(itemId: string, text: string): Promise<void> {
+  await apiFetch('/follow/addItemNote', { itemId, text });
 }
 
-export async function setSavedUserStatus(
-  savedUserId: string,
-  status: SavedUserItem['status'],
-): Promise<{ ok: true }> {
-  await apiFetch('/saved/setSavedUserStatus', { savedUserId, status });
-  return { ok: true };
-}
-
-export async function addSavedUserNote(
-  savedUserId: string,
-  text: string,
-): Promise<SavedUserNote> {
-  return apiFetch<SavedUserNote>('/saved/addSavedUserNote', { savedUserId, text });
-}
-
-export async function moveSavedUser(savedUserId: string, toListId: string): Promise<{ ok: true }> {
-  await apiFetch('/saved/moveSavedUser', { savedUserId, toListId });
-  return { ok: true };
+export async function removeFollowItem(itemId: string): Promise<void> {
+  await apiFetch('/follow/removeItem', { itemId });
 }
 
 /** خریداران پیشنهادی — تطبیق درخواست‌ها با آگهی‌های من (B7 — واقعی) */

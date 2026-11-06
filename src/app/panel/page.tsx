@@ -9,7 +9,7 @@
  *  • سوییچر «پنل فروش/پنل خرید» (دور ۱۶): بالاتر از همهٔ لینک‌هاست (خواستهٔ
  *    صریح مالک)؛ جملهٔ «نوع حساب شما … است» حذف شد و برچسب «منوی خریدار/
  *    فروشنده» هم رفت — دکمهٔ فعال سوییچر خودش می‌گوید کجاییم.
- *  • موبایل خریدار (دور ۱۵): سه‌تای مهم (نشان شده ها، دفتر خرید، درخواستهای
+ *  • موبایل خریدار (دور ۱۵): سه‌تای مهم (پیگیری‌ها، دفتر خرید، درخواستهای
  *    خرید) افقی بالای منوی عمودی — الگوی top-menu باسکول.
  *  • منوی عمودی موبایل (دور ۱۶): فاصلهٔ بیشتر بین آیتم‌ها + فونت کمی
  *    بزرگتر — واضح‌تر و راحت‌تر برای لمس.
@@ -163,7 +163,7 @@ export default function PanelDashboard() {
 
   /** سه‌تای مهم خریدار — افقی بالای منوی عمودی، فقط موبایل (خواسته مالک دور ۱۵) */
   const buyerQuick = [
-    { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
+    { href: '/panel/saved', label: 'پیگیری ها', icon: Bookmark },
     { href: '/panel/buyer-book', label: 'دفتر خرید', icon: BookOpenText },
     { href: '/panel/my-requests', label: 'درخواستهای خرید', icon: FileText },
   ];
@@ -186,7 +186,7 @@ export default function PanelDashboard() {
         { href: '/panel/supply-offers', label: 'پیشنهادات تامین', icon: Send },
         { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
         ...(!active ? [{ href: '/panel/pricing', label: 'ارتقا عضویت', icon: Medal }] : []),
-        { href: '/panel/saved', label: 'نشان شده ها', icon: Bookmark },
+        { href: '/panel/saved', label: 'پیگیری ها', icon: Bookmark },
       ];
 
   return (

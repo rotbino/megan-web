@@ -42,7 +42,6 @@ import { BookEntryCard } from '@/components/buyers/book-entry-card';
 import { SupplyOfferModal } from '@/components/buyers/supply-offer-modal';
 import { GroupOfferWizard } from '@/components/buyers/group-offer-wizard';
 import { NeedPackageModal } from '@/components/shared/need-package-modal';
-import { MarkUserSheet, type MarkTarget } from '@/components/shared/mark-user-sheet';
 import { findCategoryPathById } from '@/lib/categories';
 import { dateFa, priceFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -70,7 +69,6 @@ export default function ProductBuyersPage() {
   const [offerTarget, setOfferTarget] = useState<BuyerDirectoryItem | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [needPkgOpen, setNeedPkgOpen] = useState(false);
-  const [markTarget, setMarkTarget] = useState<MarkTarget | null>(null);
 
   const product = detail?.product;
   const leafId = product?.subCategoryId ?? null;
@@ -313,18 +311,7 @@ export default function ProductBuyersPage() {
           ) : (
             <div className="space-y-3">
               {reqItems.map((r) => (
-                <BuyerCard
-                  key={r.id}
-                  request={r}
-                  onToggleSave={() =>
-                    setMarkTarget({
-                      targetUserId: r.myuserId,
-                      targetName: `${r.firstName} ${r.lastName}`.trim(),
-                      isVerified: r.isVerified,
-                      defaultListName: r.subcategoryName,
-                    })
-                  }
-                />
+                <BuyerCard key={r.id} request={r} />
               ))}
             </div>
           )}
@@ -419,9 +406,6 @@ export default function ProductBuyersPage() {
         kind="package"
         message={`ارسال پیشنهاد تامین ${leafName}، ویژهٔ فروشندگان دارندهٔ بستهٔ اشتراک فعال است — بستهٔ خود را فعال کنید تا برای خریداران این کالا پیشنهاد بفرستید.`}
       />
-
-      {/* مودال CRM نشان‌کردن */}
-      {markTarget && <MarkUserSheet open={!!markTarget} onClose={() => setMarkTarget(null)} target={markTarget} />}
     </div>
   );
 }

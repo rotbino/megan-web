@@ -3,13 +3,14 @@
 /**
  * کارت خریدار پنل — عین ساختار باسکول:
  * نام + امتیاز + نشان «خریدار»، جمله «… هستم»، تاریخ + شهر،
- * دکمه‌های نشان کردن / تماس با خریدار / چت با خریدار و توصیه معامله حضوری.
+ * دکمه‌های ذخیره در پیگیری / تماس با خریدار / چت با خریدار و توصیه معامله حضوری.
  */
 
 import { useState } from 'react';
 import { BadgeCheck, CalendarDays, Loader2, MapPin, MessageSquare, Phone, Star } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { SaveFollowButton } from '@/components/panel/follow/save-follow-button';
 import { useBuyRequestContact } from '@/lib/mock/hooks';
 import { toFa } from '@/lib/format';
 import { RelativeTime } from '@/components/shared/relative-time';
@@ -23,14 +24,10 @@ export function ratingOf(id: number): string {
 
 export function BuyerCard({
   request,
-  saved = false,
-  onToggleSave,
   matchBadge,
   relatedHint,
 }: {
   request: BuyRequest;
-  saved?: boolean;
-  onToggleSave?: () => void;
   matchBadge?: { score: number; label: string };
   relatedHint?: string;
 }) {
@@ -96,15 +93,11 @@ export function BuyerCard({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant={saved ? 'secondary' : 'outline'}
-          className="rounded-md text-xs"
-          onClick={onToggleSave}
-        >
-          {saved ? 'نشان شده' : 'نشان کردن'}
-        </Button>
+        <SaveFollowButton
+          targetType="buy_request"
+          targetId={request.id}
+          suggestedFolderName={request.subcategoryName}
+        />
         <Button type="button" size="sm" className="rounded-md text-xs" onClick={reveal} disabled={contact.isPending}>
           {contact.isPending ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />}
           {phone ? toFa(phone) : 'تماس با خریدار'}

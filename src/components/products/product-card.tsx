@@ -5,6 +5,7 @@ import { MapPin, Package } from 'lucide-react';
 import { LadderBadge, VerifiedBadge } from '@/components/shared/badges';
 import { ProductImage } from '@/components/shared/product-image';
 import { ProductPrice } from '@/components/shared/product-price';
+import { SaveFollowButton } from '@/components/panel/follow/save-follow-button';
 import { stockFa } from '@/lib/format';
 import type { Product } from '@/lib/types';
 
@@ -13,34 +14,46 @@ import type { Product } from '@/lib/types';
  * موبایل: کارت افقی مثل دیوار — عکس سمت راست، مشخصات سمت چپ (خواناتر).
  * دسکتاپ: کارت عمودی در گرید.
  * قیمت فقط برای اعضا: لاگین‌نشده دکمه «مشاهده قیمت» (فرم ورود) می‌بیند (ProductPrice).
+ * دکمهٔ ذخیره: آگهی در پروندهٔ پیگیری خریدار (CRM خریدار، خواسته مالک ۶-۱۱).
  */
 export function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
   const href = `/product-view/${product.slug}/${product.categoryName}/${product.id}`;
 
   return (
     <article className="group flex overflow-hidden rounded-md border bg-card transition-shadow hover:shadow-md md:flex-col">
-      <Link href={href} className="relative block h-28 w-28 shrink-0 md:h-auto md:w-full md:aspect-[4/3]" aria-label={product.productName}>
-        <ProductImage
-          photos={product.photos}
-          thumbs={product.photoThumbs}
-          alt={product.productName}
-          className="h-full w-full object-cover md:aspect-[4/3] md:h-auto"
-          iconSize={48}
-          priority={priority}
+      <div className="relative h-28 w-28 shrink-0 md:h-auto md:w-full md:aspect-[4/3]">
+        <Link href={href} className="block h-full w-full" aria-label={product.productName}>
+          <ProductImage
+            photos={product.photos}
+            thumbs={product.photoThumbs}
+            alt={product.productName}
+            className="h-full w-full object-cover md:aspect-[4/3] md:h-auto"
+            iconSize={48}
+            priority={priority}
+          />
+          {/* «فروشنده ویژه» — مستطیل طلایی چسبیده به گوشهٔ بالا-چپ عکس (خواسته مالک
+              ۲-۱۱: طلایی = رنگ ثابت این نشان)؛ فقط گوشهٔ آخر (پایین-راست) کمی گرد است */}
+          {product.isElevated && (
+            <span className="absolute left-0 top-0 rounded-br-[6px] bg-amber-400 px-2 py-1 text-[10px] font-bold leading-none text-white shadow-sm ring-1 ring-amber-500/50">
+              فروشنده ویژه
+            </span>
+          )}
+          {product.hasVideo && (
+            <span className="absolute end-1.5 top-1.5 rounded-sm bg-black/55 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur md:end-2 md:top-2">
+              ویدیو دارد
+            </span>
+          )}
+        </Link>
+        {/* ذخیره در پیگیری‌ها — بیرون از لینک تا کلیکِ آگهی را باز نکند؛
+            موبایل size-9 روی بندانگشتی کوچک، دسکتاپ ۴۴px (RULES §۱) */}
+        <SaveFollowButton
+          variant="icon"
+          targetType="product"
+          targetId={product.id}
+          suggestedFolderName={product.productName}
+          className="absolute bottom-1.5 end-1.5 size-9 md:bottom-2 md:end-2 md:size-11"
         />
-        {/* «فروشنده ویژه» — مستطیل طلایی چسبیده به گوشهٔ بالا-چپ عکس (خواسته مالک
-            ۲-۱۱: طلایی = رنگ ثابت این نشان)؛ فقط گوشهٔ آخر (پایین-راست) کمی گرد است */}
-        {product.isElevated && (
-          <span className="absolute left-0 top-0 rounded-br-[6px] bg-amber-400 px-2 py-1 text-[10px] font-bold leading-none text-white shadow-sm ring-1 ring-amber-500/50">
-            فروشنده ویژه
-          </span>
-        )}
-        {product.hasVideo && (
-          <span className="absolute bottom-1.5 end-1.5 rounded-sm bg-black/55 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur md:bottom-2 md:end-2">
-            ویدیو دارد
-          </span>
-        )}
-      </Link>
+      </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-3 md:gap-2">
         {/* عنوان + نشان نردبان — نردبان رو‌به‌روی عنوان (انتهای چپ ردیف)، با فاصله چسبیده نیست؛

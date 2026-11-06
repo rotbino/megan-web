@@ -8,7 +8,7 @@ import { ensureChatSocket, onChatEvent } from '@/lib/api/socket';
 import { useBaseData } from '@/lib/base-data';
 import * as api from './api';
 import type { Paged } from './api';
-import type { BuyRequest, Product, ProductQuery, SavedUserItem } from '@/lib/types';
+import type { BuyRequest, FollowFolder, FollowItem, FollowStatus, FollowTargetType, Product, ProductQuery } from '@/lib/types';
 
 const qk = {
   products: (q: ProductQuery) => ['products', q] as const,
@@ -168,40 +168,41 @@ export function useMyProducts(enabled = true) {
   });
 }
 
-export function useSavedLists() {
-  return useQuery({ queryKey: ['panel-saved-lists'], queryFn: () => api.getSavedLists(), staleTime: 30_000 });
+// ─── پیگیری‌ها — CRM کوچک ایمچ ────────────────────────────────────────
+
+/** پرونده‌های پیگیری من — تعداد و خلاصه قیف هر پرونده */
+export function useFollowFolders() {
+  return useQuery({ queryKey: ['follow-folders'], queryFn: api.getFollowFolders, staleTime: 15_000 });
 }
 
-/** وضعیت نشان‌بودن یک کاربر برای من — لیست‌ها + پرچم saved هرکدام (مودال CRM).
- *  فقط با ورود؛ هدف = ObjectId فروشنده/خریدار. */
-export function useMarkState(targetUserId: string | undefined, enabled = true) {
+/** موارد یک پرونده — با snapshot درخواست خرید/آگهی فروش */
+export function useFollowFolderItems(folderId: string) {
   return useQuery({
-    queryKey: ['mark-state', targetUserId],
-    queryFn: () => api.getSavedLists(targetUserId),
-    enabled: enabled && Boolean(targetUserId),
+    queryKey: ['follow-items', folderId],
+    queryFn: () => api.getFollowFolderItems(folderId),
+    staleTime: 15_000,
+    enabled: Boolean(folderId),
+  });
+}
+
+/** وضعیت دکمهٔ ذخیره — آیا این هدف در پیگیری من است؟ (فقط با ورود) */
+export function useIsFollowing(targetType: FollowTargetType, targetId: number, enabled = true) {
+  return useQuery({
+    queryKey: ['follow-state', targetType, targetId],
+    queryFn: () => api.isFollowing(targetType, targetId),
+    enabled,
     staleTime: 15_000,
   });
 }
 
-/** مودال CRM نشان‌کردن — سینک چندلیستی + وضعیت؛ کش لیست‌ها و وضعیت را بیات می‌کند */
-export function useMarkUser() {
+/** باطل‌کردن کل دیتای پیگیری پس از هر تغییر */
+function useInvalidateFollows() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: api.markUser,
-    onSuccess: (_r, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['panel-saved-lists'] });
-      queryClient.invalidateQueries({ queryKey: ['mark-state', vars.targetUserId] });
-      queryClient.invalidateQueries({ queryKey: ['panel-saved-users'] });
-    },
-  });
-}
-
-export function useSavedListUsers(listId: string) {
-  return useQuery({
-    queryKey: ['panel-saved-users', listId],
-    queryFn: () => api.getSavedListUsers(listId),
-    staleTime: 30_000,
-  });
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ['follow-folders'] });
+    queryClient.invalidateQueries({ queryKey: ['follow-items'] });
+    queryClient.invalidateQueries({ queryKey: ['follow-state'] });
+  };
 }
 
 export function useSuggestedBuyers() {
@@ -373,81 +374,79 @@ export function useMarkAdminMessagesRead() {
   });
 }
 
-// ─── CRM نشان شده ها (B7) ─────────────────────────────────────────────
+// ─── پیگیری‌ها — تغییرات (CRM کوچک) ───────────────────────────────────
 
-export function useCreateSavedList() {
-  const queryClient = useQueryClient();
+export function useCreateFollowFolder() {
+  const invalidate = useInvalidateFollows();
   return useMutation({
-    mutationFn: api.createSavedList,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['panel-saved-lists'] }),
+    mutationFn: (input: { name: string }) => api.createFollowFolder(input.name),
+    onSuccess: invalidate,
   });
 }
 
-export function useUpdateSavedList() {
-  const queryClient = useQueryClient();
+export function useRenameFollowFolder() {
+  const invalidate = useInvalidateFollows();
   return useMutation({
-    mutationFn: (input: { listId: string; name: string }) => api.updateSavedList(input.listId, input.name),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['panel-saved-lists'] });
-      queryClient.invalidateQueries({ queryKey: ['panel-saved-users'] });
-    },
+    mutationFn: (input: { folderId: string; name: string }) =>
+      api.renameFollowFolder(input.folderId, input.name),
+    onSuccess: invalidate,
   });
 }
 
-export function useDeleteSavedList() {
-  const queryClient = useQueryClient();
+export function useDeleteFollowFolder() {
+  const invalidate = useInvalidateFollows();
   return useMutation({
-    mutationFn: api.deleteSavedList,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['panel-saved-lists'] }),
+    mutationFn: (folderId: string) => api.deleteFollowFolder(folderId),
+    onSuccess: invalidate,
   });
 }
 
-export function useSaveBuyer() {
-  const queryClient = useQueryClient();
+/** گام ۲ جریان ذخیره — پرونده + وضعیت + یادداشت اختیاری */
+export function useUpsertFollow() {
+  const invalidate = useInvalidateFollows();
   return useMutation({
-    mutationFn: api.saveBuyerToList,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['panel-saved-lists'] }),
+    mutationFn: (input: {
+      folderId: string;
+      targetType: FollowTargetType;
+      targetId: number;
+      status?: FollowStatus;
+      note?: string;
+    }) => api.upsertFollow(input),
+    onSuccess: invalidate,
   });
 }
 
-export function useSetSavedUserStatus() {
-  const queryClient = useQueryClient();
+export function useSetFollowStatus() {
+  const invalidate = useInvalidateFollows();
   return useMutation({
-    mutationFn: (input: { savedUserId: string; status: SavedUserItem['status'] }) =>
-      api.setSavedUserStatus(input.savedUserId, input.status),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['panel-saved-users'] }),
+    mutationFn: (input: { itemId: string; status: FollowStatus }) =>
+      api.setFollowStatus(input.itemId, input.status),
+    onSuccess: invalidate,
   });
 }
 
-export function useAddSavedUserNote() {
-  const queryClient = useQueryClient();
+export function useMoveFollowItem() {
+  const invalidate = useInvalidateFollows();
   return useMutation({
-    mutationFn: (input: { savedUserId: string; text: string }) =>
-      api.addSavedUserNote(input.savedUserId, input.text),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['panel-saved-users'] }),
+    mutationFn: (input: { itemId: string; folderId: string }) =>
+      api.moveFollowItem(input.itemId, input.folderId),
+    onSuccess: invalidate,
   });
 }
 
-export function useMoveSavedUser() {
-  const queryClient = useQueryClient();
+export function useAddFollowNote() {
+  const invalidate = useInvalidateFollows();
   return useMutation({
-    mutationFn: (input: { savedUserId: string; toListId: string }) =>
-      api.moveSavedUser(input.savedUserId, input.toListId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['panel-saved-users'] });
-      queryClient.invalidateQueries({ queryKey: ['panel-saved-lists'] });
-    },
+    mutationFn: (input: { itemId: string; text: string }) => api.addFollowNote(input.itemId, input.text),
+    onSuccess: invalidate,
   });
 }
 
-export function useRemoveSavedUser() {
-  const queryClient = useQueryClient();
+export function useRemoveFollowItem() {
+  const invalidate = useInvalidateFollows();
   return useMutation({
-    mutationFn: api.removeSavedUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['panel-saved-users'] });
-      queryClient.invalidateQueries({ queryKey: ['panel-saved-lists'] });
-    },
+    mutationFn: (itemId: string) => api.removeFollowItem(itemId),
+    onSuccess: invalidate,
   });
 }
 
