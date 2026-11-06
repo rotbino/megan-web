@@ -4,6 +4,7 @@ import { useState } from 'react';
 import {
   ArrowLeftRight,
   ArrowRight,
+  Flag,
   FolderInput,
   FolderPlus,
   Loader2,
@@ -13,17 +14,24 @@ import {
 } from 'lucide-react';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
 import { Button } from '@/components/ui/button';
-import { NoteComposer, StatusChipsRow } from '@/components/panel/follow/follow-parts';
+import {
+  NextFollowComposer,
+  NoteComposer,
+  PriorityChipsRow,
+  StatusChipsRow,
+} from '@/components/panel/follow/follow-parts';
 import {
   useAddFollowNote,
   useCreateFollowFolder,
   useFollowFolders,
   useMoveFollowItem,
+  useSetNextFollowDays,
   useRemoveFollowItem,
+  useSetFollowPriority,
   useSetFollowStatus,
 } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
-import { FOLLOW_STATUS_MAP, FOLLOW_TARGET_LABEL } from '@/lib/follow';
+import { FOLLOW_PRIORITY_MAP, FOLLOW_STATUS_MAP, FOLLOW_TARGET_LABEL, followPriorityOf } from '@/lib/follow';
 import { toFa } from '@/lib/format';
 import type { BuyRequest, FollowItem, FollowStatus, Product } from '@/lib/types';
 import type { FollowActionMode } from './follow-item-row';
@@ -61,6 +69,8 @@ export function FollowActionSheet({
   const [newName, setNewName] = useState('');
 
   const setStatusM = useSetFollowStatus();
+  const setPriorityM = useSetFollowPriority();
+  const nextFollowM = useSetNextFollowDays();
   const noteM = useAddFollowNote();
   const moveM = useMoveFollowItem();
   const removeM = useRemoveFollowItem();
@@ -81,6 +91,34 @@ export function FollowActionSheet({
           toast({ description: 'وضعیت به‌روزرسانی شد.' });
           onClose();
         },
+        onError: fail,
+      },
+    );
+  };
+
+  /** «تغییر اولویت» (خواسته مالک ۷-۱۱) — چیپ‌ها؛ شیت باز می‌ماند تا یادآور را هم ببیند */
+  const changePriority = (priority: 1 | 2 | 3) => {
+    if (setPriorityM.isPending) return;
+    setPriorityM.mutate(
+      { itemId: item.id, priority },
+      {
+        onSuccess: () => toast({ description: `اولویت به «${FOLLOW_PRIORITY_MAP[priority].label}» تغییر کرد.` }),
+        onError: fail,
+      },
+    );
+  };
+
+  /** «پیگیری بعدی N روز دیگر» — همان شیت تغییر اولویت */
+  const changeNextFollow = (days: number) => {
+    if (nextFollowM.isPending) return;
+    nextFollowM.mutate(
+      { itemId: item.id, days },
+      {
+        onSuccess: () =>
+          toast({
+            description:
+              days > 0 ? `یادآور پیگیری ${toFa(days)} روز دیگر ثبت شد.` : 'یادآور پیگیری حذف شد.',
+          }),
         onError: fail,
       },
     );
@@ -150,6 +188,14 @@ export function FollowActionSheet({
               hint={`فعلی: ${FOLLOW_STATUS_MAP[item.status].label}`}
               onClick={() => setMode('status')}
             />
+            {/* «تغییر اولویت» (خواسته مالک ۷-۱۱) — زیر سه‌نقطه؛ شیت آن
+                «پیگیری بعدی N روز دیگر» را هم دارد */}
+            <MenuRow
+              icon={Flag}
+              label="تغییر اولویت"
+              hint={`فعلی: ${FOLLOW_PRIORITY_MAP[followPriorityOf(item)].label}`}
+              onClick={() => setMode('priority')}
+            />
             <MenuRow icon={NotebookPen} label="یادداشت جدید" onClick={() => setMode('note')} />
             <MenuRow icon={FolderInput} label="انتقال به پروندهٔ دیگر" onClick={() => setMode('move')} />
             <MenuRow icon={Trash2} label="حذف از پیگیری" danger onClick={() => setMode('delete')} />
@@ -163,6 +209,30 @@ export function FollowActionSheet({
             وضعیت جدید را انتخاب کنید — فعلی: {FOLLOW_STATUS_MAP[item.status].label}.
           </p>
           <StatusChipsRow value={item.status} onChange={changeStatus} disabled={setStatusM.isPending} />
+        </>
+      )}
+
+      {mode === 'priority' && (
+        <>
+          <p className="text-xs leading-5 text-muted-foreground">
+            اولویت بالا در لیست پیگیری‌ها بالاتر نشان داده می‌شود.
+          </p>
+          <div>
+            <p className="mb-1.5 text-[13px] font-bold">اولویت</p>
+            <PriorityChipsRow
+              value={followPriorityOf(item)}
+              onChange={changePriority}
+              disabled={setPriorityM.isPending}
+            />
+          </div>
+          <div className="border-t border-dashed pt-3">
+            <p className="mb-1.5 text-[13px] font-bold">یادآور پیگیری</p>
+            <NextFollowComposer
+              current={item.nextFollowAt}
+              onSubmit={changeNextFollow}
+              disabled={nextFollowM.isPending}
+            />
+          </div>
         </>
       )}
 
@@ -250,11 +320,13 @@ export function FollowActionSheet({
       ? 'عملیات پیگیری'
       : mode === 'status'
         ? 'تغییر وضعیت'
-        : mode === 'note'
-          ? 'یادداشت جدید'
-          : mode === 'move'
-            ? 'انتقال به پروندهٔ دیگر'
-            : 'حذف از پیگیری';
+        : mode === 'priority'
+          ? 'تغییر اولویت'
+          : mode === 'note'
+            ? 'یادداشت جدید'
+            : mode === 'move'
+              ? 'انتقال به پروندهٔ دیگر'
+              : 'حذف از پیگیری';
 
   return (
     <>

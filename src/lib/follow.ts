@@ -4,7 +4,7 @@
  * برای هر دو طرف بازار: فروشنده (درخواست‌های خرید) و خریدار (آگهی‌های فروش).
  */
 
-import type { FollowStatus, FollowTargetType } from '@/lib/types';
+import type { FollowPriority, FollowStatus, FollowTargetType } from '@/lib/types';
 
 export interface FollowStatusMeta {
   key: FollowStatus;
@@ -67,6 +67,80 @@ export const FOLLOW_STATUS_MAP: Record<FollowStatus, FollowStatusMeta> = Object.
 ) as Record<FollowStatus, FollowStatusMeta>;
 
 export const FOLLOW_STATUS_KEYS = FOLLOW_STATUSES.map((s) => s.key);
+
+/** ─── اولویت (خواسته مالک ۷-۱۱) ───────────────────────────────
+ *  «تغییر اولویت» زیر سه‌نقطه و در مودال ذخیره/جزئیات؛ فیلتر اولویت در
+ *  نوار فیلتر؛ اولویت‌های بالا در لیست بالاتر (مرتب‌سازی پیش‌فرض). */
+export interface FollowPriorityMeta {
+  key: FollowPriority;
+  label: string;
+  /** کلاس چیپ روشن */
+  tone: string;
+  /** کلاس آیکون فلش */
+  icon: string;
+  /** توضیح کوتاه */
+  hint: string;
+}
+
+export const FOLLOW_PRIORITIES: readonly FollowPriorityMeta[] = [
+  {
+    key: 1,
+    label: 'بالا',
+    tone: 'bg-rose-50 text-rose-600 border-rose-200',
+    icon: 'text-rose-500',
+    hint: 'مشتری داغ — همین امروز پیگیری کن',
+  },
+  {
+    key: 2,
+    label: 'متوسط',
+    tone: 'bg-amber-50 text-amber-600 border-amber-200',
+    icon: 'text-amber-500',
+    hint: 'عادی — سر فرصت تماس بگیر',
+  },
+  {
+    key: 3,
+    label: 'کم',
+    tone: 'bg-slate-100 text-slate-500 border-slate-200',
+    icon: 'text-slate-400',
+    hint: 'اولویت پایین — اگر فرصت شد',
+  },
+] as const;
+
+export const FOLLOW_PRIORITY_MAP: Record<FollowPriority, FollowPriorityMeta> = Object.fromEntries(
+  FOLLOW_PRIORITIES.map((p) => [p.key, p]),
+) as Record<FollowPriority, FollowPriorityMeta>;
+
+/** نرمال‌سازی اولویت — رکوردهای قدیمی بدون priority → متوسط */
+export function followPriorityOf(item: { priority?: number | null }): FollowPriority {
+  return item.priority === 1 || item.priority === 3 ? item.priority : 2;
+}
+
+/** ─── «پیگیری بعدی N روز دیگر» + فیلتر «پیگیری‌های امروز» ──────
+ *  تاریخ بک‌اند «YYYY-MM-DD HH:mm:ss» (UTC-مانند) با parseServerDate نرمال می‌شود. */
+
+/** سررسیده است؟ — یادآور ثبت‌شده و امروز یا گذشته (پایان امروز سقف است) */
+export function isFollowDueToday(nextFollowAt: string | null | undefined): boolean {
+  if (!nextFollowAt) return false;
+  const due = new Date(nextFollowAt.replace(' ', 'T'));
+  if (Number.isNaN(due.getTime())) return false;
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+  return due.getTime() <= endOfToday.getTime();
+}
+
+/** برچسب کوتاه یادآور — «امروز» / «فردا» / «N روز دیگر» / تاریخ */
+export function followDueLabel(nextFollowAt: string | null | undefined): string | null {
+  if (!nextFollowAt) return null;
+  const due = new Date(nextFollowAt.replace(' ', 'T'));
+  if (Number.isNaN(due.getTime())) return null;
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const days = Math.round((due.getTime() - startOfToday.getTime()) / 86_400_000);
+  if (days <= 0) return 'پیگیری امروز';
+  if (days === 1) return 'پیگیری فردا';
+  if (days <= 30) return `پیگیری ${days} روز دیگر`;
+  return `پیگیری ${due.toLocaleDateString('fa-IR')}`;
+}
 
 /** برچسب نوع هدف */
 export const FOLLOW_TARGET_LABEL: Record<FollowTargetType, string> = {

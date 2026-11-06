@@ -227,6 +227,10 @@ export type FollowStatus =
   | 'closed' // نهایی شد
   | 'dropped'; // منصرف شدم
 
+/** اولویت پیگیری (خواسته مالک ۷-۱۱) — 1: بالا، 2: متوسط، 3: کم؛
+ *  اولویت‌های بالا در لیست بالاتر نمایش داده می‌شوند */
+export type FollowPriority = 1 | 2 | 3;
+
 /** یادداشت زمان‌دار روی یک مورد پیگیری */
 export interface FollowNote {
   id: string; // ObjectId
@@ -252,6 +256,10 @@ export interface FollowItem {
   targetType: FollowTargetType;
   targetId: number; // شناسه عددی درخواست/آگهی
   status: FollowStatus;
+  /** اولویت — 1 بالا / 2 متوسط / 3 کم (خواسته مالک ۷-۱۱) */
+  priority: FollowPriority;
+  /** تاریخ پیگیری بعدی «YYYY-MM-DD HH:mm:ss» یا null — از اینپوت «N روز دیگر» */
+  nextFollowAt: string | null;
   notes: FollowNote[];
   createdAt: string;
   updatedAt: string;

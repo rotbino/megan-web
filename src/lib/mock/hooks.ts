@@ -8,7 +8,7 @@ import { ensureChatSocket, onChatEvent } from '@/lib/api/socket';
 import { useBaseData } from '@/lib/base-data';
 import * as api from './api';
 import type { Paged } from './api';
-import type { BuyRequest, FollowFolder, FollowItem, FollowStatus, FollowTargetType, Product, ProductQuery } from '@/lib/types';
+import type { BuyRequest, FollowFolder, FollowItem, FollowPriority, FollowStatus, FollowTargetType, Product, ProductQuery } from '@/lib/types';
 
 const qk = {
   products: (q: ProductQuery) => ['products', q] as const,
@@ -427,7 +427,7 @@ export function useDeleteFollowFolder() {
   });
 }
 
-/** گام ۲ جریان ذخیره — پرونده + وضعیت + یادداشت اختیاری */
+/** گام ۲ جریان ذخیره — پرونده + وضعیت + اولویت + یادآور + یادداشت اختیاری */
 export function useUpsertFollow() {
   const invalidate = useInvalidateFollows();
   return useMutation({
@@ -436,6 +436,8 @@ export function useUpsertFollow() {
       targetType: FollowTargetType;
       targetId: number;
       status?: FollowStatus;
+      priority?: FollowPriority;
+      nextFollowDays?: number;
       note?: string;
     }) => api.upsertFollow(input),
     onSuccess: invalidate,
@@ -447,6 +449,26 @@ export function useSetFollowStatus() {
   return useMutation({
     mutationFn: (input: { itemId: string; status: FollowStatus }) =>
       api.setFollowStatus(input.itemId, input.status),
+    onSuccess: invalidate,
+  });
+}
+
+/** تغییر اولویت — «تغییر اولویت» زیر سه‌نقطه و در مودال (خواسته مالک ۷-۱۱) */
+export function useSetFollowPriority() {
+  const invalidate = useInvalidateFollows();
+  return useMutation({
+    mutationFn: (input: { itemId: string; priority: FollowPriority }) =>
+      api.setFollowPriority(input.itemId, input.priority),
+    onSuccess: invalidate,
+  });
+}
+
+/** یادآور «پیگیری بعدی N روز دیگر» — days=0 حذف یادآور */
+export function useSetNextFollowDays() {
+  const invalidate = useInvalidateFollows();
+  return useMutation({
+    mutationFn: (input: { itemId: string; days: number }) =>
+      api.setNextFollowDays(input.itemId, input.days),
     onSuccess: invalidate,
   });
 }

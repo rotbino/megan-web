@@ -21,6 +21,8 @@ import { useMemo, useState } from 'react';
 import {
   ArrowRight,
   Bookmark,
+  CalendarClock,
+  Flag,
   FolderInput,
   FolderPlus,
   Loader2,
@@ -30,6 +32,10 @@ import {
 } from 'lucide-react';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
 import { useAuth } from '@/lib/mock/auth';
+import {
+  NextFollowComposer,
+  PriorityChipsRow,
+} from '@/components/panel/follow/follow-parts';
 import {
   useAddFollowNote,
   useCreateFollowFolder,
@@ -44,7 +50,7 @@ import { useToast } from '@/hooks/use-toast';
 import { FOLLOW_STATUSES, FOLLOW_TARGET_LABEL } from '@/lib/follow';
 import { cn } from '@/lib/utils';
 import { toFa } from '@/lib/format';
-import type { FollowItem, FollowStatus, FollowTargetType } from '@/lib/types';
+import type { FollowItem, FollowPriority, FollowStatus, FollowTargetType } from '@/lib/types';
 
 export function SaveFollowButton({
   targetType,
@@ -185,6 +191,9 @@ function SaveFollowSheet({
   const [folderId, setFolderId] = useState<string | null>(null);
   const [status, setStatus] = useState<FollowStatus>('reviewing');
   const [note, setNote] = useState('');
+  // اولویت (پیش‌فرض متوسط) + «پیگیری بعدی N روز دیگر» (خواسته مالک ۷-۱۱)
+  const [priority, setPriority] = useState<FollowPriority>(2);
+  const [nextFollowDays, setNextFollowDays] = useState<number | null>(null);
   /** null = خودکار — کاربر هنوز چیزی باز/بسته نکرده؛ فرم ساخت فقط
    *  وقتی خودکار باز می‌شود که پرونده‌ای وجود نداشته باشد (state مشتق، بدون effect) */
   const [explicitCreate, setExplicitCreate] = useState<boolean | null>(null);
@@ -237,6 +246,8 @@ function SaveFollowSheet({
         targetType,
         targetId,
         status,
+        priority,
+        nextFollowDays: nextFollowDays ?? undefined,
         note: note.trim() || undefined,
       });
       toast({ description: `در پروندهٔ «${saved.folderName}» ذخیره شد.` });
@@ -435,11 +446,33 @@ function SaveFollowSheet({
       {mode === 'status' && (
         <>
           <p className="text-xs leading-5 text-muted-foreground">
-            اگر الان مطمئن نیستید، همان «در بررسی» کافی است — بعداً هم قابل تغییر است.
+            اگر الان مطمئن نیستید، همان «در بررسی» و «متوسط» کافی است — بعداً هم قابل تغییر است.
           </p>
           <div>
             <p className="mb-1.5 text-[13px] font-bold">وضعیت</p>
             {renderStatusChips(status, setStatus)}
+          </div>
+          {/* اولویت (خواسته مالک ۷-۱۱) — «تغییر اولویت» همین‌جا در مودال ذخیره */}
+          <div>
+            <p className="mb-1.5 flex items-center gap-1.5 text-[13px] font-bold">
+              <Flag size={13} className="text-primary/70" /> اولویت
+            </p>
+            <PriorityChipsRow value={priority} onChange={setPriority} />
+          </div>
+          {/* «پیگیری بعدی N روز دیگر» — نامبر اینپوت ساده (خواسته مالک ۷-۱۱) */}
+          <div>
+            <p className="mb-1.5 flex items-center gap-1.5 text-[13px] font-bold">
+              <CalendarClock size={13} className="text-primary/70" /> یادآور پیگیری (اختیاری)
+            </p>
+            <NextFollowComposer
+              current={null}
+              onSubmit={(days) => setNextFollowDays(days === 0 ? null : days)}
+            />
+            {nextFollowDays != null && nextFollowDays > 0 && (
+              <p className="mt-1.5 text-[11px] font-bold text-primary">
+                هنگام ذخیره، یادآور {toFa(nextFollowDays)} روز دیگر ثبت می‌شود.
+              </p>
+            )}
           </div>
           <div>
             <p className="mb-1.5 text-[13px] font-bold">یادداشت (اختیاری)</p>

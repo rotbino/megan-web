@@ -118,36 +118,38 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
       {/* بنر قرمز + مودال «رمز عبور تعیین کنید» — تا تعیین رمز در همه صفحات پنل می‌ماند */}
       <PasswordBanner open={passwordOpen} onOpenChange={setPasswordOpen} />
 
-      {/* محتوا */}
+      {/* محتوا — دسکتاپ: بدون padding-top تا خط هدر دقیقاً با هدر سایدبار
+          تراز شود (خواسته مالک ۷-۱۱: ارتفاع هدر پنل بیش از حد بود) */}
       <main
         className={cn(
-          'min-h-screen min-w-0 p-3 transition-[padding] duration-200 sm:p-4 lg:p-6',
+          'min-h-screen min-w-0 p-3 transition-[padding] duration-200 sm:p-4 lg:p-6 lg:pt-0',
           collapsed ? 'lg:mr-[68px]' : 'lg:mr-[250px]',
         )}
       >
         {/* هدر بالای محتوا (دسکتاپ) — الگوی right-menu-header باسکول (خواسته مالک
             ۲-۱۱ دور سیزدهم): راست = آیکون خانه + دکمهٔ طلایی «ارتقا به فروشنده ویژه»؛
-            چپ = نام و تصویر پروفایل کاربر (خواسته مالک دور چهاردهم). خط ظریف زیرش
-            هدر را از محتوا جدا می‌کند (خواسته دور چهاردهم). طلایی = قانون نشان
+            چپ = نام و تصویر پروفایل کاربر (خواسته مالک دور چهاردهم).
+            ارتفاع 59px = هم‌تراز هدر سایدبار — خط زیرین دو هدر یکی می‌شود و
+            صفحه مرتب‌تر دیده می‌شود (خواسته مالک ۷-۱۱). طلایی = قانون نشان
             فروشنده ویژه (RULES §۱-ب). دکمهٔ ارتقا ظریف است و وقتی بستهٔ فعال
             است حذف می‌شود (تکرار ممنوع — وضعیت در باکس اشتراک ایمچ من دیده می‌شود). */}
         {user && (
-          <div className="mb-4 hidden items-center justify-between gap-3 border-b border-border pb-3 lg:flex">
+          <div className="mb-5 hidden h-[59px] items-center justify-between gap-3 border-b border-border lg:flex">
             <div className="flex items-center gap-2">
               <Link
                 href="/"
                 aria-label="رفتن به سایت ایمچ"
                 title="رفتن به سایت ایمچ"
-                className="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                className="grid size-9 shrink-0 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               >
-                <Home size={20} />
+                <Home size={18} />
               </Link>
               {user.role !== 'buyer' && !myPackage?.isActive && (
                 <Link
                   href="/panel/pricing"
-                  className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-amber-400 px-3.5 text-[13px] font-bold text-white shadow-[0_1px_5px_rgba(254,239,154,0.45)] ring-1 ring-amber-500/50 transition-colors hover:bg-amber-300"
+                  className="flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-amber-400 px-3.5 text-xs font-bold text-white shadow-[0_1px_5px_rgba(254,239,154,0.45)] ring-1 ring-amber-500/50 transition-colors hover:bg-amber-300"
                 >
-                  <Crown size={14} />
+                  <Crown size={13} />
                   ارتقا به فروشنده ویژه
                 </Link>
               )}
@@ -160,9 +162,9 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
             >
               <span className="max-w-[180px] truncate">{profile ? `${profile.userInfo.firstName} ${profile.userInfo.lastName}` : 'کاربر ایمچ'}</span>
               {profile?.userInfo.avatarUrl ? (
-                <img src={profile.userInfo.avatarUrl} alt="" className="size-9 shrink-0 rounded-full object-cover" />
+                <img src={profile.userInfo.avatarUrl} alt="" className="size-8 shrink-0 rounded-full object-cover" />
               ) : (
-                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-extrabold text-primary">
+                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-extrabold text-primary">
                   {profile ? profile.userInfo.firstName.charAt(0) : '؟'}
                 </span>
               )}

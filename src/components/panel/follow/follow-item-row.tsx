@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import {
   BadgeCheck,
+  CalendarClock,
   CalendarDays,
   Loader2,
   MapPin,
@@ -18,15 +19,17 @@ import { ChatDialog } from '@/components/products/chat-dialog';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { ProductImage } from '@/components/shared/product-image';
 import { RelativeTime } from '@/components/shared/relative-time';
-import { StatusChip } from '@/components/panel/follow/follow-parts';
+import { PriorityChip, StatusChip } from '@/components/panel/follow/follow-parts';
+import { followDueLabel, followPriorityOf, isFollowDueToday } from '@/lib/follow';
 import { useAuth } from '@/lib/mock/auth';
 import { useBuyRequestContact } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { priceFa, toFa } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import type { BuyRequest, FollowItem, Product } from '@/lib/types';
 
-/** حالت‌های شیت عملیات سه‌نقطه */
-export type FollowActionMode = 'menu' | 'status' | 'note' | 'move' | 'delete';
+/** حالت‌های شیت عملیات سه‌نقطه — priority = «تغییر اولویت» (خواسته مالک ۷-۱۱) */
+export type FollowActionMode = 'menu' | 'status' | 'priority' | 'note' | 'move' | 'delete';
 
 /**
  * ردیف فشردهٔ مورد پیگیری — تک‌صفحهٔ CRM ایمچ (خواسته مالک ۶-۱۱).
@@ -82,6 +85,36 @@ export function FollowItemRow({
         >
           <StatusChip status={item.status} />
         </button>
+        {/* اولویت (خواسته مالک ۷-۱۱) — کلیک = شیت «تغییر اولویت»؛ چیپ فقط
+            برای بالا/کم نمایش داده می‌شود تا متوسطِ پیش‌فرض نوار را شلوغ نکند */}
+        {followPriorityOf(item) !== 2 && (
+          <button
+            type="button"
+            onClick={() => onOpenActions('priority')}
+            title="تغییر اولویت"
+            className="rounded-full outline-none transition-transform hover:scale-[1.03] focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            <PriorityChip priority={item.priority} />
+          </button>
+        )}
+        {/* یادآور «پیگیری بعدی» — سررسیده (امروز) برجسته کهربایی؛ آینده خاکستری؛
+            کلیک = شیت «تغییر اولویت» که همین‌جا یادآور هم دارد */}
+        {item.nextFollowAt && (
+          <button
+            type="button"
+            onClick={() => onOpenActions('priority')}
+            title={followDueLabel(item.nextFollowAt) ?? undefined}
+            className={cn(
+              'inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10.5px] font-bold transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+              isFollowDueToday(item.nextFollowAt)
+                ? 'border-amber-300 bg-amber-100 text-amber-700'
+                : 'border-border bg-secondary/60 text-muted-foreground',
+            )}
+          >
+            <CalendarClock size={11} className="shrink-0" />
+            {followDueLabel(item.nextFollowAt)}
+          </button>
+        )}
         {item.targetType === 'buy_request' ? <RequestActions item={item} /> : <ProductActions item={item} />}
         <button
           type="button"

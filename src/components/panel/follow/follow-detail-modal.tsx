@@ -17,16 +17,18 @@ import { ProductImage } from '@/components/shared/product-image';
 import { RelativeTime } from '@/components/shared/relative-time';
 import {
   FollowLabel,
+  NextFollowComposer,
   NoteComposer,
   NotesList,
+  PriorityChipsRow,
   StatusChip,
   StatusChipsRow,
 } from '@/components/panel/follow/follow-parts';
-import { useAddFollowNote, useSetFollowStatus } from '@/lib/mock/hooks';
+import { useAddFollowNote, useSetNextFollowDays, useSetFollowPriority, useSetFollowStatus } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
-import { FOLLOW_TARGET_LABEL } from '@/lib/follow';
+import { FOLLOW_PRIORITY_MAP, FOLLOW_TARGET_LABEL, followPriorityOf } from '@/lib/follow';
 import { priceFa, stockFa, toFa } from '@/lib/format';
-import type { BuyRequest, FollowItem, FollowStatus, Product } from '@/lib/types';
+import type { BuyRequest, FollowItem, FollowPriority, FollowStatus, Product } from '@/lib/types';
 
 /**
  * مدال جزئیات مورد پیگیری — با کلیک روی ردیف باز می‌شود (خواسته مالک ۶-۱۱):
@@ -47,6 +49,8 @@ export function FollowDetailModal({
 }) {
   const { toast } = useToast();
   const setStatusM = useSetFollowStatus();
+  const setPriorityM = useSetFollowPriority();
+  const nextFollowM = useSetNextFollowDays();
   const noteM = useAddFollowNote();
 
   const fail = (err: unknown) =>
@@ -63,6 +67,28 @@ export function FollowDetailModal({
     });
   };
 
+  /** اولویت (خواسته مالک ۷-۱۱) — تغییر درجا در مودال جزئیات */
+  const changePriority = (priority: FollowPriority) => {
+    if (setPriorityM.isPending) return;
+    setPriorityM.mutate({ itemId: item.id, priority }, {
+      onSuccess: () => toast({ description: `اولویت به «${FOLLOW_PRIORITY_MAP[priority].label}» تغییر کرد.` }),
+      onError: fail,
+    });
+  };
+
+  /** «پیگیری بعدی N روز دیگر» — همان بخش اولویت در مودال */
+  const changeNextFollow = (days: number) => {
+    if (nextFollowM.isPending) return;
+    nextFollowM.mutate({ itemId: item.id, days }, {
+      onSuccess: () =>
+        toast({
+          description:
+            days > 0 ? `یادآور پیگیری ${toFa(days)} روز دیگر ثبت شد.` : 'یادآور پیگیری حذف شد.',
+        }),
+      onError: fail,
+    });
+  };
+
   const addNote = (text: string) => {
     if (noteM.isPending) return;
     noteM.mutate({ itemId: item.id, text }, {
@@ -71,7 +97,7 @@ export function FollowDetailModal({
     });
   };
 
-  const busy = setStatusM.isPending || noteM.isPending;
+  const busy = setStatusM.isPending || noteM.isPending || setPriorityM.isPending || nextFollowM.isPending;
 
   const body = (
     <div className="space-y-4 p-1">
@@ -89,6 +115,15 @@ export function FollowDetailModal({
       <div>
         <FollowLabel>وضعیت پیگیری</FollowLabel>
         <StatusChipsRow value={item.status} onChange={changeStatus} disabled={busy} />
+      </div>
+
+      {/* اولویت + یادآور «پیگیری بعدی N روز دیگر» (خواسته مالک ۷-۱۱) */}
+      <div>
+        <FollowLabel>اولویت و یادآور</FollowLabel>
+        <PriorityChipsRow value={followPriorityOf(item)} onChange={changePriority} disabled={busy} />
+        <div className="mt-2.5">
+          <NextFollowComposer current={item.nextFollowAt} onSubmit={changeNextFollow} disabled={busy} />
+        </div>
       </div>
 
       {/* یادداشت‌ها */}

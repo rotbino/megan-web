@@ -603,6 +603,7 @@ import { uploadImage, deleteImage } from '@/lib/api/client';
 import type {
   FollowFolder,
   FollowItem,
+  FollowPriority,
   FollowStatus,
   FollowTargetType,
   PanelProfile,
@@ -918,12 +919,16 @@ export async function getAllFollowItems(): Promise<FollowItem[]> {
 }
 
 /** ذخیره/به‌روزرسانی (گام ۲ جریان ذخیره) — اگر از قبل ذخیره باشد،
- *  به پروندهٔ انتخابی منتقل و وضعیتش به‌روز می‌شود؛ یادداشت فقط با متن جدید اضافه می‌شود */
+ *  به پروندهٔ انتخابی منتقل و وضعیتش به‌روز می‌شود؛ یادداشت فقط با متن جدید اضافه می‌شود.
+ *  اولویت و «پیگیری بعدی N روز دیگر» هم همین‌جا ثبت می‌شوند (خواسته مالک ۷-۱۱) */
 export async function upsertFollow(input: {
   folderId: string;
   targetType: FollowTargetType;
   targetId: number;
   status?: FollowStatus;
+  priority?: FollowPriority;
+  /** 0 = بدون یادآور؛ نام.send نشدن = بی‌تغییر */
+  nextFollowDays?: number;
   note?: string;
 }): Promise<FollowItem> {
   return apiFetch<FollowItem>('/follow/upsertItem', input);
@@ -951,6 +956,16 @@ export async function getFollowingMap(targetType: FollowTargetType): Promise<Rec
 
 export async function setFollowStatus(itemId: string, status: FollowStatus): Promise<void> {
   await apiFetch('/follow/setItemStatus', { itemId, status });
+}
+
+/** تغییر اولویت — «تغییر اولویت» زیر سه‌نقطه و در مودال (خواسته مالک ۷-۱۱) */
+export async function setFollowPriority(itemId: string, priority: FollowPriority): Promise<void> {
+  await apiFetch('/follow/setItemPriority', { itemId, priority });
+}
+
+/** یادآور «پیگیری بعدی N روز دیگر» — days=0 حذف یادآور */
+export async function setNextFollowDays(itemId: string, days: number): Promise<void> {
+  await apiFetch('/follow/setNextFollow', { itemId, days });
 }
 
 /** انتقال به پرونده دیگر — وضعیت و یادداشت‌ها حفظ می‌شوند */

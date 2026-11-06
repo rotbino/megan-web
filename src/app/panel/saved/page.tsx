@@ -4,8 +4,11 @@ import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowDownWideNarrow,
+  BellRing,
   Bookmark,
+  CalendarClock,
   Filter,
+  Flag,
   FolderPlus,
   LayoutGrid,
   Loader2,
@@ -37,12 +40,22 @@ import {
   useRenameFollowFolder,
 } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
-import { FOLLOW_STATUSES, FOLLOW_TARGET_LABEL } from '@/lib/follow';
+import {
+  FOLLOW_PRIORITIES,
+  FOLLOW_PRIORITY_MAP,
+  FOLLOW_STATUSES,
+  FOLLOW_TARGET_LABEL,
+  followPriorityOf,
+  isFollowDueToday,
+} from '@/lib/follow';
 import { toFa } from '@/lib/format';
-import type { BuyRequest, FollowFolder, FollowItem, FollowStatus, Product } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import type { BuyRequest, FollowFolder, FollowItem, FollowPriority, FollowStatus, Product } from '@/lib/types';
 
-/** مرتب‌سازی لیست — «نزدیک‌ترین به معامله» = مذاکره‌ها اول */
+/** مرتب‌سازی لیست — «اولویت‌دار» پیش‌فرض است (خواسته مالک ۷-۱۱:
+ *  اولویت‌های بالا در لیست بالاتر)؛ بعدِ آن سررسیده‌ها و بعد جدیدترین */
 const SORTS = [
+  { key: 'priority', label: 'اولویت‌دار' },
   { key: 'newest', label: 'جدیدترین' },
   { key: 'oldest', label: 'قدیمی‌ترین' },
   { key: 'hot', label: 'نزدیک‌ترین به معامله' },
@@ -64,6 +77,10 @@ function cityOf(item: FollowItem): string {
     ? (item.target as BuyRequest).city
     : (item.target as Product).cityName.trim();
 }
+
+/** ابعاد فیلتر — هر بعد شمار خودش را بدون خودش می‌بیند */
+type FilterDim = 'folder' | 'status' | 'city' | 'type' | 'priority' | 'due';
+const FILTER_DIMS: readonly FilterDim[] = ['folder', 'status', 'city', 'type', 'priority', 'due'];
 
 /** متن جستجو — نام کاربر / دستهٔ کالا / عنوان کالا (خواسته مالک ۶-۱۱) */
 function haystack(item: FollowItem): string {
@@ -103,7 +120,10 @@ function FollowPageInner() {
   const [status, setStatus] = useState<FollowStatus | 'all'>('all');
   const [city, setCity] = useState<string>('all');
   const [type, setType] = useState<'all' | 'product' | 'buy_request'>('all');
-  const [sort, setSort] = useState<SortKey>('newest');
+  // اولویت (خواسته مالک ۷-۱۱) و فیلتر «پیگیری‌های امروز» — یادآورهای سررسیده
+  const [priority, setPriority] = useState<FollowPriority | 'all'>('all');
+  const [dueToday, setDueToday] = useState(false);
+  const [sort, setSort] = useState<SortKey>('priority');
 
   // ─── مدال جزئیات و شیت عملیات ──────────────────────────────────────────────
   const [detailFor, setDetailFor] = useState<string | null>(null);
@@ -141,29 +161,39 @@ function FollowPageInner() {
     return items.filter((i) => haystack(i).includes(needle));
   }, [items, q]);
 
-  /** پایهٔ شمار وضعیت: جستجو + پرونده + شهر + نوع (بدون خود وضعیت) */
-  const statusBase = useMemo(
-    () =>
-      searched.filter(
-        (i) =>
-          (!validFolderId || i.folderId === validFolderId) &&
-          (city === 'all' || cityOf(i) === city) &&
-          (type === 'all' || i.targetType === type),
-      ),
-    [searched, validFolderId, city, type],
-  );
+  /** تطبیق یک مورد با یک بُعد فیلتر — بُعدِ مورد نظر خودش را از شمار مستثنی می‌کند */
+  const matchDim = (i: FollowItem, dim: FilterDim): boolean => {
+    switch (dim) {
+      case 'folder':
+        return !validFolderId || i.folderId === validFolderId;
+      case 'status':
+        return status === 'all' || i.status === status;
+      case 'city':
+        return city === 'all' || cityOf(i) === city;
+      case 'type':
+        return type === 'all' || i.targetType === type;
+      case 'priority':
+        return priority === 'all' || followPriorityOf(i) === priority;
+      case 'due':
+        return !dueToday || isFollowDueToday(i.nextFollowAt);
+    }
+  };
 
-  /** پایهٔ شمار شهر: جستجو + پرونده + وضعیت + نوع (بدون خود شهر) */
-  const cityBase = useMemo(
-    () =>
-      searched.filter(
-        (i) =>
-          (!validFolderId || i.folderId === validFolderId) &&
-          (status === 'all' || i.status === status) &&
-          (type === 'all' || i.targetType === type),
-      ),
-    [searched, validFolderId, status, type],
-  );
+  /** پایهٔ شمار هر بُعد — همهٔ ابعاد جز خودش اعمال شده (الگوی دیوار) */
+  const dimBase = useMemo(() => {
+    const bases = {} as Record<FilterDim, FollowItem[]>;
+    for (const dim of FILTER_DIMS) {
+      bases[dim] = searched.filter((i) =>
+        FILTER_DIMS.filter((d) => d !== dim).every((d) => matchDim(i, d)),
+      );
+    }
+    return bases;
+    // matchDim به stateهای فیلتر وابسته است — همه در deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searched, validFolderId, status, city, type, priority, dueToday]);
+
+  const statusBase = dimBase.status;
+  const cityBase = dimBase.city;
 
   /** گزینه‌های شهر — فقط شهرهای حاضر در موارد ذخیره‌شده (خواسته مالک ۶-۱۱) */
   const cityOptions = useMemo(() => {
@@ -175,33 +205,58 @@ function FollowPageInner() {
     return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'fa'));
   }, [cityBase]);
 
-  const typeCounts = useMemo(() => {
-    const base = searched.filter(
-      (i) =>
-        (!validFolderId || i.folderId === validFolderId) &&
-        (status === 'all' || i.status === status) &&
-        (city === 'all' || cityOf(i) === city),
-    );
-    return {
-      all: base.length,
-      product: base.filter((i) => i.targetType === 'product').length,
-      buy_request: base.filter((i) => i.targetType === 'buy_request').length,
-    } as Record<'all' | 'product' | 'buy_request', number>;
-  }, [searched, validFolderId, status, city]);
+  const typeCounts = useMemo(
+    () =>
+      ({
+        all: dimBase.type.length,
+        product: dimBase.type.filter((i) => i.targetType === 'product').length,
+        buy_request: dimBase.type.filter((i) => i.targetType === 'buy_request').length,
+      }) as Record<'all' | 'product' | 'buy_request', number>,
+    [dimBase.type],
+  );
 
-  /** لیست نهایی — وضعیت هم اعمال می‌شود + مرتب‌سازی */
+  /** شمار فیلتر اولویت — بالا / متوسط / کم (خواسته مالک ۷-۱۱) */
+  const priorityCounts = useMemo(
+    () =>
+      ({
+        all: dimBase.priority.length,
+        1: dimBase.priority.filter((i) => followPriorityOf(i) === 1).length,
+        2: dimBase.priority.filter((i) => followPriorityOf(i) === 2).length,
+        3: dimBase.priority.filter((i) => followPriorityOf(i) === 3).length,
+      }) as Record<'all' | FollowPriority, number>,
+    [dimBase.priority],
+  );
+
+  /** شمار «پیگیری‌های امروز» — یادآورهای سررسیده (خواسته مالک ۷-۱۱:
+   *  «به کاربر یادآوری می‌کند که امروز باید چه کاری انجام دهد») */
+  const dueTodayCount = useMemo(
+    () => dimBase.due.filter((i) => isFollowDueToday(i.nextFollowAt)).length,
+    [dimBase.due],
+  );
+
+  /** لیست نهایی — همهٔ ابعاد اعمال می‌شوند + مرتب‌سازی */
   const visible = useMemo(() => {
-    const list = statusBase.filter((i) => status === 'all' || i.status === status);
+    const list = searched.filter((i) => FILTER_DIMS.every((d) => matchDim(i, d)));
+    const prio = (i: FollowItem) => followPriorityOf(i);
+    const dueRank = (i: FollowItem) => (isFollowDueToday(i.nextFollowAt) ? 0 : 1);
     return [...list].sort((a, b) => {
       if (sort === 'hot') {
         const d = HOT_ORDER[a.status] - HOT_ORDER[b.status];
         if (d !== 0) return d;
       }
+      if (sort === 'priority') {
+        // اولویت بالا (۱) بالاتر؛ هم‌اولویت‌ها: سررسیدهٔ امروز اول، بعد جدیدترین
+        const d = prio(a) - prio(b);
+        if (d !== 0) return d;
+        const e = dueRank(a) - dueRank(b);
+        if (e !== 0) return e;
+      }
       return sort === 'oldest'
         ? a.updatedAt.localeCompare(b.updatedAt)
         : b.updatedAt.localeCompare(a.updatedAt);
     });
-  }, [statusBase, status, sort]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searched, validFolderId, status, city, type, priority, dueToday, sort]);
 
   const statusCounts = useMemo(() => {
     const c: Partial<Record<FollowStatus, number>> = {};
@@ -225,6 +280,8 @@ function FollowPageInner() {
     setStatus('all');
     setCity('all');
     setType('all');
+    setPriority('all');
+    setDueToday(false);
   };
 
   const submitRename = () => {
@@ -284,10 +341,31 @@ function FollowPageInner() {
           </p>
         </div>
         {!loading && (
-          <p className="text-xs text-muted-foreground">
-            <b className="text-foreground">{toFa(items.length)}</b> مورد در{' '}
-            <b className="text-foreground">{toFa(folders?.length ?? 0)}</b> پرونده
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* زنگ پیگیری‌های امروز (خواسته مالک ۷-۱۱) — سررسیده‌های امروز را
+                با یک کلیک جلوی چشم می‌آورد؛ فعال = فیلتر روشن */}
+            {dueTodayCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setDueToday((v) => !v)}
+                aria-pressed={dueToday}
+                title={dueToday ? 'نمایش همهٔ موارد' : 'فقط یادآورهای سررسیدهٔ امروز'}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
+                  dueToday
+                    ? 'border-amber-400 bg-amber-400 text-white shadow-[0_1px_5px_rgba(251,191,36,0.45)]'
+                    : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100',
+                )}
+              >
+                <BellRing size={13} className="shrink-0" />
+                <span className="font-num">{toFa(dueTodayCount)}</span> پیگیری امروز
+              </button>
+            )}
+            <p className="text-xs text-muted-foreground">
+              <b className="text-foreground">{toFa(items.length)}</b> مورد در{' '}
+              <b className="text-foreground">{toFa(folders?.length ?? 0)}</b> پرونده
+            </p>
+          </div>
         )}
       </div>
 
@@ -414,6 +492,55 @@ function FollowPageInner() {
               </FilterOption>
             ))}
           </FilterChip>
+
+          {/* اولویت (خواسته مالک ۷-۱۱) — بالا / متوسط / کم؛ «تغییر اولویت» هر مورد
+              زیر سه‌نقطه و در مودال‌هاست، این فیلتر لیست را با اولویت می‌پالایَد */}
+          <FilterChip
+            icon={Flag}
+            label="اولویت"
+            value={priority !== 'all' ? FOLLOW_PRIORITY_MAP[priority].label : null}
+            active={priority !== 'all'}
+            onClear={() => setPriority('all')}
+            sheetTitle="اولویت"
+          >
+            <FilterOption selected={priority === 'all'} onSelect={() => setPriority('all')} count={priorityCounts.all}>
+              همه
+            </FilterOption>
+            {FOLLOW_PRIORITIES.map((p) => (
+              <FilterOption
+                key={p.key}
+                selected={priority === p.key}
+                onSelect={() => setPriority(p.key)}
+                count={priorityCounts[p.key]}
+              >
+                {p.label}
+              </FilterOption>
+            ))}
+          </FilterChip>
+
+          {/* پیگیری‌های امروز (خواسته مالک ۷-۱۱) — یادآورهای سررسیده؛
+              «امروز باید چه کاری انجام بدهم» */}
+          {(dueTodayCount > 0 || dueToday) && (
+            <FilterChip
+              icon={CalendarClock}
+              label="پیگیری"
+              value={dueToday ? 'امروز' : null}
+              active={dueToday}
+              onClear={() => setDueToday(false)}
+              sheetTitle="یادآور پیگیری"
+            >
+              <FilterOption selected={!dueToday} onSelect={() => setDueToday(false)} count={dimBase.due.length}>
+                همه
+              </FilterOption>
+              <FilterOption
+                selected={dueToday}
+                onSelect={() => setDueToday(true)}
+                count={dueTodayCount}
+              >
+                پیگیری‌های امروز
+              </FilterOption>
+            </FilterChip>
+          )}
 
           <FilterChip
             icon={MapPin}

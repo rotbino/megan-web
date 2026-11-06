@@ -207,22 +207,40 @@ export default function PanelBuyersPage() {
     );
   }
 
-  const tabButton = (key: PanelBuyersTab, icon: React.ReactNode, label: string, count: number) => (
+  const tabButton = (
+    key: PanelBuyersTab,
+    icon: React.ReactNode,
+    label: string,
+    /** برچسب کوتاه موبایل — سه تب در یک ردیف ۳۹۰px جا شوند (خواسته مالک:
+     *  تب‌ها همیشه کنار هم، نه روی هم و نه نیازمند اسکرول) */
+    shortLabel: string,
+    count: number,
+  ) => (
     <button
       type="button"
       role="tab"
       aria-selected={tab === key}
       onClick={() => setTab(key)}
       className={cn(
-        '-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-1 pb-2.5 pt-1 text-xs font-bold transition-colors sm:text-sm',
+        // سگمنت‌بار: دکمه‌های هم‌عرض دسکتاپ؛ موبایل سه تب کوتاه کنار هم
+        'flex flex-1 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2 py-2 text-[11px] font-bold transition-all sm:px-2 sm:text-xs',
+        // تب فعال = کارت روشنِ برآمده از زمینهٔ سگمنت — سایهٔ مشخص تا در موبایل
+        // هم چشم بدون تلاش سه تب را ببیند
         tab === key
-          ? 'border-primary text-primary'
-          : 'border-transparent text-muted-foreground hover:text-foreground',
+          ? 'bg-card text-primary shadow-[0_1px_4px_rgba(0,0,0,0.14)] font-extrabold'
+          : 'text-muted-foreground hover:bg-card/60 hover:text-foreground',
       )}
     >
       {icon}
-      {label}
-      <span className={cn('font-num text-[11px]', tab === key ? 'text-primary/70' : 'text-muted-foreground/70')}>
+      {/* دسکتاپ: عنوان کامل · موبایل: عنوان کوتاه — هر سه تب همیشه هم‌ردیف */}
+      <span className="hidden sm:inline">{label}</span>
+      <span className="sm:hidden">{shortLabel}</span>
+      <span
+        className={cn(
+          'rounded-full px-1.5 py-px font-num text-[10.5px] tabular-nums',
+          tab === key ? 'bg-primary/10 text-primary' : 'bg-foreground/[0.06] text-muted-foreground',
+        )}
+      >
         {count}
       </span>
     </button>
@@ -230,26 +248,35 @@ export default function PanelBuyersPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
-      {/* تب‌ها — عین صفحهٔ عمومی خریداران (خط زیرین)؛ همیشه یک ردیف، کنار هم
-          در موبایل و دسکتاپ (خواسته مالک ۶-۱۱ — باگ روی‌هم‌افتادگی فیکس شد) */}
+      {/* تب‌ویوی سگمنتی (خواسته مالک ۷-۱۱): زمینهٔ متفاوت از محتوا + دکمهٔ فعال
+          برآمده — دیگر «جزئی از محتوا» به نظر نمی‌رسد؛ سه تب همیشه یک ردیف کنار هم
+          در موبایل (برچسب کوتاه، بدون اسکرول) و دسکتاپ (هم‌عرض، عنوان کامل) */}
       <div
-        className="-mx-1 flex items-stretch gap-4 overflow-x-auto border-b border-border px-1 sm:gap-6"
+        className="flex items-stretch gap-1 rounded-lg border border-border bg-secondary/70 p-1"
         role="tablist"
         aria-label="بخش‌های خریداران"
       >
         {tabButton(
           'requests',
-          <ClipboardList size={15} className="shrink-0" />,
+          <ClipboardList size={14} className="shrink-0" />,
           'درخواست‌های خرید فوری',
+          'خرید فوری',
           reqQuery.isLoading && !reqQuery.data ? 0 : reqItems.length,
         )}
         {tabButton(
           'periodic',
-          <CalendarClock size={15} className="shrink-0" />,
+          <CalendarClock size={14} className="shrink-0" />,
           'درخواست‌های خرید دوره‌ای',
+          'خرید دوره‌ای',
           dirQuery.isLoading && !dirQuery.data ? 0 : dirTotal,
         )}
-        {tabButton('sent', <Send size={15} className="shrink-0" />, 'پیشنهادات ارسال شده', sentCount)}
+        {tabButton(
+          'sent',
+          <Send size={14} className="shrink-0" />,
+          'پیشنهادات ارسال شده',
+          'ارسال‌شده‌ها',
+          sentCount,
+        )}
       </div>
 
       {/* جستجو + فیلترها — مشترک دو تب خریداران؛ تب «ارسال شده» فیلتر خودش را دارد */}
