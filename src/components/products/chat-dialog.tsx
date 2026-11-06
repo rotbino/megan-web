@@ -38,6 +38,7 @@ export function ChatDialog({
   buttonVariant = 'outline',
   buttonSize = 'default',
   threadId,
+  directSubtitle = 'گفتگوی مستقیم با فروشنده',
 }: {
   productId?: number;
   sellerUserName?: string;
@@ -53,6 +54,8 @@ export function ChatDialog({
   buttonSize?: 'default' | 'sm' | 'icon';
   /** مکالمهٔ موجود — باز کردن مستقیم همان مکالمه (آمار آگهی) */
   threadId?: string;
+  /** زیرعنوان حالت بدون آگهی — مثلاً «گفتگوی مستقیم با خریدار» در CRM */
+  directSubtitle?: string;
 }) {
   const { data: presenceItems } = usePresenceStatus({
     ...(sellerId ? { ids: [sellerId] } : {}),
@@ -120,7 +123,7 @@ export function ChatDialog({
             <DialogDescription className="truncate text-start text-[11px] leading-5">
               {productId != null && productName
                 ? <>درباره «{productName}»</>
-                : <>گفتگوی مستقیم با فروشنده</>}
+                : <>{directSubtitle}</>}
             </DialogDescription>
           </div>
           <DialogClose asChild>

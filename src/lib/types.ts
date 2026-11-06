@@ -108,6 +108,8 @@ export interface BuyRequest {
   unit: string;
   /** ObjectId مگان — در باسکول عدد بود؛ فقط کلید/ارجاع فرانت */
   myuserId: string;
+  /** شناسهٔ عمومی خریدار — فقط در snapshot پیگیری‌ها (چت مستقیم از CRM) */
+  userName?: string | null;
   firstName: string;
   lastName: string;
   city: string;

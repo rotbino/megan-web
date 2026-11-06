@@ -185,6 +185,16 @@ export function useFollowFolderItems(folderId: string) {
   });
 }
 
+/** همهٔ موارد پیگیری از همهٔ پرونده‌ها — تک‌صفحهٔ CRM
+ *  (prefix مشترک ['follow-items'] → با هر تغییر باطل می‌شود) */
+export function useAllFollowItems() {
+  return useQuery({
+    queryKey: ['follow-items', 'all'],
+    queryFn: api.getAllFollowItems,
+    staleTime: 15_000,
+  });
+}
+
 /** نقشهٔ موارد ذخیره‌شدهٔ یک نوع — یک درخواست مشترک برای همهٔ دکمه‌های ذخیرهٔ صفحه
  *  (کوئری react-query با کلید مشترک؛ همهٔ کارت‌ها از همان کش می‌خوانند) */
 export function useFollowingMap(targetType: FollowTargetType, enabled = true) {

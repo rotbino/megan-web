@@ -911,6 +911,12 @@ export async function getFollowFolderItems(folderId: string): Promise<FollowItem
   }
 }
 
+/** همهٔ موارد پیگیری از همهٔ پرونده‌ها — تک‌صفحهٔ CRM
+ *  (جستجو و فیلتر پرونده/وضعیت/شهر سمت فرانت روی همین لیست) */
+export async function getAllFollowItems(): Promise<FollowItem[]> {
+  return apiFetch<FollowItem[]>('/follow/getAllItems', {});
+}
+
 /** ذخیره/به‌روزرسانی (گام ۲ جریان ذخیره) — اگر از قبل ذخیره باشد،
  *  به پروندهٔ انتخابی منتقل و وضعیتش به‌روز می‌شود؛ یادداشت فقط با متن جدید اضافه می‌شود */
 export async function upsertFollow(input: {
