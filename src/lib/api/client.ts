@@ -32,11 +32,13 @@ function isServer(): boolean {
   return typeof window === 'undefined';
 }
 
-/** آدرس پایه — کلاینت از پروکسی هم‌مبدأ، سرور مستقیم به بک */
+/** آدرس پایه — کلاینت از پروکسی هم‌مبدأ، سرور مستقیم به بک
+ *  (BACKEND_URL کلید اصلی؛ BACKEND_ORIGIN برای سازگاری با next.config.ts قدیمی) */
 export function apiBase(): string {
-  return isServer()
-    ? `${process.env.BACKEND_URL ?? 'http://127.0.0.1:4000'}/api/v1`
-    : '/api';
+  if (!isServer()) return '/api';
+  const backend =
+    process.env.BACKEND_URL ?? process.env.BACKEND_ORIGIN ?? 'http://127.0.0.1:4000';
+  return `${backend}/api/v1`;
 }
 
 // ─── توکن‌ها ──────────────────────────────────────────────────────────────────

@@ -1,25 +1,60 @@
 import type { NextConfig } from "next";
 
+/**
+ * ── آدرس بک‌اند — یک کلید برای همه ────────────────────────────────────────
+ * BACKEND_URL جایگزین اصلی است (هم برای rewrites این‌جا، هم برای fetchهای SSR
+ * در client.ts). BACKEND_ORIGIN برای سازگاری با .envهای قبلی پشتیبانی می‌شود.
+ * در پروفایل لوکال نیازی به تغییر نیست — پیش‌فرض 127.0.0.1:4000 همان است.
+ * برای استقرار ابری فقط همین یک متغیر را در .env عوض کنید.
+ */
+const BACKEND_URL =
+  process.env.BACKEND_URL ?? process.env.BACKEND_ORIGIN ?? "http://127.0.0.1:4000";
+
+/**
+ * ── تصاویر remote ────────────────────────────────────────────────────────────
+ * سه منبع:
+ *  1. ArvanCloud ما + CDN باسکول (دیتای seed و پروداکشن ابری)
+ *  2. بک‌اند لوکال (APP_PROFILE=local بک‌اند → تصاویر از
+ *     http://localhost:4000/uploads/... سرو می‌شوند) — پورت آزاد تا با تغییر
+ *     PORT بک‌اند هم کار کند
+ *  3. میزبان‌های اضافه از .env با کلید NEXT_IMAGE_HOSTS (با کاما جدا کنید؛
+ *     فقط hostname نوشته شود، مثل: img.example.com,cdn.example.net)
+ */
+/** تایپ رسمی الگوی تصویر remote نکست — protocol فقط «http» | «https» است */
+type RemotePattern = NonNullable<NonNullable<NextConfig["images"]>["remotePatterns"]>[number];
+
+function imageRemotePatterns(): RemotePattern[] {
+  const patterns: RemotePattern[] = [
+    { protocol: "https", hostname: "daymatfilles.s3.ir-thr-at1.arvanstorage.ir" },
+    { protocol: "https", hostname: "product-thumbnails.s3.ir-thr-at1.arvanstorage.ir" },
+    // بک‌اند لوکال — پروفایل local (پورت آزاد تا با تغییر PORT بک‌اند هم کار کند)
+    { protocol: "http", hostname: "localhost" },
+    { protocol: "http", hostname: "127.0.0.1" },
+  ];
+  const extra = (process.env.NEXT_IMAGE_HOSTS ?? "")
+    .split(",")
+    .map((h) => h.trim())
+    .filter(Boolean);
+  for (const hostname of extra) {
+    patterns.push({ hostname });
+  }
+  return patterns;
+}
+
 const nextConfig: NextConfig = {
   reactStrictMode: false,
   // ── پروکسی API — بدون CORS، هم‌مبدأ ─────────────────────────────────────
   // درخواست‌های /api/** فرانت به بک‌اند مگان (NestJS :4000/api/v1) می‌روند.
-  // در استقرار پروداکشن فقط BACKEND_ORIGIN در .env عوض می‌شود.
   async rewrites() {
-    const backend = process.env.BACKEND_ORIGIN ?? "http://127.0.0.1:4000";
     return [
       {
         source: "/api/:path*",
-        destination: `${backend}/api/v1/:path*`,
+        destination: `${BACKEND_URL}/api/v1/:path*`,
       },
     ];
   },
-  // ── تصاویر remote — ArvanCloud ما + CDN باسکول (دیتای seed) ──────────────
   images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "daymatfilles.s3.ir-thr-at1.arvanstorage.ir" },
-      { protocol: "https", hostname: "product-thumbnails.s3.ir-thr-at1.arvanstorage.ir" },
-    ],
+    remotePatterns: imageRemotePatterns(),
   },
 };
 
