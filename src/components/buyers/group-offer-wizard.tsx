@@ -7,27 +7,25 @@
  *    جستجوی سریع + سه ستون آبشاری دسکتاپ / پیمایش سطح‌به‌سطح موبایل.
  *    هر نیاز ثبت‌شده به یک دستهٔ آخر وصل است؛ پیشنهاد هم دقیقاً برای همان
  *    دسته می‌رود.
- *  • گام ۲ — انتخاب خریدارانِ همان دسته + محاسبهٔ هزینهٔ زنده: هر گیرنده ×
- *    قیمت واحد از کیف پول؛ سقف هر دسته، سقف روزانه و موجودی لحظه‌ای نمایش
- *    می‌شود. انتخاب‌ها بین صفحه‌ها حفظ می‌شوند.
- *  • گام ۳ — فرم پیشنهاد (همان فرم مشترک تکی) با جمع هزینهٔ نهایی روی
- *    دکمهٔ ارسال — کاربر قبل از ارسال دقیقاً می‌داند چه هزینه‌ای می‌پردازد.
+ *  • گام ۲ — انتخاب خریدارانِ همان دسته. خواسته مالک ۶-۱۱: قیمتِ
+ *    ازپیش‌محاسبه و سقف/سهمیه حذف شد — مبلغ همان لحظهٔ ارسال از کیف پول
+ *    کسر و در پیام موفقیت اعلام می‌شود؛ انتخاب‌ها بین صفحه‌ها حفظ می‌شوند.
+ *  • گام ۳ — فرم پیشنهاد (همان فرم مشترک تکی).
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Check, CheckCheck, ChevronLeft, ChevronRight, Send, Users, Wallet, X } from 'lucide-react';
+import { Check, CheckCheck, ChevronLeft, ChevronRight, Send, Users, X } from 'lucide-react';
 import { useBuyerDirectory } from '@/lib/mock/hooks';
 import { Button } from '@/components/ui/button';
 import { CategoryCascade } from '@/components/panel/product-form/category-cascade';
 import { SupplyOfferForm } from '@/components/buyers/supply-offer-modal';
-import { priceFa, toFa } from '@/lib/format';
+import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import {
   PERIOD_LABELS,
   type BuyerDirectoryItem,
   type Category,
-  type OfferQuota,
   type Product,
 } from '@/lib/types';
 
@@ -38,14 +36,12 @@ export function GroupOfferWizard({
   open,
   onClose,
   onSent,
-  quota,
   products,
   category,
 }: {
   open: boolean;
   onClose: () => void;
   onSent?: (buyerIds: string[]) => void;
-  quota: OfferQuota | null;
   /** آگهی‌های خود فروشنده — برای نمونهٔ پارامتریک */
   products?: Product[];
   /** دستهٔ ازپیش‌معلوم (صفحهٔ «خریداران این کالا» — خواسته مالک ۴-۱۱):
@@ -176,12 +172,7 @@ export function GroupOfferWizard({
             </div>
           )}
           {step === 2 && leaf && (
-            <StepPickBuyers
-              leaf={leaf}
-              quota={quota}
-              picked={picked}
-              onPick={setPicked}
-            />
+            <StepPickBuyers leaf={leaf} picked={picked} onPick={setPicked} />
           )}
           {step === 3 && leaf && (
             <div>
@@ -191,7 +182,6 @@ export function GroupOfferWizard({
               </p>
               <SupplyOfferForm
                 targets={[...picked.values()]}
-                quota={quota}
                 products={products}
                 category={leaf}
                 onSent={onSent}
@@ -286,15 +276,14 @@ function StepCategory({
   );
 }
 
-/** گام ۲ — خریداران همان دسته + محاسبهٔ هزینه */
+/** گام ۲ — خریداران همان دسته؛ مبلغ و سقف حذف شد (خواسته مالک ۶-۱۱:
+ *  هزینه لحظهٔ ارسال حساب می‌شود — نمایش ازپیش‌محاسبه لازم نیست) */
 function StepPickBuyers({
   leaf,
-  quota,
   picked,
   onPick,
 }: {
   leaf: Category;
-  quota: OfferQuota | null;
   picked: Map<string, BuyerDirectoryItem>;
   onPick: (m: Map<string, BuyerDirectoryItem>) => void;
 }) {
@@ -302,12 +291,6 @@ function StepPickBuyers({
   const dir = useBuyerDirectory({ categoryId: leaf.id, page, perPage: 48 });
   const items = dir.data?.items ?? [];
   const total = dir.data?.total ?? 0;
-
-  const perRecipient = quota?.groupSend.perRecipientPrice ?? 0;
-  const maxBatch = quota?.groupSend.maxBatch ?? 0;
-  const fee = picked.size * perRecipient;
-  const balance = quota?.walletBalance ?? 0;
-  const overBatch = maxBatch > 0 && picked.size > maxBatch;
 
   const toggle = (b: BuyerDirectoryItem) => {
     const next = new Map(picked);
@@ -333,7 +316,7 @@ function StepPickBuyers({
 
   return (
     <div>
-      {/* خلاصهٔ دسته + هزینهٔ زنده */}
+      {/* خلاصهٔ دسته */}
       <div className="mb-3 rounded-lg border border-dashed bg-secondary/40 px-3 py-2.5 text-[11px] leading-5">
         <p>
           خریداران <b>{leaf.categoryName}</b> —{' '}
@@ -342,28 +325,6 @@ function StepPickBuyers({
             <span className="text-muted-foreground"> (صفحهٔ {toFa(page)})</span>
           )}
         </p>
-        <p className="mt-1">
-          هر گیرنده <b>{priceFa(perRecipient)}</b> از کیف پول — انتخاب فعلی:{' '}
-          <b className="text-primary">{toFa(picked.size)}</b> خریدار ={' '}
-          <b className="text-primary">{priceFa(fee)}</b>
-          {maxBatch > 0 && (
-            <span className="text-muted-foreground"> (حداکثر {toFa(maxBatch)} گیرنده در هر ارسال)</span>
-          )}
-        </p>
-        {overBatch ? (
-          <p className="mt-1 font-bold text-red-600">
-            سقف هر ارسال گروهی {toFa(maxBatch)} گیرنده است — انتخاب را کم کنید.
-          </p>
-        ) : fee > balance ? (
-          <p className="mt-1 font-bold text-red-600">
-            موجودی کیف پول ({priceFa(balance)}) برای این تعداد کافی نیست — می‌توانید
-            تعداد را کم کنید یا از پنل، کیف پول را شارژ کنید.
-          </p>
-        ) : (
-          <p className="mt-1 flex items-center gap-1 text-muted-foreground">
-            <Wallet size={12} /> موجودی کیف پول: {priceFa(balance)}
-          </p>
-        )}
       </div>
 
       {/* انتخاب همهٔ همین صفحه */}
@@ -435,9 +396,6 @@ function StepPickBuyers({
                       {[b.province, b.city].filter(Boolean).join(' - ') || 'موقعیت نامشخص'}
                     </span>
                   </span>
-                  <span className="shrink-0 text-[10px] font-bold text-muted-foreground">
-                    {priceFa(perRecipient)}
-                  </span>
                 </button>
               </li>
             );
@@ -473,7 +431,7 @@ function StepPickBuyers({
       {picked.size > 0 && (
         <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] font-bold text-primary">
           <Send size={12} />
-          {toFa(picked.size)} خریدار انتخاب شد — هزینهٔ {priceFa(fee)} از کیف پول
+          {toFa(picked.size)} خریدار انتخاب شد
         </p>
       )}
     </div>

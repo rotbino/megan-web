@@ -1,13 +1,14 @@
 'use client';
 
 /**
- * تنظیمات کیف شارژ و مصرف شارژ (خواسته مالک ۳۱-۱۰) — همهٔ هزینه‌ها/درصدها/
- * سقف‌های سایت از همین صفحه تعیین می‌شود؛ هیچ عددی در کد hardcode نیست:
+ * تنظیمات کیف شارژ و مصرف شارژ (خواسته مالک ۳۱-۱۰) — همهٔ هزینه‌ها/درصدها
+ * از همین صفحه تعیین می‌شود؛ هیچ عددی در کد hardcode نیست:
  *  • پکیج‌های شارژ کیف پول (مبلغ + درصد اضافه) — افزودن/حذف آزاد
  *  • شارژ دلخواه (سقف + پله‌های درصد) — حداقل خودکار = گران‌ترین پکیج
  *  • نردبان (قیمت ماه + حداکثر ماه)
- *  • پیشنهاد تامین (سقف روزانه به تفکیک سطح بسته)
- *  • ارسال گروهی (هزینه هر گیرنده + سقف روزانه/هر ارسال)
+ *  • ارسال گروهی (هزینه هر گیرنده) — خواسته مالک ۶-۱۱: سهمیه/سقف‌های
+ *    روزانهٔ پیشنهاد تامین حذف شدند؛ چون فروشنده به‌ازای هر گیرنده پول
+ *    می‌دهد، محدودیت معنا ندارد و خودِ کیف پول کنترل مصرف است.
  */
 
 import { useState } from 'react';
@@ -30,11 +31,6 @@ interface TierRow {
   aboveAmount: string;
   percent: string;
 }
-interface LimitRow {
-  pakageType: string;
-  label: string;
-  limit: string;
-}
 
 /** فرم محلی — همهٔ اعداد به‌صورت رشته برای ویرایش راحت */
 interface FormState {
@@ -43,10 +39,7 @@ interface FormState {
   tiers: TierRow[];
   ladderPrice: string;
   ladderMax: string;
-  limits: LimitRow[];
   groupPrice: string;
-  groupDay: string;
-  groupBatch: string;
 }
 
 const n = (s: string): number => Math.round(Number(s.replace(/[^\d]/g, '')) || 0);
@@ -65,14 +58,7 @@ function toForm(c: BillingConfig): FormState {
     })),
     ladderPrice: String(c.ladder.monthlyPrice),
     ladderMax: String(c.ladder.maxMonths),
-    limits: c.supplyOffer.dailyLimits.map((l) => ({
-      pakageType: String(l.pakageType),
-      label: l.label,
-      limit: String(l.limit),
-    })),
     groupPrice: String(c.groupSend.perRecipientPrice),
-    groupDay: String(c.groupSend.maxPerDay),
-    groupBatch: String(c.groupSend.maxBatch),
   };
 }
 
@@ -131,17 +117,8 @@ export default function AdminBillingPage() {
         .sort((a, b) => a.aboveAmount - b.aboveAmount),
     },
     ladder: { monthlyPrice: n(form.ladderPrice), maxMonths: Math.max(1, n(form.ladderMax)) },
-    supplyOffer: {
-      dailyLimits: form.limits.map((l) => ({
-        pakageType: Math.max(1, n(l.pakageType)),
-        label: l.label.trim() || `سطح ${n(l.pakageType)}`,
-        limit: n(l.limit),
-      })),
-    },
     groupSend: {
       perRecipientPrice: n(form.groupPrice),
-      maxPerDay: Math.max(1, n(form.groupDay)),
-      maxBatch: Math.max(1, n(form.groupBatch)),
     },
   });
 
@@ -158,7 +135,7 @@ export default function AdminBillingPage() {
       return 'اولین پلهٔ شارژ دلخواه باید از مبلغ ۰ شروع شود.';
     }
     if (n(form.ladderPrice) < 1000) return 'قیمت ماهانهٔ نردبان نامعتبر است.';
-    if (form.limits.length === 0) return 'حداقل یک سطح بسته برای سقف پیشنهاد تامین لازم است.';
+    if (n(form.groupPrice) < 100) return 'هزینهٔ هر گیرندهٔ ارسال گروهی نامعتبر است.';
     return null;
   };
 
@@ -370,82 +347,11 @@ export default function AdminBillingPage() {
         </div>
       </section>
 
-      {/* پیشنهاد تامین */}
+      {/* ارسال گروهی — خواسته مالک ۶-۱۱: فقط هزینه هر گیرنده؛ سقف‌ها حذف شدند */}
       <section className="rounded-xl border bg-card p-4">
         <h2 className="flex items-center gap-2 text-sm font-extrabold">
-          <Users size={16} className="text-emerald-600" /> پیشنهاد تامین — سقف روزانهٔ هر سطح بسته
+          <Users size={16} className="text-emerald-600" /> ارسال گروهی پیشنهاد تامین
         </h2>
-        <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
-          فروشندهٔ دارندهٔ بسته، روزانه تا این تعداد خریدارِ متمایز پیشنهاد رایگان می‌فرستد (تکرار به یک خریدار سهمیه
-          نمی‌گیرد).
-        </p>
-        <ul className="mt-3 space-y-2">
-          {form.limits.map((l, i) => (
-            <li key={i} className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] text-muted-foreground">سطح</span>
-              <Input
-                dir="ltr"
-                inputMode="numeric"
-                value={toFa(l.pakageType)}
-                onChange={(e) =>
-                  patch({
-                    limits: form.limits.map((r, idx) =>
-                      idx === i ? { ...r, pakageType: e.target.value.replace(/[^\d]/g, '').slice(0, 1) } : r,
-                    ),
-                  })
-                }
-                className="h-9 w-14 rounded-md text-center text-xs font-num"
-                aria-label="سطح بسته"
-              />
-              <Input
-                value={l.label}
-                onChange={(e) =>
-                  patch({ limits: form.limits.map((r, idx) => (idx === i ? { ...r, label: e.target.value } : r)) })
-                }
-                placeholder="عنوان (شش ماهه)"
-                className="h-9 w-32 rounded-md text-center text-xs"
-                aria-label="عنوان سطح"
-              />
-              <Input
-                dir="ltr"
-                inputMode="numeric"
-                value={l.limit ? toFa(l.limit) : ''}
-                onChange={(e) =>
-                  patch({
-                    limits: form.limits.map((r, idx) =>
-                      idx === i ? { ...r, limit: e.target.value.replace(/[^\d]/g, '').slice(0, 4) } : r,
-                    ),
-                  })
-                }
-                placeholder="سقف"
-                className="h-9 w-20 rounded-md text-center text-xs font-num"
-                aria-label="سقف روزانه"
-              />
-              <span className="text-[11px] text-muted-foreground">خریدار در شبانه‌روز</span>
-              <button
-                type="button"
-                onClick={() => patch({ limits: form.limits.filter((_, idx) => idx !== i) })}
-                className="ms-auto grid size-8 place-items-center rounded-md text-red-500 hover:bg-red-50"
-                aria-label="حذف سطح"
-              >
-                <Trash2 size={14} />
-              </button>
-            </li>
-          ))}
-        </ul>
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-2 rounded-md"
-          onClick={() => patch({ limits: [...form.limits, { pakageType: '', label: '', limit: '' }] })}
-        >
-          <Plus size={14} /> افزودن سطح
-        </Button>
-      </section>
-
-      {/* ارسال گروهی */}
-      <section className="rounded-xl border bg-card p-4">
-        <h2 className="text-sm font-extrabold">ارسال گروهی پیشنهاد تامین</h2>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Label className="text-[11px]">هزینه هر گیرنده (تومان):</Label>
           <Input
@@ -456,27 +362,10 @@ export default function AdminBillingPage() {
             className="h-9 w-32 rounded-md text-center text-xs font-num"
             aria-label="هزینه هر گیرنده"
           />
-          <Label className="ms-3 text-[11px]">سقف روزانه:</Label>
-          <Input
-            dir="ltr"
-            inputMode="numeric"
-            value={form.groupDay ? toFa(form.groupDay) : ''}
-            onChange={(e) => patch({ groupDay: e.target.value.replace(/[^\d]/g, '').slice(0, 5) })}
-            className="h-9 w-24 rounded-md text-center text-xs font-num"
-            aria-label="سقف روزانه گروهی"
-          />
-          <Label className="ms-3 text-[11px]">سقف هر ارسال:</Label>
-          <Input
-            dir="ltr"
-            inputMode="numeric"
-            value={form.groupBatch ? toFa(form.groupBatch) : ''}
-            onChange={(e) => patch({ groupBatch: e.target.value.replace(/[^\d]/g, '').slice(0, 3) })}
-            className="h-9 w-20 rounded-md text-center text-xs font-num"
-            aria-label="سقف هر ارسال"
-          />
         </div>
         <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
-          هزینهٔ ارسال گروهی لحظهٔ ارسال به‌صورت اتمیک از کیف پول فروشنده کسر می‌شود و در تراکنش‌های او ثبت می‌شود.
+          هزینهٔ ارسال گروهی لحظهٔ ارسال به‌صورت اتمیک از کیف پول فروشنده کسر می‌شود و در تراکنش‌های او ثبت می‌شود؛
+          چون ارسال پولی است، سقف روزانه‌ای وجود ندارد.
         </p>
       </section>
 

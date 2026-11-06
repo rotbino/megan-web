@@ -1,15 +1,19 @@
 'use client';
 
 /**
- * خریداران پنل (بازطراحی مالک ۴-۱۱) — عین صفحهٔ عمومی خریداران (/buyers)
- * با دو تب «درخواست‌های خرید فوری» و «درخواست‌های خرید دوره‌ای»، با این
- * تفاوت که اینجا نتایج بر اساس امتیاز تطابق با آگهی‌های خودِ فروشنده
- * سورت می‌شوند — سیستم با تطابق گروه‌های محصولی و نوع محصول فروشنده با
- * گروه کالاهای دفتر خرید/درخواست‌های خریداران، مطابق‌ترین‌ها را بالاتر
- * می‌آورد (بج «دقت تطابق» روی کارت‌ها).
+ * خریداران پنل (بازطراحی مالک ۴-۱۱؛ ۶-۱۱) — عین صفحهٔ عمومی خریداران (/buyers)
+ * با سه تب «درخواست‌های خرید فوری»، «درخواست‌های خرید دوره‌ای» و «پیشنهادات
+ * ارسال شده»، با این تفاوت که اینجا نتایج بر اساس امتیاز تطابق با آگهی‌های
+ * خودِ فروشنده سورت می‌شوند — سیستم با تطابق گروه‌های محصولی و نوع محصول
+ * فروشنده با گروه کالاهای دفتر خرید/درخواست‌های خریداران، مطابق‌ترین‌ها را
+ * بالاتر می‌آورد (بج «دقت تطابق» روی کارت‌ها).
  *  • فوری: کارت خریدار با تماس/چت/نشان (عین پنل قبلی)
  *  • دوره‌ای: کارت دفتر خرید با «ارسال پیشنهاد تامین» + ویزار گروهی
+ *  • ارسال‌شده (خواسته مالک ۶-۱۱): همان لیست پیشنهادات ارسالی — جای منوی
+ *    جدا؛ تب‌ها همیشه در یک ردیف کنار هم (موبایل و دسکتاپ)
  *  • جستجو و فیلتر دسته‌های محصول + استان/شهر همچنان در دسترس است
+ *  • فرم مینیمال (خواسته مالک ۶-۱۱): بدون جملهٔ سورت/سهمیه — سهمیه و
+ *    محدودیت روزانه حذف شد؛ هزینه گروهی فقط لحظهٔ ارسال از کیف پول کسر می‌شود
  *  • گیت بسته (خواسته مالک): بستهٔ رایگان خریداران را نمی‌بیند
  */
 
@@ -23,6 +27,7 @@ import {
   Crown,
   Lock,
   Search,
+  Send,
   SlidersHorizontal,
   Users,
 } from 'lucide-react';
@@ -34,6 +39,7 @@ import {
   useMyOfferQuota,
   useMyPackage,
   useMyProducts,
+  useMySentOffers,
   useProvinces,
 } from '@/lib/mock/hooks';
 import { Input } from '@/components/ui/input';
@@ -45,15 +51,15 @@ import { BuyerCard } from '@/components/panel/buyer-card';
 import { BookEntryCard } from '@/components/buyers/book-entry-card';
 import { SupplyOfferModal } from '@/components/buyers/supply-offer-modal';
 import { GroupOfferWizard } from '@/components/buyers/group-offer-wizard';
+import { SentOffersList } from '@/components/panel/sent-offers-list';
 import { NeedPackageModal } from '@/components/shared/need-package-modal';
 import { matchForBuyRequest, matchForDirectoryItem, sortByMatch } from '@/lib/buyer-match';
 import { findCategoryPathById } from '@/lib/categories';
 import { toFa } from '@/lib/format';
-import { priceFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { BuyerDirectoryItem, Category, PurchasePeriod } from '@/lib/types';
+import type { BuyerDirectoryItem, Category } from '@/lib/types';
 
-type PanelBuyersTab = 'requests' | 'periodic';
+type PanelBuyersTab = 'requests' | 'periodic' | 'sent';
 const REQ_BATCH = 10;
 
 export default function PanelBuyersPage() {
@@ -81,12 +87,12 @@ export default function PanelBuyersPage() {
 
   const { data: cities = [] } = useCities(provinceId ?? undefined);
 
-  // آگهی‌های خودم + سهمیه — پایهٔ امتیاز تطابق و پیشنهاد تامین
+  // آگهی‌های خودم + گیت بسته — پایهٔ امتیاز تطابق و پیشنهاد تامین
+  // (خواسته مالک ۶-۱۱: سهمیه/سقف روزانه حذف شد — فقط isFeatured می‌ماند)
   const { data: myProducts } = useMyProducts();
   const products = myProducts?.items;
   const quotaQuery = useMyOfferQuota();
-  const quota = quotaQuery.data ?? null;
-  const isFeatured = quota?.isFeatured ?? false;
+  const isFeatured = quotaQuery.data?.isFeatured ?? false;
 
   // ── تب فوری: درخواست‌های خرید (سرویس باسکول) — سورت تطابق سمت کلاینت ──
   const reqQuery = useBuyRequests({
@@ -116,6 +122,11 @@ export default function PanelBuyersPage() {
   }, [dirQuery.data, tree, products]);
   const dirTotal = dirQuery.data?.total ?? 0;
   const dirPageCount = Math.max(1, Math.ceil(dirTotal / 24));
+
+  // ── تب سوم (خواسته مالک ۶-۱۱): پیشنهادهای ارسالی — فقط شمارِ بج؛ لیست
+  //    خودش داخل تب با فیلتر خودش لود می‌شود ──
+  const sentQuery = useMySentOffers({ perPage: 1 });
+  const sentCount = sentQuery.data?.total ?? 0;
 
   /** دروازهٔ پیشنهاد تامین — فروشندهٔ واردشده؛ بدون بسته → مودال خرید اشتراک */
   const passOfferGates = (): boolean => {
@@ -203,7 +214,7 @@ export default function PanelBuyersPage() {
       aria-selected={tab === key}
       onClick={() => setTab(key)}
       className={cn(
-        '-mb-px flex items-center gap-1.5 border-b-2 px-1 pb-2.5 pt-1 text-sm font-bold transition-colors',
+        '-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-1 pb-2.5 pt-1 text-xs font-bold transition-colors sm:text-sm',
         tab === key
           ? 'border-primary text-primary'
           : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -219,8 +230,13 @@ export default function PanelBuyersPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
-      {/* تب‌ها — عین صفحهٔ عمومی خریداران (خط زیرین) */}
-      <div className="border-b border-border" role="tablist" aria-label="بخش‌های خریداران">
+      {/* تب‌ها — عین صفحهٔ عمومی خریداران (خط زیرین)؛ همیشه یک ردیف، کنار هم
+          در موبایل و دسکتاپ (خواسته مالک ۶-۱۱ — باگ روی‌هم‌افتادگی فیکس شد) */}
+      <div
+        className="-mx-1 flex items-stretch gap-4 overflow-x-auto border-b border-border px-1 sm:gap-6"
+        role="tablist"
+        aria-label="بخش‌های خریداران"
+      >
         {tabButton(
           'requests',
           <ClipboardList size={15} className="shrink-0" />,
@@ -233,99 +249,88 @@ export default function PanelBuyersPage() {
           'درخواست‌های خرید دوره‌ای',
           dirQuery.isLoading && !dirQuery.data ? 0 : dirTotal,
         )}
+        {tabButton('sent', <Send size={15} className="shrink-0" />, 'پیشنهادات ارسال شده', sentCount)}
       </div>
 
-      {/* جستجو + فیلترها — مشترک هر دو تب */}
-      <PanelCard>
-        <div className="grid gap-2 sm:grid-cols-[1fr_190px_170px_150px]">
-          <div className="relative">
-            <Search size={16} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
+      {/* جستجو + فیلترها — مشترک دو تب خریداران؛ تب «ارسال شده» فیلتر خودش را دارد */}
+      {tab !== 'sent' && (
+        <PanelCard>
+          <div className="grid gap-2 sm:grid-cols-[1fr_190px_170px_150px]">
+            <div className="relative">
+              <Search size={16} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={q}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  resetPaging();
+                }}
+                placeholder="جستجو در خریداران (محصول، نوع کالا…)"
+                className="rounded-md pe-9"
+              />
+            </div>
+            <Select
+              value={rootCat}
+              onValueChange={(v) => {
+                setRootCat(v);
                 resetPaging();
               }}
-              placeholder="جستجو در خریداران (محصول، نوع کالا…)"
-              className="rounded-md pe-9"
-            />
+            >
+              <SelectTrigger className="w-full rounded-md" aria-label="گروه محصولات">
+                <SlidersHorizontal size={14} className="text-muted-foreground" />
+                <SelectValue placeholder="همه گروه ها" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه گروه ها</SelectItem>
+                {roots.map((r) => (
+                  <SelectItem key={r.id} value={String(r.id)}>
+                    {r.categoryName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={provinceId ? String(provinceId) : 'all'}
+              onValueChange={(v) => {
+                setProvinceId(v === 'all' ? null : Number(v));
+                setCityId(null);
+                resetPaging();
+              }}
+            >
+              <SelectTrigger className="w-full rounded-md" aria-label="استان">
+                <SelectValue placeholder="همه استان‌ها" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه استان‌ها</SelectItem>
+                {provinces.map((p) => (
+                  <SelectItem key={p.id} value={String(p.id)}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={cityId ? String(cityId) : 'all'}
+              onValueChange={(v) => {
+                setCityId(v === 'all' ? null : Number(v));
+                resetPaging();
+              }}
+              disabled={!provinceId || tab !== 'periodic'}
+            >
+              <SelectTrigger className="w-full rounded-md" aria-label="شهر">
+                <SelectValue placeholder={tab === 'periodic' && provinceId ? 'همه شهرها' : 'شهر (دوره‌ای)'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه شهرها</SelectItem>
+                {cities.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Select
-            value={rootCat}
-            onValueChange={(v) => {
-              setRootCat(v);
-              resetPaging();
-            }}
-          >
-            <SelectTrigger className="w-full rounded-md" aria-label="گروه محصولات">
-              <SlidersHorizontal size={14} className="text-muted-foreground" />
-              <SelectValue placeholder="همه گروه ها" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">همه گروه ها</SelectItem>
-              {roots.map((r) => (
-                <SelectItem key={r.id} value={String(r.id)}>
-                  {r.categoryName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={provinceId ? String(provinceId) : 'all'}
-            onValueChange={(v) => {
-              setProvinceId(v === 'all' ? null : Number(v));
-              setCityId(null);
-              resetPaging();
-            }}
-          >
-            <SelectTrigger className="w-full rounded-md" aria-label="استان">
-              <SelectValue placeholder="همه استان‌ها" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">همه استان‌ها</SelectItem>
-              {provinces.map((p) => (
-                <SelectItem key={p.id} value={String(p.id)}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={cityId ? String(cityId) : 'all'}
-            onValueChange={(v) => {
-              setCityId(v === 'all' ? null : Number(v));
-              resetPaging();
-            }}
-            disabled={!provinceId || tab !== 'periodic'}
-          >
-            <SelectTrigger className="w-full rounded-md" aria-label="شهر">
-              <SelectValue placeholder={tab === 'periodic' && provinceId ? 'همه شهرها' : 'شهر (دوره‌ای)'} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">همه شهرها</SelectItem>
-              {cities.map((c) => (
-                <SelectItem key={c.id} value={String(c.id)}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* توضیح سورت تطابق + سهمیهٔ پیشنهاد */}
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] leading-5 text-muted-foreground">
-          <span>
-            مطابق‌ترین خریداران با آگهی‌های شما ({toFa(products?.filter((p) => p.status === 'confirmed' || p.status === 'pending').length ?? 0)} آگهی فعال) بالاتر
-            نمایش داده می‌شوند.
-          </span>
-          {quota && (
-            <span className="font-num">
-              سهمیهٔ پیشنهاد امروز: <b>{toFa(quota.left)}</b> از <b>{toFa(quota.dailyLimit)}</b> · ارسال گروهی{' '}
-              {priceFa(quota.groupSend.perRecipientPrice)} به‌ازای هر خریدار
-            </span>
-          )}
-        </div>
-      </PanelCard>
+        </PanelCard>
+      )}
 
       {/* ── تب فوری: کارت خریدار با تماس/چت/نشان ── */}
       {tab === 'requests' && (
@@ -438,19 +443,22 @@ export default function PanelBuyersPage() {
         </div>
       )}
 
+      {/* ── تب سوم (خواسته مالک ۶-۱۱): پیشنهادهای ارسالی — همان لیست قبلی،
+          حالا کنار خریداران؛ دکمهٔ حالت خالی به تب دوره‌ای برمی‌گردد ── */}
+      {tab === 'sent' && <SentOffersList onGoBuyers={() => setTab('periodic')} />}
+
       {/* مودال پیشنهاد تکی — عنوان با نام دستهٔ کالا */}
       <SupplyOfferModal
         key={offerTarget?.id ?? 'closed'}
         open={offerTarget !== null}
         onClose={() => setOfferTarget(null)}
         targets={offerTarget ? [offerTarget] : []}
-        quota={quota}
         products={products}
         category={targetCategory(offerTarget)}
       />
 
-      {/* ویزار پیشنهاد گروهی — دستهٔ آخر → خریداران همان دسته + هزینه → فرم */}
-      <GroupOfferWizard open={wizardOpen} onClose={() => setWizardOpen(false)} quota={quota} products={products} />
+      {/* ویزار پیشنهاد گروهی — دستهٔ آخر → خریداران همان دسته → فرم */}
+      <GroupOfferWizard open={wizardOpen} onClose={() => setWizardOpen(false)} products={products} />
 
       {/* بدون بستهٔ فعال → مودال خرید اشتراک (الگوی همیشگی) */}
       <NeedPackageModal

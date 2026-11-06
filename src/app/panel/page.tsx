@@ -25,7 +25,6 @@ import {
   Medal,
   MessageSquare,
   Package,
-  Send,
   ShieldCheck,
   Sparkles,
   Users,
@@ -182,8 +181,8 @@ export default function PanelDashboard() {
         { href: '/panel/products', label: 'محصولات من', icon: Package },
         { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare },
         { href: '/panel/buyers', label: 'خریداران', icon: Users },
-        // جای «خریداران پیشنهادی» (خواسته مالک ۴-۱۱) — تطبیق حالا داخل «خریداران» است
-        { href: '/panel/supply-offers', label: 'پیشنهادات تامین', icon: Send },
+        // «پیشنهادات تامین» حذف شد (خواسته مالک ۶-۱۱) — تب سوم «پیشنهادات
+        // ارسال شده» همان صفحهٔ خریداران است
         { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
         ...(!active ? [{ href: '/panel/pricing', label: 'ارتقا عضویت', icon: Medal }] : []),
         { href: '/panel/saved', label: 'پیگیری ها', icon: Bookmark },

@@ -59,9 +59,9 @@ export default function ProductBuyersPage() {
   const { data: tree } = useCategoryTree();
   const { data: myProducts } = useMyProducts();
   const products = myProducts?.items;
+  // گیت بستهٔ فعال (خواسته مالک ۶-۱۱: سهمیه حذف شد — فقط isFeatured می‌ماند)
   const quotaQuery = useMyOfferQuota();
-  const quota = quotaQuery.data ?? null;
-  const isFeatured = quota?.isFeatured ?? false;
+  const isFeatured = quotaQuery.data?.isFeatured ?? false;
   // گیت بسته — مثل پنل خریداران (خواسته مالک)
   const { data: myPackage, isLoading: pkgLoading } = useMyPackage();
 
@@ -383,7 +383,6 @@ export default function ProductBuyersPage() {
         open={offerTarget !== null}
         onClose={() => setOfferTarget(null)}
         targets={offerTarget ? [offerTarget] : []}
-        quota={quota}
         products={products}
         category={targetCategory(offerTarget) ?? leafCategory}
       />
@@ -393,7 +392,6 @@ export default function ProductBuyersPage() {
         <GroupOfferWizard
           open={wizardOpen}
           onClose={() => setWizardOpen(false)}
-          quota={quota}
           products={products}
           category={leafCategory}
         />

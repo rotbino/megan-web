@@ -135,10 +135,10 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
   const reqItems = reqData.data?.items ?? [];
   const reqPageCount = Math.max(1, reqData.data?.pageCount ?? 1);
 
-  // سهمیه — فقط برای کاربر واردشده (دارندهٔ بسته معنا دارد)
+  // گیت بستهٔ فعال — فقط برای کاربر واردشده (خواسته مالک ۶-۱۱: سهمیه/قیمت
+  // نمایشی حذف شد؛ این کوئری فقط «بستهٔ فعال؟» را می‌گوید)
   const quotaQuery = useMyOfferQuota(Boolean(user));
-  const quota = quotaQuery.data ?? null;
-  const isFeatured = quota?.isFeatured ?? false;
+  const isFeatured = quotaQuery.data?.isFeatured ?? false;
 
   // آگهی‌های خود فروشنده — برای پیش‌نویس دقیق متن پیشنهاد (کالا/واحد/قیمت واقعی)
   const { data: myProducts } = useMyProducts(Boolean(user));
@@ -179,7 +179,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
       setAuthOpen(true);
       return false;
     }
-    // اگر سهمیه هنوز در حال بارگذاری است صبر می‌کنیم تا قضاوت اشتباه نشود.
+    // اگر وضعیت بسته هنوز در حال بارگذاری است صبر می‌کنیم تا قضاوت اشتباه نشود.
     if (quotaQuery.isPending) {
       toast({ description: 'در حال بررسی وضعیت بستهٔ شما…' });
       return false;
@@ -315,27 +315,17 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
           />
         </div>
 
-        {/* نوار سهمیهٔ فروشندهٔ ویژه */}
-        {user && quota && (
+        {/* فروشندهٔ بدون بستهٔ فعال → همان باکس آپ‌سل همیشگی (خواسته مالک
+            ۶-۱۱: اعداد سهمیه/قیمت حذف شد — ارسال پولی است و هزینه لحظهٔ
+            ارسال از کیف پول حساب می‌شود) */}
+        {user && !isFeatured && (
           <div className="rounded-md border bg-secondary/60 p-3 text-[11px] leading-5">
-            {isFeatured ? (
-              <>
-                <p>
-                  سهمیهٔ پیشنهاد تامین امروز: <b>{toFa(quota.left)}</b> از <b>{toFa(quota.dailyLimit)}</b>
-                </p>
-                <p className="mt-1 text-muted-foreground">
-                  ارسال گروهی: {toFa(quota.groupSend.perRecipientPrice.toLocaleString('fa-IR'))} تومان
-                  به‌ازای هر خریدار
-                </p>
-              </>
-            ) : (
-              <p className="text-muted-foreground">
-                ارسال پیشنهاد تامین به خریداران، ویژهٔ دارندگان بستهٔ اشتراک است —{' '}
-                <Link href="/panel/pricing" className="font-bold text-primary underline">
-                  مشاهدهٔ بسته‌ها
-                </Link>
-              </p>
-            )}
+            <p className="text-muted-foreground">
+              ارسال پیشنهاد تامین به خریداران، ویژهٔ دارندگان بستهٔ اشتراک است —{' '}
+              <Link href="/panel/pricing" className="font-bold text-primary underline">
+                مشاهدهٔ بسته‌ها
+              </Link>
+            </p>
           </div>
         )}
       </aside>
@@ -766,16 +756,14 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
         open={offerTarget !== null}
         onClose={() => setOfferTarget(null)}
         targets={offerTarget ? [offerTarget] : []}
-        quota={quota}
         products={myProducts?.items}
         category={targetCategory(offerTarget)}
       />
 
-      {/* ویزار پیشنهاد گروهی — دستهٔ آخر → خریداران همان دسته + هزینه → فرم */}
+      {/* ویزار پیشنهاد گروهی — دستهٔ آخر → خریداران همان دسته → فرم */}
       <GroupOfferWizard
         open={wizardOpen}
         onClose={() => setWizardOpen(false)}
-        quota={quota}
         products={myProducts?.items}
       />
       {/* الگوی همیشگی ۱-۱۱: بدون بستهٔ فعال، مودال «خرید اشتراک» باز می‌شود */}

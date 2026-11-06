@@ -533,20 +533,11 @@ export interface BuyerDirectoryPage {
   buyRequestCount: number | null; // درخواست‌های خرید همین دسته — تب دوم
 }
 
-/** سهمیه پیشنهاد تامین امروز (دارندگان بسته) */
+/** وضعیت گیت پیشنهاد تامین (خواسته مالک ۶-۱۱: سهمیه/سقف روزانه حذف شد —
+ *  ارسال پولی است و محدودیت معنا ندارد؛ فقط «بستهٔ فعال؟» می‌ماند) */
 export interface OfferQuota {
   isFeatured: boolean;
   pakageType: number;
-  dailyLimit: number;
-  usedToday: number;
-  left: number;
-  groupSend: {
-    perRecipientPrice: number;
-    maxBatch: number;
-    maxPerDay: number;
-    usedToday: number;
-    left: number;
-  };
   walletBalance: number;
 }
 
@@ -554,16 +545,13 @@ export interface OfferQuota {
 export interface SendOfferResult {
   offerId: string;
   threadId: string;
-  quotaLeft: number;
 }
 
-/** نتیجه ارسال گروهی */
+/** نتیجه ارسال گروهی — هزینه لحظهٔ ارسال از کیف پول کسر و همین‌جا برگردانده می‌شود */
 export interface GroupSendResult {
   sent: number;
   fee: number;
-  perRecipient: number;
   balance: number;
-  groupLeft: number;
 }
 
 /** شرایط ساختاریافتهٔ پیشنهاد تامین (خواستهٔ مالک) — دستهٔ آخر + نوع کالا +
@@ -660,11 +648,11 @@ export interface SentOffersPage {
   categories: { id: number; name: string }[];
 }
 
-/** پیکربندی صورتحساب — از site-settings/getBillingConfig (عمومی) */
+/** پیکربندی صورتحساب — از site-settings/getBillingConfig (عمومی)؛
+ *  خواسته مالک ۶-۱۱: سقف‌های سهمیه حذف شدند — فقط هزینه هر گیرندهٔ ارسال گروهی می‌ماند */
 export interface BillingConfig {
   chargePackages: ChargePackage[];
   customCharge: { maxAmount: number; tiers: CustomChargeTier[]; minAmount: number };
   ladder: { monthlyPrice: number; maxMonths: number };
-  supplyOffer: { dailyLimits: { pakageType: number; label: string; limit: number }[] };
-  groupSend: { perRecipientPrice: number; maxPerDay: number; maxBatch: number };
+  groupSend: { perRecipientPrice: number };
 }

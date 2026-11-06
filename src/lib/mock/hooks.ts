@@ -685,7 +685,8 @@ export function useBuyerDirectory(q: import('@/lib/types').BuyerDirectoryQuery) 
   });
 }
 
-/** سهمیه پیشنهاد تامین امروز */
+/** وضعیت گیت پیشنهاد تامین — بستهٔ فعال + موجودی (خواسته مالک ۶-۱۱:
+ *  سهمیه/سقف روزانه حذف شد؛ فقط برای گیت isFeatured استفاده می‌شود) */
 export function useMyOfferQuota(enabled = true) {
   return useQuery({
     queryKey: ['my-offer-quota'],
@@ -694,26 +695,26 @@ export function useMyOfferQuota(enabled = true) {
   });
 }
 
-/** ارسال تکی — بعدش سهمیه و مکالمات تازه شوند */
+/** ارسال تکی — بعدش مکالمات و لیست «پیشنهادات ارسال شده» تازه شوند */
 export function useSendSupplyOffer() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: api.sendSupplyOffer,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-offer-quota'] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['my-sent-offers'] });
     },
   });
 }
 
-/** ارسال گروهی — کیف پول + سهمیه + تراکنش‌ها تازه شوند */
+/** ارسال گروهی — کیف پول + مکالمات + پیشنهادات ارسالی تازه شوند */
 export function useGroupSendSupplyOffer() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: api.groupSendSupplyOffer,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-offer-quota'] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['my-sent-offers'] });
       queryClient.invalidateQueries({ queryKey: ['panel-profile'] });
       queryClient.invalidateQueries({ queryKey: ['panel-wallet-transactions'] });
     },

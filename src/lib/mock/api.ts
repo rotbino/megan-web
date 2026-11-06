@@ -1603,12 +1603,14 @@ export async function getBuyerDirectory(q: BuyerDirectoryQuery): Promise<BuyerDi
   });
 }
 
-/** سهمیه پیشنهاد تامین امروز + قیمت ارسال گروهی */
+/** وضعیت گیت پیشنهاد تامین — بستهٔ فعال + موجودی کیف پول (خواسته مالک
+ *  ۶-۱۱: سهمیه/سقف روزانه حذف شد؛ نمایش مبلغ هم حذف شد — هزینه لحظهٔ ارسال
+ *  از کیف پول کسر و در پاسخ همین اندپوینت‌های ارسال اعلام می‌شود) */
 export async function getMyOfferQuota(): Promise<OfferQuota> {
   return apiFetch<OfferQuota>('/buyers/getMyOfferQuota', {});
 }
 
-/** ارسال پیشنهاد تامین تکی — رایگان تا سقف روزانه سطح بسته؛ terms = شرایط
+/** ارسال پیشنهاد تامین تکی — بدون سهمیه (خواسته مالک ۶-۱۱)؛ terms = شرایط
  *  ساختاریافته (دستهٔ آخر/نوع کالا/چک/ارسال/حداقل خرید) برای فیلتر خریدار */
 export async function sendSupplyOffer(input: {
   buyerId: string;
@@ -1619,7 +1621,8 @@ export async function sendSupplyOffer(input: {
   return apiFetch<SendOfferResult>('/buyers/sendSupplyOffer', { ...rest, ...terms });
 }
 
-/** ارسال گروهی پیشنهاد تامین — پولی از کیف پول (هر گیرنده) */
+/** ارسال گروهی پیشنهاد تامین — پولی از کیف پول؛ مبلغ و کسر آن لحظهٔ ارسال
+ *  در بک‌اند اتمیک حساب می‌شود (خواسته مالک ۶-۱۱) */
 export async function groupSendSupplyOffer(input: {
   buyerIds: string[];
   message: string;

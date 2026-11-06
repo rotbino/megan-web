@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * مودال/فرم پیشنهاد تامین (بازطراحی مالک ۱-۱۱):
+ * مودال/فرم پیشنهاد تامین (بازطراحی مالک ۱-۱۱؛ ۶-۱۱):
  *  • دکمهٔ ارسال روی کارت «همیشه» فعال است — هر نیاز خرید از ابتدا به یک
  *    دستهٔ آخر (برگ) وصل است؛ دستهٔ کالا از خود کارت می‌آید و بالای مودال
  *    خیلی واضح می‌آید: «پیشنهاد تامین برنج».
@@ -11,8 +11,10 @@
  *  • شرایط تامین ساختاریافته: سوییچ «پرداخت با چک» فقط با روشن‌شدنش
  *    «درصد چک» و «حداکثر سرسید چک» را ظاهر می‌کند؛ سوییچ «ارسال به محل»
  *    فقط «پرداخت‌کنندهٔ حمل» را.
- *  • هزینه قبل از ارسال شفاف است — تکی: سهمیهٔ امروز؛ گروهی: جمع هزینه از
- *    کیف پول (هر گیرنده × قیمت واحد) + موجودی.
+ *  • فرم مینیمال (خواسته مالک ۶-۱۱): سهمیه و قیمتِ ازپیش‌محاسبه حذف شد —
+ *    هزینهٔ ارسال گروهی همان لحظهٔ ارسال از کیف پول کسر می‌شود و در پیام
+ *    موفقیت اعلام می‌شود؛ اگر موجودی کم باشد، بک‌اند خطای شفاف می‌دهد و
+ *    مودال شارژ همین‌جا باز می‌شود.
  *  • تکی: نمونهٔ شخصی؛ گروهی: نمونهٔ عمومی و همه‌کالا (بدون نام خریدار).
  *  • بدنهٔ فرم (SupplyOfferForm) بین مودال تکی و گام سومِ ویزار گروهی
  *    مشترک است تا رفتار و متن‌ها یکی بمانند.
@@ -28,13 +30,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { NeedPackageModal } from '@/components/shared/need-package-modal';
+import { ApiError } from '@/lib/api/client';
 import { priceFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import {
   PERIOD_LABELS,
   type BuyerDirectoryItem,
   type Category,
-  type OfferQuota,
   type Product,
   type SupplyOfferTerms,
 } from '@/lib/types';
@@ -189,7 +191,6 @@ export function NumField({
  *  استفاده می‌کنند تا متن‌ها، اعتبارسنجی و جریان ارسال یکی بماند. */
 export function SupplyOfferForm({
   targets,
-  quota,
   products,
   category,
   onSent,
@@ -197,7 +198,6 @@ export function SupplyOfferForm({
 }: {
   /** یک هدف = تکی؛ بیشتر = گروهی */
   targets: BuyerDirectoryItem[];
-  quota: OfferQuota | null;
   /** آگهی‌های خود فروشنده — برای پرکردن پارامترهای نمونه (کالا/واحد/قیمت) */
   products?: Product[];
   /** دستهٔ آخرِ هدف — نوع/حداقل خرید از آن */
@@ -280,9 +280,6 @@ export function SupplyOfferForm({
   }
 
   const isGroup = targets.length > 1;
-  const perRecipient = quota?.groupSend.perRecipientPrice ?? 0;
-  const fee = isGroup ? targets.length * perRecipient : 0;
-  const balance = quota?.walletBalance ?? 0;
   const pending = sendOne.isPending || sendGroup.isPending;
 
   const num = (v: string) => Number(v.replace(/[^\d]/g, '')) || 0;
@@ -340,11 +337,8 @@ export function SupplyOfferForm({
     }
     const terms = buildTerms();
     if (!terms) return;
-    // موجودی ناکافی → مودال شارژ (الگوی همیشگی)؛ دکمه غیرفعال نمی‌شود
-    if (isGroup && fee > balance) {
-      setNeedWallet(true);
-      return;
-    }
+    // موجودی ناکافی؟ — خواسته مالک ۶-۱۱: مبلغ لحظهٔ ارسال در بک‌اند حساب
+    // می‌شود؛ خطای بک‌اند → مودال شارژ کیف پول (الگوی همیشگی)
     if (isGroup) {
       sendGroup.mutate(
         { buyerIds: targets.map((t) => t.buyerId), message: text, terms },
@@ -356,16 +350,22 @@ export function SupplyOfferForm({
             onSent?.(targets.map((t) => t.buyerId));
             onCancel();
           },
-          onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
+          onError: (err: Error) => {
+            if (err instanceof ApiError && err.code === 'WALLET_INSUFFICIENT') {
+              setNeedWallet(true);
+              return;
+            }
+            toast({ description: err.message, variant: 'destructive' });
+          },
         },
       );
     } else {
       sendOne.mutate(
         { buyerId: targets[0].buyerId, message: text, terms },
         {
-          onSuccess: (r) => {
+          onSuccess: () => {
             toast({
-              description: `پیشنهاد تامین ارسال شد — پاسخ را در «پیام ها» دنبال کنید (${toFa(r.quotaLeft)} سهمیه امروز باقی مانده).`,
+              description: 'پیشنهاد تامین ارسال شد — پاسخ را در «پیام ها» دنبال کنید.',
             });
             onSent?.([targets[0].buyerId]);
             onCancel();
@@ -378,32 +378,6 @@ export function SupplyOfferForm({
 
   return (
     <>
-      {/* سهمیه / هزینه — شفاف قبل از ارسال (خواستهٔ مالک: کاربر قبل از ارسال
-          تکی هم از وضعیت سهمیه و هزینه خبر دارد) */}
-      <div className="rounded-lg bg-secondary/70 p-3 text-[11px] leading-5">
-        {isGroup ? (
-          <>
-            <p>
-              هزینه هر گیرنده <b>{priceFa(perRecipient)}</b> از کیف پول — جمع:{' '}
-              <b className="text-primary">{priceFa(fee)}</b> برای <b>{toFa(targets.length)}</b> خریدار
-              (موجودی: {priceFa(balance)})
-            </p>
-            {fee > balance && (
-              <p className="mt-1 font-bold text-red-600">
-                موجودی کافی نیست —{' '}
-                <button type="button" className="underline" onClick={() => setNeedWallet(true)}>
-                  شارژ کیف پول
-                </button>
-              </p>
-            )}
-          </>
-        ) : quota ? (
-          <p>
-            سهمیه امروز: <b>{toFa(quota.left)}</b> از <b>{toFa(quota.dailyLimit)}</b> پیشنهاد باقی مانده.
-          </p>
-        ) : null}
-      </div>
-
       {/* ─── نوع کالا + حداقل خرید — از دستهٔ هدف ─── */}
       {category && (
         <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
@@ -586,18 +560,14 @@ export function SupplyOfferForm({
       )}
 
       <div className="mt-3 flex gap-2">
-        <Button
-          className="flex-1 rounded-md"
-          onClick={send}
-          disabled={pending || message.trim().length < 5 || !typeOk}
-        >
+        <Button className="flex-1 rounded-md" onClick={send} disabled={pending || message.trim().length < 5 || !typeOk}>
           {pending ? (
             <>
               <Loader2 size={15} className="animate-spin" /> در حال ارسال…
             </>
           ) : isGroup ? (
             <>
-              <Send size={15} /> ارسال گروهی و پرداخت {priceFa(fee)}
+              <Send size={15} /> ارسال گروهی
             </>
           ) : (
             <>
@@ -610,14 +580,13 @@ export function SupplyOfferForm({
         </Button>
       </div>
 
-      {/* الگوی همیشگی ۱-۱۱: موجودی ناکافی → مودال شارژ (همیشه بالا) */}
+      {/* الگوی همیشگی ۱-۱۱: موجودی ناکافی → مودال شارژ — خواسته مالک ۶-۱۱:
+          مبلغ همان لحظهٔ ارسال حساب می‌شود؛ خطای بک‌اند اینجا می‌آید */}
       <NeedPackageModal
         open={needWallet}
         onClose={() => setNeedWallet(false)}
         kind="wallet"
-        message={`موجودی کیف پول شما برای ارسال گروهی به ${toFa(targets.length)} خریدار کافی نیست — ${priceFa(
-          fee,
-        )} شارژ لازم دارید (موجودی فعلی: ${priceFa(balance)}).`}
+        message="موجودی کیف پول شما برای این ارسال گروهی کافی نیست — لطفاً ابتدا کیف پول را شارژ کنید."
       />
     </>
   );
@@ -630,7 +599,6 @@ export function SupplyOfferModal({
   onClose,
   onSent,
   targets,
-  quota,
   products,
   category,
 }: {
@@ -640,7 +608,6 @@ export function SupplyOfferModal({
   onSent?: (buyerIds: string[]) => void;
   /** یک هدف = تکی؛ بیشتر = گروهی */
   targets: BuyerDirectoryItem[];
-  quota: OfferQuota | null;
   /** آگهی‌های خود فروشنده — برای پرکردن پارامترهای نمونه (کالا/واحد/قیمت) */
   products?: Product[];
   /** دستهٔ آخرِ هدف — از خود کارت خریدار می‌آید */
@@ -686,7 +653,6 @@ export function SupplyOfferModal({
         <div className="mt-3">
           <SupplyOfferForm
             targets={targets}
-            quota={quota}
             products={products}
             category={category}
             onSent={onSent}
