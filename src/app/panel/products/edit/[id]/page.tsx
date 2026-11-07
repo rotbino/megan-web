@@ -43,7 +43,7 @@ import { PanelCard } from '@/components/panel/panel-parts';
 import { UnitInput } from '@/components/shared/unit-input';
 import { optimizeProductImage } from '@/lib/image-optimize';
 import { toFa } from '@/lib/format';
-import { cn, stripBrandWord } from '@/lib/utils';
+import { cn, scrollPanelTop, stripBrandWord } from '@/lib/utils';
 import type { Category, ProductFeature, ProductStatus } from '@/lib/types';
 
 const num = (v: string) => Number(v.replace(/[^\d]/g, '')) || 0;
@@ -206,7 +206,7 @@ export default function EditProductPage() {
     setAttempted(true);
     const errs = sectionErrors(draft);
     if (Object.values(errs).some(Boolean)) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollPanelTop('smooth');
       return;
     }
     // برند به آخر عنوان می‌چسبد + به‌صورت ویژگی «برند» ذخیره می‌شود؛

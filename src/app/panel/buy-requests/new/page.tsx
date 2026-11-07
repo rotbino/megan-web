@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSubmitPanelBuyRequest } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { cn, scrollPanelTop } from '@/lib/utils';
 import type { Category } from '@/lib/types';
 
 const BUY_REQUEST_STEPS = ['انتخاب دسته بندی', 'اطلاعات درخواست'] as const;
@@ -61,7 +61,7 @@ export default function RegisterBuyRequestPage() {
     setStep(s);
     setMaxReached((m) => Math.max(m, s));
     setError('');
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollPanelTop('smooth');
   };
 
   const stepError = (s: number): string | null => {
@@ -126,7 +126,7 @@ export default function RegisterBuyRequestPage() {
                 setStep(0);
                 setMaxReached(0);
                 setDone(false);
-                if (typeof window !== 'undefined') window.scrollTo({ top: 0 });
+                scrollPanelTop('auto');
               }}
             >
               <RotateCcw size={15} /> ثبت درخواست دیگر

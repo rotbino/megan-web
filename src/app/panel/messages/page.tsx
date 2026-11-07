@@ -122,14 +122,18 @@ export default function PanelMessagesPage() {
   const [reportText, setReportText] = useState('');
 
   return (
-      <div className="mx-auto max-w-5xl space-y-4">
+      // چت اپ‌طور (خواسته مالک ۸-۱۱): کارت چت ارتفاع قطعی دارد (موبایل 60dvh —
+      // دسکتاپ: کل ارتفاع main) تا لیست پیام‌ها داخل خودش اسکرول بخورد و
+      // هدر چت + فرم ارسال همیشه دیده شوند. در دسکتاپ ریشه h-full است و
+      // صفحه اصلاً اسکرول نمی‌خورد (پوسته اپ).
+      <div className="mx-auto max-w-5xl space-y-4 lg:flex lg:h-full lg:flex-col lg:gap-4 lg:space-y-0">
         {/* وب‌پوش (B10) — اعلان پیام‌های جدید وقتی سایت باز نیست */}
         <PushEnableBanner />
         {/* grid-cols-1 صریح: ستون ضمنی گرید auto با max-content سنجیده می‌شود و
           برچسب nowrap حضور می‌تواند آن را از عرض صفحه بیرون بکشد */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
-          {/* لیست مخاطبان */}
-          <PanelCard className="order-2 lg:order-1">
+        <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[320px_1fr] lg:grid-rows-[minmax(0,1fr)]">
+          {/* لیست مخاطبان — دسکتاپ: ارتفاع کامل ستون با اسکرول داخلی خودِ لیست */}
+          <PanelCard className="order-2 flex flex-col lg:order-1">
             <div className="flex items-center justify-between">
               <p className="text-sm font-bold">
                 مخاطب <span className="text-muted-foreground">({toFa(threads.length)})</span>
@@ -144,7 +148,7 @@ export default function PanelMessagesPage() {
                   {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-14 animate-pulse rounded-md bg-secondary/60" />)}
                 </div>
             ) : (
-                <ul className="mt-3 divide-y divide-border/70">
+                <ul className="mt-3 divide-y divide-border/70 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:touch-pan-y">
                   {/* پشتیبانی ایمچ — سنجاق‌شده بالا؛ پیام‌های مستقیم ادمین (یک‌طرفه) */}
                   <li className="pb-1">
                     <button
@@ -285,12 +289,12 @@ export default function PanelMessagesPage() {
             </div>
           </PanelCard>
 
-          {/* نمای چت */}
-          <PanelCard className="order-1 flex min-h-[60vh] flex-col sm:min-h-[420px] lg:order-2">
+          {/* نمای چت — موبایل: 60dvh قطعی؛ دسکتاپ: کل ارتفاع (h-full) */}
+          <PanelCard className="order-1 flex h-[60dvh] flex-col lg:order-2 lg:h-full lg:min-h-0">
             {showingSupport ? (
                 <>
                   {/* مکالمه پشتیبانی — یک‌طرفه (ادمین → کاربر) */}
-                  <div className="flex items-center gap-3 border-b border-border/70 pb-3">
+                  <div className="flex shrink-0 items-center gap-3 border-b border-border/70 pb-3">
                 <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary">
                   <Headset size={18} />
                 </span>
@@ -306,10 +310,11 @@ export default function PanelMessagesPage() {
                   <div
                       ref={listRef}
                       className={cn(
-                          'flex-1 overflow-y-auto overscroll-contain touch-pan-y',
+                          'min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y',
                           'space-y-2 sm:space-y-3',
                           'px-0.5 py-3 sm:px-1 sm:py-4',
-                          'sm:bg-[radial-gradient(circle_at_1px_1px,theme(colors.border)_1px,transparent_0)] sm:bg-[length:18px_18px]',
+                          // کاغذ دیواری نقطه‌چین چت (Tailwind v4: theme() حذف شده — var مستقیم)
+                          'sm:bg-[radial-gradient(circle_at_1px_1px,var(--border)_1px,transparent_0)] sm:[background-size:18px_18px]',
                       )}
                   >
                     {supportMessages.length === 0 ? (
@@ -339,7 +344,7 @@ export default function PanelMessagesPage() {
                     )}
                   </div>
 
-                  <div className="border-t border-border/70 pt-3">
+                  <div className="shrink-0 border-t border-border/70 pt-3">
                     <p className="rounded-md bg-secondary/50 px-3 py-2.5 text-center text-[11px] leading-6 text-muted-foreground">
                       این پیام‌ها یک‌طرفه از طرف مدیریت ایمچ است. برای پرسش‌ها از{' '}
                       <Link href="/panel/support" className="font-bold text-primary hover:underline">صفحه پشتیبانی</Link>{' '}
@@ -349,7 +354,7 @@ export default function PanelMessagesPage() {
                 </>
             ) : active ? (
                 <>
-                  <div className="flex items-center gap-3 border-b border-border/70 pb-3">
+                  <div className="flex shrink-0 items-center gap-3 border-b border-border/70 pb-3">
                 <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/10 text-xs font-extrabold text-primary">
                   {active.counterpart.avatarUrl ? (
                       <img src={active.counterpart.avatarUrl} alt="" className="size-full object-cover" />
@@ -397,10 +402,10 @@ export default function PanelMessagesPage() {
                   <div
                       ref={listRef}
                       className={cn(
-                          'flex-1 overflow-y-auto overscroll-contain touch-pan-y',
+                          'min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y',
                           'space-y-2 sm:space-y-3',
                           'px-0.5 py-3 sm:px-1 sm:py-4',
-                          'sm:bg-[radial-gradient(circle_at_1px_1px,theme(colors.border)_1px,transparent_0)] sm:bg-[length:18px_18px]',
+                          'sm:bg-[radial-gradient(circle_at_1px_1px,var(--border)_1px,transparent_0)] sm:[background-size:18px_18px]',
                       )}
                   >
                     {!messages || messages.length === 0 ? (
@@ -439,7 +444,7 @@ export default function PanelMessagesPage() {
                   </div>
 
                   <form
-                      className="flex gap-2 border-t border-border/70 pt-3"
+                      className="flex shrink-0 gap-2 border-t border-border/70 pt-3"
                       onSubmit={(e) => {
                         e.preventDefault();
                         sendMsg(draft);

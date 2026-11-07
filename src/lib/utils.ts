@@ -17,3 +17,15 @@ export function stripBrandWord(v: string): string {
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
+
+/**
+ * اسکرول به بالای صفحهٔ پنل (خواسته مالک ۸-۱۱) — پوستهٔ پنل از lg به بعد
+ * اپ‌طور است: <main> خودش ظرف اسکرول است و body اسکرول نمی‌خورد؛ در موبایل
+ * همچنان body اسکرول می‌شود. هر دو را می‌پوشانیم تا ویزاردها (مرحلهٔ بعد/قبلی)
+ * در همهٔ حالت‌ها به بالا برگردند.
+ */
+export function scrollPanelTop(behavior: ScrollBehavior = 'smooth'): void {
+  if (typeof window === 'undefined') return;
+  window.scrollTo({ top: 0, behavior });
+  document.querySelector('main')?.scrollTo({ top: 0, behavior });
+}

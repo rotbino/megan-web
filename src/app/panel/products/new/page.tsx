@@ -44,7 +44,7 @@ import { UnitInput } from '@/components/shared/unit-input';
 import { PRODUCT_FEATURE_KEYS } from '@/lib/mock/data';
 import { optimizeProductImage } from '@/lib/image-optimize';
 import { toFa } from '@/lib/format';
-import { cn, stripBrandWord } from '@/lib/utils';
+import { cn, scrollPanelTop, stripBrandWord } from '@/lib/utils';
 import type { Category, ProductFeature } from '@/lib/types';
 
 // ─── ورودی عددی — از این پس همه‌جا UnitInput (وسط‌چین + بادکنک تبدیل واحد) ──
@@ -147,7 +147,7 @@ export default function RegisterProductPage() {
     setMaxReached((m) => Math.max(m, s));
     setError('');
     setAttempted(false);
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollPanelTop('smooth');
   };
 
   // ─── اعتبارسنجی هر مرحله ───

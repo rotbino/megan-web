@@ -98,7 +98,11 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background">
+    // پوسته اپ (خواسته مالک ۸-۱۱): در دسکتاپ هیچ‌چیز — نه هدر و نه سایدبار —
+    // اسکرول نمی‌خورد؛ ریشه دقیقاً به اندازهٔ viewport است (h-dvh) و فقط
+    // <main> خودش ظرف اسکرول است. در موبایل همان اسکرول body + هدر sticky
+    // قبلی می‌ماند (body پدینگ ۵۹px نوار پایین دارد و نباید اسکرول دور داخلی شود).
+    <div className="min-h-screen bg-background lg:flex lg:h-dvh lg:min-h-0 lg:flex-col">
       {/* سایدبار دسکتاپ — ستون ثابت راست */}
       <aside
         className={cn(
@@ -137,6 +141,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
       <div
         className={cn(
           'min-w-0 transition-[margin] duration-200',
+          'lg:flex lg:min-h-0 lg:flex-1 lg:flex-col',
           collapsed ? 'lg:mr-[68px]' : 'lg:mr-[250px]',
         )}
       >
@@ -148,7 +153,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
             خواسته مالک ۷-۱۱ دور هفدهم). دکمهٔ ارتقا وقتی بستهٔ فعال است حذف
             می‌شود (تکرار ممنوع — وضعیت در باکس اشتراک ایمچ من دیده می‌شود). */}
         {user && (
-          <div className="mb-5 hidden h-[59px] items-center justify-between gap-3 border-b border-border bg-background px-6 shadow-[0_1px_5px_rgba(0,0,0,0.06)] lg:flex">
+          <div className="mb-5 hidden h-[59px] shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-6 shadow-[0_1px_5px_rgba(0,0,0,0.06)] lg:flex">
             <div className="flex min-w-0 items-center gap-3">
               <h1 className="truncate text-[15px] font-extrabold leading-none">{panelPageTitle(pathname)}</h1>
               {user.role !== 'buyer' && !myPackage?.isActive && (
@@ -190,7 +195,9 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         )}
-        <main className="min-h-screen min-w-0 p-3 sm:p-4 lg:p-6">{hydrated ? (
+        {/* main — در دسکتاپ خودش ظرف اسکرول است (flex-1 + overflow) پس هدر
+            بالای آن هرگز از صفحه بیرون نمی‌رود؛ در موبایل اسکرول body می‌ماند */}
+        <main className="min-h-screen min-w-0 p-3 sm:p-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:p-6">{hydrated ? (
           user ? (
             // بدون رمز پنل = قفل محتوا (خواسته مالک — «قبل از هر کاری رمز تعیین کن»)
             needsPassword ? (
