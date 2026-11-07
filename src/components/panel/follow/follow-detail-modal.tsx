@@ -113,7 +113,7 @@ export function FollowDetailModal({
 
       {/* وضعیت — تغییر درجا */}
       <div>
-        <FollowLabel>وضعیت پیگیری</FollowLabel>
+        <FollowLabel>وضعیت سرنخ</FollowLabel>
         <StatusChipsRow value={item.status} onChange={changeStatus} disabled={busy} />
       </div>
 
@@ -146,7 +146,7 @@ export function FollowDetailModal({
           className="rounded-md text-xs text-red-500 hover:bg-red-50"
           onClick={onDelete}
         >
-          <Trash2 size={14} /> حذف از پیگیری
+          <Trash2 size={14} /> حذف سرنخ
         </Button>
       </div>
     </div>
@@ -155,7 +155,7 @@ export function FollowDetailModal({
   return (
     <>
       {/* موبایل — بات‌شیت */}
-      <BottomSheet open onClose={onClose} title="جزئیات پیگیری">
+      <BottomSheet open onClose={onClose} title="جزئیات سرنخ">
         {body}
       </BottomSheet>
 
@@ -164,11 +164,11 @@ export function FollowDetailModal({
         className="fixed inset-0 z-[60] hidden items-center justify-center p-4 nav-desktop:flex"
         role="dialog"
         aria-modal="true"
-        aria-label="جزئیات پیگیری"
+        aria-label="جزئیات سرنخ"
       >
         <div className="animate-sheet-fade absolute inset-0 bg-black/40" onClick={onClose} />
         <div className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl bg-card p-5 shadow-2xl">
-          <h2 className="mb-4 border-b border-border/70 pb-3 text-base font-bold">جزئیات پیگیری</h2>
+          <h2 className="mb-4 border-b border-border/70 pb-3 text-base font-bold">جزئیات سرنخ</h2>
           {body}
         </div>
       </div>

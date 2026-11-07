@@ -167,7 +167,7 @@ export function FollowActionSheet({
     if (removeM.isPending) return;
     removeM.mutate(item.id, {
       onSuccess: () => {
-        toast({ description: 'از پیگیری‌ها حذف شد.' });
+        toast({ description: 'سرنخ حذف شد.' });
         onClose();
       },
       onError: fail,
@@ -198,7 +198,7 @@ export function FollowActionSheet({
             />
             <MenuRow icon={NotebookPen} label="یادداشت جدید" onClick={() => setMode('note')} />
             <MenuRow icon={FolderInput} label="انتقال به پروندهٔ دیگر" onClick={() => setMode('move')} />
-            <MenuRow icon={Trash2} label="حذف از پیگیری" danger onClick={() => setMode('delete')} />
+            <MenuRow icon={Trash2} label="حذف سرنخ" danger onClick={() => setMode('delete')} />
           </div>
         </>
       )}
@@ -215,7 +215,7 @@ export function FollowActionSheet({
       {mode === 'priority' && (
         <>
           <p className="text-xs leading-5 text-muted-foreground">
-            اولویت بالا در لیست پیگیری‌ها بالاتر نشان داده می‌شود.
+            اولویت بالا در لیست سرنخ‌ها بالاتر نشان داده می‌شود.
           </p>
           <div>
             <p className="mb-1.5 text-[13px] font-bold">اولویت</p>
@@ -317,7 +317,7 @@ export function FollowActionSheet({
 
   const title =
     mode === 'menu'
-      ? 'عملیات پیگیری'
+      ? 'عملیات سرنخ'
       : mode === 'status'
         ? 'تغییر وضعیت'
         : mode === 'priority'
@@ -326,7 +326,7 @@ export function FollowActionSheet({
             ? 'یادداشت جدید'
             : mode === 'move'
               ? 'انتقال به پروندهٔ دیگر'
-              : 'حذف از پیگیری';
+              : 'حذف سرنخ';
 
   return (
     <>

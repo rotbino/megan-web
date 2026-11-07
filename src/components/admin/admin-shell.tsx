@@ -59,7 +59,11 @@ import { adminChangePassword, adminLogout, fetchAdminMe, fetchAdminQueues, type 
 import { cn } from '@/lib/utils';
 
 /** منوی پنل — آکاردئونی (خواستهٔ مالک ۱-۱۱): هر گروه پیش‌فرض بسته؛
- *  باز کردن هر گره بقیه را می‌بندد؛ گروه صفحهٔ فعال خودکار باز است.
+ *  باز کردن هر گره بقیه را می‌بندد؛ گروهِ صفحهٔ فعال خودکار باز است.
+ *  سلسله‌مراتب (خواستهٔ مالک ۸-۱۱): تیتر گروه = برچسب ریز کم‌رنگِ جداکننده‌دار؛
+ *  زیرگروه‌ها با خط راهنمای درخت (border-s) جلوتر می‌آیند تا گروه (مثل
+ *  «اطلاعات پایه») از زیرگروهش (مثل «دسته‌بندی‌ها») کاملاً متمایز باشد؛
+ *  آیکون جهت RTL-native است (بسته = چپ‌گرد).
  *  «ادمین‌ها» فقط برای مدیر ارشد. badge: کلید صف در انتظار (نشان قرمز). */
 interface NavItem {
   href: string;
@@ -187,20 +191,20 @@ function SidebarNav({ onNavigate, superAdmin }: { onNavigate?: () => void; super
       {NAV_GROUPS.map((group, gi) => {
         const open = effectiveOpen === gi;
         return (
-          <div key={group.title} className="mt-1">
+          <div key={group.title} className="mt-1.5 border-t border-border/60 pt-1.5 first:mt-1 first:border-t-0 first:pt-0">
             <button
               type="button"
               onClick={() => setOpenGroup(open ? -1 : gi)}
               aria-expanded={open}
               aria-label={`بخش ${group.title}`}
               className={cn(
-                'flex w-full items-center gap-2 rounded-md px-3 py-2 text-[11px] font-extrabold tracking-wide transition-colors hover:bg-secondary/60',
+                'flex w-full items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-extrabold tracking-wide transition-colors hover:bg-secondary/60',
                 open ? 'text-foreground' : 'text-muted-foreground/80',
               )}
             >
               <ChevronDown
-                size={14}
-                className={cn('shrink-0 text-muted-foreground/60 transition-transform', !open && '-rotate-90')}
+                size={13}
+                className={cn('shrink-0 text-muted-foreground/60 transition-transform', !open && 'rotate-90')}
                 aria-hidden
               />
               <span className="min-w-0 flex-1 truncate text-start">{group.title}</span>
@@ -214,7 +218,9 @@ function SidebarNav({ onNavigate, superAdmin }: { onNavigate?: () => void; super
               })()}
             </button>
             {open && (
-              <div className="flex flex-col gap-0.5 pb-1">{group.items.map(renderItem)}</div>
+              <div className="ms-[1.35rem] me-1 mt-0.5 flex flex-col gap-0.5 border-s border-border/70 pb-1 ps-1.5">
+                {group.items.map(renderItem)}
+              </div>
             )}
           </div>
         );

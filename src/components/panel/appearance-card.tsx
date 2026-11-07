@@ -229,7 +229,7 @@ export function AppearanceCard() {
                 onClick={() => setAccent(DEFAULT_ACCENT)}
                 className="flex items-center gap-1.5 rounded-md border bg-card px-2.5 py-1 font-bold text-muted-foreground transition-colors hover:text-foreground"
               >
-                <RotateCcw size={13} /> بازگشت به آبی نفتی پیش‌فرض
+                <RotateCcw size={13} /> بازگشت به نقره‌ای پیش‌فرض
               </button>
             </div>
           ) : (

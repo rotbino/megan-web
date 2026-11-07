@@ -55,7 +55,7 @@ export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel/buyers', label: 'خریداران', icon: Users },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
   { href: '/panel/pricing', label: 'ارتقا عضویت', icon: Medal },
-  { href: '/panel/saved', label: 'پیگیری ها', icon: Bookmark },
+  { href: '/panel/saved', label: 'سرنخ‌های فروش', icon: Bookmark },
 ];
 
 /** منوی خریدار — ۷ آیتم (دور ۱۵)؛ دور ۱۶: «آیمچ من» اول از همه */
@@ -66,7 +66,7 @@ export const BUYER_NAV: PanelNavItem[] = [
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
   { href: '/panel/suggested-sellers', label: 'فروشندگان پیشنهادی', icon: Sparkles },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
-  { href: '/panel/saved', label: 'پیگیری ها', icon: Bookmark },
+  { href: '/panel/saved', label: 'سرنخ‌های خرید', icon: Bookmark },
 ];
 
 export function PanelSidebar({

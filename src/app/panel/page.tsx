@@ -162,7 +162,7 @@ export default function PanelDashboard() {
 
   /** سه‌تای مهم خریدار — افقی بالای منوی عمودی، فقط موبایل (خواسته مالک دور ۱۵) */
   const buyerQuick = [
-    { href: '/panel/saved', label: 'پیگیری ها', icon: Bookmark },
+    { href: '/panel/saved', label: 'سرنخ‌های خرید', icon: Bookmark },
     { href: '/panel/buyer-book', label: 'دفتر خرید', icon: BookOpenText },
     { href: '/panel/my-requests', label: 'درخواستهای خرید', icon: FileText },
   ];
@@ -185,7 +185,7 @@ export default function PanelDashboard() {
         // ارسال شده» همان صفحهٔ خریداران است
         { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
         ...(!active ? [{ href: '/panel/pricing', label: 'ارتقا عضویت', icon: Medal }] : []),
-        { href: '/panel/saved', label: 'پیگیری ها', icon: Bookmark },
+        { href: '/panel/saved', label: 'سرنخ‌های فروش', icon: Bookmark },
       ];
 
   return (

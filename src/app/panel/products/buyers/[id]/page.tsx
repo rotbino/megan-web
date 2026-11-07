@@ -7,9 +7,10 @@
  *  • تب دوره‌ای: خریدهای دوره‌ای همین دسته (دفتر خرید خریداران) → ارسال
  *    پیشنهاد تامین (تکی/گروهی) برای فروشندهٔ دارندهٔ بستهٔ فعال و شارژ
  *  • تب فوری: درخواست‌های فوری همین کالا → تماس/چت با خریدار
- *  • تب پیشنهادهای من (خواسته مالک ۷-۱۱): تاریخچه و نتیجه — تایم‌لاین واحد
- *    «پیشنهادهای تامین ارسالی + گفتگوهای خرید فوری» همین کالا؛ فروشنده
- *    می‌بیند به چه کسانی پیشنهاد/پیام داده و جوابشان چه شده
+ *  • تب پیشنهادهای من (خواسته مالک ۷-۱۱ و ۸-۱۱): تایم‌لاین واحد
+ *    «پیشنهادهای تامین ارسالی + گفتگوهای خرید فوری» همین کالا — با همان
+ *    کارت‌های مشترک پنل خریداران (متن و مشخصات پیشنهاد روی کارت؛ بدون بج
+ *    تکی/گروهی) تا دو صفحه عین هم باشند
  */
 
 import { useMemo, useState } from 'react';
@@ -17,9 +18,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
   ArrowRight,
-  BadgeCheck,
   CalendarClock,
-  CheckCircle2,
   ClipboardList,
   Crown,
   Lock,
@@ -46,9 +45,9 @@ import { BookEntryCard } from '@/components/buyers/book-entry-card';
 import { SupplyOfferModal } from '@/components/buyers/supply-offer-modal';
 import { GroupOfferWizard } from '@/components/buyers/group-offer-wizard';
 import { NeedPackageModal } from '@/components/shared/need-package-modal';
-import { RelativeTime } from '@/components/shared/relative-time';
+import { SupplyOfferCard, UrgentChatCard } from '@/components/panel/outreach-cards';
 import { findCategoryPathById } from '@/lib/categories';
-import { parseServerDate, priceFa, toFa } from '@/lib/format';
+import { parseServerDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { BuyerDirectoryItem, Category, SentOffer, UrgentChat } from '@/lib/types';
 
@@ -351,9 +350,9 @@ export default function ProductBuyersPage() {
         </div>
       )}
 
-      {/* ── تب پیشنهادهای من (خواسته مالک ۷-۱۱): تایم‌لاین واحد «تاریخچه و
-          نتیجه» — پیشنهادهای تامین همین کالا + گفتگوهای خرید فوری همان
-          دسته، مرتب بر اساس آخرین فعالیت؛ پاسخ خریداران روی هر کارت ── */}
+      {/* ── تب پیشنهادهای من (خواسته مالک ۷-۱۱ و ۸-۱۱): تایم‌لاین واحد «تاریخچه و
+          نتیجه» — همان کارت‌های مشترک پنل خریداران؛ متن و مشخصات پیشنهاد
+          روی کارت + نتیجهٔ گفتگو؛ مرتب بر اساس آخرین فعالیت ── */}
       {tab === 'offers' && (
         <div role="tabpanel" aria-label="پیشنهادهای من">
           {outreachPending ? (
@@ -377,7 +376,7 @@ export default function ProductBuyersPage() {
             <ul className="space-y-2.5">
               {outreach.map((it) =>
                 it.kind === 'offer' ? (
-                  <OfferHistoryCard key={`o-${it.offer.id}`} offer={it.offer} />
+                  <SupplyOfferCard key={`o-${it.offer.id}`} offer={it.offer} />
                 ) : (
                   <UrgentChatCard key={`u-${it.chat.threadId}`} chat={it.chat} />
                 ),
@@ -415,135 +414,5 @@ export default function ProductBuyersPage() {
         message={`ارسال پیشنهاد تامین ${leafName}، ویژهٔ فروشندگان دارندهٔ بستهٔ اشتراک فعال است — بستهٔ خود را فعال کنید تا برای خریداران این کالا پیشنهاد بفرستید.`}
       />
     </div>
-  );
-}
-
-/* ─── کارت‌های تایم‌لاین «پیشنهادهای من» (خواسته مالک ۷-۱۱) ─────────────
- *  تاریخچه و نتیجه — مینیمال و هم‌خانوادهٔ کارت‌های پنل؛ هر کارت خودش
- *  می‌گوید چه بوده (پیشنهاد تامین / گفتگوی خرید فوری) و جوابش چه شده. */
-
-/** ردیف «نتیجه» مشترک — پاسخ خریدار / آخرین پیام شما / در انتظار پاسخ */
-function OutreachResult({
-  last,
-  fallback,
-}: {
-  last: { text: string; at: string; mine: boolean } | null;
-  /** بدون پیامِ گفتگو — پیش‌نمایش متن خود پیشنهاد */
-  fallback?: string;
-}) {
-  if (last) {
-    return (
-      <p className="mt-2 flex min-w-0 items-center gap-1.5 text-xs leading-6">
-        <MessageSquare size={14} className={last.mine ? 'shrink-0 text-muted-foreground' : 'shrink-0 text-primary'} />
-        <span className="shrink-0 text-muted-foreground">{last.mine ? 'آخرین پیام شما:' : 'پاسخ خریدار:'}</span>
-        <span className={cn('truncate', !last.mine && 'font-bold text-foreground')}>
-          {last.text.length > 90 ? `${last.text.slice(0, 90)}…` : last.text}
-        </span>
-      </p>
-    );
-  }
-  if (fallback) {
-    return (
-      <p className="mt-2 line-clamp-1 text-xs leading-6 text-muted-foreground">
-        پیشنهاد شما: {fallback}
-      </p>
-    );
-  }
-  return <p className="mt-2 text-xs leading-6 text-muted-foreground">در انتظار پاسخ خریدار…</p>;
-}
-
-/** کارت پیشنهاد تامین ارسالی — خریدار + کالا + تکی/گروهی + نتیجه */
-function OfferHistoryCard({ offer }: { offer: SentOffer }) {
-  const goods = [offer.categoryName, offer.productType].filter(Boolean).join(' — ');
-  return (
-    <li className="rounded-lg border bg-card p-3.5">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="flex items-center gap-1 text-sm font-extrabold">
-          {offer.buyerName}
-          {offer.buyerVerified && <BadgeCheck size={15} className="text-sky-500" />}
-        </span>
-        <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">
-          <Package size={12} className="shrink-0" /> پیشنهاد تامین
-        </span>
-        <span
-          className={cn(
-            'flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold',
-            offer.isGroup ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-600',
-          )}
-        >
-          {offer.isGroup ? <Users size={12} /> : <CheckCircle2 size={12} />}
-          {offer.isGroup ? 'گروهی' : 'تکی'}
-        </span>
-        <span className="ms-auto shrink-0 text-[11px] text-muted-foreground">
-          <RelativeTime date={offer.lastMessage?.at ?? offer.createdAt} />
-        </span>
-      </div>
-      {(goods || offer.fee > 0) && (
-        <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-          {goods && <span className="truncate">{goods}</span>}
-          {offer.fee > 0 && <span className="font-num shrink-0">{priceFa(offer.fee)}</span>}
-        </p>
-      )}
-      <OutreachResult last={offer.lastMessage} fallback={offer.message} />
-      {(offer.threadId || offer.buyerUserName) && (
-        <div className="mt-2.5 flex flex-wrap items-center gap-2">
-          {offer.threadId && (
-            <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
-              <Link href={`/panel/messages?thread=${offer.threadId}`}>
-                <MessageSquare size={13} /> گفتگو
-              </Link>
-            </Button>
-          )}
-          {offer.buyerUserName && (
-            <Button asChild size="sm" variant="ghost" className="rounded-md text-xs">
-              <Link href={`/profile/${offer.buyerUserName}`}>پروفایل خریدار</Link>
-            </Button>
-          )}
-        </div>
-      )}
-    </li>
-  );
-}
-
-/** کارت گفتگوی خرید فوری — خریدار + درخواستش + آخرین وضعیت گفتگو */
-function UrgentChatCard({ chat }: { chat: UrgentChat }) {
-  const req = chat.request;
-  return (
-    <li className="rounded-lg border bg-card p-3.5">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="flex items-center gap-1 text-sm font-extrabold">
-          {chat.buyerName}
-          {chat.buyerVerified && <BadgeCheck size={15} className="text-sky-500" />}
-        </span>
-        <span className="flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-sky-600">
-          <ClipboardList size={12} className="shrink-0" /> خرید فوری
-        </span>
-        <span className="ms-auto shrink-0 text-[11px] text-muted-foreground">
-          <RelativeTime date={chat.lastMessage?.at ?? chat.updatedAt} />
-        </span>
-      </div>
-      {req && (
-        <p className="mt-1.5 line-clamp-1 text-[11px] text-muted-foreground">
-          درخواست:{' '}
-          <span className="font-bold text-foreground">
-            {toFa(req.amount.toLocaleString('en-US'))} {req.unit} {req.categoryName}
-          </span>
-          {req.productType ? ` از نوع ${req.productType}` : ''}
-        </p>
-      )}
-      <OutreachResult last={chat.lastMessage} />
-      <div className="mt-2.5 flex flex-wrap items-center gap-2">
-        <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
-          <Link href={`/panel/messages?thread=${chat.threadId}`}>
-            <MessageSquare size={13} /> گفتگو
-          </Link>
-        </Button>
-        {chat.buyerUserName && (
-          <Button asChild size="sm" variant="ghost" className="rounded-md text-xs">
-            <Link href={`/profile/${chat.buyerUserName}`}>پروفایل خریدار</Link>
-          </Button>
-        )}
-      </div>
-    </li>
   );
 }

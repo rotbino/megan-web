@@ -2,6 +2,8 @@
 
 /**
  * داشبورد عملیاتی مدیریت (فاز A5) — نمودارهای SVG سبک بدون کتابخانه:
+ *  • صف‌های انتظار بررسی بالاتر از همه (خواستهٔ مالک ۸-۱۱) — دکمه‌های
+ *    دارای ردیف در انتظار اول و سبز؛ صف‌های خالی خنثی و بی‌رنگ
  *  • کارت‌های آماری زنده (getStats — به‌روزرسانی خودکار هر ۶۰ ثانیه)
  *  • روند ۳۰ روزه ثبت‌نام/آگهی/درخواست (TrendAreaChart + سوییچ سری)
  *  • درآمد ۳۰ روزه نردبان/شارژ (RevenueBarsChart انباشته)
@@ -138,6 +140,17 @@ export default function AdminDashboardPage() {
   const queues = data?.queues;
   const revenue = data?.revenue;
 
+  /* صف‌های انتظار (خواستهٔ مالک ۸-۱۱) — دکمه‌های دارای ردیف در انتظار اول
+     (بیشترین تعداد بالاتر)؛ بقیهٔ خنثی — «بقیه رنگش عادی یا بدون رنگ» */
+  const queueLinks = [
+    { href: '/admin/chats?filter=awaiting', Icon: MessageSquare, label: 'در انتظار پاسخ فروشنده', count: data?.chats?.awaitingSellerReply ?? 0 },
+    { href: '/admin/products?status=pending', Icon: Boxes, label: 'آگهی در انتظار تأیید', count: queues?.pendingProducts ?? 0 },
+    { href: '/admin/buy-requests?status=pending', Icon: ClipboardList, label: 'درخواست خرید در انتظار', count: queues?.pendingBuyRequests ?? 0 },
+    { href: '/admin/charges', Icon: Coins, label: 'فیش شارژ در انتظار', count: queues?.pendingCharges ?? 0 },
+    { href: '/admin/verifications', Icon: BadgeCheck, label: 'احراز هویت در بررسی', count: queues?.pendingVerifications ?? 0 },
+  ].sort((a, b) => Number(b.count > 0) - Number(a.count > 0) || b.count - a.count);
+  const totalPending = queueLinks.reduce((s, q) => s + q.count, 0);
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       {/* سربرگ */}
@@ -159,6 +172,58 @@ export default function AdminDashboardPage() {
         </div>
       ) : (
         <>
+
+          {/* صف‌های انتظار بررسی — بالاتر از همه چیز (خواستهٔ مالک ۸-۱۱):
+              اولین کار روزمرهٔ ادمین؛ دکمه‌های دارای ردیف در انتظار اول می‌آیند
+              و سبزِ متمایزند؛ بقیه خنثی و بی‌رنگ — صف خالی جلب توجه نمی‌کند */}
+          <div className="rounded-lg border bg-card p-4 shadow-sm">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span
+                className={cn(
+                  'grid size-8 place-items-center rounded-md',
+                  totalPending > 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-secondary text-muted-foreground',
+                )}
+              >
+                <Hourglass size={16} />
+              </span>
+              <h2 className="text-sm font-bold">صف‌های انتظار بررسی</h2>
+              {totalPending > 0 && (
+                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-600">
+                  {toFa(totalPending)} مورد نیازمند بررسی
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              {queueLinks.map(({ href, Icon, label, count }) => {
+                const pending = count > 0;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                      'flex items-center justify-between rounded-md border px-3 py-2.5 transition-colors',
+                      pending
+                        ? 'border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100'
+                        : 'border-border bg-secondary/30 text-muted-foreground hover:bg-secondary/70',
+                    )}
+                  >
+                    <span className="flex items-center gap-2 text-[13px]">
+                      <Icon size={16} className={pending ? 'text-emerald-600' : 'text-muted-foreground/70'} />
+                      {label}
+                    </span>
+                    <span
+                      className={cn(
+                        'text-lg font-extrabold tabular-nums',
+                        pending ? 'text-emerald-700' : 'text-muted-foreground/80',
+                      )}
+                    >
+                      {toFa(count)}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
           {/* کارت‌های آماری */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <StatCard
@@ -325,73 +390,6 @@ export default function AdminDashboardPage() {
                   <p className="text-[13px] font-extrabold tabular-nums">{priceFa(revenue?.chargeTotal ?? 0)}</p>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* صف‌های انتظار — کار روزمره ادمین با لینک مستقیم */}
-          <div className="rounded-lg border bg-card p-4 shadow-sm">
-            <div className="mb-3 flex items-center gap-2">
-              <span className="grid size-8 place-items-center rounded-md bg-amber-500/10 text-amber-600">
-                <Hourglass size={16} />
-              </span>
-              <h2 className="text-sm font-bold">صف‌های انتظار بررسی</h2>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              <Link
-                href="/admin/chats?filter=awaiting"
-                className="flex items-center justify-between rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 transition-colors hover:bg-rose-100"
-              >
-                <span className="flex items-center gap-2 text-[13px] text-rose-900">
-                  <MessageSquare size={16} /> در انتظار پاسخ فروشنده
-                </span>
-                <span className="text-lg font-extrabold tabular-nums text-rose-700">
-                  {toFa(data.chats?.awaitingSellerReply ?? 0)}
-                </span>
-              </Link>
-              <Link
-                href="/admin/products?status=pending"
-                className="flex items-center justify-between rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 transition-colors hover:bg-rose-100"
-              >
-                <span className="flex items-center gap-2 text-[13px] text-rose-900">
-                  <Boxes size={16} /> آگهی در انتظار تأیید
-                </span>
-                <span className="text-lg font-extrabold tabular-nums text-rose-700">
-                  {toFa(queues?.pendingProducts ?? 0)}
-                </span>
-              </Link>
-              <Link
-                href="/admin/buy-requests?status=pending"
-                className="flex items-center justify-between rounded-md border border-violet-200 bg-violet-50 px-3 py-2.5 transition-colors hover:bg-violet-100"
-              >
-                <span className="flex items-center gap-2 text-[13px] text-violet-900">
-                  <ClipboardList size={16} /> درخواست خرید در انتظار
-                </span>
-                <span className="text-lg font-extrabold tabular-nums text-violet-700">
-                  {toFa(queues?.pendingBuyRequests ?? 0)}
-                </span>
-              </Link>
-              <Link
-                href="/admin/charges"
-                className="flex items-center justify-between rounded-md border border-sky-200 bg-sky-50 px-3 py-2.5 transition-colors hover:bg-sky-100"
-              >
-                <span className="flex items-center gap-2 text-[13px] text-sky-900">
-                  <Coins size={16} /> فیش شارژ در انتظار
-                </span>
-                <span className="text-lg font-extrabold tabular-nums text-sky-700">
-                  {toFa(queues?.pendingCharges ?? 0)}
-                </span>
-              </Link>
-              <Link
-                href="/admin/verifications"
-                className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 transition-colors hover:bg-amber-100"
-              >
-                <span className="flex items-center gap-2 text-[13px] text-amber-900">
-                  <BadgeCheck size={16} /> احراز هویت در بررسی
-                </span>
-                <span className="text-lg font-extrabold tabular-nums text-amber-700">
-                  {toFa(queues?.pendingVerifications ?? 0)}
-                </span>
-              </Link>
             </div>
           </div>
 

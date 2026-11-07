@@ -7,21 +7,21 @@
     <defs>
         <!-- گرادیان اصلی -->
         <linearGradient id="brandGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#4f8fac"/>
-            <stop offset="100%" stop-color="#1b445b"/>
+            <stop offset="0%" stop-color="#94a3b8"/>
+            <stop offset="100%" stop-color="#475569"/>
         </linearGradient>
 
         <!-- گرادیان نقطه -->
         <radialGradient id="dotGradient" cx="35%" cy="30%" r="75%">
-            <stop offset="0%" stop-color="#b8d4de"/>
-            <stop offset="60%" stop-color="#245b7a"/>
-            <stop offset="100%" stop-color="#1b445b"/>
+            <stop offset="0%" stop-color="#fdba74"/>
+            <stop offset="60%" stop-color="#f97316"/>
+            <stop offset="100%" stop-color="#ea580c"/>
         </radialGradient>
 
         <!-- هاله‌ی درخشان -->
         <radialGradient id="dotGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stop-color="#245b7a" stop-opacity="0.5"/>
-            <stop offset="100%" stop-color="#245b7a" stop-opacity="0"/>
+            <stop offset="0%" stop-color="#f97316" stop-opacity="0.5"/>
+            <stop offset="100%" stop-color="#f97316" stop-opacity="0"/>
         </radialGradient>
     </defs>
 

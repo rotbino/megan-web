@@ -762,13 +762,13 @@ export function useMySentOffers(q: import('@/lib/types').SentOffersQuery = {}) {
   });
 }
 
-/** گفتگوهای من با خریداران فوریِ یک دسته (خواسته مالک ۷-۱۱) — تب
- *  «پیشنهادهای من» صفحهٔ خریدارانِ هر کالا؛ null = کوئری نکن */
-export function useMyUrgentChats(categoryId: number | null) {
+/** گفتگوهای من با خریداران فوری (خواسته مالک ۷-۱۱ و ۸-۱۱) — تب «پیشنهادهای
+ *  من»: عدد = همان دسته؛ undefined = همهٔ دسته‌ها؛ null = کوئری نکن */
+export function useMyUrgentChats(categoryId: number | null | undefined) {
   return useQuery({
-    queryKey: ['my-urgent-chats', categoryId],
-    queryFn: () => api.getMyUrgentChats({ categoryId: categoryId as number }),
-    enabled: categoryId != null,
+    queryKey: ['my-urgent-chats', categoryId ?? 'all'],
+    queryFn: () => api.getMyUrgentChats(categoryId != null ? { categoryId } : {}),
+    enabled: categoryId !== null,
   });
 }
 

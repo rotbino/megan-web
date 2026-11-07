@@ -77,14 +77,16 @@ export function SaveFollowButton({
   };
 
   const iconSize = variant === 'block' ? 16 : variant === 'icon' ? 20 : 14;
+  // ادبیات سرنخ (خواسته مالک ۸-۱۱): ذخیرهٔ درخواست خرید = سرنخ فروش؛ آگهی = سرنخ خرید
+  const leadKind = targetType === 'buy_request' ? 'فروش' : 'خرید';
 
   if (variant === 'icon') {
     return (
       <>
         <button
           type="button"
-          aria-label={item ? 'مدیریت پیگیری' : 'ذخیره در پیگیری‌ها'}
-          title={item ? 'مدیریت پیگیری' : 'ذخیره در پیگیری‌ها'}
+          aria-label={item ? 'مدیریت سرنخ' : `ایجاد سرنخ ${leadKind}`}
+          title={item ? 'مدیریت سرنخ' : `ایجاد سرنخ ${leadKind}`}
           onClick={openSheet}
           className={cn(
             'grid size-11 place-items-center rounded-full bg-card/95 shadow-md backdrop-blur transition-colors hover:text-primary',
@@ -122,7 +124,7 @@ export function SaveFollowButton({
           )}
         >
           <Bookmark size={iconSize} fill={item ? 'currentColor' : 'none'} />
-          {item ? 'در پیگیری‌ها' : 'ذخیره در پیگیری‌ها'}
+          {item ? 'سرنخ فعال' : `ایجاد سرنخ ${leadKind}`}
         </button>
         {open && (
           <SaveFollowSheet
@@ -151,7 +153,7 @@ export function SaveFollowButton({
         )}
       >
         <Bookmark size={iconSize} fill={item ? 'currentColor' : 'none'} />
-        {item ? 'در پیگیری' : 'ذخیره'}
+        {item ? 'سرنخ فعال' : 'ایجاد سرنخ'}
       </button>
       {open && (
         <SaveFollowSheet
@@ -184,6 +186,8 @@ function SaveFollowSheet({
 }) {
   const { toast } = useToast();
   const { data: folders, isLoading: foldersLoading } = useFollowFolders();
+  // ادبیات سرنخ (خواسته مالک ۸-۱۱) — عنوان شیت: ایجاد/مدیریت سرنخ فروش یا خرید
+  const leadKind = targetType === 'buy_request' ? 'فروش' : 'خرید';
   const { data: state } = useIsFollowing(targetType, targetId);
   const item: FollowItem | null = useMemo(() => state?.item ?? null, [state]);
 
@@ -250,7 +254,7 @@ function SaveFollowSheet({
         nextFollowDays: nextFollowDays ?? undefined,
         note: note.trim() || undefined,
       });
-      toast({ description: `در پروندهٔ «${saved.folderName}» ذخیره شد.` });
+      toast({ description: `سرنخ در پروندهٔ «${saved.folderName}» ثبت شد.` });
       onClose();
     } catch (err) {
       fail(err);
@@ -296,7 +300,7 @@ function SaveFollowSheet({
     if (!item || removeMutation.isPending) return;
     try {
       await removeMutation.mutateAsync(item.id);
-      toast({ description: 'از پیگیری‌ها حذف شد.' });
+      toast({ description: 'سرنخ حذف شد.' });
       onClose();
     } catch (err) {
       fail(err);
@@ -352,7 +356,7 @@ function SaveFollowSheet({
           </p>
         ) : (folders ?? []).length === 0 && !creatingNew ? (
           <p className="rounded-md bg-secondary/60 px-3 py-3 text-center text-xs leading-6 text-muted-foreground">
-            هنوز پرونده‌ای ندارید — با «پروندهٔ جدید» اولین پروندهٔ پیگیری‌تان را بسازید.
+            هنوز پرونده‌ای ندارید — با «پروندهٔ جدید» اولین پروندهٔ سرنخ‌تان را بسازید.
           </p>
         ) : (
           (folders ?? []).map((f) => {
@@ -501,7 +505,7 @@ function SaveFollowSheet({
               className="inline-flex h-11 items-center gap-1.5 rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-deep disabled:opacity-50"
             >
               {upsert.isPending ? <Loader2 size={15} className="animate-spin" /> : <Bookmark size={15} />}
-              ذخیره در پیگیری
+              ثبت سرنخ
             </button>
           </div>
         </>
@@ -570,7 +574,7 @@ function SaveFollowSheet({
               className="inline-flex h-11 items-center gap-1 rounded-md px-3 text-xs font-bold text-red-500 transition-colors hover:bg-red-50"
             >
               {removeMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-              حذف از پیگیری
+              حذف سرنخ
             </button>
           </div>
         </>
@@ -593,12 +597,12 @@ function SaveFollowSheet({
 
   const title =
     mode === 'folder'
-      ? 'افزودن به پیگیری'
+      ? `ایجاد سرنخ ${leadKind}`
       : mode === 'status'
-        ? 'وضعیت و یادداشت'
+        ? 'وضعیت سرنخ'
         : mode === 'move'
           ? 'انتقال به پروندهٔ دیگر'
-          : 'مدیریت پیگیری';
+          : `مدیریت سرنخ ${leadKind}`;
 
   return (
     <>

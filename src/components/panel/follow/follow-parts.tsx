@@ -84,7 +84,7 @@ export function PriorityChipsRow({
   disabled?: boolean;
 }) {
   return (
-    <div role="radiogroup" aria-label="اولویت پیگیری" className="flex flex-wrap gap-2">
+    <div role="radiogroup" aria-label="اولویت سرنخ" className="flex flex-wrap gap-2">
       {FOLLOW_PRIORITIES.map((p) => {
         const selected = p.key === value;
         return (
@@ -206,7 +206,7 @@ export function StatusChipsRow({
   disabled?: boolean;
 }) {
   return (
-    <div role="radiogroup" aria-label="وضعیت پیگیری" className="flex flex-wrap gap-2">
+    <div role="radiogroup" aria-label="وضعیت سرنخ" className="flex flex-wrap gap-2">
       {FOLLOW_STATUSES.map((s) => {
         const selected = s.key === value;
         return (

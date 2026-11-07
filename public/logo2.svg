@@ -2,22 +2,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 44" fill="none">
     <defs>
         <linearGradient id="brandGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#4f8fac"/>
-            <stop offset="100%" stop-color="#1b445b"/>
+            <stop offset="0%" stop-color="#94a3b8"/>
+            <stop offset="100%" stop-color="#475569"/>
         </linearGradient>
         <radialGradient id="dotGradient" cx="35%" cy="30%" r="75%">
-            <stop offset="0%" stop-color="#b8d4de"/>
-            <stop offset="60%" stop-color="#245b7a"/>
-            <stop offset="100%" stop-color="#1b445b"/>
+            <stop offset="0%" stop-color="#fdba74"/>
+            <stop offset="60%" stop-color="#f97316"/>
+            <stop offset="100%" stop-color="#ea580c"/>
         </radialGradient>
         <radialGradient id="dotGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stop-color="#245b7a" stop-opacity="0.5"/>
-            <stop offset="100%" stop-color="#245b7a" stop-opacity="0"/>
+            <stop offset="0%" stop-color="#f97316" stop-opacity="0.5"/>
+            <stop offset="100%" stop-color="#f97316" stop-opacity="0"/>
         </radialGradient>
     </defs>
 
     <!-- i -->
-    <text x="-2" y="37" font-family="Verdana, Geneva, sans-serif" font-size="32" font-weight="700" fill="#245b7a">i</text>
+    <text x="-2" y="37" font-family="Verdana, Geneva, sans-serif" font-size="32" font-weight="700" fill="#64748b">i</text>
 
     <!-- M گرافیکی -->
     <g transform="translate(10, 4)">
@@ -30,11 +30,11 @@
     </g>
 
     <!-- a -->
-    <text x="44" y="37" font-family="Verdana, Geneva, sans-serif" font-size="32" font-weight="700" fill="#245b7a">a</text>
+    <text x="44" y="37" font-family="Verdana, Geneva, sans-serif" font-size="32" font-weight="700" fill="#64748b">a</text>
 
     <!-- c -->
-    <text x="65" y="37" font-family="Verdana, Geneva, sans-serif" font-size="32" font-weight="700" fill="#245b7a">c</text>
+    <text x="65" y="37" font-family="Verdana, Geneva, sans-serif" font-size="32" font-weight="700" fill="#64748b">c</text>
 
     <!-- h -->
-    <text x="84" y="37" font-family="Verdana, Geneva, sans-serif" font-size="32" font-weight="700" fill="#245b7a">h</text>
+    <text x="84" y="37" font-family="Verdana, Geneva, sans-serif" font-size="32" font-weight="700" fill="#64748b">h</text>
 </svg>

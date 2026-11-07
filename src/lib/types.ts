@@ -634,7 +634,9 @@ export interface ReceivedOffersPage {
 }
 
 /** پیشنهاد تامین ارسالی من — کارت پنل فروشنده (خواسته مالک ۴-۱۱):
- *  چه کالایی، به چه کسی، چه شد — آخرین پیام گفتگوی مرتبط برای پیگیری */
+ *  چه کالایی، به چه کسی، چه شد — آخرین پیام گفتگوی مرتبط برای پیگیری.
+ *  (خواسته مالک ۸-۱۱) مشخصات ساختاریافتهٔ پیشنهاد هم می‌آید تا عین فرم
+ *  ارسال روی کارت دیده شود: حداقل خرید + واحد، چک (درصد/سرسید)، ارسال */
 export interface SentOffer {
   id: string;
   buyerId: string;
@@ -652,6 +654,17 @@ export interface SentOffer {
   createdAt: string;
   /** آخرین پیام گفتگو — «بعدش چه شد» روی کارت */
   lastMessage: { text: string; at: string; mine: boolean } | null;
+  /** حداقل مقدار خرید این پیشنهاد (به واحد دسته) */
+  minOrderAmount: number | null;
+  /** واحد دستهٔ کالا — کنار حداقل خرید */
+  unit: string;
+  /** پرداخت با چک پذیرفته می‌شود (درصد/سرسید فقط وقتی true) */
+  checkAccepted: boolean;
+  checkPercent: number | null;
+  checkMaxDays: number | null;
+  /** ارسال به محل خریدار (پرداخت‌کنندهٔ حمل فقط وقتی true) */
+  deliveryToBuyer: boolean;
+  shippingCostBy: 'seller' | 'customer' | null;
 }
 
 /** فیلتر پیشنهادهای ارسالی من */
@@ -685,6 +698,7 @@ export interface UrgentChat {
     amount: number;
     unit: string;
     productType: string | null;
+    categoryId: number;
     categoryName: string | null;
     createdAt: string;
   } | null;

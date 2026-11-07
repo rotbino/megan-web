@@ -1699,8 +1699,10 @@ export async function getMySentOffers(q: SentOffersQuery = {}): Promise<SentOffe
   });
 }
 
-/** گفتگوهای من با خریداران فوریِ یک دسته (خواسته مالک ۷-۱۱) — تب
- *  «پیشنهادهای من» صفحهٔ خریدارانِ هر کالا؛ تاریخچه و نتیجهٔ گفتگوها */
-export async function getMyUrgentChats(q: { categoryId: number }): Promise<UrgentChatsPage> {
-  return apiFetch<UrgentChatsPage>('/buyers/getMyUrgentChats', { categoryId: q.categoryId });
+/** گفتگوهای من با خریداران فوری (خواسته مالک ۷-۱۱ و ۸-۱۱) — تب «پیشنهادهای
+ *  من»: با categoryId فقط همان دسته؛ بدون آن همهٔ دسته‌ها (پنل خریداران) */
+export async function getMyUrgentChats(q: { categoryId?: number }): Promise<UrgentChatsPage> {
+  return apiFetch<UrgentChatsPage>('/buyers/getMyUrgentChats', {
+    ...(q.categoryId != null ? { categoryId: q.categoryId } : {}),
+  });
 }

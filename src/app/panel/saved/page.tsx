@@ -335,7 +335,7 @@ function FollowPageInner() {
       {/* سربرگ */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-base font-extrabold sm:text-lg">پیگیری‌ها</h1>
+          <h1 className="text-base font-extrabold sm:text-lg">سرنخ‌ها</h1>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
             سرنخ‌های ذخیره‌شده را تماس بگیرید، مذاکره کنید و به مشتری تبدیل کنید.
           </p>
@@ -375,10 +375,10 @@ function FollowPageInner() {
           <div className="min-w-0 flex-1">
             {dueTodayCount > 0 ? (
               <p className="text-sm font-bold text-amber-800">
-                <span className="font-num">{toFa(dueTodayCount)}</span> پیگیری امروز سررسیده است
+                <span className="font-num">{toFa(dueTodayCount)}</span> سرنخ برای پیگیری امروز دارید
               </p>
             ) : (
-              <p className="text-sm text-muted-foreground">امروز پیگیری سررسیده‌ای ندارید</p>
+              <p className="text-sm text-muted-foreground">امروز سرنخی برای پیگیری ندارید</p>
             )}
           </div>
           {(dueTodayCount > 0 || dueToday) && (
@@ -408,7 +408,7 @@ function FollowPageInner() {
             onChange={(e) => setQ(e.target.value)}
             placeholder="جستجو: نام کاربر، دستهٔ کالا یا عنوان کالا…"
             className="h-11 rounded-md ps-9 pe-9"
-            aria-label="جستجو در پیگیری‌ها"
+            aria-label="جستجو در سرنخ‌ها"
           />
           {q && (
             <button
@@ -508,7 +508,7 @@ function FollowPageInner() {
             value={status !== 'all' ? FOLLOW_STATUSES.find((s) => s.key === status)?.label ?? null : null}
             active={status !== 'all'}
             onClear={() => setStatus('all')}
-            sheetTitle="وضعیت پیگیری"
+            sheetTitle="وضعیت سرنخ"
           >
             <FilterOption selected={status === 'all'} onSelect={() => setStatus('all')} count={statusBase.length}>
               همه
@@ -617,8 +617,8 @@ function FollowPageInner() {
       ) : items.length === 0 ? (
         <PanelEmptyState
           icon={Bookmark}
-          title="هنوز چیزی را پیگیری نمی‌کنید."
-          hint="روی دکمهٔ «ذخیره» در کارت خریداران یا آگهی‌ها بزنید تا سرنخ‌ها با وضعیت تماس و یادداشت، همین‌جا جمع شوند."
+          title="هنوز سرنخی ندارید."
+          hint="روی دکمهٔ «ایجاد سرنخ» در کارت خریداران یا آگهی‌ها بزنید تا سرنخ‌ها با وضعیت تماس و یادداشت، همین‌جا جمع شوند."
           actionLabel="مشاهده درخواست‌های خرید"
           actionHref="/panel/buyers"
         />
