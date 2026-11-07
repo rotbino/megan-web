@@ -96,22 +96,22 @@ export default function PanelMessagesPage() {
   const counterpartNames = threads.map((t) => t.counterpart.userName).filter(Boolean);
   const { data: presenceItems } = usePresenceStatus({ userNames: counterpartNames });
   const presenceOf = (t: ChatThreadInfo) =>
-    findPresence(presenceItems, { id: t.counterpart.id, userName: t.counterpart.userName });
+      findPresence(presenceItems, { id: t.counterpart.id, userName: t.counterpart.userName });
 
   const sendMsg = (text: string) => {
     const t = text.trim();
     if (!t || !active || send.isPending) return;
     send.mutate(
-      { threadId: active.id, text: t },
-      {
-        onError: (err) =>
-          toast({ description: err instanceof Error ? err.message : 'ارسال پیام ناموفق بود.' }),
-      },
+        { threadId: active.id, text: t },
+        {
+          onError: (err) =>
+              toast({ description: err instanceof Error ? err.message : 'ارسال پیام ناموفق بود.' }),
+        },
     );
   };
 
   const nameOf = (t: ChatThreadInfo) =>
-    `${t.counterpart.firstName} ${t.counterpart.lastName}`.trim() || 'کاربر ایمچ';
+      `${t.counterpart.firstName} ${t.counterpart.lastName}`.trim() || 'کاربر ایمچ';
 
   // ویرایش قیمت — عین دیالوگ باسکول (ارسال پیام قالب‌دار)
   const [priceOpen, setPriceOpen] = useState(false);
@@ -122,43 +122,43 @@ export default function PanelMessagesPage() {
   const [reportText, setReportText] = useState('');
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4">
-      {/* وب‌پوش (B10) — اعلان پیام‌های جدید وقتی سایت باز نیست */}
-      <PushEnableBanner />
-      {/* grid-cols-1 صریح: ستون ضمنی گرید auto با max-content سنجیده می‌شود و
+      <div className="mx-auto max-w-5xl space-y-4">
+        {/* وب‌پوش (B10) — اعلان پیام‌های جدید وقتی سایت باز نیست */}
+        <PushEnableBanner />
+        {/* grid-cols-1 صریح: ستون ضمنی گرید auto با max-content سنجیده می‌شود و
           برچسب nowrap حضور می‌تواند آن را از عرض صفحه بیرون بکشد */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
-        {/* لیست مخاطبان */}
-        <PanelCard className="order-2 lg:order-1">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-bold">
-              مخاطب <span className="text-muted-foreground">({toFa(threads.length)})</span>
-            </p>
-          </div>
-          <div className="relative mt-3">
-            <Search size={15} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجوی مکالمه…" className="rounded-md pe-9" />
-          </div>
-          {isLoading ? (
-            <div className="mt-3 space-y-2">
-              {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-14 animate-pulse rounded-md bg-secondary/60" />)}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
+          {/* لیست مخاطبان */}
+          <PanelCard className="order-2 lg:order-1">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-bold">
+                مخاطب <span className="text-muted-foreground">({toFa(threads.length)})</span>
+              </p>
             </div>
-          ) : (
-            <ul className="mt-3 divide-y divide-border/70">
-              {/* پشتیبانی ایمچ — سنجاق‌شده بالا؛ پیام‌های مستقیم ادمین (یک‌طرفه) */}
-              <li className="pb-1">
-                <button
-                  type="button"
-                  onClick={() => setActiveId(SUPPORT_ID)}
-                  className={cn(
-                    'flex w-full items-center gap-3 rounded-md px-2 py-3 text-start transition-colors',
-                    showingSupport ? 'bg-primary/10' : 'hover:bg-secondary/70',
-                  )}
-                >
+            <div className="relative mt-3">
+              <Search size={15} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجوی مکالمه…" className="rounded-md pe-9" />
+            </div>
+            {isLoading ? (
+                <div className="mt-3 space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-14 animate-pulse rounded-md bg-secondary/60" />)}
+                </div>
+            ) : (
+                <ul className="mt-3 divide-y divide-border/70">
+                  {/* پشتیبانی ایمچ — سنجاق‌شده بالا؛ پیام‌های مستقیم ادمین (یک‌طرفه) */}
+                  <li className="pb-1">
+                    <button
+                        type="button"
+                        onClick={() => setActiveId(SUPPORT_ID)}
+                        className={cn(
+                            'flex w-full items-center gap-3 rounded-md px-2 py-3 text-start transition-colors',
+                            showingSupport ? 'bg-primary/10' : 'hover:bg-secondary/70',
+                        )}
+                    >
                   <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
                     <Headset size={18} />
                   </span>
-                  <span className="min-w-0 flex-1">
+                      <span className="min-w-0 flex-1">
                     <span className="flex items-center justify-between gap-2">
                       <span className="truncate text-sm font-bold text-primary">پشتیبانی ایمچ</span>
                       <span className="shrink-0 text-[10px] text-muted-foreground">
@@ -170,45 +170,45 @@ export default function PanelMessagesPage() {
                         {lastSupport?.text ?? 'پیام‌های مدیریت ایمچ اینجا می‌آید'}
                       </span>
                       {supportUnread > 0 && (
-                        <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                          <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
                           {toFa(supportUnread)}
                         </span>
                       )}
                     </span>
                   </span>
-                </button>
-              </li>
-              {visible.length === 0 && (
-                <li>
-                  <p className="rounded-md bg-secondary/50 px-3 py-3 text-center text-xs leading-6 text-muted-foreground">
-                    مکالمه‌ای یافت نشد. گفتگو از صفحه هر آگهی («چت با فروشنده») شروع می‌شود.
-                  </p>
-                </li>
-              )}
-              {visible.map((t) => (
-                <li key={t.id}>
-                  <button
-                    type="button"
-                    onClick={() => setActiveId(t.id)}
-                    className={cn(
-                      'flex w-full items-center gap-3 rounded-md px-2 py-3 text-start transition-colors',
-                      !showingSupport && active?.id === t.id ? 'bg-primary/10' : 'hover:bg-secondary/70',
-                    )}
-                  >
+                    </button>
+                  </li>
+                  {visible.length === 0 && (
+                      <li>
+                        <p className="rounded-md bg-secondary/50 px-3 py-3 text-center text-xs leading-6 text-muted-foreground">
+                          مکالمه‌ای یافت نشد. گفتگو از صفحه هر آگهی («چت با فروشنده») شروع می‌شود.
+                        </p>
+                      </li>
+                  )}
+                  {visible.map((t) => (
+                      <li key={t.id}>
+                        <button
+                            type="button"
+                            onClick={() => setActiveId(t.id)}
+                            className={cn(
+                                'flex w-full items-center gap-3 rounded-md px-2 py-3 text-start transition-colors',
+                                !showingSupport && active?.id === t.id ? 'bg-primary/10' : 'hover:bg-secondary/70',
+                            )}
+                        >
                     <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-secondary text-xs font-extrabold">
                       {t.counterpart.avatarUrl ? (
-                        <img src={t.counterpart.avatarUrl} alt="" className="size-full object-cover" loading="lazy" />
+                          <img src={t.counterpart.avatarUrl} alt="" className="size-full object-cover" loading="lazy" />
                       ) : (
-                        nameOf(t).charAt(0)
+                          nameOf(t).charAt(0)
                       )}
                       <PresenceDot
-                        online={presenceOf(t)?.online}
-                        showLabel={false}
-                        size="sm"
-                        className="absolute -bottom-0.5 -start-0.5"
+                          online={presenceOf(t)?.online}
+                          showLabel={false}
+                          size="sm"
+                          className="absolute -bottom-0.5 -start-0.5"
                       />
                     </span>
-                    <span className="min-w-0 flex-1">
+                          <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-2">
                         <span className="truncate text-sm font-bold">{nameOf(t)}</span>
                         <span className="shrink-0 text-[10px] text-muted-foreground">
@@ -220,293 +220,327 @@ export default function PanelMessagesPage() {
                           {t.lastMessage?.text ?? 'بدون پیام'}
                         </span>
                         {t.unreadCount > 0 && (
-                          <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
                             {toFa(t.unreadCount)}
                           </span>
                         )}
                       </span>
                     </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+                        </button>
+                      </li>
+                  ))}
+                </ul>
+            )}
 
-          {/* ارسال برای دوستان — عین باسکول */}
-          <div className="mt-4 rounded-md border bg-secondary/30 p-3">
-            <p className="flex items-center gap-1.5 text-xs font-bold">
-              <Share2 size={14} />
-              ارسال برای دوستان
-            </p>
-            <p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">
-              با معرفی ایمچ به همکارانتان، بازار بزرگ‌تر و قیمت‌های بهتری داشته باشید.
-            </p>
-            {/* ارسال به مخاطبین (خواسته مالک ۴-۱۱) — اولین دکمه؛ فقط موبایل */}
-            <SendToContactsButton className="mt-2.5" />
-            <div className="mt-2 flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 flex-1 rounded-md text-[11px]"
-                onClick={() => toast({ description: 'به‌زودی: اشتراک‌گذاری در تلگرام' })}
+            {/* ارسال برای دوستان — عین باسکول */}
+            <div className="mt-4 rounded-md border bg-secondary/30 p-3">
+              <p className="flex items-center gap-1.5 text-xs font-bold">
+                <Share2 size={14} />
+                ارسال برای دوستان
+              </p>
+              <p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">
+                با معرفی ایمچ به همکارانتان، بازار بزرگ‌تر و قیمت‌های بهتری داشته باشید.
+              </p>
+              {/* ارسال به مخاطبین (خواسته مالک ۴-۱۱) — اولین دکمه؛ فقط موبایل */}
+              <SendToContactsButton className="mt-2.5" />
+              <div className="mt-2 flex items-center gap-2">
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 flex-1 rounded-md text-[11px]"
+                    onClick={() => toast({ description: 'به‌زودی: اشتراک‌گذاری در تلگرام' })}
+                >
+                  تلگرام
+                </Button>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 flex-1 rounded-md text-[11px]"
+                    onClick={() => toast({ description: 'به‌زودی: اشتراک‌گذاری در واتس آپ' })}
+                >
+                  واتس آپ
+                </Button>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 flex-1 rounded-md text-[11px]"
+                    onClick={() => toast({ description: 'به‌زودی: اشتراک‌گذاری با ایمیل' })}
+                >
+                  <Mail size={13} /> ایمیل
+                </Button>
+              </div>
+              <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                      navigator.clipboard.writeText(SHARE_LINK).catch(() => {});
+                    }
+                    toast({ description: 'کپی شد.' });
+                  }}
+                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed py-2 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
               >
-                تلگرام
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 flex-1 rounded-md text-[11px]"
-                onClick={() => toast({ description: 'به‌زودی: اشتراک‌گذاری در واتس آپ' })}
-              >
-                واتس آپ
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 flex-1 rounded-md text-[11px]"
-                onClick={() => toast({ description: 'به‌زودی: اشتراک‌گذاری با ایمیل' })}
-              >
-                <Mail size={13} /> ایمیل
-              </Button>
+                <Copy size={12} />
+                کپی لینک
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                  navigator.clipboard.writeText(SHARE_LINK).catch(() => {});
-                }
-                toast({ description: 'کپی شد.' });
-              }}
-              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed py-2 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-            >
-              <Copy size={12} />
-              کپی لینک
-            </button>
-          </div>
-        </PanelCard>
+          </PanelCard>
 
-        {/* نمای چت */}
-        <PanelCard className="order-1 flex min-h-[420px] flex-col lg:order-2">
-          {showingSupport ? (
-            <>
-              {/* مکالمه پشتیبانی — یک‌طرفه (ادمین → کاربر) */}
-              <div className="flex items-center gap-3 border-b border-border/70 pb-3">
+          {/* نمای چت */}
+          <PanelCard className="order-1 flex min-h-[60vh] flex-col sm:min-h-[420px] lg:order-2">
+            {showingSupport ? (
+                <>
+                  {/* مکالمه پشتیبانی — یک‌طرفه (ادمین → کاربر) */}
+                  <div className="flex items-center gap-3 border-b border-border/70 pb-3">
                 <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary">
                   <Headset size={18} />
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-primary">پشتیبانی ایمچ</p>
-                  <p className="truncate text-[11px] text-muted-foreground">
-                    اطلاع‌رسانی و پیام‌های مدیریت ایمچ
-                    {adminInbox ? ` — ${toFa(adminInbox.total)} پیام` : ''}
-                  </p>
-                </div>
-              </div>
-
-              <div ref={listRef} className="flex-1 space-y-2.5 overflow-y-auto py-4">
-                {supportMessages.length === 0 ? (
-                  <p className="py-8 text-center text-xs leading-6 text-muted-foreground">
-                    هنوز پیامی از پشتیبانی ندارید.
-                  </p>
-                ) : (
-                  supportMessages.map((m) => (
-                    <div key={m.id} className="w-fit max-w-[80%] rounded-lg rounded-tr-sm bg-secondary px-3.5 py-2.5">
-                      <p dir="auto" className="text-[13px] leading-6">{m.text}</p>
-                      <p className="mt-1 flex items-center gap-1.5 text-[9px] text-muted-foreground">
-                        <span>{m.adminUsername}</span>·<span><RelativeTime date={m.createdAt} /></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-primary">پشتیبانی ایمچ</p>
+                      <p className="truncate text-[11px] text-muted-foreground">
+                        اطلاع‌رسانی و پیام‌های مدیریت ایمچ
+                        {adminInbox ? ` — ${toFa(adminInbox.total)} پیام` : ''}
                       </p>
                     </div>
-                  ))
-                )}
-              </div>
+                  </div>
 
-              <div className="border-t border-border/70 pt-3">
-                <p className="rounded-md bg-secondary/50 px-3 py-2.5 text-center text-[11px] leading-6 text-muted-foreground">
-                  این پیام‌ها یک‌طرفه از طرف مدیریت ایمچ است. برای پرسش‌ها از{' '}
-                  <Link href="/panel/support" className="font-bold text-primary hover:underline">صفحه پشتیبانی</Link>{' '}
-                  استفاده کنید.
-                </p>
-              </div>
-            </>
-          ) : active ? (
-            <>
-              <div className="flex items-center gap-3 border-b border-border/70 pb-3">
+                  <div
+                      ref={listRef}
+                      className={cn(
+                          'flex-1 overflow-y-auto overscroll-contain touch-pan-y',
+                          'space-y-2 sm:space-y-3',
+                          'px-0.5 py-3 sm:px-1 sm:py-4',
+                          'sm:bg-[radial-gradient(circle_at_1px_1px,theme(colors.border)_1px,transparent_0)] sm:bg-[length:18px_18px]',
+                      )}
+                  >
+                    {supportMessages.length === 0 ? (
+                        <p className="py-8 text-center text-xs leading-6 text-muted-foreground">
+                          هنوز پیامی از پشتیبانی ندارید.
+                        </p>
+                    ) : (
+                        supportMessages.map((m) => (
+                            <div key={m.id} className="flex w-full justify-start">
+                              <div
+                                  dir="auto"
+                                  className={cn(
+                                      'w-fit whitespace-pre-wrap break-words shadow-sm transition-colors',
+                                      'max-w-[85%] rounded-xl px-3 py-2 text-[13px] leading-6',
+                                      'sm:max-w-[75%] sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-[13.5px] sm:leading-7',
+                                      'animate-in fade-in slide-in-from-bottom-1 duration-200',
+                                      'rounded-bl-md border border-border/70 bg-card text-foreground',
+                                  )}
+                              >
+                                <p dir="auto">{m.text}</p>
+                                <p className="mt-1 flex items-center gap-1.5 text-[9px] text-muted-foreground">
+                                  <span>{m.adminUsername}</span>·<span><RelativeTime date={m.createdAt} /></span>
+                                </p>
+                              </div>
+                            </div>
+                        ))
+                    )}
+                  </div>
+
+                  <div className="border-t border-border/70 pt-3">
+                    <p className="rounded-md bg-secondary/50 px-3 py-2.5 text-center text-[11px] leading-6 text-muted-foreground">
+                      این پیام‌ها یک‌طرفه از طرف مدیریت ایمچ است. برای پرسش‌ها از{' '}
+                      <Link href="/panel/support" className="font-bold text-primary hover:underline">صفحه پشتیبانی</Link>{' '}
+                      استفاده کنید.
+                    </p>
+                  </div>
+                </>
+            ) : active ? (
+                <>
+                  <div className="flex items-center gap-3 border-b border-border/70 pb-3">
                 <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/10 text-xs font-extrabold text-primary">
                   {active.counterpart.avatarUrl ? (
-                    <img src={active.counterpart.avatarUrl} alt="" className="size-full object-cover" />
+                      <img src={active.counterpart.avatarUrl} alt="" className="size-full object-cover" />
                   ) : (
-                    nameOf(active).charAt(0)
+                      nameOf(active).charAt(0)
                   )}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="flex min-w-0 items-center gap-2 text-sm font-bold">
-                    <span className="truncate">{nameOf(active)}</span>
-                    <PresenceDot
-                      online={presenceOf(active)?.online}
-                      lastSeenAt={presenceOf(active)?.lastSeenAt ?? undefined}
-                      className="shrink-0"
-                    />
-                  </p>
-                  <p className="truncate text-[11px] text-muted-foreground">
-                    {active.productName ? <>مکالمه روی: {active.productName}</> : <>گفتگوی مستقیم از پروفایل</>}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="rounded-md text-[11px]"
-                    onClick={() => {
-                      setPrice('');
-                      setPriceOpen(true);
-                    }}
-                  >
-                    <Pencil size={13} /> ویرایش قیمت
-                  </Button>
-                  <button
-                    type="button"
-                    aria-label="گزارش تخلف کاربر"
-                    title="گزارش تخلف کاربر"
-                    onClick={() => setReportOpen(true)}
-                    className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500"
-                  >
-                    <Flag size={15} />
-                  </button>
-                </div>
-              </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="flex min-w-0 items-center gap-2 text-sm font-bold">
+                        <span className="truncate">{nameOf(active)}</span>
+                        <PresenceDot
+                            online={presenceOf(active)?.online}
+                            lastSeenAt={presenceOf(active)?.lastSeenAt ?? undefined}
+                            className="shrink-0"
+                        />
+                      </p>
+                      <p className="truncate text-[11px] text-muted-foreground">
+                        {active.productName ? <>مکالمه روی: {active.productName}</> : <>گفتگوی مستقیم از پروفایل</>}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-md text-[11px]"
+                          onClick={() => {
+                            setPrice('');
+                            setPriceOpen(true);
+                          }}
+                      >
+                        <Pencil size={13} /> ویرایش قیمت
+                      </Button>
+                      <button
+                          type="button"
+                          aria-label="گزارش تخلف کاربر"
+                          title="گزارش تخلف کاربر"
+                          onClick={() => setReportOpen(true)}
+                          className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500"
+                      >
+                        <Flag size={15} />
+                      </button>
+                    </div>
+                  </div>
 
-              <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto py-4">
-                {!messages || messages.length === 0 ? (
-                  <p className="py-8 text-center text-xs leading-6 text-muted-foreground">
-                    برای شروع مکالمه پیامی بنویسید
-                  </p>
-                ) : (
-                  messages.map((m) => (
-                    <p
-                      key={m.id}
-                      dir="auto"
+                  <div
+                      ref={listRef}
                       className={cn(
-                        // حباب ملایم پیامرسان‌های معروف (خواسته مالک ۷-۱۱): به‌جای
-                        // پُرِ سنگین رنگ برند، تینتِ نرم همان رنگ + متن عادی — چشم
-                        // خسته نمی‌شود؛ فونت هم یک پله بزرگ‌تر از xs شد
-                        'w-fit max-w-[80%] rounded-lg px-3.5 py-2.5 text-[13px] leading-6',
-                        m.senderId === myId
-                          ? 'ms-auto rounded-tl-sm bg-primary/15 text-foreground'
-                          : 'rounded-tr-sm bg-secondary text-foreground',
+                          'flex-1 overflow-y-auto overscroll-contain touch-pan-y',
+                          'space-y-2 sm:space-y-3',
+                          'px-0.5 py-3 sm:px-1 sm:py-4',
+                          'sm:bg-[radial-gradient(circle_at_1px_1px,theme(colors.border)_1px,transparent_0)] sm:bg-[length:18px_18px]',
                       )}
-                    >
-                      {m.text}
-                      {m.senderId === myId && m.readAt && (
-                        <span className="ms-2 align-middle text-[9px] text-muted-foreground">✓✓</span>
-                      )}
-                    </p>
-                  ))
-                )}
-              </div>
+                  >
+                    {!messages || messages.length === 0 ? (
+                        <p className="py-8 text-center text-xs leading-6 text-muted-foreground">
+                          برای شروع مکالمه پیامی بنویسید
+                        </p>
+                    ) : (
+                        messages.map((m) => {
+                          const mine = m.senderId === myId;
+                          return (
+                              <div key={m.id} className={cn('flex w-full', mine ? 'justify-end' : 'justify-start')}>
+                                <div
+                                    dir="auto"
+                                    className={cn(
+                                        'w-fit whitespace-pre-wrap break-words shadow-sm transition-colors',
+                                        // موبایل: عرض بیشتر، پدینگ و فونت کمی جمع‌تر | دسکتاپ: بزرگ‌تر
+                                        'max-w-[85%] rounded-xl px-3 py-2 text-[13px] leading-6',
+                                        'sm:max-w-[75%] sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-[13.5px] sm:leading-7',
+                                        'animate-in fade-in slide-in-from-bottom-1 duration-200',
+                                        mine
+                                            ? 'rounded-br-md border border-primary/25 bg-primary/15 text-foreground'
+                                            : 'rounded-bl-md border border-border/70 bg-card text-foreground',
+                                    )}
+                                >
+                                  {m.text}
+                                  {mine && m.readAt && (
+                                      <span className="ms-1.5 inline-flex translate-y-px items-center align-middle text-[10px] font-medium text-primary sm:ms-2">
+                              ✓✓
+                            </span>
+                                  )}
+                                </div>
+                              </div>
+                          );
+                        })
+                    )}
+                  </div>
 
-              <form
-                className="flex gap-2 border-t border-border/70 pt-3"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  sendMsg(draft);
-                  setDraft('');
-                }}
-              >
-                <Input
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder="برای شروع مکالمه پیامی بنویسید"
-                  className="rounded-md"
-                  maxLength={2000}
+                  <form
+                      className="flex gap-2 border-t border-border/70 pt-3"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        sendMsg(draft);
+                        setDraft('');
+                      }}
+                  >
+                    <Input
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        placeholder="برای شروع مکالمه پیامی بنویسید"
+                        className="rounded-md"
+                        maxLength={2000}
+                    />
+                    <Button type="submit" size="icon" aria-label="ارسال پیام" className="rounded-md" disabled={send.isPending || !draft.trim()}>
+                      <Send size={15} />
+                    </Button>
+                  </form>
+                </>
+            ) : isLoading ? (
+                <div className="grid flex-1 place-items-center">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                </div>
+            ) : (
+                <PanelEmptyState
+                    icon={MessageSquare}
+                    title="هیچ پیام جدیدی ندارید!"
+                    hint="برای شروع گفتگو با خریداران و فروشندگان ایمچ، از صفحه هر آگهی پیام ارسال کنید."
                 />
-                <Button type="submit" size="icon" aria-label="ارسال پیام" className="rounded-md" disabled={send.isPending || !draft.trim()}>
-                  <Send size={15} />
-                </Button>
-              </form>
-            </>
-          ) : isLoading ? (
-            <div className="grid flex-1 place-items-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            )}
+          </PanelCard>
+        </div>
+
+        {/* دیالوگ ویرایش قیمت — عین باسکول؛ ارسال پیام قالب‌دار در همان مکالمه */}
+        <Dialog open={priceOpen} onOpenChange={setPriceOpen}>
+          <DialogContent className="rounded-lg sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-start">ویرایش قیمت</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-1.5">
+              <Label htmlFor="chat-price">
+                قیمت <span className="text-muted-foreground">(هر کیلو به تومان)</span> <span className="text-red-500">*</span>
+              </Label>
+              <UnitInput
+                  id="chat-price"
+                  kind="price"
+                  unit="هر کیلو تومان"
+                  value={price}
+                  onValueChange={setPrice}
+                  placeholder="مثلا: 15,000"
+              />
+              <p className="text-[11px] leading-5 text-muted-foreground">
+                قیمت جدید به‌صورت پیام در همین مکالمه ({active?.productName ?? ''}) ارسال می‌شود.
+              </p>
             </div>
-          ) : (
-            <PanelEmptyState
-              icon={MessageSquare}
-              title="هیچ پیام جدیدی ندارید!"
-              hint="برای شروع گفتگو با خریداران و فروشندگان ایمچ، از صفحه هر آگهی پیام ارسال کنید."
-            />
-          )}
-        </PanelCard>
+            <Button
+                className="w-full rounded-md"
+                disabled={!price || send.isPending}
+                onClick={() => {
+                  const num = Number(price.replace(/[^\d]/g, ''));
+                  if (!num || !active) return;
+                  sendMsg(`قیمت هر کیلو: ${num.toLocaleString('fa-IR')} تومان`);
+                  setPriceOpen(false);
+                  setPrice('');
+                }}
+            >
+              ویرایش
+            </Button>
+          </DialogContent>
+        </Dialog>
+
+        {/* دیالوگ گزارش تخلف — عین باسکول */}
+        <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+          <DialogContent className="rounded-lg sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-start">گزارش تخلف کاربر</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-1.5">
+              <Label htmlFor="report-text">دلیل گزارش تخلف چیست؟</Label>
+              <Textarea
+                  id="report-text"
+                  dir="rtl"
+                  rows={4}
+                  value={reportText}
+                  onChange={(e) => setReportText(e.target.value)}
+                  className="resize-none text-sm leading-7"
+                  placeholder="توضیح کوتاه بنویسید…"
+              />
+            </div>
+            <Button
+                className="w-full rounded-md"
+                disabled={reportText.trim().length < 5}
+                onClick={() => {
+                  setReportOpen(false);
+                  setReportText('');
+                  toast({ description: 'گزارش شما ثبت شد؛ تیم ایمچ بررسی می‌کند.' });
+                }}
+            >
+              ثبت گزارش
+            </Button>
+          </DialogContent>
+        </Dialog>
       </div>
-
-      {/* دیالوگ ویرایش قیمت — عین باسکول؛ ارسال پیام قالب‌دار در همان مکالمه */}
-      <Dialog open={priceOpen} onOpenChange={setPriceOpen}>
-        <DialogContent className="rounded-lg sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-start">ویرایش قیمت</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-1.5">
-            <Label htmlFor="chat-price">
-              قیمت <span className="text-muted-foreground">(هر کیلو به تومان)</span> <span className="text-red-500">*</span>
-            </Label>
-            <UnitInput
-              id="chat-price"
-              kind="price"
-              unit="هر کیلو تومان"
-              value={price}
-              onValueChange={setPrice}
-              placeholder="مثلا: 15,000"
-            />
-            <p className="text-[11px] leading-5 text-muted-foreground">
-              قیمت جدید به‌صورت پیام در همین مکالمه ({active?.productName ?? ''}) ارسال می‌شود.
-            </p>
-          </div>
-          <Button
-            className="w-full rounded-md"
-            disabled={!price || send.isPending}
-            onClick={() => {
-              const num = Number(price.replace(/[^\d]/g, ''));
-              if (!num || !active) return;
-              sendMsg(`قیمت هر کیلو: ${num.toLocaleString('fa-IR')} تومان`);
-              setPriceOpen(false);
-              setPrice('');
-            }}
-          >
-            ویرایش
-          </Button>
-        </DialogContent>
-      </Dialog>
-
-      {/* دیالوگ گزارش تخلف — عین باسکول */}
-      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
-        <DialogContent className="rounded-lg sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-start">گزارش تخلف کاربر</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-1.5">
-            <Label htmlFor="report-text">دلیل گزارش تخلف چیست؟</Label>
-            <Textarea
-              id="report-text"
-              dir="rtl"
-              rows={4}
-              value={reportText}
-              onChange={(e) => setReportText(e.target.value)}
-              className="resize-none text-sm leading-7"
-              placeholder="توضیح کوتاه بنویسید…"
-            />
-          </div>
-          <Button
-            className="w-full rounded-md"
-            disabled={reportText.trim().length < 5}
-            onClick={() => {
-              setReportOpen(false);
-              setReportText('');
-              toast({ description: 'گزارش شما ثبت شد؛ تیم ایمچ بررسی می‌کند.' });
-            }}
-          >
-            ثبت گزارش
-          </Button>
-        </DialogContent>
-      </Dialog>
-    </div>
   );
 }
