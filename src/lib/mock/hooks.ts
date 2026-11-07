@@ -402,7 +402,8 @@ export function useUploadChatFile() {
  * صفحه اول = آخرین ۲۰ پیام؛ fetchNextPage صفحه قدیمی‌تری می‌آورد (before =
  * قدیمی‌ترین createdAt). `messages` همیشه صعودی (قدیمی بالا، جدید پایین)
  * و `hasMore` می‌گوید صفحه قدیمی‌تری هست یا نه.
- * باز کردن مکالمه = خوانده‌شدن سمت سرور → بج هدر/فوتر همان لحظه صفر شود.
+ * واکشی ≠ خواندن (خواسته مالک ۸-۱۱): بج خوانده‌نشده تا نمایش واقعی چت
+ * باقی می‌ماند — علامت‌گذاری فقط با useMarkThreadRead صریح انجام می‌شود.
  */
 export function useChatThreadMessages(threadId: string | null) {
   const queryClient = useQueryClient();
@@ -452,6 +453,25 @@ export function useChatThreadMessages(threadId: string | null) {
 
 export function useConversations() {
   return useQuery({ queryKey: ['chat-conversations'], queryFn: api.getConversations, staleTime: 15_000 });
+}
+
+/**
+ * علامت‌گذاری خوانده‌شدهٔ صریح مکالمه (خواسته مالک ۸-۱۱):
+ * بک‌اند در واکشی پیام‌ها دیگر خودکار readAt نمی‌زند؛ این هوک وقتی صدا زده
+ * می‌شود که چت «واقعاً به کاربر نمایش داده شده» (رندر پیام‌ها + پنجرهٔ
+ * مرئی). بعد از موفقیت: بج لیست/هدر/فوتر صفر و تیک‌های پیام تازه می‌شوند.
+ */
+export function useMarkThreadRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (threadId: string) => api.markChatThreadRead(threadId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
+      // readAt پیام‌های طرف مقابل تازه شود (تیک دوبرابر فرستنده از مسیر WS)
+      queryClient.invalidateQueries({ queryKey: ['chat-thread-messages'] });
+    },
+  });
 }
 
 // ─── پیام‌های پشتیبانی (ادمین → کاربر) ─────────────────────────────────

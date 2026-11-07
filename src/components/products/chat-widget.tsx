@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LogIn, MessageSquareText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,6 +15,7 @@ import {
   useChatThreadMessages,
   useDeleteChatMessage,
   useEditChatMessage,
+  useMarkThreadRead,
   useSendChatMessage,
   useStartChatThread,
   useUploadChatFile,
@@ -57,6 +58,7 @@ export function ChatWidget({
 }) {
   const { user } = useAuth();
   const [loginOpen, setLoginOpen] = useState(false);
+  const { toast } = useToast();
   const start = useStartChatThread();
   // id من برای جهت‌دهی حباب پیام‌ها — مسیر عادی از startThread؛ در مسیر
   // threadId مستقیم (آمار آگهی ۲-۱۱ دور ۱۸) از presence خودم می‌آید
@@ -72,6 +74,7 @@ export function ChatWidget({
   const {
     messages,
     hasMore,
+    isFetching: messagesFetching,
     isFetchingNextPage,
     fetchNextPage,
     isLoading: messagesLoading,
@@ -97,6 +100,39 @@ export function ChatWidget({
 
   // push لحظه‌ای — WS، پیام تازه را همان لحظه می‌آورد
   useChatSocketEvents();
+
+  // ── خوانده‌شدن با نمایش واقعی (خواسته مالک ۸-۱۱) ──
+  // ویجت فقط وقتی مونت می‌شود که دیالوگ باز است؛ پس رندر پیام‌ها یعنی
+  // دیده‌شدن — بعد از ۶۰۰ms علامت‌گذاری صریح می‌شود (واکشی ≠ خواندن).
+  const markRead = useMarkThreadRead();
+  useEffect(() => {
+    if (!threadId || !myId || markRead.isPending) return;
+    if (!messages.some((m) => m.senderId !== myId && m.readAt === null)) return;
+    const t = window.setTimeout(() => markRead.mutate(threadId), 600);
+    return () => window.clearTimeout(t);
+  }, [threadId, myId, messages, markRead]);
+
+  // اولین پیام خوانده‌نشده — اسکرول ورود روی آن می‌ایستد (خواسته مالک ۸-۱۱).
+  // یک‌بار به ازای هر مکالمه و قبل از علامت‌گذاری ثبت می‌شود تا جداکنندهٔ
+  // «پیام‌های جدید» تا بسته‌شدن دیالوگ بماند.
+  const widgetThreadKey = threadId ?? 'none';
+  const firstUnreadRef = useRef<{ key: string; id: string | null; settled: boolean }>({
+    key: 'none',
+    id: null,
+    settled: true,
+  });
+  if (firstUnreadRef.current.key !== widgetThreadKey) {
+    firstUnreadRef.current = { key: widgetThreadKey, id: null, settled: widgetThreadKey === 'none' };
+  }
+  if (!firstUnreadRef.current.settled && myId && messages.length > 0) {
+    const first = messages.find((m) => m.senderId !== myId && m.readAt === null) ?? null;
+    // تا رفرش پشت‌زمین تمام نشده null نمی‌نشینیم (کش کهنه ممکن است
+    // «همه خوانده‌شده» بگوید و پیام‌های تازه بعداً برسند)
+    if (first || (!hasMore && !messagesFetching)) {
+      firstUnreadRef.current = { key: widgetThreadKey, id: first?.id ?? null, settled: true };
+    }
+  }
+  const firstUnreadId = firstUnreadRef.current.id;
 
   // هدف شروع مکالمه — آگهی یا مستقیم؛ با threadId مستقیم نیازی به شروع نیست
   const target =
@@ -222,6 +258,7 @@ export function ChatWidget({
           ) : (
             <MessageList
               threadKey={threadId ?? 'none'}
+              firstUnreadId={firstUnreadId}
               messages={messages ?? []}
               myId={myId}
               hasMore={hasMore}

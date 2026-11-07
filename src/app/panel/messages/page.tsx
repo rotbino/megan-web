@@ -3,6 +3,13 @@
 /**
  * پیام‌ها — پیام‌رسان پنل (B8 — واقعی، منطق MHTML باسکول):
  * + چت دو مرحله‌ای موبایل (خواسته مالک ۷-۱۱): اول لیست مخاطبان، بعد مکالمه.
+ * + بج خوانده‌نشده تا باز کردن واقعی چت نمی‌پرد (خواسته مالک ۸-۱۱): واکشی
+ *   پیام‌ها ≠ خواندن؛ در موبایل هیچ مکالمه‌ای تا انتخاب کاربر باز/واکشی نمی‌شود
+ *   و علامت‌گذاری خوانده‌شده فقط بعد از رندر پیام‌های مرئی انجام می‌شود.
+ * + ورود به مکالمهٔ دارای پیام جدید: اسکرول روی اولین پیام خوانده‌نشده
+ *   می‌ایستد + جداکنندهٔ «پیام‌های جدید» (خواسته مالک ۸-۱۱).
+ * + چت با URL می‌ماند (خواسته مالک ۸-۱۱): ?thread= — رفرش همان مکالمه را
+ *   باز می‌کند؛ دکمهٔ back مرورگر هم به لیست برمی‌گردد (pushState + popstate).
  * + پیام‌های کاربر راست، مخاطب چپ؛ طراحی مینیمال موبایل/دسکتاپ.
  * + پیوست تصویر/ویدئو/سند تا ۵MB (لیست سفید + بایت جادویی سمت سرور).
  * + ویرایش/حذف فقط تا قبل از مشاهدهٔ طرف مقابل — چت مدرک است.
@@ -11,7 +18,7 @@
  *   تازه‌تر بالاتر از پشتیبانی می‌نشیند (خواسته مالک ۷-۱۱).
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, MessageSquare } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -29,6 +36,7 @@ import {
   useDeleteChatMessage,
   useEditChatMessage,
   useMarkAdminMessagesRead,
+  useMarkThreadRead,
   useSendChatMessage,
   useUploadChatFile,
 } from '@/lib/mock/hooks';
@@ -42,25 +50,77 @@ import { cn } from '@/lib/utils';
 /** شناسه ساختگی مکالمه پشتیبانی — از id مکالمات واقعی جدا می‌ماند */
 const SUPPORT_ID = '__support__';
 
+/** مقدار پشتیبانی در URL — از id های ۲۴کاراکتری MongoDB جدا می‌ماند */
+const SUPPORT_URL_VALUE = 'support';
+
+/** خواندن ?thread= — «support» یا ObjectId؛ چیز دیگر نادیده گرفته می‌شود */
+function threadFromUrl(): string | null {
+  try {
+    const t = new URLSearchParams(window.location.search).get('thread');
+    if (t === SUPPORT_URL_VALUE) return SUPPORT_ID;
+    return t && /^[0-9a-fA-F]{24}$/.test(t) ? t : null;
+  } catch {
+    return null;
+  }
+}
+
+/** مکالمهٔ جاری را در URL نگه می‌دارد (خواسته مالک ۸-۱۱):
+ *  رفرش همان چت را باز می‌کند و back مرورگر به لیست برمی‌گردد. pushState
+ *  (نه replace) تا هر مکالمه در تاریخچهٔ مرورگر جای خودش را داشته باشد. */
+function syncThreadUrl(id: string | null) {
+  try {
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set('thread', id === SUPPORT_ID ? SUPPORT_URL_VALUE : id);
+    else url.searchParams.delete('thread');
+    window.history.pushState(null, '', url);
+  } catch {
+    /* محیط بدون history — بی‌خطر */
+  }
+}
+
 export default function PanelMessagesPage() {
   const { toast } = useToast();
   const { data: conversations, isLoading } = useConversations();
   const { data: adminInbox } = useAdminMessages();
   const markAdminRead = useMarkAdminMessagesRead();
+  const markRead = useMarkThreadRead();
 
-  // دو مرحله‌ای موبایل: «لیست» → انتخاب → «چت»؛ برگشت → «لیست»
-  // لینک مستقیم thread (پیشنهاد تامین) → مستقیم مرحلهٔ چت
-  const [directThread] = useState(() => {
-    try {
-      const t = new URLSearchParams(window.location.search).get('thread');
-      return t && /^[0-9a-fA-F]{24}$/.test(t) ? t : null;
-    } catch {
-      return null;
-    }
-  });
+  // دو مرحله‌ای موبایل: «لیست» → انتخاب → «چت»؛ برگشت → «لیست».
+  // مکالمهٔ جاری در URL می‌ماند (?thread=) — رفرش همان چت را باز می‌کند
+  // و back مرورگر به لیست برمی‌گردد (خواسته مالک ۸-۱۱).
+  const [directThread] = useState(threadFromUrl);
   const [stage, setStage] = useState<'list' | 'chat'>(directThread ? 'chat' : 'list');
   const [activeId, setActiveId] = useState<string | null>(directThread);
   const [q, setQ] = useState('');
+
+  // دسکتاپ = پنل مکالمه همیشه مرئی (lg 1024px). موبایل: مکالمه فقط وقتی
+  // مرئی است که کاربر آن را باز کرده باشد (stage==='chat') — برای انتخاب
+  // خودکار مکالمهٔ اول و علامت‌گذاری خوانده‌شدهٔ درست (خواسته مالک ۸-۱۱).
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener?.('change', update);
+    return () => mq.removeEventListener?.('change', update);
+  }, []);
+  const chatVisible = isDesktop || stage === 'chat';
+
+  // back مرورگر / popstate — چت باز ↔ لیست، هم‌گام با URL
+  useEffect(() => {
+    const onPop = () => {
+      const t = threadFromUrl();
+      if (t) {
+        setActiveId(t);
+        setStage('chat');
+      } else {
+        setStage('list');
+      }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   const send = useSendChatMessage();
   const edit = useEditChatMessage();
@@ -80,12 +140,22 @@ export default function PanelMessagesPage() {
   const supportMessages = adminInbox?.items ?? [];
   const supportUnread = adminInbox?.unread ?? 0;
   const isSupport = activeId === SUPPORT_ID;
-  const active = isSupport ? null : threads.find((t) => t.id === activeId) ?? threads[0] ?? null;
-  // دسکتاپ: اولین مکالمه به‌صورت پیش‌فرض باز است؛ موبایل با انتخاب کاربر.
-  // پشتیبانی فقط وقتی خودکار باز می‌شود که مکالمه‌ای نیست «و» لود تمام شده —
-  // در حین لود (threads خالی) نباید پشتیبانی باز شود و پیام‌هایش خوانده شوند.
-  const effectiveActive =
-    active ?? (!isLoading && supportMessages.length > 0 ? SUPPORT_ID : null);
+  // دسکتاپ: اولین مکالمه به‌صورت پیش‌فرض باز است؛ موبایل: تا انتخاب کاربر
+  // هیچ مکالمه‌ای باز نمی‌شود (خواسته مالک ۸-۱۱) — واکشی پیام‌های مکالمهٔ
+  // دیده‌نشده یعنی پاک شدن بی‌دلیل بج خوانده‌نشده؛ پس در موبایل رخ نمی‌دهد.
+  const active = isSupport
+    ? null
+    : activeId
+      ? threads.find((t) => t.id === activeId) ?? null
+      : isDesktop
+        ? threads[0] ?? null
+        : null;
+  // پشتیبانی: انتخاب صریح کاربر (activeId) در هر دستگاه باز می‌شود؛
+  // باز شدن «خودکار» فقط روی دسکتاپ است (پنل مرئی است) — در موبایل بدون
+  // انتخاب کاربر نباید پیام‌های پشتیبانی بدون دیدن خوانده شوند.
+  const effectiveActive = isSupport
+    ? SUPPORT_ID
+    : active ?? (isDesktop && !isLoading && supportMessages.length > 0 ? SUPPORT_ID : null);
   const showingSupport = effectiveActive === SUPPORT_ID;
   const myId = active?.myId ?? null;
   const lastSupport = supportMessages[supportMessages.length - 1];
@@ -93,16 +163,109 @@ export default function PanelMessagesPage() {
   const {
     messages,
     hasMore,
+    isFetching: messagesFetching,
     isFetchingNextPage,
     fetchNextPage,
   } = useChatThreadMessages(showingSupport ? null : active?.id ?? null);
 
-  // باز کردن مکالمه پشتیبانی = خواندن همه خوانده‌نشده‌ها
-  useEffect(() => {
-    if (showingSupport && supportUnread > 0 && !markAdminRead.isPending) {
-      markAdminRead.mutate();
+  // ── اولین پیام خوانده‌نشده (خواسته مالک ۸-۱۱) ──
+  // یک‌بار به ازای هر «ورود واقعی» به مکالمه و قبل از علامت‌گذاری ثبت می‌شود
+  // تا اسکرول ورود روی آن بایستد و جداکنندهٔ «پیام‌های جدید» تا خروج از مکالمه
+  // بماند. کلید ورود = مکالمه فقط وقتی چت مرئی است: در موبایل با بازگشت به
+  // لیست محاسبه صفر می‌شود (چت مخفی است و پیام‌های زندهٔ میان‌رسنده پنجرهٔ
+  // لودشده را جابه‌جا می‌کنند) و با ورود دوباره از دادهٔ همین لحظه محاسبه می‌شود.
+  const activeThreadKey = showingSupport ? SUPPORT_ID : active?.id ?? null;
+  const entryKey = chatVisible ? activeThreadKey : null;
+  const firstUnreadRef = useRef<{ key: string | null; id: string | null; settled: boolean }>({
+    key: null,
+    id: null,
+    settled: true,
+  });
+  if (firstUnreadRef.current.key !== entryKey) {
+    firstUnreadRef.current = { key: entryKey, id: null, settled: entryKey === null };
+  }
+  if (!firstUnreadRef.current.settled && myId && messages && messages.length > 0) {
+    const first = messages.find((m) => m.senderId !== myId && m.readAt === null) ?? null;
+    if (first) {
+      firstUnreadRef.current = { key: entryKey, id: first.id, settled: true };
+    } else if (!hasMore && !messagesFetching) {
+      // همهٔ پیام‌های مکالمه لود شد و رفرش هم تمام شد و خوانده‌نشده‌ای نبود.
+      // (کش کهنه ممکن است «همه خوانده‌شده» بگوید و رفرش پشت‌زمین پیام‌های
+      // جدید بیاورد — تا isFetching تمام نشده null نمی‌نشینیم.)
+      firstUnreadRef.current = { key: entryKey, id: null, settled: true };
     }
-  }, [showingSupport, supportUnread]);
+  }
+  const firstUnreadId = firstUnreadRef.current.id;
+
+  // ── جستجوی عمیق (حاشیه): بج خوانده‌نشده هست ولی در صفحهٔ لودشده نیست ──
+  // (مثلاً ۲۰+ پیام خودِ کاربر بعد از آخرین پیام خوانده‌نشدهٔ مخاطب آمده).
+  // صفحه‌های قدیمی‌تر تا یافتن اولین خوانده‌نشده لود می‌شوند (حداکثر ۴ صفحه)؛
+  // دریچهٔ ۸۰۰ms هم هست تا رندرهای پشت‌سرهم فچ تکراری نگیرند.
+  const deepScanRef = useRef<{ key: string | null; tries: number; at: number }>({
+    key: null,
+    tries: 0,
+    at: 0,
+  });
+  if (deepScanRef.current.key !== entryKey) {
+    deepScanRef.current = { key: entryKey, tries: 0, at: 0 };
+  }
+  useEffect(() => {
+    if (
+      !showingSupport &&
+      chatVisible &&
+      myId &&
+      !firstUnreadRef.current.settled &&
+      !isFetchingNextPage &&
+      hasMore &&
+      deepScanRef.current.tries < 4 &&
+      Date.now() - deepScanRef.current.at > 800
+    ) {
+      const badgeSaysUnread =
+        (threads.find((t) => t.id === activeThreadKey)?.unreadCount ?? 0) > 0;
+      if (badgeSaysUnread) {
+        deepScanRef.current = {
+          key: deepScanRef.current.key,
+          tries: deepScanRef.current.tries + 1,
+          at: Date.now(),
+        };
+        void fetchNextPage();
+      }
+    }
+  }, [activeThreadKey, showingSupport, chatVisible, myId, messages, hasMore, isFetchingNextPage, threads, fetchNextPage]);
+
+  // ── علامت‌گذاری خوانده‌شده — فقط وقتی چت واقعاً دیده می‌شود (خواسته ۸-۱۱) ──
+  // موبایل: فقط در مرحلهٔ «چت»؛ دسکتاپ: پنل همیشه مرئی است. تایمر ۶۰۰ms بدون
+  // پاک‌شدن با رندرهای تازه (پیام‌های زندهٔ پشت‌سرهم با هم خوانده می‌شوند)؛
+  // هنگام شلیک، هنوز همان مکالمه مرئی است چک می‌شود (تعویض سریع چت ≠ خواندن).
+  const markTimerRef = useRef<number | null>(null);
+  const markContextRef = useRef<{ key: string | null; visible: boolean }>({ key: null, visible: false });
+  markContextRef.current = { key: activeThreadKey, visible: chatVisible };
+  useEffect(() => {
+    const key = showingSupport ? SUPPORT_ID : active?.id ?? null;
+    if (!key || !chatVisible) return;
+    if (showingSupport) {
+      if (supportUnread > 0 && !markAdminRead.isPending) markAdminRead.mutate();
+      return;
+    }
+    if (!myId || markRead.isPending) return;
+    const msgs = messages ?? [];
+    if (!msgs.some((m) => m.senderId !== myId && m.readAt === null)) return;
+    if (markTimerRef.current !== null) return; // زمان‌بندی فعال است
+    markTimerRef.current = window.setTimeout(() => {
+      markTimerRef.current = null;
+      const ctx = markContextRef.current;
+      if (ctx.key === key && ctx.visible) markRead.mutate(key);
+    }, 600);
+  }, [chatVisible, showingSupport, active?.id, messages, myId, supportUnread, markRead.isPending, markRead.mutate, markAdminRead.isPending, markAdminRead.mutate]);
+  // تعویض مکالمه/خروج از صفحه — تایمر معلق پاک شود
+  useEffect(() => {
+    return () => {
+      if (markTimerRef.current !== null) {
+        window.clearTimeout(markTimerRef.current);
+        markTimerRef.current = null;
+      }
+    };
+  }, [activeThreadKey]);
 
   const visible = threads.filter((t) => {
     const name = `${t.counterpart.firstName} ${t.counterpart.lastName}`.trim();
@@ -179,6 +342,13 @@ export default function PanelMessagesPage() {
     setStage('chat');
     setEditing(null);
     setAttachment(null);
+    syncThreadUrl(id);
+  };
+
+  /** بازگشت به لیست (موبایل) — URL هم پاک می‌شود تا back مرورگر ناسازگار نشود */
+  const backToList = () => {
+    setStage('list');
+    syncThreadUrl(null);
   };
 
   return (
@@ -284,13 +454,17 @@ export default function PanelMessagesPage() {
           )}
         </PanelCard>
 
-        {/* مرحلهٔ ۲ (موبایل): مکالمه — دسکتاپ: همیشه باز؛ ارتفاع از فلکس والد */}
+        {/* مرحلهٔ ۲ (موبایل): مکالمه — دسکتاپ: همیشه باز؛ ارتفاع از فلکس والد.
+            در لیست موبایل محتوا اصلاً مونت نمی‌شود (نه فقط CSS-hidden) تا
+            اثرهای اسکرول/خوانده‌شدن چتِ پشت‌پرده اجرا نشود (خواسته مالک ۸-۱۱) */}
         <PanelCard
           className={cn(
             'order-1 flex h-full min-h-0 flex-col lg:order-2',
             stage === 'list' && 'hidden lg:flex',
           )}
         >
+          {(stage === 'chat' || isDesktop) && (
+            <>
           {showingSupport ? (
             <>
               {/* مکالمه پشتیبانی — یک‌طرفه (ادمین → کاربر) */}
@@ -298,7 +472,7 @@ export default function PanelMessagesPage() {
                 <button
                   type="button"
                   aria-label="بازگشت به لیست"
-                  onClick={() => setStage('list')}
+                  onClick={backToList}
                   className="grid size-8 place-items-center rounded-full transition-colors hover:bg-secondary lg:hidden"
                 >
                   <ArrowRight size={17} />
@@ -356,7 +530,7 @@ export default function PanelMessagesPage() {
                 <button
                   type="button"
                   aria-label="بازگشت به لیست"
-                  onClick={() => setStage('list')}
+                  onClick={backToList}
                   className="grid size-8 shrink-0 place-items-center rounded-full transition-colors hover:bg-secondary lg:hidden"
                 >
                   <ArrowRight size={17} />
@@ -386,11 +560,13 @@ export default function PanelMessagesPage() {
                 </div>
               </div>
 
-              {/* پیام‌ها — پیجینگ معکوس + اسکرول تهِ لیست هنگام ورود */}
+              {/* پیام‌ها — پیجینگ معکوس؛ ورود: توقف روی اولین پیام خوانده‌نشده
+                  (خواسته مالک ۸-۱۱)، بدون پیام جدید: پرش به آخرین پیام */}
               <MessageList
                 threadKey={active.id}
                 messages={messages ?? []}
                 myId={myId}
+                firstUnreadId={firstUnreadId}
                 hasMore={hasMore}
                 loadingOlder={isFetchingNextPage}
                 onLoadOlder={() => void fetchNextPage()}
@@ -420,6 +596,8 @@ export default function PanelMessagesPage() {
               title="هیچ پیام جدیدی ندارید!"
               hint="برای شروع گفتگو با خریداران و فروشندگان ایمچ، از صفحه هر آگهی پیام ارسال کنید."
             />
+          )}
+            </>
           )}
         </PanelCard>
       </div>

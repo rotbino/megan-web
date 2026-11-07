@@ -8,9 +8,15 @@
  *  • اسکرول به بالا صفحهٔ قدیمی‌تری می‌آورد؛ پیام‌های تازه همیشه «بالای»
  *    قدیمی‌ترها prepend می‌شوند و موقعیت اسکرول حفظ می‌شود (پرش ندارد).
  *  • ترتیب نمایش: قدیمی بالا → جدید پایین، همیشه.
+ *
+ * توقف روی اولین پیام خوانده‌نشده (خواسته مالک ۸-۱۱):
+ *  • ورود به مکالمهٔ دارای پیام جدید: اسکرول روی اولین پیام خوانده‌نشده
+ *    می‌ایستد (با جداکنندهٔ «پیام‌های جدید» بالای آن) نه روی آخرین پیام.
+ *  • اولین خوانده‌نشده ممکن است دیر برسد (جستجوی صفحه‌های قدیمی‌تر) —
+ *    به محض رسیدن، اسکرول روی آن تنظیم می‌شود.
  */
 
-import { useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { MessageBubble } from '@/components/chat/message-bubble';
 import type { ChatMessage } from '@/lib/mock/api';
@@ -28,6 +34,8 @@ export function MessageList({
   className,
   /** برای اسکرول درست هنگام تعویض مکالمه */
   threadKey,
+  /** شناسهٔ اولین پیام خوانده‌نشده — اسکرول ورود روی آن می‌ایستد (۸-۱۱) */
+  firstUnreadId = null,
 }: {
   messages: ChatMessage[];
   myId: string | null;
@@ -39,17 +47,35 @@ export function MessageList({
   emptyText?: string;
   className?: string;
   threadKey: string;
+  firstUnreadId?: string | null;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const prevThreadRef = useRef(threadKey);
   const prevLastIdRef = useRef<string | null>(null);
-  /** ورود به مکالمه — با رسیدن اولین دیتا به تهِ لیست می‌پریم */
+  /** ورود به مکالمه — با رسیدن اولین دیتا موقعیت اولیه تنظیم می‌شود */
   const pendingBottomRef = useRef(true);
+  /** آیا اسکرول-روی-خوانده‌نشده برای این مکالمه انجام شد؟ */
+  const unreadDoneRef = useRef(false);
   /** چسبیدن به پایین — با لود تصویر/ویدئوی تازه هم پایین بمانیم */
   const pinnedRef = useRef(true);
   /** برای حفظ موقعیت هنگام prepend پیام‌های قدیمی */
   const stickRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
+
+  /** اسکرول به جداکنندهٔ «پیام‌های جدید» — اولین پیام خوانده‌نشده کمی
+ *  پایین‌تر از لبهٔ بالای پنجره می‌نشیند تا بافت قبلی هم پیداست باشد.
+ *  false یعنی جداکننده هنوز در DOM نیست (خوانده‌نشده هنوز لود نشده). */
+  const scrollToUnread = () => {
+    const el = scrollRef.current;
+    if (!el) return false;
+    const divider = el.querySelector<HTMLElement>('[data-new-divider]');
+    if (!divider) return false;
+    pinnedRef.current = false;
+    const top =
+      divider.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - 56;
+    el.scrollTop = Math.max(0, top);
+    return true;
+  };
 
   // چسبیدن به پایین وقتی ارتفاع محتوا عوض می‌شود (لود دیرهنگام تصویر/ویدئو)
   useEffect(() => {
@@ -63,13 +89,14 @@ export function MessageList({
     return () => ro.disconnect();
   }, []);
 
-  // تعویض مکالمه → پرش به تهِ لیست با اولین دیتا (خواسته مالک ۷-۱۱)
+  // تعویض مکالمه → آمادهٔ تنظیم موقعیت اولیه (خواسته مالک ۷-۱۱ + ۸-۱۱)
   useEffect(() => {
     if (prevThreadRef.current !== threadKey) {
       prevThreadRef.current = threadKey;
       prevLastIdRef.current = null;
       stickRef.current = null;
       pendingBottomRef.current = true;
+      unreadDoneRef.current = false;
       pinnedRef.current = true;
     }
   }, [threadKey]);
@@ -90,12 +117,23 @@ export function MessageList({
 
     const lastId = messages.length ? messages[messages.length - 1].id : null;
 
-    // ورود به مکالمه — اولین دیتا: پرش فوری به آخرین پیام
+    // ورود به مکالمه — اولین دیتا: توقف روی اولین پیام خوانده‌نشده
+    // (خواسته مالک ۸-۱۱)؛ نبود: پرش فوری به آخرین پیام (خواسته ۷-۱۱)
     if (pendingBottomRef.current && messages.length > 0) {
       pendingBottomRef.current = false;
-      el.scrollTop = el.scrollHeight;
+      if (firstUnreadId && scrollToUnread()) {
+        unreadDoneRef.current = true;
+      } else {
+        el.scrollTop = el.scrollHeight;
+      }
       prevLastIdRef.current = lastId;
       return;
+    }
+
+    // اولین خوانده‌نشده دیر رسید (جستجوی صفحهٔ قدیمی‌تر) — حالا بایست روی آن
+    if (firstUnreadId && !unreadDoneRef.current && scrollToUnread()) {
+      unreadDoneRef.current = true;
+      pinnedRef.current = false;
     }
 
     // رصد «آخرین پیام» — با پنجرهٔ لغزان طول ثابت می‌ماند ولی id عوض می‌شود
@@ -109,7 +147,7 @@ export function MessageList({
       }
     }
     prevLastIdRef.current = lastId;
-  }, [messages, myId, threadKey]);
+  }, [messages, myId, threadKey, firstUnreadId]);
 
   const handleScroll = () => {
     const el = scrollRef.current;
@@ -149,7 +187,22 @@ export function MessageList({
           <p className="py-8 text-center text-xs leading-6 text-muted-foreground">{emptyText}</p>
         ) : (
           messages.map((m) => (
-            <MessageBubble key={m.id} message={m} mine={m.senderId === myId} onEdit={onEdit} onDelete={onDelete} />
+            <Fragment key={m.id}>
+              {/* جداکنندهٔ «پیام‌های جدید» — بالای اولین پیام خوانده‌نشده
+                  (خواسته مالک ۸-۱۱)؛ تا خروج از مکالمه می‌ماند */}
+              {m.id === firstUnreadId && (
+                <div
+                  data-new-divider
+                  className="flex items-center justify-center py-1.5"
+                  aria-label="شروع پیام‌های جدید"
+                >
+                  <span className="rounded-full bg-red-500/10 px-2.5 py-0.5 text-[10px] font-bold text-red-600">
+                    پیام‌های جدید
+                  </span>
+                </div>
+              )}
+              <MessageBubble message={m} mine={m.senderId === myId} onEdit={onEdit} onDelete={onDelete} />
+            </Fragment>
           ))
         )}
         <div className="h-1" />
