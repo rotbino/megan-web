@@ -86,6 +86,15 @@ export interface Product {
   hasVideo: boolean;
   isOld: boolean;
   viewCount: number;
+
+  /** اعتبار قیمت به روز (۷-۱۱ دور هفدهم) — پیش‌فرض ۳؛ پنجره‌ای که بعد از
+   *  آن بدون آپدیت قیمت، آگهی بج «قیمت منقضی شده» می‌گیرد */
+  priceValidityDays?: number;
+  /** مهر آخرین تغییر واقعی قیمت — «YYYY-MM-DD HH:mm:ss» (خالی = قدیمی) */
+  priceUpdatedAt?: string;
+  /** قیمت منقضی است؟ (مهر + اعتبار < اکنون) — محاسبهٔ بک‌اند */
+  priceExpired?: boolean;
+
   createdAt: string;
   updatedAt: string;
   photos: string[];

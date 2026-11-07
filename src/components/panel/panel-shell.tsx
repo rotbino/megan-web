@@ -38,9 +38,10 @@ function LoginGate({ onOpen }: { onOpen: () => void }) {
   );
 }
 
-/** عنوان صفحهٔ پنل برای هدر موبایل (خواسته مالک دور ۱۶: «وقتی توی آیمچ من
- *  هستی عنوان میشه آیمچ من، وقتی توی ویرایش پروفایل هستی میشه ویرایش پروفایل»)
- *  — آیتم‌های هر دو منو + لینک‌های حساب با طولانی‌ترین مسیرِ منطبق پیدا می‌شوند */
+/** عنوان صفحهٔ پنل برای هدر (خواسته مالک دور ۱۶ + ۷-۱۱ دور هفدهم: «هر
+ *  لینکی که در پنل انتخاب می‌شود عنوانش چه در موبایل و چه در دسکتاپ روی
+ *  هدر می‌افتد») — آیتم‌های هر دو منو + زیرمسیرهای عمیق + لینک‌های حساب با
+ *  طولانی‌ترین مسیرِ منطبق پیدا می‌شوند */
 const PAGE_TITLES: Array<{ href: string; label: string; exact?: boolean }> = [
   ...SELLER_NAV,
   ...BUYER_NAV,
@@ -48,10 +49,17 @@ const PAGE_TITLES: Array<{ href: string; label: string; exact?: boolean }> = [
   { href: '/panel/profile/edit', label: 'ویرایش پروفایل' },
   { href: '/panel/wallet', label: 'کیف پول' },
   { href: '/panel/secure-deals', label: 'معاملات پرداخت امن' },
+  { href: '/panel/secure-deals/guide', label: 'راهنمای پرداخت امن' },
   { href: '/panel/support', label: 'پشتیبانی' },
   { href: '/panel/survey', label: 'نظرسنجی' },
   { href: '/panel/received-offers', label: 'پیشنهادهای تامین' },
   { href: '/panel/buy-requests', label: 'درخواست های خرید' },
+  { href: '/panel/buy-requests/new', label: 'ثبت درخواست خرید' },
+  { href: '/panel/products/new', label: 'ثبت محصول' },
+  { href: '/panel/products/edit', label: 'ویرایش محصول' },
+  { href: '/panel/products/bulk-price', label: 'تغییر قیمت گروهی' },
+  { href: '/panel/products/stats', label: 'آمار محصول' },
+  { href: '/panel/products/buyers', label: 'خریداران کالا' },
 ];
 
 function panelPageTitle(pathname: string): string {
@@ -106,44 +114,43 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
         />
       </aside>
 
-      {/* هدر موبایل پنل (دور ۱۶): نشان ایمچ + عنوان صفحهٔ جاری — بدون برگر */}
-      <header className="sticky top-0 z-20 flex h-12 items-center gap-2.5 border-b border-border bg-background px-3 lg:hidden">
+      {/* هدر موبایل پنل (دور ۱۶): نشان ایمچ + عنوان صفحهٔ جاری — بدون برگر.
+          دور هفدهم (۷-۱۱): ارتفاع ۵۶px (h-14) تا عنوان و لوگو نفس بکشند و
+          دقیقاً هم‌تراز عمودی دیده شوند + سایهٔ ظریف تا هدر از بدنه جدا به
+          نظر برسد (عین هدر دسکتاپ) */}
+      <header className="sticky top-0 z-20 flex h-14 items-center gap-2.5 border-b border-border bg-background px-3 shadow-[0_1px_5px_rgba(0,0,0,0.06)] lg:hidden">
         <Link href="/panel" aria-label="آیمچ من" className="flex shrink-0 items-center">
-          {/* نشان ایمچ (لوگوی کوتاه) — در هدر موبایل جای وردمارک کامل را می‌گیرد */}
-          <img src="/logo-short.svg" alt="ایمچ" width={30} height={29} className="h-[26px] w-auto" />
+          {/* نشان ایمچ (لوگوی کوتاه M با نقطه — ۷-۱۱ دور هفدهم: نسخهٔ ıM
+              بازنشسته شد؛ محتوای logo-short.svg همان نشان M با نقطه است) */}
+          <img src="/logo-short.svg" alt="ایمچ" width={28} height={29} className="h-[28px] w-auto" />
         </Link>
-        <h1 className="truncate text-[15px] font-extrabold">{panelPageTitle(pathname)}</h1>
+        <h1 className="truncate text-[15px] font-extrabold leading-none">{panelPageTitle(pathname)}</h1>
       </header>
 
       {/* بنر قرمز + مودال «رمز عبور تعیین کنید» — تا تعیین رمز در همه صفحات پنل می‌ماند */}
       <PasswordBanner open={passwordOpen} onOpenChange={setPasswordOpen} />
 
-      {/* محتوا — دسکتاپ: بدون padding-top تا خط هدر دقیقاً با هدر سایدبار
-          تراز شود (خواسته مالک ۷-۱۱: ارتفاع هدر پنل بیش از حد بود) */}
-      <main
+      {/* ناحیهٔ محتوا — آفست سایدبار روی همین پوشش است تا هدر دسکتاپ تمام‌عرض
+          (بدون پدینگ دو طرف) بین سایدبار و لبهٔ چپ کشیده شود و خط جداکننده
+          و سایه‌اش به دو طرف بچسبد (خواسته مالک ۷-۱۱ دور هفدهم)؛ بدون هیچ
+          مکانیزم پهنایی که اسکرول افقی بیاندازد */}
+      <div
         className={cn(
-          'min-h-screen min-w-0 p-3 transition-[padding] duration-200 sm:p-4 lg:p-6 lg:pt-0',
+          'min-w-0 transition-[margin] duration-200',
           collapsed ? 'lg:mr-[68px]' : 'lg:mr-[250px]',
         )}
       >
-        {/* هدر بالای محتوا (دسکتاپ) — الگوی right-menu-header باسکول (خواسته مالک
-            ۲-۱۱ دور سیزدهم): راست = آیکون خانه + دکمهٔ طلایی «ارتقا به فروشنده ویژه»؛
-            چپ = نام و تصویر پروفایل کاربر (خواسته مالک دور چهاردهم).
-            ارتفاع 59px = هم‌تراز هدر سایدبار — خط زیرین دو هدر یکی می‌شود و
-            صفحه مرتب‌تر دیده می‌شود (خواسته مالک ۷-۱۱). طلایی = قانون نشان
-            فروشنده ویژه (RULES §۱-ب). دکمهٔ ارتقا ظریف است و وقتی بستهٔ فعال
-            است حذف می‌شود (تکرار ممنوع — وضعیت در باکس اشتراک ایمچ من دیده می‌شود). */}
+        {/* هدر بالای محتوا (دسکتاپ) — تمام‌عرض با سایه (خواسته مالک ۷-۱۱ دور
+            هفدهم): خط زیرینش به دو لبه می‌چسبد و با سایهٔ ظریف از بدنه جدا
+            دیده می‌شود. ارتفاع 59px = هم‌تراز هدر سایدبار.
+            راست = عنوان صفحهٔ جاری + دکمهٔ طلایی «ارتقا به فروشنده ویژه»؛
+            چپ = پروفایل کاربر و خانهٔ سایت (آیکون هوم چپ‌تر از تصویر پروفایل —
+            خواسته مالک ۷-۱۱ دور هفدهم). دکمهٔ ارتقا وقتی بستهٔ فعال است حذف
+            می‌شود (تکرار ممنوع — وضعیت در باکس اشتراک ایمچ من دیده می‌شود). */}
         {user && (
-          <div className="mb-5 hidden h-[59px] items-center justify-between gap-3 border-b border-border lg:flex">
-            <div className="flex items-center gap-2">
-              <Link
-                href="/"
-                aria-label="رفتن به سایت ایمچ"
-                title="رفتن به سایت ایمچ"
-                className="grid size-9 shrink-0 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              >
-                <Home size={18} />
-              </Link>
+          <div className="mb-5 hidden h-[59px] items-center justify-between gap-3 border-b border-border bg-background px-6 shadow-[0_1px_5px_rgba(0,0,0,0.06)] lg:flex">
+            <div className="flex min-w-0 items-center gap-3">
+              <h1 className="truncate text-[15px] font-extrabold leading-none">{panelPageTitle(pathname)}</h1>
               {user.role !== 'buyer' && !myPackage?.isActive && (
                 <Link
                   href="/panel/pricing"
@@ -154,24 +161,36 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
                 </Link>
               )}
             </div>
-            {/* چپِ هدر = نام + تصویر پروفایل (خواسته مالک دور چهاردهم) */}
-            <Link
-              href="/panel/profile"
-              className="flex min-w-0 items-center gap-2.5 rounded-full p-1 ps-3 text-sm font-bold transition-colors hover:bg-secondary"
-              title="پروفایل"
-            >
-              <span className="max-w-[180px] truncate">{profile ? `${profile.userInfo.firstName} ${profile.userInfo.lastName}` : 'کاربر ایمچ'}</span>
-              {profile?.userInfo.avatarUrl ? (
-                <img src={profile.userInfo.avatarUrl} alt="" className="size-8 shrink-0 rounded-full object-cover" />
-              ) : (
-                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-extrabold text-primary">
-                  {profile ? profile.userInfo.firstName.charAt(0) : '؟'}
-                </span>
-              )}
-            </Link>
+            {/* چپِ هدر = پروفایل + خانهٔ سایت؛ خانه چپ‌ترین می‌نشیند (خواسته
+                مالک ۷-۱۱ دور هفدهم: «آیکون هوم طرف مقابل، سمت چپ تصویر لوگو
+                پروفایل») */}
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                href="/panel/profile"
+                className="flex min-w-0 items-center gap-2.5 rounded-full p-1 ps-3 text-sm font-bold transition-colors hover:bg-secondary"
+                title="پروفایل"
+              >
+                <span className="max-w-[180px] truncate">{profile ? `${profile.userInfo.firstName} ${profile.userInfo.lastName}` : 'کاربر ایمچ'}</span>
+                {profile?.userInfo.avatarUrl ? (
+                  <img src={profile.userInfo.avatarUrl} alt="" className="size-8 shrink-0 rounded-full object-cover" />
+                ) : (
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-extrabold text-primary">
+                    {profile ? profile.userInfo.firstName.charAt(0) : '؟'}
+                  </span>
+                )}
+              </Link>
+              <Link
+                href="/"
+                aria-label="رفتن به سایت ایمچ"
+                title="رفتن به سایت ایمچ"
+                className="grid size-9 shrink-0 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              >
+                <Home size={18} />
+              </Link>
+            </div>
           </div>
         )}
-        {hydrated ? (
+        <main className="min-h-screen min-w-0 p-3 sm:p-4 lg:p-6">{hydrated ? (
           user ? (
             // بدون رمز پنل = قفل محتوا (خواسته مالک — «قبل از هر کاری رمز تعیین کن»)
             needsPassword ? (
@@ -186,8 +205,8 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
           <div className="grid min-h-[60vh] place-items-center" aria-hidden>
             <Loader2 className="size-7 animate-spin text-muted-foreground/50" />
           </div>
-        )}
-      </main>
+        )}</main>
+      </div>
     </div>
   );
 }

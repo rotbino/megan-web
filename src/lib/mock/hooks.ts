@@ -774,6 +774,19 @@ export function useBulkUpdatePrices() {
   });
 }
 
+/** آپدیت سریع قیمت از کارت آگهی (خواسته مالک ۷-۱۱ دور هفدهم) — مدال کوچک
+ *  قیمت + اعتبار؛ بج «قیمت منقضی شده» بلافاصله از لیست برداشته می‌شود */
+export function useUpdateProductPrice() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.updateMyPrice,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-my-products'] });
+      queryClient.invalidateQueries({ queryKey: ['panel-my-product-detail'] });
+    },
+  });
+}
+
 // ─── مخاطبین گوشی («ارسال به مخاطبین» — خواسته مالک ۴-۱۱) ───────────────────
 
 /** لیست مخاطبین من + عضویت در ایمچ */

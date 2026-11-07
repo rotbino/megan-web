@@ -38,6 +38,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CategoryCascade } from '@/components/panel/product-form/category-cascade';
+import { PriceValidityPicker } from '@/components/panel/product-form/price-validity-picker';
 import { PanelCard } from '@/components/panel/panel-parts';
 import { UnitInput } from '@/components/shared/unit-input';
 import { optimizeProductImage } from '@/lib/image-optimize';
@@ -70,6 +71,8 @@ interface EditDraft {
   stock: string;
   minSaleAmount: string;
   minSalePrice: string;
+  /** اعتبار قیمت به روز (۷-۱۱ دور هفدهم) — پیش‌فرض ۳ روز */
+  priceValidityDays: number;
   description: string;
   features: ProductFeature[];
 }
@@ -158,6 +161,7 @@ export default function EditProductPage() {
       stock: p.stock ? p.stock.toLocaleString('en-US') : '',
       minSaleAmount: p.minSaleAmount ? p.minSaleAmount.toLocaleString('en-US') : '',
       minSalePrice: p.minSalePrice ? p.minSalePrice.toLocaleString('en-US') : '',
+      priceValidityDays: p.priceValidityDays ?? 3,
       description: p.description ?? '',
       features: (p.features ?? []).filter((f) => f.key !== 'برند').map((f) => ({ ...f })),
     });
@@ -219,6 +223,7 @@ export default function EditProductPage() {
         stock: num(draft.stock),
         minSaleAmount: num(draft.minSaleAmount),
         minSalePrice: num(draft.minSalePrice),
+        priceValidityDays: draft.priceValidityDays,
         description: draft.description,
         features: [
           ...draft.features.filter((f) => f.key && f.value.trim()),
@@ -610,6 +615,22 @@ export default function EditProductPage() {
               {Boolean(draft.minSalePrice) && num(draft.minSalePrice) < 1000 && (
                 <p className="text-[11px] text-red-500">قیمت صحیح را وارد کنید.</p>
               )}
+            </div>
+            {/* اعتبار قیمت (خواسته مالک ۷-۱۱ دور هفدهم) — بعد از این پنجره بدون
+                آپدیت، آگهی بج «قیمت منقضی شده» می‌گیرد؛ ۱ تا ۵ روز + سایر،
+                پیش‌فرض ۳ روز */}
+            <div className="space-y-2.5">
+              <Label>
+                اعتبار قیمت <span className="text-muted-foreground">(به روز)</span>
+              </Label>
+              <PriceValidityPicker
+                value={draft.priceValidityDays}
+                onChange={(d) => patch({ priceValidityDays: d })}
+                ariaLabel="اعتبار قیمت به روز"
+              />
+              <p className="text-[11px] leading-5 text-muted-foreground">
+                بعد از این مهلت، اگر قیمت را تازه نکنید روی آگه‌تان «قیمت منقضی شده» نمایش داده می‌شود.
+              </p>
             </div>
             <SectionError id="pricing" />
           </PanelCard>

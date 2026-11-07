@@ -32,9 +32,13 @@ interface Row {
   basePrice: number;
   baseStock: number;
   baseMinOrder: number;
+  baseValidity: number;
   price: string;
   stock: string;
   minOrder: string;
+  /** اعتبار قیمت به روز (۷-۱۱ دور هفدهم) — «اگر در ویرایش کالا وارد نکرده
+   *  بود از همین‌جا بگیرد»: هر ردیف مقدار خودش را دارد؛ پیش‌فرض ۳ روز */
+  validity: string;
 }
 
 export default function BulkPricePage() {
@@ -56,12 +60,20 @@ export default function BulkPricePage() {
           basePrice: p.minSalePrice ?? 0,
           baseStock: p.stock,
           baseMinOrder: p.minSaleAmount ?? 0,
+          baseValidity: p.priceValidityDays ?? 3,
           price: p.minSalePrice ? p.minSalePrice.toLocaleString('en-US') : '',
           stock: p.stock ? p.stock.toLocaleString('en-US') : '',
           minOrder: p.minSaleAmount ? p.minSaleAmount.toLocaleString('en-US') : '',
+          validity: String(p.priceValidityDays ?? 3),
         })),
     );
   }
+
+  /** اعتبارِ واردشدهٔ معتبر — ۰/خالی یعنی «دست نخورده» و همان قبلی می‌ماند */
+  const validityOf = (r: Row) => {
+    const v = num(r.validity);
+    return v >= 1 ? Math.min(v, 365) : r.baseValidity;
+  };
 
   /** ردیف‌های واقعاً تغییر یافته — فقط همین‌ها ارسال می‌شوند */
   const changed = useMemo(
@@ -70,7 +82,8 @@ export default function BulkPricePage() {
         (r) =>
           num(r.price) !== r.basePrice ||
           num(r.stock) !== r.baseStock ||
-          num(r.minOrder) !== r.baseMinOrder,
+          num(r.minOrder) !== r.baseMinOrder ||
+          validityOf(r) !== r.baseValidity,
       ),
     [rows],
   );
@@ -101,6 +114,7 @@ export default function BulkPricePage() {
           minSalePrice: num(c.price),
           stock: num(c.stock),
           minSaleAmount: num(c.minOrder),
+          priceValidityDays: validityOf(c),
         })),
       );
       toast({ description: `${toFa(r.updated)} آگهی به‌روزرسانی شد.` });
@@ -109,7 +123,7 @@ export default function BulkPricePage() {
         rs?.map((r) => {
           const c = changed.find((x) => x.id === r.id);
           return c
-            ? { ...r, basePrice: num(c.price), baseStock: num(c.stock), baseMinOrder: num(c.minOrder) }
+            ? { ...r, basePrice: num(c.price), baseStock: num(c.stock), baseMinOrder: num(c.minOrder), baseValidity: validityOf(c) }
             : r;
         }) ?? rs,
       );
@@ -150,27 +164,29 @@ export default function BulkPricePage() {
         </PanelCard>
       ) : (
         <>
-          {/* سربرگ ستون‌ها — فقط دسکتاپ (عین اکسل) */}
-          <div className="hidden grid-cols-[minmax(0,1fr)_160px_150px_150px_84px] gap-3 px-3 pb-1 text-[11px] font-bold text-muted-foreground lg:grid">
+          {/* سربرگ ستون‌ها — فقط دسکتاپ (عین اکسل)؛ ستون اعتبار (۷-۱۱ دور هفدهم) */}
+          <div className="hidden grid-cols-[minmax(0,1fr)_150px_140px_140px_120px_84px] gap-3 px-3 pb-1 text-[11px] font-bold text-muted-foreground lg:grid">
             <span>عنوان محصول</span>
             <span>قیمت (تومان)</span>
             <span>موجودی</span>
             <span>حداقل سفارش</span>
+            <span>اعتبار قیمت</span>
             <span />
           </div>
 
-          {/* ردیف‌ها — دسکتاپ: هر سه اینپوت در همان ردیف کنار هم (عین اکسل) */}
+          {/* ردیف‌ها — دسکتاپ: هر چهار اینپوت در همان ردیف کنار هم (عین اکسل) */}
           <div className="space-y-2">
             {rows.map((r) => {
               const dirty =
                 num(r.price) !== r.basePrice ||
                 num(r.stock) !== r.baseStock ||
-                num(r.minOrder) !== r.baseMinOrder;
+                num(r.minOrder) !== r.baseMinOrder ||
+                validityOf(r) !== r.baseValidity;
               return (
                 <div
                   key={r.id}
                   className={cn(
-                    'rounded-lg border bg-card p-3 transition-colors lg:grid lg:grid-cols-[minmax(0,1fr)_160px_150px_150px_84px] lg:items-center lg:gap-3 lg:p-2.5',
+                    'rounded-lg border bg-card p-3 transition-colors lg:grid lg:grid-cols-[minmax(0,1fr)_150px_140px_140px_120px_84px] lg:items-center lg:gap-3 lg:p-2.5',
                     dirty ? 'border-primary/45 bg-primary/[0.04]' : 'border-border',
                   )}
                 >
@@ -178,7 +194,7 @@ export default function BulkPricePage() {
                   <p className="truncate px-0.5 text-sm font-bold lg:py-1">{r.productName}</p>
 
                   {/* اینپوت‌ها — دسکتاپ: هر اینپوت مستقیم در ستون خودش (display:contents)؛
-                      موبایل: دو‌تا کنار هم + حداقل سفارش تمام‌عرض */}
+                      موبایل: دو‌تا کنار هم در دو ردیف */}
                   <div className="mt-2.5 grid grid-cols-2 gap-2.5 lg:mt-0 lg:contents">
                     <div>
                       <span className="mb-1 block text-[10px] font-bold text-muted-foreground lg:hidden">
@@ -205,7 +221,7 @@ export default function BulkPricePage() {
                         ariaLabel={`موجودی ${r.productName}`}
                       />
                     </div>
-                    <div className="col-span-2 lg:col-span-1">
+                    <div>
                       <span className="mb-1 block text-[10px] font-bold text-muted-foreground lg:hidden">
                         حداقل سفارش
                       </span>
@@ -215,6 +231,19 @@ export default function BulkPricePage() {
                         onValueChange={(v) => patchRow(r.id, { minOrder: v })}
                         unit={r.unit}
                         ariaLabel={`حداقل سفارش ${r.productName}`}
+                      />
+                    </div>
+                    {/* اعتبار قیمت (۷-۱۱ دور هفدهم) — عدد روز؛ خالی/۰ = همان قبلی */}
+                    <div>
+                      <span className="mb-1 block text-[10px] font-bold text-muted-foreground lg:hidden">
+                        اعتبار قیمت (روز)
+                      </span>
+                      <UnitInput
+                        kind="plain"
+                        value={r.validity}
+                        onValueChange={(v) => patchRow(r.id, { validity: v })}
+                        unit="روز"
+                        ariaLabel={`اعتبار قیمت ${r.productName}`}
                       />
                     </div>
                   </div>
@@ -242,7 +271,9 @@ export default function BulkPricePage() {
                   <>
                     <b className="text-primary">{toFa(changed.length)}</b> آگهی تغییر یافته
                   </>
-                ) : null}
+                ) : (
+                  'اعتبار قیمت: پنجره‌ای که بعد از آن، بدون آپدیت، آگهی «قیمت منقضی شده» می‌گیرد (پیش‌فرض ۳ روز).'
+                )}
               </p>
               <Button
                 className="h-11 min-w-36 rounded-md px-5 text-sm font-extrabold"

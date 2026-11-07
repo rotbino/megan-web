@@ -1,15 +1,15 @@
 'use client';
 
 /**
- * محصولات من — تب‌های وضعیت (تایید شده/در انتظار تایید/حذف شده/رد شده) عین باسکول.
- * ردیف آگهی + دکمه نردبان (پرداخت واقعی از کیف پول — wallet/ladderProduct)
- * + دلایل رد شدن + حالت خالی + ویرایش (فرم کامل).
- * حذف = زیر دکمهٔ سه‌نقطه + دیالوگ تأیید + حذف نرم با حفظ سوابق
- * (خواسته مالک ۳-۱۱: بدون تأیید حذف نشود؛ فروشندهٔ حقه‌باز نتواند پس از
- * فروش، آگهی و تاریخچه‌اش را ناپدید کند).
- * تب فعال از ?tab= می‌آید (لینک عمقی صفحه موفقیت ثبت: tab=pending).
- * دکمهٔ «ثبت محصول» در سربرگ (خواسته مالک دور ۱۵): لینک مستقل منو حذف شد
- * و «محصولات من» اولین آیتم است — دکمهٔ ثبت همان‌جا زندگی می‌کند.
+ * محصولات من — تب‌های وضعیت (تایید شده/در انتظار تایید/حذف شده/رد شده).
+ * کارت خلوت (خواسته مالک ۷-۱۱ دور هفدهم): بج وضعیت، خط دسته/موقعیت، بازدید
+ * و «به‌روزرسانی … پیش» حذف شدند (وضعیت را تب می‌گوید، بازدید در آمار است)؛
+ * به‌جای زمان به‌روزرسانی، اگر قیمت از پنجرهٔ اعتبارش گذشته باشد بج قابل‌کلیک
+ * «قیمت منقضی شده» می‌نشیند که مدال سریع آپدیت قیمت را باز می‌کند — همان
+ * مدالی که دکمهٔ ظریف «آپدیت قیمت» زیر کارت هم باز می‌کند.
+ * دکمهٔ نردبان فقط وقتی دیده می‌شود که آگهی نردبان نشده باشد؛ دکمه‌های زیر
+ * کارت لینک‌مانند و ریز شده‌اند (خواسته مالک: کمتر جا بگیرد، گویا بماند).
+ * حذف = زیر دکمهٔ سه‌نقطه + دیالوگ تأیید + حذف نرم با حفظ سوابق.
  */
 
 import { Suspense, useEffect, useRef, useState } from 'react';
@@ -18,13 +18,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
   BarChart3,
-  Eye,
-  History,
   ImageIcon,
   Layers,
   MoreVertical,
   Pencil,
   Plus,
+  RefreshCw,
   Trash2,
   TrendingUp,
   Users,
@@ -35,8 +34,9 @@ import { Button } from '@/components/ui/button';
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
 import { LadderPayDialog } from '@/components/panel/ladder-pay-dialog';
 import { DeleteProductDialog } from '@/components/panel/delete-product-dialog';
+import { QuickPriceModal } from '@/components/panel/quick-price-modal';
 import { REJECTION_REASONS } from '@/lib/mock/data';
-import { priceFa, stockFa, toFa, parseServerDate, timeAgoFa } from '@/lib/format';
+import { priceFa, stockFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { Product, ProductStatus } from '@/lib/types';
 
@@ -47,21 +47,12 @@ const TABS: { key: ProductStatus; label: string }[] = [
   { key: 'rejected', label: 'رد شده' },
 ];
 
-const STATUS_STYLE: Record<ProductStatus, string> = {
-  confirmed: 'bg-emerald-50 text-emerald-600',
-  pending: 'bg-amber-50 text-amber-600',
-  rejected: 'bg-red-50 text-red-600',
-  deleted: 'bg-secondary text-muted-foreground',
-};
-
 const STATUS_LABEL: Record<ProductStatus, string> = {
   confirmed: 'تایید شده',
   pending: 'در انتظار تایید',
   rejected: 'رد شده',
   deleted: 'حذف شده',
 };
-
-const LADDER_LABEL = 'یک ماه';
 
 function isTabKey(v: string | null): v is ProductStatus {
   return v === 'confirmed' || v === 'pending' || v === 'rejected' || v === 'deleted';
@@ -93,18 +84,17 @@ function RowMenu({ editHref, canDelete, onDelete }: { editHref: string; canDelet
   }, [menuOpen]);
 
   return (
-    <span ref={menuRef} className="relative">
-      <Button
-        variant="outline"
-        size="icon-sm"
-        className="rounded-md"
+    <span ref={menuRef} className="relative ms-auto">
+      <button
+        type="button"
         aria-label="گزینه‌های بیشتر"
         aria-haspopup="menu"
         aria-expanded={menuOpen}
         onClick={() => setMenuOpen((v) => !v)}
+        className="inline-grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
       >
-        <MoreVertical size={15} />
-      </Button>
+        <MoreVertical size={14} />
+      </button>
       {menuOpen && (
         <span
           role="menu"
@@ -160,6 +150,9 @@ function MyProductsPageInner() {
   const [ladderProduct, setLadderProduct] = useState<Product | null>(null);
   // هدف دیالوگ تأیید حذف (خواسته مالک ۳-۱۱) — حذف فقط بعد از تأیید صریح
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  // هدف مدال سریع آپدیت قیمت (۷-۱۱ دور هفدهم) — دکمهٔ «آپدیت قیمت» و بج
+  // «قیمت منقضی شده» هر دو همین مودال را باز می‌کنند
+  const [priceTarget, setPriceTarget] = useState<Product | null>(null);
 
   if (isLoading || !data) {
     return <div className="h-64 animate-pulse rounded-lg border bg-card" />;
@@ -292,6 +285,8 @@ function MyProductsPageInner() {
                 )}
 
                 <div className="min-w-0 flex-1">
+                  {/* عنوان + نردبان فعال + قیمت منقضی — بج وضعیت حذف شد؛ تبِ فعال
+                      خودش وضعیت را می‌گوید (خواسته مالک ۷-۱۱ دور هفدهم) */}
                   <div className="flex flex-wrap items-center gap-2">
                     {publicHref ? (
                       <Link href={publicHref} title={`مشاهدهٔ «${p.productName}» در ایمچ`} className="truncate text-sm font-extrabold transition-colors hover:text-primary">
@@ -300,16 +295,22 @@ function MyProductsPageInner() {
                     ) : (
                       <h2 className="truncate text-sm font-extrabold">{p.productName}</h2>
                     )}
-                    <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold', STATUS_STYLE[p.status ?? 'confirmed'])}>
-                      {STATUS_LABEL[p.status ?? 'confirmed']}
-                    </span>
                     {p.isLadder && (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">نردبان فعال</span>
                     )}
+                    {/* قیمت منقضی (۷-۱۱ دور هفدهم) — جای «به‌روزرسانی … پیش» نشست؛
+                        کلیک = مدال سریع آپدیت قیمت */}
+                    {p.priceExpired && p.status !== 'deleted' && (
+                      <button
+                        type="button"
+                        onClick={() => setPriceTarget(p)}
+                        title={`قیمت این آگهی بیش از ${toFa(p.priceValidityDays ?? 3)} روز است تازه نشده — برای آپدیت کلیک کنید`}
+                        className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 transition-colors hover:bg-amber-100"
+                      >
+                        <RefreshCw size={11} /> قیمت منقضی شده
+                      </button>
+                    )}
                   </div>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {p.categoryName} ← {p.subCategoryName} | {p.provinceName}، {p.cityName}
-                  </p>
                   {/* دلایل اختصاصی رد همین آگهی — از بازبینی ادمین */}
                   {p.status === 'rejected' && p.rejectionReasons && p.rejectionReasons.length > 0 && (
                     <div className="mt-2 rounded-md border border-red-200 bg-red-50/60 px-3 py-2">
@@ -324,6 +325,7 @@ function MyProductsPageInner() {
                       </ul>
                     </div>
                   )}
+                  {/* سه‌گانهٔ اصلی — بازدید حذف شد (در آمار است — خواسته مالک ۷-۱۱) */}
                   <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
                     <span>
                       موجودی: <b>{stockFa(p.stock, p.unit)}</b>
@@ -334,45 +336,51 @@ function MyProductsPageInner() {
                     <span>
                       کف قیمت: <b>{priceFa(p.minSalePrice)}</b>
                     </span>
-                    {/* زمان به‌روزرسانی — کنار قیمت، همه‌جا (خواسته مالک ۲-۱۱) */}
-                    <span
-                      className="flex items-center gap-1 text-muted-foreground"
-                      title={`آخرین به‌روزرسانی قیمت: ${timeAgoFa(parseServerDate(p.updatedAt))}`}
-                    >
-                      <History size={13} /> به‌روزرسانی {timeAgoFa(parseServerDate(p.updatedAt))}
-                    </span>
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <Eye size={13} /> {toFa(p.viewCount)} بازدید
-                    </span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-dashed pt-3">
-                <Button
-                  size="sm"
-                  className="rounded-md text-xs"
-                  disabled={p.status !== 'confirmed'}
-                  onClick={() => setLadderProduct(p)}
+              {/* اکشن‌های ظریف (خواسته مالک ۷-۱۱ دور هفدهم) — لینک‌مانند و ریز:
+                  کمتر جا می‌گیرد اما گویا می‌ماند؛ نردبان فقط وقتی هنوز نردبان
+                  نشده دیده می‌شود (خودِ «نردبان فعال» بالای کارت گویاست) */}
+              <div className="mt-2.5 flex flex-wrap items-center gap-x-0.5 gap-y-1 border-t border-dashed pt-2.5">
+                <button
+                  type="button"
+                  onClick={() => setPriceTarget(p)}
+                  title={`آپدیت سریع قیمت «${p.productName}»`}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold transition-colors',
+                    p.priceExpired
+                      ? 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                      : 'text-primary hover:bg-primary/5',
+                  )}
                 >
-                  <TrendingUp size={14} /> نردبان
-                </Button>
-                <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
-                  <Link href={`/panel/products/stats/${p.id}`} title={`آمار «${p.productName}» — چه کسانی دیدند، تماس زدند و ذخیره کردند`}>
-                    <BarChart3 size={14} /> آمار
-                  </Link>
-                </Button>
-                {/* خریداران این کالا (خواسته مالک ۴-۱۱) — خریدهای دوره‌ای و فوری
-                    همین دسته + پیشنهادهای ارسالی من برای این کالا؛ همه‌جا هست
-                    (موبایل و دسکتاپ) و نه فقط موبایل */}
-                <Button asChild size="sm" variant="outline" className="rounded-md text-xs">
-                  <Link
-                    href={`/panel/products/buyers/${p.id}`}
-                    title={`خریداران و درخواست‌های خرید «${p.productName}»`}
+                  <RefreshCw size={13} /> آپدیت قیمت
+                </button>
+                <Link
+                  href={`/panel/products/stats/${p.id}`}
+                  title={`آمار «${p.productName}» — چه کسانی دیدند، تماس زدند و ذخیره کردند`}
+                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  <BarChart3 size={13} /> آمار
+                </Link>
+                <Link
+                  href={`/panel/products/buyers/${p.id}`}
+                  title={`خریداران و درخواست‌های خرید «${p.productName}»`}
+                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  <Users size={13} /> خریداران
+                </Link>
+                {p.status === 'confirmed' && !p.isLadder && (
+                  <button
+                    type="button"
+                    onClick={() => setLadderProduct(p)}
+                    title={`نردبان کردن «${p.productName}» — صدر لیست نتایج`}
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold text-muted-foreground transition-colors hover:bg-amber-50 hover:text-amber-700"
                   >
-                    <Users size={14} /> خریداران
-                  </Link>
-                </Button>
+                    <TrendingUp size={13} /> نردبان
+                  </button>
+                )}
                 {/* ویرایش + حذف زیر سه‌نقطه (خواسته مالک ۴-۱۱ — ردیف خلوت‌تر) */}
                 <RowMenu
                   editHref={`/panel/products/edit/${p.id}`}
@@ -403,6 +411,9 @@ function MyProductsPageInner() {
       {/* مودال نردبان — ۱ تا ۴ ماه، پرداخت واقعی از کیف پول (خواسته مالک ۳۱-۱۰)؛
           کامپوننت مشترک با صفحهٔ آمار (خواسته مالک ۳-۱۱) */}
       <LadderPayDialog product={ladderProduct} balance={balance} onClose={() => setLadderProduct(null)} />
+
+      {/* مدال سریع آپدیت قیمت (۷-۱۱ دور هفدهم) — از «آپدیت قیمت» و بج انقضا */}
+      <QuickPriceModal product={priceTarget} onClose={() => setPriceTarget(null)} />
 
       {/* دیالوگ تأیید حذف (خواسته مالک ۳-۱۱) — حذف نرم با حفظ سوابق */}
       <DeleteProductDialog

@@ -232,9 +232,11 @@ export default function PanelBuyersPage() {
     <div className="mx-auto max-w-5xl space-y-4">
       {/* تب‌ویوی سگمنتی (خواسته مالک ۷-۱۱): زمینهٔ متفاوت از محتوا + دکمهٔ فعال
           برآمده — دیگر «جزئی از محتوا» به نظر نمی‌رسد؛ سه تب همیشه یک ردیف کنار هم
-          در موبایل (برچسب کوتاه، بدون اسکرول) و دسکتاپ (هم‌عرض، عنوان کامل) */}
+          در موبایل (برچسب کوتاه) و دسکتاپ (هم‌عرض، عنوان کامل). دور هفدهم (۷-۱۱):
+          نوار تب اسکرول افقی خودش را دارد — اگر روی گوشی‌های باریک جا نشود، خود
+          نوار می‌لغزد نه اینکه صفحه را به‌هم بریزد (خواستهٔ مالک: موبایل بی‌نقص) */}
       <div
-        className="flex items-stretch gap-1 rounded-lg border border-border bg-secondary/70 p-1"
+        className="flex items-stretch gap-1 overflow-x-auto rounded-lg border border-border bg-secondary/70 p-1"
         role="tablist"
         aria-label="بخش‌های خریداران"
       >

@@ -64,6 +64,10 @@ interface RawProduct {
   hasVideo: boolean;
   isOld: boolean;
   viewCount: number;
+  /** اعتبار قیمت + مهر تغییر + پرچم انقضا (۷-۱۱ دور هفدهم) */
+  priceValidityDays?: number;
+  priceUpdatedAt?: string;
+  priceExpired?: boolean;
   createdAt: string;
   updatedAt: string;
   photos: string[];
@@ -830,6 +834,8 @@ export async function updateMyProduct(input: {
   minSalePrice: number;
   description: string;
   features: { key: string; value: string }[];
+  /** اعتبار قیمت به روز (۷-۱۱ دور هفدهم) — پیش‌فرض ۳ روز */
+  priceValidityDays?: number;
   newPhotos?: File[];
   removedPhotoIds?: string[];
 }): Promise<{ ok: true; id: number; status: ProductStatus; failedPhotos: File[] }> {
@@ -844,6 +850,7 @@ export async function updateMyProduct(input: {
     minSalePrice: input.minSalePrice,
     description: input.description,
     features: input.features,
+    priceValidityDays: input.priceValidityDays,
   });
 
   // عکس‌های حذف‌شده — بهترین‌حال؛ خطا جریان ویرایش را نمی‌شکند
@@ -868,11 +875,23 @@ export async function updateMyProduct(input: {
   return { ok: true, id: updated.id, status: (updated.status as ProductStatus) ?? 'pending', failedPhotos };
 }
 
-/** تغییر گروهی قیمت/موجودی/حداقل سفارش (خواسته مالک ۴-۱۱) — بدون تایید مجدد */
+/** تغییر گروهی قیمت/موجودی/حداقل سفارش (خواسته مالک ۴-۱۱) — بدون تایید مجدد؛
+ *  اعتبار قیمت هم اختیاری هر ردیف (۷-۱۱ دور هفدهم: «اگر در ویرایش کالا وارد
+ *  نکرده بود از همین‌جا بگیرد» — فقط ردیف‌های تغییر یافته اعتبار می‌گیرند) */
 export async function bulkUpdatePrices(
-  items: { id: number; minSalePrice: number; stock: number; minSaleAmount: number }[],
+  items: { id: number; minSalePrice: number; stock: number; minSaleAmount: number; priceValidityDays?: number }[],
 ): Promise<{ updated: number; total: number }> {
   return apiFetch<{ updated: number; total: number }>('/products/bulkUpdatePrices', { items });
+}
+
+/** آپدیت سریع قیمت از کارت آگهی (۷-۱۱ دور هفدهم) — مدال کوچک قیمت + اعتبار؛
+ *  مهر قیمت تازه می‌شود و بج «قیمت منقضی شده» فوراً برداشته می‌شود */
+export async function updateMyPrice(input: {
+  id: number;
+  minSalePrice: number;
+  priceValidityDays?: number;
+}): Promise<{ id: number; minSalePrice: number; priceValidityDays: number; priceExpired: boolean }> {
+  return apiFetch('/products/updateMyPrice', input);
 }
 
 /** خرید نردبان ۱ تا ۴ ماه — کسر واقعی از کیف پول (خواسته مالک ۳۱-۱۰) */

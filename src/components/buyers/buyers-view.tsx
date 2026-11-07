@@ -273,14 +273,16 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
       {/* ─── تب‌ویوی واقعی (خواستهٔ مالک دور سوم) — عنوان «خریداران» حذف شد؛
           هر دو تب همیشه کنار هم، حسِ تب واقعی با خط زیرین، بدون شلوغی ─── */}
       <div className="lg:col-span-2" role="tablist" aria-label="بخش‌های صفحه خریداران">
-        <div className="flex items-stretch gap-6 border-b border-border">
+        {/* نوار تب اسکرول افقی خودش را دارد (خواستهٔ مالک ۷-۱۱ دور هفدهم):
+            روی موبایل اگر تب‌ها جا نشوند خود نوار می‌لغزد و صفحه به‌هم نمی‌ریزد */}
+        <div className="flex items-stretch gap-4 overflow-x-auto border-b border-border sm:gap-6">
           <button
             type="button"
             role="tab"
             aria-selected={tab === 'buyers'}
             onClick={() => setTab('buyers')}
             className={cn(
-              '-mb-px flex items-center gap-1.5 border-b-2 px-1 pb-2.5 pt-1 text-sm font-bold transition-colors',
+              '-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-1 pb-2.5 pt-1 text-sm font-bold transition-colors',
               tab === 'buyers'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -298,7 +300,7 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
             aria-selected={tab === 'requests'}
             onClick={() => setTab('requests')}
             className={cn(
-              '-mb-px flex items-center gap-1.5 border-b-2 px-1 pb-2.5 pt-1 text-sm font-bold transition-colors',
+              '-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-1 pb-2.5 pt-1 text-sm font-bold transition-colors',
               tab === 'requests'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground',

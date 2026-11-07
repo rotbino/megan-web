@@ -209,9 +209,10 @@ export function PasswordBanner({
 
   return (
     <>
-      {/* بنر قرمز چسبان — یادآور همیشگی تا تعیین رمز */}
+      {/* بنر قرمز چسبان — یادآور همیشگی تا تعیین رمز (top-14 = هم‌قدِ هدر
+          موبایل ۵۶px جدید — خواسته مالک ۷-۱۱ دور هفدهم) */}
       <div
-        className="animate-soft-blink sticky top-12 z-20 bg-red-600 text-white shadow-sm lg:top-0"
+        className="animate-soft-blink sticky top-14 z-20 bg-red-600 text-white shadow-sm lg:top-0"
         role="alert"
         aria-live="polite"
       >
