@@ -238,6 +238,11 @@ export function SupplyOfferForm({
     [products, category],
   );
   const hasCategoryProduct = !category || categoryProducts.length > 0;
+  // کل آگهی‌های فعال فروشنده (خواستهٔ مالک ۷-۱۱): هیچ کالایی ثبت نکرده →
+  // پیام عمومی «ثبت کالا»؛ کالای دیگری دارد → پیام اختصاصی همین دسته
+  const activeProductCount = (products ?? []).filter(
+    (p) => p.status === 'confirmed' || p.status === 'pending',
+  ).length;
   /** نوع واردشده در محصولات همان دسته هست؟ (آگهیِ فقط‌برگ = هر نوع آن دسته) */
   const typeOk = useMemo(() => {
     if (!category || !productType.trim() || !hasCategoryProduct) return true;
@@ -259,16 +264,21 @@ export function SupplyOfferForm({
 
   if (targets.length === 0) return null;
 
-  // ─── گیت کالا: کالای این دسته را ندارید — پیام شفاف + مسیر ثبت محصول ───
+  // ─── گیت کالا: هیچ کالایی ندارید (پیام عمومی مالک ۷-۱۱) یا فقط کالای این
+  // دسته را ندارید (پیام اختصاصی همان دسته) — هر دو با مسیر ثبت محصول ───
   if (!hasCategoryProduct) {
+    const noProductsAtAll = activeProductCount === 0;
     return (
       <div className="rounded-lg border border-dashed border-primary/40 bg-primary/[0.03] p-4 text-center">
         <p className="text-xs font-extrabold leading-6">
-          برای ارسال پیشنهاد تامین {category?.categoryName ?? 'این کالا'} باید این کالا را در لیست محصولات خود داشته
-          باشید.
+          {noProductsAtAll
+            ? 'برای ارسال تامین یا تماس یا پیام، باید کالاهای خود را برای فروش ثبت کنید تا خریداران مرتبط به شما نمایش داده شوند.'
+            : `برای ارسال پیشنهاد تامین ${category?.categoryName ?? 'این کالا'} باید این کالا را در لیست محصولات خود داشته باشید.`}
         </p>
         <p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">
-          ابتدا آگهی همین کالا را ثبت کنید تا خریداران بدانند چه چیزی عرضه می‌کنید؛ سپس پیشنهاد بفرستید.
+          {noProductsAtAll
+            ? 'با ثبت کالا و حداقل سفارش، سیستم تطابق مطابق‌ترین و به‌صرفه‌ترین خریداران را به شما نشان می‌دهد.'
+            : 'ابتدا آگهی همین کالا را ثبت کنید تا خریداران بدانند چه چیزی عرضه می‌کنید؛ سپس پیشنهاد بفرستید.'}
         </p>
         <Button asChild size="sm" className="mt-3 rounded-md">
           <Link href="/panel/products/new">

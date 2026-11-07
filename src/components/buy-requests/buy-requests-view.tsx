@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Loader2, LogIn, MessageSquareText, Phone, Search, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, LogIn, MessageSquareText, PackagePlus, Phone, Search, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -148,6 +148,8 @@ function RequestCard({ request }: { request: BuyRequest }) {
   const [loading, setLoading] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [contactError, setContactError] = useState<string | null>(null);
+  // گیت ثبت کالا (خواستهٔ مالک ۷-۱۱) — بک‌اند با PRODUCT_REGISTRATION_REQUIRED می‌گوید
+  const [needProduct, setNeedProduct] = useState(false);
   const contact = useBuyRequestContact();
 
   const reveal = async () => {
@@ -167,8 +169,14 @@ function RequestCard({ request }: { request: BuyRequest }) {
         setNeedLogin(true);
         setLoginOpen(true);
       } else if (err instanceof ApiError) {
-        // پیام بک‌اند (مثلاً سهمیهٔ تماس روزانه) همان‌جا زیر دکمه دیده می‌شود
-        setContactError(err.message);
+        // گیت ثبت کالا (خواستهٔ مالک ۷-۱۱) → پیام + مسیر ثبت کالا؛ بقیهٔ پیام‌های
+        // بک‌اند (بسته، سهمیهٔ تماس روزانه و …) همان‌جا زیر دکمه دیده می‌شوند
+        if (err.code === 'PRODUCT_REGISTRATION_REQUIRED') {
+          setContactError(err.message);
+          setNeedProduct(true);
+        } else {
+          setContactError(err.message);
+        }
       } else {
         setContactError('دریافت شماره موقتاً ممکن نشد؛ دوباره تلاش کنید.');
       }
@@ -242,6 +250,15 @@ function RequestCard({ request }: { request: BuyRequest }) {
       )}
       {contactError && (
         <p className="mt-2 text-[11px] font-medium leading-5 text-destructive">{contactError}</p>
+      )}
+      {needProduct && (
+        <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium leading-5 text-primary">
+          <PackagePlus size={13} className="shrink-0" />
+          <Link href="/panel/products/new" className="font-bold underline">
+            ثبت کالای خود برای فروش
+          </Link>{' '}
+          — با ثبت کالا و حداقل سفارش، مطابق‌ترین خریداران به شما نمایش داده می‌شوند.
+        </p>
       )}
     </li>
   );

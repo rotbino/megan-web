@@ -60,7 +60,7 @@ export function BookEntryCard({
               <span
                 className={cn(
                   'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold',
-                  matchBadge.score >= 85 ? 'bg-emerald-50 text-emerald-600' : 'bg-sky-50 text-sky-600',
+                  matchBadge.score >= 70 ? 'bg-emerald-50 text-emerald-600' : 'bg-sky-50 text-sky-600',
                 )}
               >
                 دقت تطابق ٪{toFa(matchBadge.score)}

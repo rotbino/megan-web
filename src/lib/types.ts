@@ -113,6 +113,10 @@ export interface BuyRequest {
   firstName: string;
   lastName: string;
   city: string;
+  /** مکان خام (خواستهٔ مالک ۷-۱۱) — ورودی فرمول تطابق؛ مقایسهٔ عددی دقیق‌تر از نام است */
+  provinceId?: number | null;
+  cityId?: number | null;
+  province?: string | null;
   isVerified: boolean;
   createdAt: string;
 }
@@ -274,7 +278,8 @@ export interface FollowItem {
 export interface SuggestedBuyer {
   buyRequest: BuyRequest;
   matchScore: number; // ۰..۱۰۰
-  tier: 'exact' | 'same-product' | 'near-category'; // نوع کالا / همان محصول / دسته نزدیک
+  /** نوع کالا / همان محصول / دسته نزدیک / بدون تطابق — «هرگز خالی نمی‌شود» (مالک ۷-۱۱) */
+  tier: 'exact' | 'same-product' | 'near-category' | 'other';
   relatedProduct: string; // آگهی ملاک تطبیق
 }
 

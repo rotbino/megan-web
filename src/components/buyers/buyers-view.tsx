@@ -107,6 +107,8 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
   const [authOpen, setAuthOpen] = useState(false);
   // الگوی همیشگی نیاز به اشتراک/شارژ (خواستهٔ مالک ۱-۱۱) — مودال با بستن + خرید بسته
   const [needPkgOpen, setNeedPkgOpen] = useState(false);
+  // گیت ثبت کالا (خواستهٔ مالک ۷-۱۱) — بدون آگهی، تامین/تماس/پیام بسته است
+  const [needProductOpen, setNeedProductOpen] = useState(false);
 
   const { data: tree = [] } = useCategoryTree();
   const { data: provinces = [] } = useProvinces();
@@ -141,7 +143,12 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
   const isFeatured = quotaQuery.data?.isFeatured ?? false;
 
   // آگهی‌های خود فروشنده — برای پیش‌نویس دقیق متن پیشنهاد (کالا/واحد/قیمت واقعی)
-  const { data: myProducts } = useMyProducts(Boolean(user));
+  // + گیت ثبت کالا (خواستهٔ مالک ۷-۱۱) — آگهی تأییدشده یا در انتظار، هر دو حساب است
+  const myProductsQuery = useMyProducts(Boolean(user));
+  const myProducts = myProductsQuery.data;
+  const hasProducts = (myProducts?.items ?? []).some(
+    (p) => p.status === 'confirmed' || p.status === 'pending',
+  );
 
   const pickCategory = (c: Category) => {
     setCategoryId(c.id);
@@ -172,16 +179,23 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
     setCatStack([]);
   };
 
-  /** دروازهٔ مشترک پیشنهاد تامین (تکی و گروهی): ورود → بستهٔ فعال؛
-   *  دکمه‌ها همیشه فعال‌اند و مودال‌های راهنما باز می‌شوند. */
+  /** دروازهٔ مشترک پیشنهاد تامین (تکی و گروهی): ورود → ثبت کالا → بستهٔ فعال
+   *  (خواستهٔ مالک ۷-۱۱: کالا اول — فروشنده بدون آگهی مودال «ثبت کالا لازم
+   *  است» را می‌بیند؛ دیدن خریداران آزاد است)؛ دکمه‌ها همیشه فعال‌اند و
+   *  مودال‌های راهنما باز می‌شوند. */
   const passOfferGates = (): boolean => {
     if (!user) {
       setAuthOpen(true);
       return false;
     }
-    // اگر وضعیت بسته هنوز در حال بارگذاری است صبر می‌کنیم تا قضاوت اشتباه نشود.
-    if (quotaQuery.isPending) {
-      toast({ description: 'در حال بررسی وضعیت بستهٔ شما…' });
+    // اگر وضعیت آگهی/بسته هنوز در حال بارگذاری است صبر می‌کنیم تا قضاوت اشتباه نشود.
+    if (myProductsQuery.isPending || quotaQuery.isPending) {
+      toast({ description: 'در حال بررسی وضعیت حساب شما…' });
+      return false;
+    }
+    // بدون کالای ثبت‌شده → مودال ثبت کالا (خواستهٔ مالک ۷-۱۱، قبل از بسته)
+    if (!hasProducts) {
+      setNeedProductOpen(true);
       return false;
     }
     // بدون بستهٔ فعال → مودال خرید اشتراک (الگوی همیشگی ۱-۱۱، به‌جای توست).
@@ -765,6 +779,13 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
         open={wizardOpen}
         onClose={() => setWizardOpen(false)}
         products={myProducts?.items}
+      />
+      {/* گیت ثبت کالا (خواستهٔ مالک ۷-۱۱): بدون کالای فروش، مودال «ثبت کالا لازم است» */}
+      <NeedPackageModal
+        open={needProductOpen}
+        onClose={() => setNeedProductOpen(false)}
+        kind="product"
+        message="برای ارسال تامین یا تماس یا پیام، باید کالاهای خود را برای فروش ثبت کنید تا خریداران مرتبط به شما نمایش داده شوند. با ثبت کالا و حداقل سفارش، سیستم تطابق مطابق‌ترین و به‌صرفه‌ترین خریداران را به شما نشان می‌دهد."
       />
       {/* الگوی همیشگی ۱-۱۱: بدون بستهٔ فعال، مودال «خرید اشتراک» باز می‌شود */}
       <NeedPackageModal

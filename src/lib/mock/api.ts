@@ -309,6 +309,10 @@ interface RawBuyRequest {
   firstName: string;
   lastName: string;
   city: string;
+  /** مکان خام (خواستهٔ مالک ۷-۱۱) — ورودی فرمول تطابق فرانت */
+  provinceId?: number | null;
+  cityId?: number | null;
+  province?: string | null;
   isVerified: boolean;
   createdAt: string;
 }
@@ -324,6 +328,9 @@ const toBuyRequest = (r: RawBuyRequest): BuyRequest => ({
   firstName: r.firstName,
   lastName: r.lastName,
   city: r.city,
+  provinceId: r.provinceId ?? null,
+  cityId: r.cityId ?? null,
+  province: r.province ?? null,
   isVerified: r.isVerified,
   createdAt: r.createdAt,
 });

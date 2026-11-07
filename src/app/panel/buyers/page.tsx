@@ -14,18 +14,19 @@
  *  • جستجو و فیلتر دسته‌های محصول + استان/شهر همچنان در دسترس است
  *  • فرم مینیمال (خواسته مالک ۶-۱۱): بدون جملهٔ سورت/سهمیه — سهمیه و
  *    محدودیت روزانه حذف شد؛ هزینه گروهی فقط لحظهٔ ارسال از کیف پول کسر می‌شود
- *  • گیت بسته (خواسته مالک): بستهٔ رایگان خریداران را نمی‌بیند
+ *  • گیت‌ها (خواستهٔ مالک ۷-۱۱): دیدن خریداران برای همهٔ فروشندگان آزاد
+ *    شد؛ ارسال تامین/تماس/پیام اول گیت ثبت کالا دارد (مودال «ثبت کالا لازم
+ *    است») و بعد گیت بستهٔ فعال — این‌طوری فروشندگان به ثبت کالایشان تشویق
+ *    می‌شوند و فرمول تطابق (کالا ۴۰ + نوع ۲۰ + حجم ۲۵ + مکان ۱۵) روی همان
+ *    داده‌ها مطابق‌ترین و به‌صرفه‌ترین خریداران را می‌سازد
  */
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
 import {
   CalendarClock,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
-  Crown,
-  Lock,
   Search,
   Send,
   SlidersHorizontal,
@@ -37,14 +38,12 @@ import {
   useCities,
   useCategoryTree,
   useMyOfferQuota,
-  useMyPackage,
   useMyProducts,
   useMySentOffers,
   useProvinces,
 } from '@/lib/mock/hooks';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PanelCard } from '@/components/panel/panel-parts';
 import { BuyerCard } from '@/components/panel/buyer-card';
@@ -66,9 +65,6 @@ export default function PanelBuyersPage() {
   const { data: tree } = useCategoryTree();
   const { data: provinces = [] } = useProvinces();
 
-  // گیت بسته (خواسته مالک): بسته رایگان خریداران را نمی‌بیند
-  const { data: myPackage, isLoading: pkgLoading } = useMyPackage();
-
   const [tab, setTab] = useState<PanelBuyersTab>('requests');
   const [q, setQ] = useState('');
   const [rootCat, setRootCat] = useState('all');
@@ -77,10 +73,11 @@ export default function PanelBuyersPage() {
   const [batch, setBatch] = useState(1);
   const [dirPage, setDirPage] = useState(1);
 
-  // پیشنهاد تکی/گروهی + مودال نیاز به بسته
+  // پیشنهاد تکی/گروهی + مودال نیاز به بسته/ثبت کالا
   const [offerTarget, setOfferTarget] = useState<BuyerDirectoryItem | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [needPkgOpen, setNeedPkgOpen] = useState(false);
+  const [needProductOpen, setNeedProductOpen] = useState(false);
 
   const roots: Category[] = useMemo(() => tree ?? [], [tree]);
   const rootId = rootCat !== 'all' ? Number(rootCat) : null;
@@ -89,10 +86,14 @@ export default function PanelBuyersPage() {
 
   // آگهی‌های خودم + گیت بسته — پایهٔ امتیاز تطابق و پیشنهاد تامین
   // (خواسته مالک ۶-۱۱: سهمیه/سقف روزانه حذف شد — فقط isFeatured می‌ماند)
-  const { data: myProducts } = useMyProducts();
-  const products = myProducts?.items;
+  const myProductsQuery = useMyProducts();
+  const products = myProductsQuery.data?.items;
   const quotaQuery = useMyOfferQuota();
   const isFeatured = quotaQuery.data?.isFeatured ?? false;
+  // گیت ثبت کالا (خواستهٔ مالک ۷-۱۱) — آگهی تأییدشده یا در انتظار، هر دو حساب است
+  const hasProducts = (products ?? []).some(
+    (p) => p.status === 'confirmed' || p.status === 'pending',
+  );
 
   // ── تب فوری: درخواست‌های خرید (سرویس باسکول) — سورت تطابق سمت کلاینت ──
   const reqQuery = useBuyRequests({
@@ -128,10 +129,29 @@ export default function PanelBuyersPage() {
   const sentQuery = useMySentOffers({ perPage: 1 });
   const sentCount = sentQuery.data?.total ?? 0;
 
-  /** دروازهٔ پیشنهاد تامین — فروشندهٔ واردشده؛ بدون بسته → مودال خرید اشتراک */
+  /** دروازهٔ پیشنهاد تامین (خواستهٔ مالک ۷-۱۱): اول گیت ثبت کالا — فروشندهٔ
+   *  بدون آگهی مودال «ثبت کالا لازم است» را می‌بیند؛ بعد گیت بستهٔ فعال */
   const passOfferGates = (): boolean => {
-    if (quotaQuery.isPending) return false;
+    if (myProductsQuery.isPending || quotaQuery.isPending) return false;
+    if (!hasProducts) {
+      setNeedProductOpen(true);
+      return false;
+    }
     if (!isFeatured) {
+      setNeedPkgOpen(true);
+      return false;
+    }
+    return true;
+  };
+
+  /** دروازهٔ تماس/چت با خریدار — همان ترتیب: کالا اول، بعد بسته (فقط تماس) */
+  const contactGate = (needPackageToo: boolean): boolean => {
+    if (myProductsQuery.isPending || (needPackageToo && quotaQuery.isPending)) return false;
+    if (!hasProducts) {
+      setNeedProductOpen(true);
+      return false;
+    }
+    if (needPackageToo && !isFeatured) {
       setNeedPkgOpen(true);
       return false;
     }
@@ -168,44 +188,6 @@ export default function PanelBuyersPage() {
     setBatch(1);
     setDirPage(1);
   };
-
-  // ── گیت بسته: رایگان = قفل؛ در حال بارگذاری = اسکلتون ──
-  if (pkgLoading || !myPackage) {
-    return (
-      <div className="mx-auto max-w-5xl space-y-4">
-        <Skeleton className="h-40 w-full rounded-lg" />
-        <Skeleton className="h-64 w-full rounded-lg" />
-      </div>
-    );
-  }
-  if (!myPackage.features.canSeeBuyers) {
-    return (
-      <div className="mx-auto max-w-xl">
-        <PanelCard className="text-center">
-          <span className="mx-auto grid size-16 place-items-center rounded-full bg-amber-50 text-amber-500">
-            <Lock size={28} />
-          </span>
-          <h1 className="mt-4 flex items-center justify-center gap-2 text-base font-extrabold">
-            <Users size={18} className="text-primary" /> دسترسی به خریداران ویژه بسته فعال است
-          </h1>
-          <p className="mt-2 text-sm leading-7 text-muted-foreground">
-            با بسته رایگان می‌توانید تا ۱۰ محصول ثبت کنید و هر تعداد درخواست خرید بفرستید؛ اما برای دیدن
-            شماره تماس خریداران و ارسال پیشنهاد تامین، یکی از بسته‌های اشتراک ایمچ را فعال کنید.
-          </p>
-          <div className="mt-4 grid gap-2 text-start text-xs sm:grid-cols-3">
-            {['دو ماهه — ۱۹۹ هزار تومان', 'شش ماهه — ۴۹۹ هزار تومان', 'یک‌ساله — ۷۹۹ هزار تومان'].map((t) => (
-              <span key={t} className="flex items-center gap-1.5 rounded-md border bg-secondary/50 px-3 py-2">
-                <Crown size={13} className="shrink-0 text-amber-500" /> {t}
-              </span>
-            ))}
-          </div>
-          <Button asChild className="mt-5 rounded-md">
-            <Link href="/panel/pricing">مشاهده و خرید بسته‌ها</Link>
-          </Button>
-        </PanelCard>
-      </div>
-    );
-  }
 
   const tabButton = (
     key: PanelBuyersTab,
@@ -382,6 +364,7 @@ export default function PanelBuyersPage() {
                     request={r}
                     matchBadge={m.score > 0 ? { score: m.score, label: 'تطابق' } : undefined}
                     relatedHint={m.relatedProduct ? `مرتبط با آگهی شما: ${m.relatedProduct}` : undefined}
+                    contactGate={contactGate}
                   />
                 );
               })}
@@ -487,6 +470,13 @@ export default function PanelBuyersPage() {
       {/* ویزار پیشنهاد گروهی — دستهٔ آخر → خریداران همان دسته → فرم */}
       <GroupOfferWizard open={wizardOpen} onClose={() => setWizardOpen(false)} products={products} />
 
+      {/* بدون کالای ثبت‌شده (خواستهٔ مالک ۷-۱۱) → مودال «ثبت کالا لازم است» */}
+      <NeedPackageModal
+        open={needProductOpen}
+        onClose={() => setNeedProductOpen(false)}
+        kind="product"
+        message="برای ارسال تامین یا تماس یا پیام، باید کالاهای خود را برای فروش ثبت کنید تا خریداران مرتبط به شما نمایش داده شوند. با ثبت کالا و حداقل سفارش، سیستم تطابق مطابق‌ترین و به‌صرفه‌ترین خریداران را به شما نشان می‌دهد."
+      />
       {/* بدون بستهٔ فعال → مودال خرید اشتراک (الگوی همیشگی) */}
       <NeedPackageModal
         open={needPkgOpen}
