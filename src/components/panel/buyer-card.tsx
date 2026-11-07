@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { BadgeCheck, CalendarDays, Loader2, MapPin, MessageSquare, Phone, Star } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { ChatDialog } from '@/components/products/chat-dialog';
 import { SaveFollowButton } from '@/components/panel/follow/save-follow-button';
 import { useBuyRequestContact } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
@@ -72,6 +73,8 @@ export function BuyerCard({
     router.push('/panel/messages');
   };
 
+  const buyerName = `${request.firstName} ${request.lastName}`.trim() || 'خریدار';
+
   return (
     <article className="rounded-lg border bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
       <div className="flex flex-wrap items-center gap-2">
@@ -96,15 +99,20 @@ export function BuyerCard({
         )}
       </div>
 
+      {/* جملهٔ باسکولی — با «خریدار» شروع می‌شود (خواسته مالک ۷-۱۱):
+          «خریدار ۵۰ هزار کیلوگرم سیب زمینی از نوع آکریا هستم» */}
       <p className="mt-2.5 text-sm leading-6">
-        {toFa(request.requirementAmount.toLocaleString('en-US'))} {request.unit} {request.subcategoryName}
+        خریدار{' '}
+        <span className="font-bold">{toFa(request.requirementAmount.toLocaleString('en-US'))}</span>{' '}
+        {request.unit} {request.subcategoryName}
         {request.name ? (
           <>
             {' '}
-            از نوع <span className="font-bold">{request.name}</span>
+            از نوع <span className="font-bold">{request.name}</span> هستم
           </>
-        ) : ''}{' '}
-        هستم
+        ) : (
+          ' هستم'
+        )}
       </p>
       {relatedHint && <p className="mt-1 text-[11px] text-muted-foreground">{relatedHint}</p>}
 
@@ -127,9 +135,26 @@ export function BuyerCard({
           {contact.isPending ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />}
           {phone ? toFa(phone) : 'تماس با خریدار'}
         </Button>
-        <Button type="button" size="sm" variant="outline" className="rounded-md text-xs" onClick={onChat}>
-          <MessageSquare size={14} /> چت با خریدار
-        </Button>
+        {/* چت مستقیم با همان خریدار (خواسته مالک ۷-۱۱) — گفتگوی خرید فوری همین‌جا
+            شروع می‌شود و تاریخچه/نتیجه‌اش در تب «پیشنهادهای من» دیده می‌شود؛
+            گیت ثبت کالا با beforeOpen همانند قبل برقرار است */}
+        {request.userName ? (
+          <ChatDialog
+            sellerUserName={request.userName}
+            sellerId={request.myuserId}
+            sellerName={buyerName}
+            buttonLabel="چت با خریدار"
+            directSubtitle="گفتگوی مستقیم با خریدار"
+            buttonSize="sm"
+            buttonVariant="outline"
+            className="text-xs"
+            beforeOpen={() => !contactGate || contactGate(false)}
+          />
+        ) : (
+          <Button type="button" size="sm" variant="outline" className="rounded-md text-xs" onClick={onChat}>
+            <MessageSquare size={14} /> چت با خریدار
+          </Button>
+        )}
       </div>
 
       <p className="mt-3 border-t border-dashed pt-2.5 text-[10px] text-muted-foreground">

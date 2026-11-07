@@ -311,7 +311,7 @@ export default function PanelMessagesPage() {
                 ) : (
                   supportMessages.map((m) => (
                     <div key={m.id} className="w-fit max-w-[80%] rounded-lg rounded-tr-sm bg-secondary px-3.5 py-2.5">
-                      <p dir="auto" className="text-xs leading-6">{m.text}</p>
+                      <p dir="auto" className="text-[13px] leading-6">{m.text}</p>
                       <p className="mt-1 flex items-center gap-1.5 text-[9px] text-muted-foreground">
                         <span>{m.adminUsername}</span>·<span><RelativeTime date={m.createdAt} /></span>
                       </p>
@@ -386,15 +386,18 @@ export default function PanelMessagesPage() {
                       key={m.id}
                       dir="auto"
                       className={cn(
-                        'w-fit max-w-[80%] rounded-lg px-3.5 py-2.5 text-xs leading-6',
+                        // حباب ملایم پیامرسان‌های معروف (خواسته مالک ۷-۱۱): به‌جای
+                        // پُرِ سنگین رنگ برند، تینتِ نرم همان رنگ + متن عادی — چشم
+                        // خسته نمی‌شود؛ فونت هم یک پله بزرگ‌تر از xs شد
+                        'w-fit max-w-[80%] rounded-lg px-3.5 py-2.5 text-[13px] leading-6',
                         m.senderId === myId
-                          ? 'ms-auto rounded-tl-sm bg-primary text-primary-foreground'
-                          : 'rounded-tr-sm bg-secondary',
+                          ? 'ms-auto rounded-tl-sm bg-primary/15 text-foreground'
+                          : 'rounded-tr-sm bg-secondary text-foreground',
                       )}
                     >
                       {m.text}
                       {m.senderId === myId && m.readAt && (
-                        <span className="ms-2 align-middle text-[9px] text-primary-foreground/70">✓✓</span>
+                        <span className="ms-2 align-middle text-[9px] text-muted-foreground">✓✓</span>
                       )}
                     </p>
                   ))

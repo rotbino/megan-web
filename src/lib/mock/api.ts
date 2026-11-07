@@ -310,6 +310,8 @@ interface RawBuyRequest {
   requirementAmount: number;
   unit: string;
   myuserId: string;
+  /** نام‌کاربری عمومی خریدار — چت مستقیم از کارت (خواسته مالک ۷-۱۱) */
+  userName?: string | null;
   firstName: string;
   lastName: string;
   city: string;
@@ -329,6 +331,7 @@ const toBuyRequest = (r: RawBuyRequest): BuyRequest => ({
   requirementAmount: r.requirementAmount,
   unit: r.unit,
   myuserId: r.myuserId,
+  userName: r.userName ?? null,
   firstName: r.firstName,
   lastName: r.lastName,
   city: r.city,
@@ -1609,6 +1612,7 @@ import type {
   SentOffersPage,
   SentOffersQuery,
   SupplyOfferTerms,
+  UrgentChatsPage,
 } from '@/lib/types';
 
 /** پیکربندی صورتحساب — عمومی؛ پکیج شارژ/شارژ دلخواه/نردبان/قیمت پیشنهاد تامین */
@@ -1693,4 +1697,10 @@ export async function getMySentOffers(q: SentOffersQuery = {}): Promise<SentOffe
     page: q.page ?? 1,
     perPage: q.perPage ?? 20,
   });
+}
+
+/** گفتگوهای من با خریداران فوریِ یک دسته (خواسته مالک ۷-۱۱) — تب
+ *  «پیشنهادهای من» صفحهٔ خریدارانِ هر کالا؛ تاریخچه و نتیجهٔ گفتگوها */
+export async function getMyUrgentChats(q: { categoryId: number }): Promise<UrgentChatsPage> {
+  return apiFetch<UrgentChatsPage>('/buyers/getMyUrgentChats', { categoryId: q.categoryId });
 }

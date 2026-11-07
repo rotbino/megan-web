@@ -227,22 +227,23 @@ export function ChatWidget({
   );
 }
 
-/** حباب پیام — عین صفحه پیام‌ها: «من» با پس‌زمینه برند و تیک دوتایی خوانده‌شدن */
+/** حباب پیام — عین صفحه پیام‌ها (خواسته مالک ۷-۱۱): تینتِ نرم رنگ برند + متن
+ *  عادی به‌جای پُرِ سنگین — ملایم مثل پیامرسان‌های معروف؛ فونت یک پله بزرگ‌تر */
 function MessageBubble({ message, mine }: { message: ChatMessage; mine: boolean }) {
   return (
     <div className={cn('flex', mine ? 'justify-start' : 'justify-end')}>
       <p
         dir="auto"
         className={cn(
-          'w-fit max-w-[80%] rounded-lg px-3.5 py-2.5 text-xs leading-6',
+          'w-fit max-w-[80%] rounded-lg px-3.5 py-2.5 text-[13px] leading-6',
           mine
-            ? 'rounded-tl-sm bg-primary text-primary-foreground'
-            : 'rounded-tr-sm bg-secondary',
+            ? 'rounded-tl-sm bg-primary/15 text-foreground'
+            : 'rounded-tr-sm bg-secondary text-foreground',
         )}
       >
         {message.text}
         {mine && message.readAt && (
-          <span className="ms-2 align-middle text-[9px] text-primary-foreground/70">✓✓</span>
+          <span className="ms-2 align-middle text-[9px] text-muted-foreground">✓✓</span>
         )}
       </p>
     </div>

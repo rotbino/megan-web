@@ -117,7 +117,7 @@ export interface BuyRequest {
   unit: string;
   /** ObjectId مگان — در باسکول عدد بود؛ فقط کلید/ارجاع فرانت */
   myuserId: string;
-  /** شناسهٔ عمومی خریدار — فقط در snapshot پیگیری‌ها (چت مستقیم از CRM) */
+  /** شناسهٔ عمومی خریدار — چت مستقیم از کارت (snapshot پیگیری‌ها و لیست درخواست‌ها) */
   userName?: string | null;
   firstName: string;
   lastName: string;
@@ -668,6 +668,34 @@ export interface SentOffersPage {
   page: number;
   perPage: number;
   categories: { id: number; name: string }[];
+}
+
+/** گفتگوی من با یک خریدارِ فوریِ دسته (خواسته مالک ۷-۱۱) — تب «پیشنهادهای
+ *  من» صفحهٔ خریدارانِ هر کالا: کنار پیشنهادهای تامین، تاریخچه و نتیجهٔ
+ *  گفتگوهای خرید فوری همان دسته هم نمایش داده می‌شود */
+export interface UrgentChat {
+  threadId: string;
+  buyerId: string;
+  buyerName: string;
+  buyerUserName: string | null;
+  buyerVerified: boolean;
+  /** آخرین درخواست فوری خریدار در این دسته — زمینهٔ گفتگو */
+  request: {
+    id: number;
+    amount: number;
+    unit: string;
+    productType: string | null;
+    categoryName: string | null;
+    createdAt: string;
+  } | null;
+  /** آخرین پیام گفتگو — پاسخ خریدار یا پیام خودم */
+  lastMessage: { text: string; at: string; mine: boolean } | null;
+  updatedAt: string;
+}
+
+/** پاسخ getMyUrgentChats */
+export interface UrgentChatsPage {
+  items: UrgentChat[];
 }
 
 /** پیکربندی صورتحساب — از site-settings/getBillingConfig (عمومی)؛

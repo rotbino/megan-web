@@ -762,6 +762,16 @@ export function useMySentOffers(q: import('@/lib/types').SentOffersQuery = {}) {
   });
 }
 
+/** گفتگوهای من با خریداران فوریِ یک دسته (خواسته مالک ۷-۱۱) — تب
+ *  «پیشنهادهای من» صفحهٔ خریدارانِ هر کالا؛ null = کوئری نکن */
+export function useMyUrgentChats(categoryId: number | null) {
+  return useQuery({
+    queryKey: ['my-urgent-chats', categoryId],
+    queryFn: () => api.getMyUrgentChats({ categoryId: categoryId as number }),
+    enabled: categoryId != null,
+  });
+}
+
 /** تغییر گروهی قیمت/موجودی (خواسته مالک ۴-۱۱) — لیست محصولات تازه شود */
 export function useBulkUpdatePrices() {
   const queryClient = useQueryClient();

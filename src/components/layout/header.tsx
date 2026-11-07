@@ -149,7 +149,7 @@ export function Header() {
           <div ref={searchWrap}  className="relative hidden min-w-0 flex-1 nav-desktop:block nav-desktop:max-w-[500px]">
             <form
                 onSubmit={(e) => { e.preventDefault(); submit(); }}
-                className="flex h-12 items-stretch overflow-hidden rounded border border-[#d4d4d8] bg-transparent transition-[border-color,box-shadow] focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10"
+                className="flex h-12 items-stretch overflow-hidden rounded border border-input bg-transparent transition-[border-color,box-shadow] focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10"
                 role="search"
             >
               <input
@@ -216,7 +216,7 @@ export function Header() {
               type="button"
               title="فیلتر مکان"
               aria-label="فیلتر مکان: همه ایران"
-              className="flex shrink-0 items-center gap-2 text-[#4a505b]"
+              className="flex shrink-0 items-center gap-2 text-secondary-foreground"
             >
               <span className="whitespace-nowrap text-sm font-medium">همه ایران</span>
               <LocationIconBuskool size={20} className="text-muted-foreground" />
@@ -233,7 +233,7 @@ export function Header() {
                   خریدار → فروشندگان پیشنهادی */}
               <Link
                 href={isSeller ? '/panel/buyers' : '/panel/suggested-sellers'}
-                className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
+                className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-secondary-foreground hover:bg-accent hover:text-foreground"
               >
                 {isSeller ? <BuyersIcon size={24} /> : <SellersIcon size={24} />}
                 <span className="mt-1">{isSeller ? 'خریداران' : 'فروشندگان'}</span>
@@ -244,7 +244,7 @@ export function Header() {
                 href="/panel/messages"
                 aria-label={unreadCount > 0 ? `پیام‌ها — ${unreadCount} پیام خوانده‌نشده` : 'پیام‌ها'}
                 title="پیام‌ها"
-                className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
+                className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-secondary-foreground hover:bg-accent hover:text-foreground"
               >
                 <span className="relative">
                   <MessagesIcon size={24} />
@@ -260,7 +260,7 @@ export function Header() {
             <>
               <Link
                 href="/product-list"
-                className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
+                className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-secondary-foreground hover:bg-accent hover:text-foreground"
               >
                 <SellersIcon size={24} />
                 <span className="mt-1">فروشندگان</span>
@@ -268,7 +268,7 @@ export function Header() {
               <span className="mx-1 h-9 w-px bg-border" aria-hidden />
               <Link
                 href="/buyers"
-                className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
+                className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-secondary-foreground hover:bg-accent hover:text-foreground"
               >
                 <BuyersIcon size={24} />
                 <span className="mt-1">خریداران</span>
@@ -276,7 +276,7 @@ export function Header() {
               <span className="mx-1 h-9 w-px bg-border" aria-hidden />
               <Link
                 href="/register"
-                className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-[#4a505b] hover:bg-accent hover:text-foreground"
+                className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-secondary-foreground hover:bg-accent hover:text-foreground"
               >
                 {/* نقطه ورود = نارنجی ثابت (خواسته مالک ۲-۱۱ دور دوازدهم) — مثل
                     طلاییِ فروشنده ویژه از رنگ برند کاربر پیروی نمی‌کند تا در هر تمی

@@ -6,7 +6,7 @@ import {
   ArrowDownWideNarrow,
   BellRing,
   Bookmark,
-  CalendarClock,
+  CalendarCheck,
   Filter,
   Flag,
   FolderPlus,
@@ -341,33 +341,63 @@ function FollowPageInner() {
           </p>
         </div>
         {!loading && (
-          <div className="flex flex-wrap items-center gap-2">
-            {/* زنگ پیگیری‌های امروز (خواسته مالک ۷-۱۱) — سررسیده‌های امروز را
-                با یک کلیک جلوی چشم می‌آورد؛ فعال = فیلتر روشن */}
-            {dueTodayCount > 0 && (
-              <button
-                type="button"
-                onClick={() => setDueToday((v) => !v)}
-                aria-pressed={dueToday}
-                title={dueToday ? 'نمایش همهٔ موارد' : 'فقط یادآورهای سررسیدهٔ امروز'}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
-                  dueToday
-                    ? 'border-amber-400 bg-amber-400 text-white shadow-[0_1px_5px_rgba(251,191,36,0.45)]'
-                    : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100',
-                )}
-              >
-                <BellRing size={13} className="shrink-0" />
-                <span className="font-num">{toFa(dueTodayCount)}</span> پیگیری امروز
-              </button>
-            )}
-            <p className="text-xs text-muted-foreground">
-              <b className="text-foreground">{toFa(items.length)}</b> مورد در{' '}
-              <b className="text-foreground">{toFa(folders?.length ?? 0)}</b> پرونده
-            </p>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            <b className="text-foreground">{toFa(items.length)}</b> مورد در{' '}
+            <b className="text-foreground">{toFa(folders?.length ?? 0)}</b> پرونده
+          </p>
         )}
       </div>
+
+      {/* پیگیری‌های امروز (خواسته مالک ۷-۱۱) — نوار همیشه‌ visible؛
+          «امروز چه کاری باید انجام بدهم» حتی وقتی کاری نیست هم جواب داده
+          می‌شود تا کاربر مطمئن باشد چیزی از قلم نیفتاده */}
+      {!loading && items.length > 0 && (
+        <div
+          className={cn(
+            'flex items-center gap-3 rounded-lg border p-3 transition-colors',
+            dueToday
+              ? 'border-amber-300 bg-amber-100'
+              : dueTodayCount > 0
+                ? 'border-amber-200 bg-amber-50'
+                : 'border-border bg-card',
+          )}
+        >
+          <span
+            className={cn(
+              'grid size-9 shrink-0 place-items-center rounded-full',
+              dueTodayCount > 0
+                ? 'bg-amber-400/20 text-amber-600'
+                : 'bg-secondary text-muted-foreground',
+            )}
+          >
+            {dueTodayCount > 0 ? <BellRing size={17} /> : <CalendarCheck size={17} />}
+          </span>
+          <div className="min-w-0 flex-1">
+            {dueTodayCount > 0 ? (
+              <p className="text-sm font-bold text-amber-800">
+                <span className="font-num">{toFa(dueTodayCount)}</span> پیگیری امروز سررسیده است
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">امروز پیگیری سررسیده‌ای ندارید</p>
+            )}
+          </div>
+          {(dueTodayCount > 0 || dueToday) && (
+            <button
+              type="button"
+              onClick={() => setDueToday((v) => !v)}
+              aria-pressed={dueToday}
+              className={cn(
+                'shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors',
+                dueToday
+                  ? 'bg-amber-400 text-white hover:bg-amber-500'
+                  : 'border border-amber-300 bg-card text-amber-700 hover:bg-amber-100',
+              )}
+            >
+              {dueToday ? 'نمایش همه' : 'نمایش موارد امروز'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* جستجو — کاربر / دستهٔ کالا / عنوان کالا (برای لیست‌های طولانی) */}
       {!loading && items.length > 0 && (
@@ -393,9 +423,11 @@ function FollowPageInner() {
         </div>
       )}
 
-      {/* نوار فیلتر دیوار-سبک — افقی و اسکرول‌پذیر در موبایل */}
+      {/* نوار فیلتر دیوار-سبک — افقی و اسکرول‌پذیر در موبایل؛ حاشیهٔ منفی
+          هم‌اندازهٔ پدینگ main پنل (p-3 / sm:p-4) تا چیپ‌ها لبه‌به‌لکه شوند
+          ولی صفحه هرگز سرریز افقی نگیرد (موبایل بی‌نقص — قانون §۲) */}
       {!loading && items.length > 0 && (
-        <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 nav-desktop:mx-0 nav-desktop:flex-wrap nav-desktop:overflow-visible nav-desktop:px-0">
+        <div className="no-scrollbar -mx-3 flex items-center gap-2 overflow-x-auto px-3 pb-1 sm:-mx-4 sm:px-4 nav-desktop:mx-0 nav-desktop:flex-wrap nav-desktop:overflow-visible nav-desktop:px-0">
           <FilterChip
             icon={Bookmark}
             label="پرونده"
@@ -517,30 +549,6 @@ function FollowPageInner() {
               </FilterOption>
             ))}
           </FilterChip>
-
-          {/* پیگیری‌های امروز (خواسته مالک ۷-۱۱) — یادآورهای سررسیده؛
-              «امروز باید چه کاری انجام بدهم» */}
-          {(dueTodayCount > 0 || dueToday) && (
-            <FilterChip
-              icon={CalendarClock}
-              label="پیگیری"
-              value={dueToday ? 'امروز' : null}
-              active={dueToday}
-              onClear={() => setDueToday(false)}
-              sheetTitle="یادآور پیگیری"
-            >
-              <FilterOption selected={!dueToday} onSelect={() => setDueToday(false)} count={dimBase.due.length}>
-                همه
-              </FilterOption>
-              <FilterOption
-                selected={dueToday}
-                onSelect={() => setDueToday(true)}
-                count={dueTodayCount}
-              >
-                پیگیری‌های امروز
-              </FilterOption>
-            </FilterChip>
-          )}
 
           <FilterChip
             icon={MapPin}

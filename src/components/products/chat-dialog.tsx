@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { MessageSquareText, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,6 +40,7 @@ export function ChatDialog({
   buttonSize = 'default',
   threadId,
   directSubtitle = 'گفتگوی مستقیم با فروشنده',
+  beforeOpen,
 }: {
   productId?: number;
   sellerUserName?: string;
@@ -56,6 +58,10 @@ export function ChatDialog({
   threadId?: string;
   /** زیرعنوان حالت بدون آگهی — مثلاً «گفتگوی مستقیم با خریدار» در CRM */
   directSubtitle?: string;
+  /** دروازهٔ باز شدن (خواسته مالک ۷-۱۱) — پیش از باز شدن مودال صدا زده
+   *  می‌شود؛ اگر false برگرداند (مثلاً گیت ثبت کالا)، مودال باز نمی‌شود و
+   *  صفحه خودش مودال راهنما را باز کرده است */
+  beforeOpen?: () => boolean;
 }) {
   const { data: presenceItems } = usePresenceStatus({
     ...(sellerId ? { ids: [sellerId] } : {}),
@@ -67,8 +73,15 @@ export function ChatDialog({
   });
   const initial = sellerName.trim().charAt(0) || '؟';
 
+  // باز شدن گیت‌دار — beforeOpen (مثل گیت ثبت کالا) می‌تواند مانع شود
+  const [open, setOpen] = useState(false);
+  const guardOpen = (o: boolean) => {
+    if (o && beforeOpen && !beforeOpen()) return;
+    setOpen(o);
+  };
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={guardOpen}>
       <DialogTrigger asChild>
         <Button
           type="button"
