@@ -5,7 +5,9 @@
  * [آواتار] [نام و نام خانوادگی] [آیکون دراپ‌داون] → کانتکست منوی نقش‌محور.
  *
  * دسکتاپ: دکمه کامل (آواتار+نام+فلش) + دراپ‌داون.
- * موبایل: فقط آواتار در انتهای هدر؛ همان منو به‌صورت پنل تمام‌عرض زیر هدر.
+ *
+ * موبایل: آواتار از هدر حذف شد تا جعبه جستجو جا داشته باشد (خواسته مالک ۸-۱۱)؛
+ *         دسترسی به حساب از نوار پایین («ایمچ من») و داخل پنل برقرار است.
  *
  * محتوای منو با نقش فعال (فروشنده/خریدار) عوض می‌شود — سیستم با نقش
  * کاربر تطبیق پیدا می‌کند (خواسته مالک):
@@ -68,7 +70,7 @@ const BUYER_SECTIONS: MenuSection[] = [
   { items: [{ href: '/help', label: 'راهنما', icon: HelpCircle }], separatorAfter: true },
 ];
 
-export function HeaderUserMenu({ variant = 'desktop' }: { variant?: 'desktop' | 'mobile' }) {
+export function HeaderUserMenu() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -107,34 +109,22 @@ export function HeaderUserMenu({ variant = 'desktop' }: { variant?: 'desktop' | 
   );
 
   return (
-    <div
-      ref={wrapRef}
-      className={cn('relative', variant === 'mobile' && 'nav-desktop:hidden')}
-    >
-      {/* دکمه — دسکتاپ: آواتار+نام+فلش / موبایل: فقط آواتار */}
+    <div ref={wrapRef} className="relative">
+      {/* دکمه — آواتار+نام+فلش */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`منوی کاربر ${displayName}`}
-        className={cn(
-          'flex items-center gap-2 rounded-md text-foreground transition-colors hover:bg-accent',
-          variant === 'desktop'
-            ? 'max-w-56 py-1 pe-2.5 ps-1.5'
-            : 'p-1 nav-desktop:hidden',
-        )}
+        className="flex max-w-56 items-center gap-2 rounded-md py-1 pe-2.5 ps-1.5 text-foreground transition-colors hover:bg-accent"
       >
         <span className="grid size-8 shrink-0 place-items-center overflow-hidden">{avatar}</span>
-        {variant === 'desktop' && (
-          <>
-            <span className="min-w-0 max-w-32 truncate text-sm font-medium leading-tight">{displayName}</span>
-            <ChevronDown
-              size={15}
-              className={cn('shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
-            />
-          </>
-        )}
+        <span className="min-w-0 max-w-32 truncate text-sm font-medium leading-tight">{displayName}</span>
+        <ChevronDown
+          size={15}
+          className={cn('shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
+        />
       </button>
 
       {/* کانتکست منو */}
@@ -142,10 +132,7 @@ export function HeaderUserMenu({ variant = 'desktop' }: { variant?: 'desktop' | 
         <div
           role="menu"
           aria-label="منوی حساب کاربری"
-          className={cn(
-            'absolute top-full z-50 mt-1.5 overflow-hidden rounded-lg border bg-popover py-1.5 shadow-xl',
-            variant === 'desktop' ? 'end-0 w-60' : 'end-0 w-64 max-w-[calc(100vw-1.5rem)]',
-          )}
+          className="absolute end-0 top-full z-50 mt-1.5 w-60 overflow-hidden rounded-lg border bg-popover py-1.5 shadow-xl"
         >
           {sections.map((section, si) => (
             <div key={si}>
