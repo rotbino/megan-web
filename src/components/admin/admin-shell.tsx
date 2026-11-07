@@ -27,6 +27,7 @@ import {
   ClipboardList,
   Coins,
   Crown,
+  Headset,
   KeyRound,
   LayoutDashboard,
   Loader2,
@@ -82,6 +83,14 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
       { href: '/admin/activities', label: 'فعالیت کاربران', Icon: Activity, superOnly: false },
       { href: '/admin/chats', label: 'چت‌های کاربران', Icon: MessagesSquare, superOnly: false },
       { href: '/admin/calls', label: 'گزارش تماس‌ها', Icon: PhoneCall, superOnly: false },
+    ],
+  },
+  {
+    // پشتیبانی کاربران (خواستهٔ مالک ۸-۱۱ دور ۲۱) — چت پشتیبانی + نظرسنجی‌ها؛
+    // بعداً تیکت و بقیه هم به همین گروه اضافه می‌شوند
+    title: 'پشتیبانی',
+    items: [
+      { href: '/admin/support', label: 'چت‌های پشتیبانی', Icon: Headset, superOnly: false, badge: 'unreadSupportMessages' },
       { href: '/admin/surveys', label: 'نظرسنجی‌ها', Icon: MessageSquareText, superOnly: false },
     ],
   },

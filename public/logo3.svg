@@ -2,8 +2,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 0 96 38" fill="none">
     <defs>
         <linearGradient id="brandGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#94a3b8"/>
-            <stop offset="100%" stop-color="#475569"/>
+            <stop offset="0%" stop-color="#fb9230"/>
+            <stop offset="100%" stop-color="#ea580c"/>
         </linearGradient>
         <radialGradient id="dotGradient" cx="35%" cy="30%" r="75%">
             <stop offset="0%" stop-color="#fdba74"/>
@@ -19,7 +19,7 @@
     <g transform="translate(0, 6)">
 
         <!-- i بدون نقطه -->
-        <text x="0" y="31" font-family="Verdana, Geneva, sans-serif" font-size="26" font-weight="700" fill="#64748b">ı</text>
+        <text x="0" y="31" font-family="Verdana, Geneva, sans-serif" font-size="26" font-weight="700" fill="#ea580c">ı</text>
 
         <!-- نقطه‌ی گرافیکی دقیقاً روی i -->
         <g transform="translate(0.5, 3)">
@@ -36,12 +36,12 @@
         </g>
 
         <!-- a -->
-        <text x="41" y="31" font-family="Verdana, Geneva, sans-serif" font-size="26" font-weight="700" fill="#64748b">a</text>
+        <text x="41" y="31" font-family="Verdana, Geneva, sans-serif" font-size="26" font-weight="700" fill="#ea580c">a</text>
 
         <!-- c -->
-        <text x="59" y="31" font-family="Verdana, Geneva, sans-serif" font-size="26" font-weight="700" fill="#64748b">c</text>
+        <text x="59" y="31" font-family="Verdana, Geneva, sans-serif" font-size="26" font-weight="700" fill="#ea580c">c</text>
 
         <!-- h -->
-        <text x="76" y="31" font-family="Verdana, Geneva, sans-serif" font-size="26" font-weight="700" fill="#64748b">h</text>
+        <text x="76" y="31" font-family="Verdana, Geneva, sans-serif" font-size="26" font-weight="700" fill="#ea580c">h</text>
     </g>
 </svg>

@@ -198,8 +198,10 @@ function AdminChatsInner() {
                         <RelativeTime date={t.lastMessage?.at ?? t.createdAt} />
                       </span>
                     </span>
-                    {/* آگهی + آخرین پیام */}
-                    <span className="truncate text-[11px] text-muted-foreground"> روی «{t.product.name}»</span>
+                    {/* آگهی + آخرین پیام — گفتگوی مستقیم (بدون آگهی) هم پیش می‌آید */}
+                    <span className="truncate text-[11px] text-muted-foreground">
+                      {t.product ? `روی «${t.product.name}»` : 'گفتگوی مستقیم (بدون آگهی)'}
+                    </span>
                     <span className="flex items-center justify-between gap-2">
                       <span className="min-w-0 truncate text-[11px] leading-5 text-secondary-foreground">
                         {t.lastMessage
@@ -329,7 +331,7 @@ function ThreadPane({ threadId, onBack }: { threadId: string; onBack: () => void
       <div className="space-y-3 border-b p-3.5">
         <div className="flex items-center justify-between gap-2">
           <p className="min-w-0 truncate text-[12.5px] font-bold">
-            مکالمه روی «{thread.product.name}»
+            {thread.product ? `مکالمه روی «${thread.product.name}»` : 'گفتگوی مستقیم (بدون آگهی)'}
           </p>
           <span className="shrink-0 text-[10px] text-muted-foreground">
             {toFa(thread.messageCount)} پیام

@@ -739,6 +739,14 @@ export interface AdminStatsV2 extends AdminStats {
     today: number;
     last7Days: number;
   };
+  /** پشتیبانی — صف انتظار داشبورد (گفتگوهای نیازمند پاسخ) */
+  support?: {
+    threads: number;
+    unreadMessages: number;
+    awaitingReply: number;
+    messagesTotal: number;
+    messagesToday: number;
+  };
 }
 
 /** getRecentActivity — فید زنده داشبورد */
@@ -761,6 +769,8 @@ export interface AdminQueues {
   pendingPackages: number;
   /** نظرات در انتظار تحقیق و تأیید (قانون انتشار مالک ۲-۱۱) */
   pendingReviews: number;
+  /** پیام‌های پشتیبانی خوانده‌نشده — بج منوی «چت‌های پشتیبانی» */
+  unreadSupportMessages: number;
 }
 
 export async function fetchAdminQueues(): Promise<AdminQueues> {
@@ -1111,7 +1121,8 @@ export interface AdminUserCard {
 /** ردیف مکالمه (ادمین) — عین AdminThreadRow بک‌اند */
 export interface AdminChatRow {
   id: string;
-  product: { id: number; name: string };
+  /** آگهی زمینه — null یعنی گفتگوی مستقیم از پروفایل فروشنده */
+  product: { id: number; name: string } | null;
   buyer: AdminUserCard;
   seller: AdminUserCard;
   lastMessage: {
@@ -1158,7 +1169,7 @@ export interface AdminChatMessage {
 
 export interface AdminChatThreadDetail {
   thread: Omit<AdminChatRow, 'lastMessage'> & {
-    product: { id: number; name: string; status: string };
+    product: { id: number; name: string; status: string } | null;
   };
   messages: AdminChatMessage[];
 }
@@ -1184,6 +1195,91 @@ export async function fetchAdminChatMessages(threadId: string): Promise<AdminCha
 /** آمار چت‌ها */
 export async function fetchAdminChatStats(): Promise<AdminChatStats> {
   return adminFetch<AdminChatStats>('/admin/chats/getChatStats', {});
+}
+
+// ─── چت‌های پشتیبانی (پاسخ‌دهی) ────────────────────────────────────────────────
+
+/** ردیف گفتگوی پشتیبانی (ادمین) — عین AdminSupportThreadRow بک‌اند */
+export interface AdminSupportThreadRow {
+  /** شناسه کاربر — کلید گفتگو (هر کاربر یک گفتگوی پیوسته) */
+  userId: string;
+  user: AdminUserCard;
+  lastMessage: {
+    text: string;
+    at: string;
+    senderRole: 'user' | 'admin';
+    adminUsername: string | null;
+  } | null;
+  messageCount: number;
+  /** پیام‌های کاربر که پشتیبان هنوز ندیده — باز کردن گفتگو صفر می‌کند */
+  unreadCount: number;
+  /** آخرین پیام از کاربر است — گفتگو نیازمند پاسخ پشتیبان */
+  awaitingReply: boolean;
+  lastMessageAt: string | null;
+}
+
+export interface AdminSupportThreadList {
+  total: number;
+  page: number;
+  perPage: number;
+  items: AdminSupportThreadRow[];
+}
+
+export interface AdminSupportThreadListFilters {
+  search?: string;
+  filter?: 'all' | 'unread' | 'awaiting';
+  page?: number;
+  perPage?: number;
+}
+
+export interface AdminSupportMessage {
+  id: string;
+  senderRole: 'user' | 'admin';
+  adminUsername: string | null;
+  text: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminSupportThreadDetail {
+  user: AdminUserCard;
+  messages: AdminSupportMessage[];
+}
+
+export interface AdminSupportStats {
+  /** کاربران دارای گفتگو */
+  threads: number;
+  /** پیام‌های کاربر که پشتیبان ندیده — بج منو */
+  unreadMessages: number;
+  /** گفتگوهای نیازمند پاسخ — صف انتظار داشبورد */
+  awaitingReply: number;
+  messagesTotal: number;
+  messagesToday: number;
+}
+
+/** لیست گفتگوهای پشتیبانی — تازه‌ترین بالا + بج خوانده‌نشده */
+export async function fetchAdminSupportThreads(
+  filters: AdminSupportThreadListFilters = {},
+): Promise<AdminSupportThreadList> {
+  return adminFetch<AdminSupportThreadList>(
+    '/admin/support/getThreadList',
+    filters as unknown as Record<string, unknown>,
+  );
+}
+
+/** کل گفتگوی یک کاربر — باز کردن = خواندن پیام‌های کاربر */
+export async function fetchAdminSupportMessages(userId: string): Promise<AdminSupportThreadDetail> {
+  return adminFetch<AdminSupportThreadDetail>('/admin/support/getThreadMessages', { userId });
+}
+
+/** پاسخ پشتیبان به کاربر */
+export async function sendAdminSupportMessage(userId: string, text: string): Promise<AdminSupportMessage> {
+  return adminFetch<AdminSupportMessage>('/admin/support/sendMessage', { userId, text });
+}
+
+/** آمار پشتیبانی — بج منو + صف انتظار داشبورد */
+export async function fetchAdminSupportStats(): Promise<AdminSupportStats> {
+  return adminFetch<AdminSupportStats>('/admin/support/getStats', {});
 }
 
 // ─── گزارش تماس‌ها ────────────────────────────────────────────────────────────

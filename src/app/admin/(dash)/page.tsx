@@ -20,6 +20,7 @@ import {
   Boxes,
   ClipboardList,
   Coins,
+  Headset,
   Hourglass,
   LayoutDashboard,
   MessageSquare,
@@ -144,6 +145,7 @@ export default function AdminDashboardPage() {
      (بیشترین تعداد بالاتر)؛ بقیهٔ خنثی — «بقیه رنگش عادی یا بدون رنگ» */
   const queueLinks = [
     { href: '/admin/chats?filter=awaiting', Icon: MessageSquare, label: 'در انتظار پاسخ فروشنده', count: data?.chats?.awaitingSellerReply ?? 0 },
+    { href: '/admin/support?filter=awaiting', Icon: Headset, label: 'در انتظار پاسخ پشتیبانی', count: data?.support?.awaitingReply ?? 0 },
     { href: '/admin/products?status=pending', Icon: Boxes, label: 'آگهی در انتظار تأیید', count: queues?.pendingProducts ?? 0 },
     { href: '/admin/buy-requests?status=pending', Icon: ClipboardList, label: 'درخواست خرید در انتظار', count: queues?.pendingBuyRequests ?? 0 },
     { href: '/admin/charges', Icon: Coins, label: 'فیش شارژ در انتظار', count: queues?.pendingCharges ?? 0 },
@@ -193,7 +195,7 @@ export default function AdminDashboardPage() {
                 </span>
               )}
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {queueLinks.map(({ href, Icon, label, count }) => {
                 const pending = count > 0;
                 return (

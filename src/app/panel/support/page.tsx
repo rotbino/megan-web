@@ -3,12 +3,19 @@
 /**
  * پشتیبانی — عین MHTML باسکول:
  * «سامی جابر عزیز، سلام!» + «پاسخگویی به سوالات شما» + پرسش‌های متداول
- * با تب‌های (فروشندگان/خریداران/احراز هویت) + آکاردئون + «گفتگو با پشتیبان» (توضیحات).
+ * با تب‌های (فروشندگان/خریداران/احراز هویت) + آکاردئون + «گفتگو با پشتیبان».
+ *
+ * گفتگو با پشتیبان (دور ۲۱): چت واقعی دوطرفه — پیام‌ها در بک‌اند
+ * (support/*) ذخیره می‌شوند و پاسخ پشتیبان از پنل مدیریت
+ * (پشتیبانی → چت‌های پشتیبانی) می‌آید. باز کردن صفحه = خواندن
+ * پیام‌های پشتیبان. موبایل و دسکتاپ هم‌سنجه (قانون §۲).
  */
 
-import { useState } from 'react';
-import { ChevronDown, LifeBuoy, Send, Users } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CheckCheck, Check, ChevronDown, LifeBuoy, Loader2, Send, Users } from 'lucide-react';
 import { usePanelProfile } from '@/lib/mock/hooks';
+import { apiFetch } from '@/lib/api/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -80,13 +87,18 @@ const TABS: { key: FaqTab; label: string }[] = [
   { key: 'verification', label: 'احراز هویت' },
 ];
 
+/** پیام گفتگوی پشتیبانی — عین SupportMessageDto بک‌اند */
+interface SupportMessage {
+  id: string;
+  senderRole: 'user' | 'admin';
+  adminUsername: string | null;
+  text: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
 export default function SupportPage() {
   const { data: profile } = usePanelProfile();
-  const { toast } = useToast();
-  const [tab, setTab] = useState<FaqTab>('buyers');
-  const [open, setOpen] = useState<string | null>(null);
-  const [message, setMessage] = useState('');
-
   const firstName = profile?.userInfo.firstName ?? 'کاربر';
 
   return (
@@ -98,91 +110,208 @@ export default function SupportPage() {
         <p className="mt-1 text-sm text-muted-foreground">پاسخگویی به سوالات شما</p>
       </div>
 
-      {/* پرسش‌های متداول */}
-      <PanelCard>
-        <div className="flex items-center gap-2">
-          <Users size={16} className="text-primary" />
-          <p className="text-sm font-bold">پرسش‌های متداول</p>
-        </div>
+      <FaqSection />
+      <SupportChatSection />
+    </div>
+  );
+}
 
-        {/* تب‌ها */}
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-          {TABS.map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => {
-                setTab(key);
-                setOpen(null);
-              }}
-              className={cn(
-                'shrink-0 rounded-md border px-3.5 py-1.5 text-xs font-bold transition-colors',
-                tab === key
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'bg-card text-muted-foreground hover:border-primary/40',
+/** پرسش‌های متداول — تب‌ها + آکاردئون (بدون تغییر) */
+function FaqSection() {
+  const [tab, setTab] = useState<FaqTab>('buyers');
+  const [open, setOpen] = useState<string | null>(null);
+
+  return (
+    <PanelCard>
+      <div className="flex items-center gap-2">
+        <Users size={16} className="text-primary" />
+        <p className="text-sm font-bold">پرسش‌های متداول</p>
+      </div>
+
+      {/* تب‌ها */}
+      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+        {TABS.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => {
+              setTab(key);
+              setOpen(null);
+            }}
+            className={cn(
+              'shrink-0 rounded-md border px-3.5 py-1.5 text-xs font-bold transition-colors',
+              tab === key
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'bg-card text-muted-foreground hover:border-primary/40',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* آکاردئون پرسش‌ها */}
+      <div className="mt-3 divide-y divide-border/70 rounded-md border">
+        {FAQS[tab].map(({ q, a }) => {
+          const isOpen = open === q;
+          return (
+            <div key={q}>
+              <button
+                type="button"
+                onClick={() => setOpen(isOpen ? null : q)}
+                aria-expanded={isOpen}
+                className="flex w-full items-center justify-between gap-2 px-4 py-3 text-start text-sm font-bold transition-colors hover:bg-secondary/40"
+              >
+                {q}
+                <ChevronDown
+                  size={16}
+                  className={cn('shrink-0 text-muted-foreground transition-transform', isOpen && 'rotate-180')}
+                />
+              </button>
+              {isOpen && (
+                <p className="px-4 pb-3.5 text-xs leading-6 text-muted-foreground">{a}</p>
               )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+            </div>
+          );
+        })}
+      </div>
+    </PanelCard>
+  );
+}
 
-        {/* آکاردئون پرسش‌ها */}
-        <div className="mt-3 divide-y divide-border/70 rounded-md border">
-          {FAQS[tab].map(({ q, a }) => {
-            const isOpen = open === q;
-            return (
-              <div key={q}>
-                <button
-                  type="button"
-                  onClick={() => setOpen(isOpen ? null : q)}
-                  aria-expanded={isOpen}
-                  className="flex w-full items-center justify-between gap-2 px-4 py-3 text-start text-sm font-bold transition-colors hover:bg-secondary/40"
-                >
-                  {q}
-                  <ChevronDown
-                    size={16}
-                    className={cn('shrink-0 text-muted-foreground transition-transform', isOpen && 'rotate-180')}
-                  />
-                </button>
-                {isOpen && (
-                  <p className="px-4 pb-3.5 text-xs leading-6 text-muted-foreground">{a}</p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </PanelCard>
+/** گفتگو با پشتیبان — چت واقعی دوطرفه (بک‌اند support/*) */
+function SupportChatSection() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [message, setMessage] = useState('');
+  const listRef = useRef<HTMLDivElement>(null);
 
-      {/* گفتگو با پشتیبان */}
-      <PanelCard>
-        <div className="flex items-center gap-2">
-          <LifeBuoy size={16} className="text-primary" />
-          <p className="text-sm font-bold">گفتگو با پشتیبان</p>
-        </div>
-        <p className="mt-1 text-xs leading-6 text-muted-foreground">
-          پاسخ پرسش خود را پیدا نکردید؟ برای راهنمایی بیشتر و یا اعلام مشکل خود، توضیحات را بنویسید.
-        </p>
-        <Textarea
-          dir="rtl"
-          rows={5}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          className="mt-3 resize-none text-sm leading-7"
-          placeholder="توضیحات"
-        />
+  // گفتگو — باز کردن صفحه = خواندن پیام‌های پشتیبان؛ تازه‌سازی خودکار ۳۰ ثانیه
+  const { data, isLoading } = useQuery({
+    queryKey: ['support-conversation'],
+    queryFn: () => apiFetch<{ messages: SupportMessage[]; unreadFromAdmin: number }>('/support/getConversation', {}),
+    refetchInterval: 30_000,
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: () => apiFetch<SupportMessage>('/support/sendMessage', { text: message.trim() }),
+    onSuccess: () => {
+      setMessage('');
+      void queryClient.invalidateQueries({ queryKey: ['support-conversation'] });
+    },
+    onError: (err: Error) => {
+      toast({ description: err.message || 'ارسال پیام ناموفق بود — دوباره تلاش کنید.', variant: 'destructive' });
+    },
+  });
+
+  // اسکرول به آخرین پیام
+  useEffect(() => {
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [data?.messages?.length]);
+
+  const send = () => {
+    if (message.trim().length < 5 || sendMutation.isPending) return;
+    sendMutation.mutate();
+  };
+
+  const messages = data?.messages ?? [];
+
+  return (
+    <PanelCard>
+      <div className="flex items-center gap-2">
+        <LifeBuoy size={16} className="text-primary" />
+        <p className="text-sm font-bold">گفتگو با پشتیبان</p>
+      </div>
+      <p className="mt-1 text-xs leading-6 text-muted-foreground">
+        پاسخ پرسش خود را پیدا نکردید؟ برای راهنمایی بیشتر و یا اعلام مشکل خود، توضیحات را بنویسید.
+      </p>
+
+      {/* تاریخچهٔ گفتگو */}
+      <div
+        ref={listRef}
+        className="mt-3 max-h-72 space-y-2.5 overflow-y-auto rounded-md border bg-secondary/20 p-3"
+      >
+        {isLoading ? (
+          <p className="py-6 text-center text-xs text-muted-foreground">در حال بارگذاری گفتگو…</p>
+        ) : messages.length === 0 ? (
+          <p className="py-6 text-center text-xs leading-6 text-muted-foreground">
+            هنوز پیامی رد و بدل نشده است — اولین پیام را بنویسید تا پشتیبان پاسخ بدهد.
+          </p>
+        ) : (
+          messages.map((m) => <ChatBubble key={m.id} m={m} />)
+        )}
+      </div>
+
+      {/* ارسال پیام */}
+      <Textarea
+        dir="rtl"
+        rows={4}
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            send();
+          }
+        }}
+        className="mt-3 resize-none text-sm leading-7"
+        placeholder="توضیحات"
+        maxLength={2000}
+      />
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <p className="hidden text-[10px] text-muted-foreground sm:block">Ctrl+Enter برای ارسال سریع</p>
         <Button
           size="sm"
-          className="mt-3 rounded-md"
-          disabled={message.trim().length < 5}
-          onClick={() => {
-            toast({ description: 'پیام شما برای پشتیبانی ارسال شد؛ به‌زودی پاسخ می‌گیرید.' });
-            setMessage('');
-          }}
+          className="rounded-md"
+          disabled={message.trim().length < 5 || sendMutation.isPending}
+          onClick={send}
         >
-          <Send size={14} /> ارسال پیام
+          {sendMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+          ارسال پیام
         </Button>
-      </PanelCard>
+      </div>
+    </PanelCard>
+  );
+}
+
+/** حباب پیام — پیام‌های پشتیبان یک‌سو (راست) / پیام‌های خودم سو دیگر (چپ) + وضعیت خوانده‌شدن */
+function ChatBubble({ m }: { m: SupportMessage }) {
+  const isMine = m.senderRole === 'user';
+  return (
+    <div className={cn('flex', isMine ? 'justify-end' : 'justify-start')}>
+      <div className={cn('flex max-w-[85%] flex-col gap-1', isMine ? 'items-end' : 'items-start')}>
+        <p className="flex items-center gap-1.5 px-1 text-[9.5px] text-muted-foreground">
+          <span
+            className={cn(
+              'rounded-full px-1.5 py-px font-bold',
+              isMine ? 'bg-secondary text-secondary-foreground' : 'bg-primary/10 text-primary',
+            )}
+          >
+            {isMine ? 'شما' : 'پشتیبان ایمچ'}
+          </span>
+          <span dir="ltr" className="font-mono">
+            {new Date(m.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+          {isMine &&
+            (m.readAt ? (
+              <CheckCheck size={11} className="text-emerald-600" aria-label="خوانده شد" />
+            ) : (
+              <Check size={11} aria-label="ارسال شد" />
+            ))}
+        </p>
+        <p
+          dir="auto"
+          className={cn(
+            'w-fit whitespace-pre-wrap rounded-lg px-3.5 py-2.5 text-xs leading-6',
+            isMine
+              ? 'rounded-tl-sm bg-primary text-primary-foreground'
+              : 'rounded-tr-sm bg-secondary text-secondary-foreground',
+          )}
+        >
+          {m.text}
+        </p>
+      </div>
     </div>
   );
 }
