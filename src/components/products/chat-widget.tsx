@@ -1,24 +1,27 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Loader2, LogIn, MessageSquareText } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { LogIn, MessageSquareText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LazyAuthModal } from '@/components/shared/lazy-auth-modal';
 import { PresenceDot } from '@/components/shared/presence-dot';
-import { SendIconRtl } from '@/components/shared/buskool-icons';
+import { MessageList } from '@/components/chat/message-list';
+import { ChatComposer } from '@/components/chat/chat-composer';
 import { getTokens } from '@/lib/api/client';
 import { findPresence, usePresenceStatus } from '@/lib/api/presence';
 import {
   useChatSocketEvents,
   useChatThreadMessages,
+  useDeleteChatMessage,
+  useEditChatMessage,
   useSendChatMessage,
   useStartChatThread,
+  useUploadChatFile,
 } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
-import { cn } from '@/lib/utils';
-import type { ChatMessage } from '@/lib/mock/api';
+import { useToast } from '@/hooks/use-toast';
+import type { ChatFileMeta, ChatMessage } from '@/lib/mock/api';
 
 /**
  * چت با فروشنده (B8 — واقعی): مکالمه خریدار ↔ فروشنده.
@@ -65,10 +68,22 @@ export function ChatWidget({
     threadIdProp != null
       ? myPresenceItems?.find((p) => p.userName === user?.userName)?.id ?? start.data?.myId ?? null
       : (start.data?.myId ?? null);
-  const { data: messages, isLoading: messagesLoading } = useChatThreadMessages(threadId);
+  // پیجینگ معکوس — آخرین ۲۰ پیام اول؛ اسکرول به بالا صفحهٔ قدیمی‌تر
+  const {
+    messages,
+    hasMore,
+    isFetchingNextPage,
+    fetchNextPage,
+    isLoading: messagesLoading,
+  } = useChatThreadMessages(threadId);
   const send = useSendChatMessage();
-  const [text, setText] = useState('');
-  const listRef = useRef<HTMLDivElement>(null);
+  const edit = useEditChatMessage();
+  const del = useDeleteChatMessage();
+  const upload = useUploadChatFile();
+
+  // پیوست در انتظار ارسال + پیام در حال ویرایش (فقط دیده‌نشده)
+  const [attachment, setAttachment] = useState<ChatFileMeta | null>(null);
+  const [editing, setEditing] = useState<ChatMessage | null>(null);
 
   // وضعیت آنلاین فروشنده — با userName همیشه داریم؛ id دقیق‌تر است
   const { data: presenceItems } = usePresenceStatus({
@@ -100,18 +115,47 @@ export function ChatWidget({
     }
   }, [user, productId, sellerUserName]);
 
-  // اسکرول به آخرین پیام
-  useEffect(() => {
-    const el = listRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages?.length, threadId]);
+  const handleSend = (text: string) => {
+    if (editing) {
+      edit.mutate(
+        { messageId: editing.id, text },
+        {
+          onSuccess: () => setEditing(null),
+          onError: (err) =>
+            toast({ description: err instanceof Error ? err.message : 'ویرایش ناموفق بود.' }),
+        },
+      );
+      return;
+    }
+    if (!threadId || send.isPending) return;
+    const file = attachment;
+    send.mutate(
+      { threadId, text, file },
+      {
+        onSuccess: () => setAttachment(null),
+        onError: (err) =>
+          toast({ description: err instanceof Error ? err.message : 'ارسال پیام ناموفق بود.' }),
+      },
+    );
+  };
 
-  const sendMsg = (e: React.FormEvent) => {
-    e.preventDefault();
-    const t = text.trim();
-    if (!t || !threadId || send.isPending) return;
-    setText('');
-    send.mutate({ threadId, text: t });
+  const handlePickFile = (file: File) => {
+    upload.mutate(file, {
+      onSuccess: (meta) => setAttachment(meta),
+      onError: (err) =>
+        toast({
+          description: err instanceof Error ? err.message : 'آپلود فایل ناموفق بود.',
+          variant: 'destructive',
+        }),
+    });
+  };
+
+  const handleDelete = (m: ChatMessage) => {
+    del.mutate(m.id, {
+      onError: (err) =>
+        toast({ description: err instanceof Error ? err.message : 'حذف ناموفق بود.' }),
+    });
+    if (editing?.id === m.id) setEditing(null);
   };
 
   const subject = productName ?? 'فروشنده';
@@ -170,41 +214,38 @@ export function ChatWidget({
         </p>
       ) : (
         <>
-          {/* لیست پیام‌ها — انعطاف‌پذیر؛ در مودال تمام ارتفاع را می‌گیرد */}
-          <div ref={listRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 nav-desktop:p-4">
-            {messagesLoading && !messages ? (
-              <div className="space-y-3">
-                {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-md" />)}
-              </div>
-            ) : !messages || messages.length === 0 ? (
-              <p className="py-8 text-center text-xs leading-6 text-muted-foreground">
-                {productId != null
-                  ? <>برای شروع مکالمه درباره «{productName}» پیامی بنویسید.</>
-                  : <>برای شروع گفتگو با {sellerName} پیامی بنویسید.</>}
-              </p>
-            ) : (
-              messages.map((m: ChatMessage) => (
-                <MessageBubble key={m.id} message={m} mine={m.senderId === myId} />
-              ))
-            )}
-          </div>
-          {/* کیبورد — چسبیده به پایین (در موبایل بالای safe-area) */}
-          <form
-            onSubmit={sendMsg}
-            className="flex shrink-0 gap-2 border-t p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] nav-desktop:p-3"
-          >
-            <Input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="پیامی بنویسید…"
-              aria-label="متن پیام"
-              className="rounded-md"
-              maxLength={2000}
+          {/* لیست پیام‌ها — پیجینگ معکوس؛ انعطاف‌پذیر؛ در مودال تمام ارتفاع را می‌گیرد */}
+          {messagesLoading && (!messages || messages.length === 0) ? (
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 nav-desktop:p-4">
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-md" />)}
+            </div>
+          ) : (
+            <MessageList
+              threadKey={threadId ?? 'none'}
+              messages={messages ?? []}
+              myId={myId}
+              hasMore={hasMore}
+              loadingOlder={isFetchingNextPage}
+              onLoadOlder={() => void fetchNextPage()}
+              onEdit={(m) => setEditing(m)}
+              onDelete={handleDelete}
+              emptyText="پیامی بنویسید"
+              className="p-3 nav-desktop:p-4"
             />
-            <Button type="submit" size="icon" className="shrink-0 rounded-md" aria-label="ارسال پیام" disabled={send.isPending || !text.trim()}>
-              {send.isPending ? <Loader2 size={18} className="animate-spin" /> : <SendIconRtl size={19} />}
-            </Button>
-          </form>
+          )}
+          {/* ارسال — متن یا پیوست (تا ۵MB)؛ چسبیده به پایین (موبایل: بالای safe-area) */}
+          <div className="pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+            <ChatComposer
+              sending={send.isPending}
+              uploading={upload.isPending}
+              attachment={attachment}
+              onPickFile={handlePickFile}
+              onClearAttachment={() => setAttachment(null)}
+              editing={editing}
+              onCancelEdit={() => setEditing(null)}
+              onSend={handleSend}
+            />
+          </div>
         </>
       )}
     </>
@@ -224,28 +265,5 @@ export function ChatWidget({
       </div>
       {chatBody}
     </section>
-  );
-}
-
-/** حباب پیام — عین صفحه پیام‌ها (خواسته مالک ۷-۱۱): تینتِ نرم رنگ برند + متن
- *  عادی به‌جای پُرِ سنگین — ملایم مثل پیامرسان‌های معروف؛ فونت یک پله بزرگ‌تر */
-function MessageBubble({ message, mine }: { message: ChatMessage; mine: boolean }) {
-  return (
-    <div className={cn('flex', mine ? 'justify-start' : 'justify-end')}>
-      <p
-        dir="auto"
-        className={cn(
-          'w-fit max-w-[80%] rounded-lg px-3.5 py-2.5 text-[13px] leading-6',
-          mine
-            ? 'rounded-tl-sm bg-primary/15 text-foreground'
-            : 'rounded-tr-sm bg-secondary text-foreground',
-        )}
-      >
-        {message.text}
-        {mine && message.readAt && (
-          <span className="ms-2 align-middle text-[9px] text-muted-foreground">✓✓</span>
-        )}
-      </p>
-    </div>
   );
 }

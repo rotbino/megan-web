@@ -255,6 +255,57 @@ export async function uploadImage(
   return json.data;
 }
 
+/** خروجی آپلود پیوست چت — قرارداد POST /chat/uploadFile */
+export interface ChatUploadedFile {
+  url: string;
+  key: string;
+  name: string;
+  size: number;
+  mime: string;
+  kind: 'image' | 'video' | 'file';
+}
+
+/**
+ * آپلود پیوست چت — تصویر/ویدئو/سند تا ۵MB (multipart، با رفرش 401 مثل apiFetch).
+ * لیست سفید پسوند + بایت‌های جادویی سمت سرور چک می‌شود؛ این‌جا فقط انتقال.
+ */
+export async function uploadChatFile(
+  file: File | Blob,
+  opts: { retryOn401?: boolean } = {},
+): Promise<ChatUploadedFile> {
+  const tokens = getTokens();
+  if (!tokens?.accessToken) {
+    throw new ApiError('برای آپلود ابتدا وارد حساب خود شوید.', 401, 'AUTH_REQUIRED');
+  }
+
+  const form = new FormData();
+  form.append('file', file);
+
+  const res = await fetch(`${apiBase()}/chat/uploadFile`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    body: form,
+    ...(typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+      ? { signal: AbortSignal.timeout(100_000) }
+      : {}),
+  });
+
+  // 401 → رفرش تک‌پرواز + یک تکرار
+  if (res.status === 401 && opts.retryOn401 !== false) {
+    const refreshed = await tryRefreshTokens();
+    if (refreshed) return uploadChatFile(file, { retryOn401: false });
+  }
+
+  const json = (await res.json().catch(() => null)) as
+    | { status: true; data: ChatUploadedFile; message?: string }
+    | { status: false; message: string; code?: string }
+    | null;
+
+  if (!json) throw new ApiError('آپلود ناموفق بود.', res.status, 'NETWORK');
+  if (json.status === false) throw new ApiError(json.message, res.status, json.code);
+  return json.data;
+}
+
 /** حذف فایل (بایت + ردیف) — مالک یا ادمین */
 export async function deleteImage(fileId: string): Promise<void> {
   await apiFetch('/uploads/deleteImage', { fileId }, { auth: true });

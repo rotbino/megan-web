@@ -9,22 +9,39 @@
 import { io, type Socket } from 'socket.io-client';
 import { getTokens } from './client';
 
+export interface ChatMessagePayload {
+  id: string;
+  threadId: string;
+  senderId: string;
+  text: string;
+  readAt: string | null;
+  createdAt: string;
+  kind: 'text' | 'image' | 'video' | 'file';
+  file: { url: string; key: string; name: string; size: number; mime: string } | null;
+  editedAt: string | null;
+}
+
 export interface ChatNewMessageEvent {
   threadId: string;
-  message: {
-    id: string;
-    threadId: string;
-    senderId: string;
-    text: string;
-    readAt: string | null;
-    createdAt: string;
-  };
+  message: ChatMessagePayload;
   senderName: string;
 }
 
 export interface ChatReadEvent {
   threadId: string;
   by: string;
+}
+
+/** Ù¾ÛØ§Ù ÙÛØ±Ø§ÛØ´âØ´Ø¯Ù ÙÙØ· ØªØ§ ÙØ¨Ù Ø§Ø² ÙØ´Ø§ÙØ¯ÙÙ Ø·Ø±Ù ÙÙØ§Ø¨Ù */
+export interface ChatEditEvent {
+  threadId: string;
+  message: ChatMessagePayload;
+}
+
+/** Ù¾ÛØ§Ù Ø­Ø°ÙâØ´Ø¯Ù Ø¯ÛØ¯ÙâÙØ´Ø¯Ùâ ÙØ§ÛÙØ´ ÙÙ Ø§Ø² Ø³Ø±ÙØ± Ù¾Ø§Ú© Ø´Ø¯Ù */
+export interface ChatDeleteEvent {
+  threadId: string;
+  messageId: string;
 }
 
 /** پیام پشتیبانی (ادمین → کاربر) — یک‌طرفه؛ بدون threadId */
@@ -39,10 +56,12 @@ export interface AdminNewMessageEvent {
 
 type Handler = (payload: unknown) => void;
 
-const listeners: Record<'newMessage' | 'read' | 'adminMessage', Set<Handler>> = {
+const listeners: Record<'newMessage' | 'read' | 'adminMessage' | 'edit' | 'delete', Set<Handler>> = {
   newMessage: new Set(),
   read: new Set(),
   adminMessage: new Set(),
+  edit: new Set(),
+  delete: new Set(),
 };
 
 let socket: Socket | null = null;
@@ -83,6 +102,12 @@ export function ensureChatSocket(): Socket | null {
   socket.on('chat:adminMessage', (p) => {
     listeners.adminMessage.forEach((h) => h(p));
   });
+  socket.on('chat:edit', (p) => {
+    listeners.edit.forEach((h) => h(p));
+  });
+  socket.on('chat:delete', (p) => {
+    listeners.delete.forEach((h) => h(p));
+  });
   socket.on('connect', () => {
     connecting = false;
   });
@@ -96,7 +121,7 @@ export function ensureChatSocket(): Socket | null {
 
 /** اشتراک رویداد چت — تابع لغو اشتراک برمی‌گرداند */
 export function onChatEvent(
-  event: 'newMessage' | 'read' | 'adminMessage',
+  event: 'newMessage' | 'read' | 'adminMessage' | 'edit' | 'delete',
   handler: Handler,
 ): () => void {
   listeners[event].add(handler);

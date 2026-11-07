@@ -3,11 +3,11 @@
 /** هوک‌های React Query — یک نقطه تعریف برای همه دیتای سرور فرانت */
 
 import { useEffect } from 'react';
-import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, useInfiniteQuery, keepPreviousData } from '@tanstack/react-query';
 import { ensureChatSocket, onChatEvent } from '@/lib/api/socket';
 import { useBaseData } from '@/lib/base-data';
 import * as api from './api';
-import type { Paged } from './api';
+import type { Paged, ChatFileMeta, ChatMessage } from './api';
 import type { BuyRequest, FollowFolder, FollowItem, FollowPriority, FollowStatus, FollowTargetType, Product, ProductQuery } from '@/lib/types';
 
 const qk = {
@@ -298,7 +298,15 @@ export function useLadderProduct() {
 // ─── چت و پیام‌ها (B8) ────────────────────────────────────────────────
 
 /** رویدادهای WS چت — با invalidation خودکار React Query */
-export function useChatSocketEvents(opts: { onNewMessage?: (p: unknown) => void; onRead?: (p: unknown) => void; onAdminMessage?: (p: unknown) => void } = {}) {
+export function useChatSocketEvents(
+  opts: {
+    onNewMessage?: (p: unknown) => void;
+    onRead?: (p: unknown) => void;
+    onAdminMessage?: (p: unknown) => void;
+    onEdit?: (p: unknown) => void;
+    onDelete?: (p: unknown) => void;
+  } = {},
+) {
   const queryClient = useQueryClient();
   useEffect(() => {
     const offNew = onChatEvent('newMessage', (p) => {
@@ -317,6 +325,18 @@ export function useChatSocketEvents(opts: { onNewMessage?: (p: unknown) => void;
       queryClient.invalidateQueries({ queryKey: ['admin-messages'] });
       queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
     });
+    // ویرایش/حذف پیام (فقط قبل از مشاهده) — پیام‌ها و لیست مکالمات تازه شوند
+    const offEdit = onChatEvent('edit', (p) => {
+      opts.onEdit?.(p);
+      queryClient.invalidateQueries({ queryKey: ['chat-thread-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+    });
+    const offDelete = onChatEvent('delete', (p) => {
+      opts.onDelete?.(p);
+      queryClient.invalidateQueries({ queryKey: ['chat-thread-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
+    });
     // کاربر ممکن است بعد از mount لاگین کند — تلاش دوره‌ای اتصال با توکن تازه
     const timer = setInterval(() => ensureChatSocket(), 5_000);
     return () => {
@@ -324,6 +344,8 @@ export function useChatSocketEvents(opts: { onNewMessage?: (p: unknown) => void;
       offNew();
       offRead();
       offAdmin();
+      offEdit();
+      offDelete();
     };
   }, []);
 }
@@ -335,7 +357,8 @@ export function useStartChatThread() {
 export function useSendChatMessage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { threadId: string; text: string }) => api.sendChatMessage(input.threadId, input.text),
+    mutationFn: (input: { threadId: string; text: string; file?: ChatFileMeta | null }) =>
+      api.sendChatMessage(input.threadId, input.text, input.file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
       queryClient.invalidateQueries({ queryKey: ['chat-thread-messages'] });
@@ -343,20 +366,88 @@ export function useSendChatMessage() {
   });
 }
 
+/** ویرایش پیام خودی — فقط تا قبل از مشاهده طرف مقابل (چت مدرک است) */
+export function useEditChatMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { messageId: string; text: string }) =>
+      api.editChatMessage(input.messageId, input.text),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat-thread-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+    },
+  });
+}
+
+/** حذف پیام خودی دیده‌نشده — فایل پیوست در سرور هم پاک می‌شود */
+export function useDeleteChatMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (messageId: string) => api.deleteChatMessage(messageId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat-thread-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
+    },
+  });
+}
+
+/** آپلود پیوست چت — تصویر/ویدئو/سند تا ۵MB */
+export function useUploadChatFile() {
+  return useMutation({ mutationFn: (file: File) => api.uploadChatFile(file) });
+}
+
+/**
+ * پیام‌های مکالمه با پیجینگ معکوس (خواسته مالک ۷-۱۱):
+ * صفحه اول = آخرین ۲۰ پیام؛ fetchNextPage صفحه قدیمی‌تری می‌آورد (before =
+ * قدیمی‌ترین createdAt). `messages` همیشه صعودی (قدیمی بالا، جدید پایین)
+ * و `hasMore` می‌گوید صفحه قدیمی‌تری هست یا نه.
+ * باز کردن مکالمه = خوانده‌شدن سمت سرور → بج هدر/فوتر همان لحظه صفر شود.
+ */
 export function useChatThreadMessages(threadId: string | null) {
   const queryClient = useQueryClient();
-  return useQuery({
+  const query = useInfiniteQuery({
     queryKey: ['chat-thread-messages', threadId],
-    queryFn: async () => {
-      const msgs = await api.getChatThreadMessages(threadId!);
-      // باز کردن مکالمه = خوانده‌شدن سمت سرور → بج هدر/فوتر همان لحظه صفر شود
+    queryFn: async ({ pageParam }: { pageParam?: string }) => {
+      // ۲۱ می‌گیریم — ۲۱امین فقط برای تشخیص hasMore است
+      const msgs = await api.getChatThreadMessages(threadId!, {
+        ...(pageParam ? { before: pageParam } : {}),
+        take: api.CHAT_PAGE_SIZE + 1,
+      });
       void queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
       return msgs;
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => {
+      // ۲۱ مورد = صفحهٔ قدیمی‌تری هست. مکان‌نما باید قدیمی‌ترین پیامِ
+      // «نگه‌داشته‌شده» باشد (اندیس ۱) — اندیس ۰ در مسطح‌سازی بریده می‌شود
+      // و اگر مکان‌نما شود همان پیام در هیچ صفحه‌ای نمی‌آید (درس تست ۷-۱۱).
+      return lastPage.length > api.CHAT_PAGE_SIZE ? lastPage[1].createdAt : undefined;
     },
     enabled: !!threadId,
     staleTime: 15_000,
     refetchInterval: 30_000, // شبکه ایمنی — WS قطع شد، از REST تازه می‌شود
   });
+
+  // صفحات: [جدیدترین دسته، قدیمی‌تر، …] — هر دسته صعودی؛ برای ترتیب کلی
+  // صعودی باید دسته‌ها را معکوس و بعد مسطح کنیم.
+  // هر صفحهٔ ۲۱تایی از سمت قدیمی بریده می‌شود (۲۱امین فقط سنجهٔ hasMore است
+  // و پیامِ جدیدترین هرگز نمی‌افتد — درس تست ۷-۱۱).
+  const pages = query.data?.pages ?? [];
+  const flat: ChatMessage[] = [];
+  for (let i = pages.length - 1; i >= 0; i--) {
+    const page = pages[i];
+    const start = page.length > api.CHAT_PAGE_SIZE ? 1 : 0;
+    for (let j = start; j < page.length; j++) flat.push(page[j]);
+  }
+  // hasMore = آخرین دستهٔ خام ۲۱تایی بود (صفحهٔ قدیمی‌تری مانده)
+  const hasMore = pages.length > 0 && pages[pages.length - 1].length > api.CHAT_PAGE_SIZE;
+
+  return {
+    ...query,
+    messages: flat,
+    hasMore: hasMore && !query.isError,
+  };
 }
 
 export function useConversations() {

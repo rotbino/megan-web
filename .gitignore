@@ -56,3 +56,6 @@ server.log
 /skills/
 # دادهٔ زمان اجرای لاگ جستجو/گوگل — محلی است، وارد گیت نمی‌شود
 /.data/
+megan-back/
+.local-mongo-data/
+.zscripts/

@@ -6,7 +6,7 @@
  * (برچسب‌ها، پکیج‌ها، شماره کارت) از data.ts می‌آیند.
  */
 
-import { apiFetch, serverPost, setTokens, clearTokens, getTokens, ApiError } from '@/lib/api/client';
+import { apiFetch, serverPost, setTokens, clearTokens, getTokens, ApiError, uploadImage as clientUploadImage, uploadChatFile as clientUploadChatFile } from '@/lib/api/client';
 import type { BuyRequest, Category, City, PackageType, Product, ProductQuery, Province, SessionUser } from '@/lib/types';
 
 export interface Paged<T> {
@@ -1033,6 +1033,11 @@ export interface ChatMessage {
   text: string;
   readAt: string | null;
   createdAt: string;
+  /** نوع پیام — پیوست فایل (خواسته مالک ۷-۱۱) */
+  kind: 'text' | 'image' | 'video' | 'file';
+  file: { url: string; key: string; name: string; size: number; mime: string } | null;
+  /** مهر ویرایش — null یعنی دست‌نخورده */
+  editedAt: string | null;
 }
 
 export interface ChatThreadInfo {
@@ -1054,14 +1059,74 @@ export async function startChatThread(target: { productId?: number; userName?: s
   return apiFetch<ChatThreadInfo>('/chat/startThread', target);
 }
 
-/** ارسال پیام — بک‌اند push لحظه‌ای WS هم می‌فرستد */
-export async function sendChatMessage(threadId: string, text: string): Promise<ChatMessage> {
-  return apiFetch<ChatMessage>('/chat/sendMessage', { threadId, text });
+/** اندازه صفحه در پیجینگ پیام‌ها */
+export const CHAT_PAGE_SIZE = 20;
+
+/** فایل آپلودشده در جریان ارسال — خروجی uploadChatFile */
+export interface ChatFileMeta {
+  url: string;
+  key: string;
+  name: string;
+  size: number;
+  mime: string;
+  kind: 'image' | 'video' | 'file';
 }
 
-/** پیام‌های مکالمه — باز کردن یعنی خواندن */
-export async function getChatThreadMessages(threadId: string): Promise<ChatMessage[]> {
-  return apiFetch<ChatMessage[]>('/chat/getThreadMessages', { threadId });
+/** ارسال پیام — متن، یا فایل + کپشن دلخواه؛ بک‌اند push لحظه‌ای WS هم می‌فرستد */
+export async function sendChatMessage(
+  threadId: string,
+  text: string,
+  file?: ChatFileMeta | null,
+): Promise<ChatMessage> {
+  return apiFetch<ChatMessage>('/chat/sendMessage', {
+    threadId,
+    text,
+    ...(file
+      ? {
+          kind: file.kind,
+          fileUrl: file.url,
+          fileKey: file.key,
+          fileName: file.name,
+          fileSize: file.size,
+          fileMime: file.mime,
+        }
+      : {}),
+  });
+}
+
+/**
+ * پیام‌های مکالمه — باز کردن یعنی خواندن.
+ * پیجینگ (خواسته مالک ۷-۱۱): بدون before آخرین پیام‌ها (جدیدترین صفحه)؛
+ * با before = createdAt قدیمی‌ترین پیامِ لودشده، صفحه‌های قدیمی‌تر.
+ * آرایه صعودی (قدیمی → جدید) برمی‌گردد.
+ */
+export async function getChatThreadMessages(
+  threadId: string,
+  opts: { before?: string; take?: number } = {},
+): Promise<ChatMessage[]> {
+  return apiFetch<ChatMessage[]>('/chat/getThreadMessages', {
+    threadId,
+    ...(opts.before ? { before: opts.before } : {}),
+    ...(opts.take ? { take: opts.take } : {}),
+  });
+}
+
+/**
+ * آپلود پیوست چت — تصویر/ویدئو/سند تا ۵MB.
+ * لیست سفید و بایت‌های جادویی سمت سرور چک می‌شوند؛ این‌جا هم پیش‌فیلتر می‌کنیم.
+ */
+export async function uploadChatFile(file: File): Promise<ChatFileMeta> {
+  return clientUploadChatFile(file);
+}
+
+/** ویرایش متن/کپشن پیام خودی — فقط تا قبل از مشاهده طرف مقابل */
+export async function editChatMessage(messageId: string, text: string): Promise<ChatMessage> {
+  return apiFetch<ChatMessage>('/chat/editMessage', { messageId, text });
+}
+
+/** حذف پیام خودی دیده‌نشده — فایل پیوست هم در سرور پاک می‌شود */
+export async function deleteChatMessage(messageId: string): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>('/chat/deleteMessage', { messageId });
 }
 
 /** لیست مکالمات من + خوانده‌نشده — هر مخاطب فقط یک‌بار (تضمین سمت کلاینت) */

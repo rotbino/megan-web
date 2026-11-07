@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { existsSync } from "node:fs";
 
 /**
  * ── آدرس بک‌اند — یک کلید برای همه ────────────────────────────────────────
@@ -43,6 +44,14 @@ function imageRemotePatterns(): RemotePattern[] {
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
+  // ÙØ´Ø§ÙÚ¯Ø± dev ÙÚ©Ø³Øª Ø¯Ø± Ù¾Ø±Ø¯Ù Ø­Ø§ÙØª ØªÙØ³Ø¹Ù Ø¨Ø±Ø§Û Ø³Ø§ÛØª ØªØ³Øª Ø±Ø§Û ÙØ§ÙÚ© Ø®Ø§ÙÙØ´ Ø§Ø³Øª
+  devIndicators: false,
+  // ── dev سندباکس: اگر بک‌اند مگان کنار پروژه کلون شده باشد (megan-back/)،
+  // توربوپک نباید آن را watch کند — سقف inotify پر می‌شود و کل سرور می‌میرد.
+  // فقط وقتی پوشه وجود دارد فعال می‌شود (در استقرار واقعی بی‌اثر است).
+  ...(existsSync("./megan-back")
+    ? { turbopack: { watchOptions: { ignored: ["**/megan-back/**", "megan-back/**"] } } }
+    : {}),
   // ── پروکسی API — بدون CORS، هم‌مبدأ ─────────────────────────────────────
   // درخواست‌های /api/** فرانت به بک‌اند مگان (NestJS :4000/api/v1) می‌روند.
   async rewrites() {
