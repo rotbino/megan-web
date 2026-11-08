@@ -168,13 +168,14 @@ export function MessageList({
       onScroll={handleScroll}
       className={cn(
         'min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y',
-        'space-y-2 sm:space-y-2.5',
         'px-0.5 py-3 sm:px-1 sm:py-4',
         'sm:bg-[radial-gradient(circle_at_1px_1px,var(--border)_1px,transparent_0)] sm:[background-size:18px_18px]',
         className,
       )}
     >
-      <div ref={contentRef} className="flex min-h-full flex-col">
+      {/* گپ عمودی بین پیام‌ها اینجاست — پیام‌ها فرزند مستقیم این div هستند؛
+          space-y روی کانتینر اسکرول بی‌اثر بود (خواسته مالک ۸-۱۱) */}
+      <div ref={contentRef} className="flex min-h-full flex-col gap-y-2 sm:gap-y-2.5">
         {loadingOlder && (
           <div className="flex justify-center py-2">
             <Loader2 size={16} className="animate-spin text-muted-foreground" />
