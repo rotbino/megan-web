@@ -243,7 +243,8 @@ export default function MyRequestsPage() {
     <div className="mx-auto max-w-4xl space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-lg font-extrabold">درخواستهای خرید من</h1>
+          <h1 className="text-lg font-extrabold">درخواستهای من</h1>
+          <p className="mt-1 text-sm text-muted-foreground">درخواست‌های خرید ثبت‌شده شما و وضعیت بررسی آنها.</p>
         </div>
         {/* ثبت جدید — اینجا زندگی می‌کند چون لینک منو حذف شد (دور ۱۵) */}
         <Button asChild className="rounded-md">
@@ -255,7 +256,7 @@ export default function MyRequestsPage() {
       </div>
 
       {/* جعبه دلایل رد شدن — عین باسکول */}
-      {/*<PanelCard className="border-amber-200/70 bg-amber-50/50">
+      <PanelCard className="border-amber-200/70 bg-amber-50/50">
         <p className="flex items-center gap-1.5 text-sm font-bold text-amber-700">
           <Info size={16} className="shrink-0" />
           دلایل رد شدن درخواست های خرید
@@ -265,7 +266,7 @@ export default function MyRequestsPage() {
             <li key={r}>{r}</li>
           ))}
         </ul>
-      </PanelCard>*/}
+      </PanelCard>
 
       {/* تب‌ها */}
       <div className="flex gap-2 overflow-x-auto pb-1">
