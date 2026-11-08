@@ -223,8 +223,7 @@ export default function AdminSurveysPage() {
                         </span>
                       </td>
                       <td className="max-w-md px-4 py-3">
-                        <p className="line-clamp-1 font-bold">{row.title}</p>
-                        <p className="mt-0.5 line-clamp-2 whitespace-pre-line text-xs leading-5 text-muted-foreground">{row.body}</p>
+                        <p className="line-clamp-2 whitespace-pre-line text-xs leading-5 text-muted-foreground">{row.body}</p>
                       </td>
                       <td className="px-4 py-3">
                         <span className={cn(

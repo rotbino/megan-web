@@ -320,8 +320,8 @@ function ReceivedOffersPageInner() {
             icon={Inbox}
             title="هنوز پیشنهاد تامین دریافت نکرده‌اید."
             hint="دفتر خرید خود را کامل کنید تا فروشندگان نیازمندی‌هایتان را پیدا کنند و برایتان پیشنهاد بفرستند."
-            actionLabel="دفتر خرید من"
-            actionHref="/panel/buyer-book"
+            actionLabel="درخواست‌های خرید دوره‌ای من"
+            actionHref="/panel/my-requests?tab=book"
           />
         )
       ) : (

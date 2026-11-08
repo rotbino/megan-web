@@ -16,7 +16,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  BookOpenText,
   Bookmark,
   FileText,
   Medal,
@@ -58,11 +57,12 @@ export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel/saved', label: 'سرنخ‌های فروش', icon: Bookmark },
 ];
 
-/** منوی خریدار — ۷ آیتم (دور ۱۵)؛ دور ۱۶: «آیمچ من» اول از همه */
+/** منوی خریدار — ۶ آیتم (خواستهٔ مالک ۸-۱۱): «دفتر خرید من» حذف شد — به‌عنوان
+ *  تب «درخواست‌های خرید دوره‌ای» داخل «درخواست‌های خرید من» زندگی می‌کند و
+ *  منو خلوت‌تر شد؛ عنوان همان هم گویاتر شد. دور ۱۶: «آیمچ من» اول از همه */
 export const BUYER_NAV: PanelNavItem[] = [
   { href: '/panel', label: 'آیمچ من', icon: UserRound, exact: true },
-  { href: '/panel/my-requests', label: 'درخواست های من', icon: FileText },
-  { href: '/panel/buyer-book', label: 'دفتر خرید من', icon: BookOpenText },
+  { href: '/panel/my-requests', label: 'درخواست های خرید من', icon: FileText },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
   { href: '/panel/suggested-sellers', label: 'فروشندگان پیشنهادی', icon: Sparkles },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },

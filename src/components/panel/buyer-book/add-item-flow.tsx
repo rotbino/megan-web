@@ -1,16 +1,19 @@
 'use client';
 
 /**
- * افزودن کالا به دفتر خرید — دو گام، دقیقاً مثل انتخاب دسته در ثبت درخواست خرید:
+ * افزودن کالا به دفتر خرید — سه گام:
  * ۱) جستجو یا حرکت در درخت دسته‌ها؛ فقط شاخه‌های آخر (برگ‌ها) با چک‌باکس مربعی
  *    قابل تیک‌زدن‌اند (حس چندانتخابی). انتخاب‌ها به‌صورت چیپ‌های قابل حذف بالای لیست دیده می‌شوند.
  * ۲) برای هر کالا فقط «حداقل خرید» (واحد از خود دسته، ثابت) و «دوره خرید»
  *    مشخص می‌شود و ثبت نهایی انجام می‌شود.
+ * ۳) گام موفقیت (خواستهٔ مالک ۸-۱۱): پیام ثبت + «مشاهده درخواست‌ها» که
+ *    مستقیم روی تب «در انتظار تایید» درخواست‌های دوره‌ای می‌نشیند تا کاربر
+ *    آیتم تازه‌اش را ببیند — نه روی تب تاییدشده‌ها.
  * موبایل: بات‌شیت پایین‌رونده / دسکتاپ: مودال مرکزی — الگوی انتخاب دسته ایمچ.
  */
 
 import { useMemo, useState } from 'react';
-import { Check, ChevronLeft, ChevronRight, Loader2, Search, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Inbox, Loader2, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
 import { useCategoryTree } from '@/lib/mock/hooks';
@@ -56,6 +59,7 @@ export function AddItemFlow({
   existingCount,
   limit,
   onSubmit,
+  onViewRequests,
 }: {
   open: boolean;
   onClose: () => void;
@@ -63,16 +67,19 @@ export function AddItemFlow({
   existingCount: number;
   limit: number;
   onSubmit: (inputs: NewBookItemInput[]) => Promise<unknown>;
+  /** گام موفقیت → «مشاهده درخواست‌ها»: والد تب‌ها را روی در انتظار تایید می‌گذارد */
+  onViewRequests?: () => void;
 }) {
   const { data: tree = [] } = useCategoryTree();
   const { toast } = useToast();
 
-  const [step, setStep] = useState<'select' | 'details'>('select');
+  const [step, setStep] = useState<'select' | 'details' | 'success'>('select');
   const [q, setQ] = useState('');
   const [stack, setStack] = useState<Category[]>([]);
   const [selected, setSelected] = useState<Record<number, Category>>({});
   const [drafts, setDrafts] = useState<Record<number, { amount: string; period: PurchasePeriod }>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [addedCount, setAddedCount] = useState(0);
 
   // برگ‌های تخت برای جستجو — با نام دسته ریشه و پدر
   const leaves = useMemo(() => {
@@ -100,13 +107,15 @@ export function AddItemFlow({
   const levelItems = level ? level.children ?? [] : tree;
   const selectedList = Object.values(selected);
   const title =
-    step === 'details'
-      ? 'حداقل خرید و دوره'
-      : searchMode
-        ? 'جستجوی کالا'
-        : level
-          ? level.categoryName
-          : 'انتخاب کالا';
+    step === 'success'
+      ? 'ثبت شد'
+      : step === 'details'
+        ? 'حداقل خرید و دوره'
+        : searchMode
+          ? 'جستجوی کالا'
+          : level
+            ? level.categoryName
+            : 'انتخاب کالا';
 
   const close = () => {
     onClose();
@@ -165,7 +174,9 @@ export function AddItemFlow({
     setSubmitting(true);
     try {
       await onSubmit(inputs);
-      close();
+      // گام موفقیت — بستن خودکار حذف شد تا کاربر مسیر «مشاهده» را ببیند (۸-۱۱)
+      setAddedCount(inputs.length);
+      setStep('success');
     } catch {
       // خطا نمایش داده می‌شود؛ کاربر می‌تواند دوباره تلاش کند
     } finally {
@@ -173,8 +184,45 @@ export function AddItemFlow({
     }
   };
 
+  /** پاک‌کردن انتخاب‌ها برای ثبت دوباره — از گام موفقیت */
+  const resetForAnother = () => {
+    setStep('select');
+    setQ('');
+    setStack([]);
+    setSelected({});
+    setDrafts({});
+  };
+
   // ─── بدنه مشترک (بات‌شیت موبایل و مودال دسکتاپ) ─────────────────────
-  const flow = (
+  const flow = step === 'success' ? (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-10 text-center">
+      <span className="grid size-14 place-items-center rounded-full bg-emerald-50 text-emerald-600">
+        <Check size={26} strokeWidth={2.5} />
+      </span>
+      <p className="text-sm font-extrabold">
+        {toFa(addedCount)} کالا به درخواست‌های خرید دوره‌ای شما اضافه شد.
+      </p>
+      <p className="max-w-xs text-xs leading-6 text-muted-foreground">
+        پس از بررسی و تایید کارشناسان ایمچ، برای فروشندگان هم‌کالا ارسال می‌شود.
+      </p>
+      <div className="mt-2 flex flex-wrap justify-center gap-2">
+        <Button size="sm" variant="outline" className="rounded-md" onClick={resetForAnother}>
+          ثبت کالای دیگر
+        </Button>
+        <Button
+          size="sm"
+          className="rounded-md"
+          onClick={() => {
+            close();
+            onViewRequests?.();
+          }}
+        >
+          <Inbox size={14} className="ms-0.5" />
+          مشاهده درخواست‌ها
+        </Button>
+      </div>
+    </div>
+  ) : (
     <div className="flex min-h-0 flex-1 flex-col">
       {step === 'select' ? (
         <>
@@ -362,9 +410,9 @@ export function AddItemFlow({
 
   return (
     <>
-      {/* موبایل — بات‌شیت */}
+      {/* موبایل — بات‌شیت؛ گام موفقیت کوتاه‌تر است */}
       <BottomSheet open={open} onClose={close} onBack={canBack ? handleBack : undefined} title={title}>
-        <div className="flex h-[68vh] flex-col">{flow}</div>
+        <div className={step === 'success' ? 'flex flex-col' : 'flex h-[68vh] flex-col'}>{flow}</div>
       </BottomSheet>
 
       {/* دسکتاپ — مودال مرکزی */}

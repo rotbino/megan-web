@@ -541,10 +541,10 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
                 <Users size={30} className="mx-auto text-muted-foreground/60" />
                 <p className="mt-3 text-sm font-bold">خریداری با این فیلترها پیدا نشد!</p>
                 <p className="mt-1.5 text-xs leading-6 text-muted-foreground">
-                  فیلترها را تغییر دهید؛ اگر خودتان هم می‌خرید، «دفتر خرید من» را تکمیل کنید تا
-                  فروشندگان شما را پیدا کنند —{' '}
-                  <Link href="/panel/buyer-book" className="font-bold text-primary underline">
-                    دفتر خرید من
+                  فیلترها را تغییر دهید؛ اگر خودتان هم می‌خرید، «درخواست‌های خرید دوره‌ای»
+                  خود را ثبت کنید تا فروشندگان شما را پیدا کنند —{' '}
+                  <Link href="/panel/my-requests?tab=book" className="font-bold text-primary underline">
+                    درخواست‌های خرید دوره‌ای من
                   </Link>
                 </p>
                 {hasFilters && (
