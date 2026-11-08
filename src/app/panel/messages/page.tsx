@@ -420,11 +420,7 @@ export default function PanelMessagesPage() {
             stage === 'chat' && 'hidden lg:flex',
           )}
         >
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-bold">
-              مخاطب <span className="text-muted-foreground">({toFa(threads.length)})</span>
-            </p>
-          </div>
+
           {/* اعلان پاسخ پشتیبان — بالای لیست تا بدون باز کردن «پشتیبانی ایمچ»
               هم دیده شود (خواستهٔ مالک ۸-۱۱) */}
           <SupportTicketNotice count={ticketUnread} variant="card" />

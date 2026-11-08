@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 
 export function PanelCard({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <section className={cn('rounded-lg border bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sm:p-5', className)}>
+    <section className={cn('rounded-lg md:border md:bg-card md:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sm:p-5', className)}>
       {children}
     </section>
   );
