@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowDownWideNarrow,
+  Check,
   ChevronLeft,
   ChevronRight,
-  Filter,
   List,
   MapPin,
   RotateCcw,
@@ -31,7 +31,7 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: 'newest', label: 'جدیدترین' },
 ];
 
-type SheetKind = 'categories' | 'sort' | null;
+type SheetKind = 'categories' | 'sort' | 'province' | 'city' | null;
 
 /**
  * پل پارامتر جستجو (F5) — useSearchParams در رندر ایستا باعث CSR-bailout کل
@@ -96,7 +96,7 @@ function ProductListingInner({
 
   const { data: tree = [] } = useCategoryTree(); // فقط برای بات‌شیت موبایل — seed سرور
   const { data: provinces = [] } = useProvinces();
-  const { data: cities = [] } = useCities(provinceId);
+  const { data: cities = [], isLoading: citiesLoading } = useCities(provinceId);
 
   // ناوبری بین صفحات جستجو (q جدید از هدر) — همگام‌سازی s با prop سرور
   // (الگوی تنظیم state در زمان رندر — بدون افکت)
@@ -187,6 +187,8 @@ function ProductListingInner({
   // همیشه فقط «آخرین سطح» نمایش داده می‌شود:
   //  • دسته: فقط خود دسته فعال (نه زنجیره اجداد)
   //  • مکان: شهر انتخاب شده → فقط شهر؛ وگرنه فقط استان
+  // چیپ مکان فقط دسکتاپ است — در موبایل دکمه‌های استان/شهر نوار فیلتر
+  // همان نقش را دارند (خواستهٔ مالک ۸-۱۱ دور ۲۳)
   const provinceName = provinces.find((p) => p.id === provinceId)?.name;
   const cityName = cityId ? cities.find((c) => c.id === cityId)?.name : undefined;
 
@@ -196,7 +198,7 @@ function ProductListingInner({
     setS('');
   };
 
-  const chips = (
+  const baseChips = (
     <>
       {categoryName && (
         <button
@@ -223,31 +225,39 @@ function ProductListingInner({
           <X size={13} className="shrink-0" aria-hidden />
         </button>
       )}
-      {cityName ? (
-        <button
-          type="button"
-          onClick={() => setCityId(undefined)}
-          aria-label="حذف فیلتر شهر"
-          title="حذف فیلتر شهر"
-          className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
-        >
-          <MapPin size={12} className="shrink-0" aria-hidden />
-          <span className="truncate">{cityName}</span>
-          <X size={13} className="shrink-0" aria-hidden />
-        </button>
-      ) : provinceName ? (
-        <button
-          type="button"
-          onClick={() => { setProvinceId(undefined); setCityId(undefined); }}
-          aria-label="حذف فیلتر استان"
-          title="حذف فیلتر استان"
-          className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
-        >
-          <MapPin size={12} className="shrink-0" aria-hidden />
-          <span className="truncate">{provinceName}</span>
-          <X size={13} className="shrink-0" aria-hidden />
-        </button>
-      ) : null}
+    </>
+  );
+
+  const locationChips = cityName ? (
+    <button
+      type="button"
+      onClick={() => setCityId(undefined)}
+      aria-label="حذف فیلتر شهر"
+      title="حذف فیلتر شهر"
+      className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
+    >
+      <MapPin size={12} className="shrink-0" aria-hidden />
+      <span className="truncate">{cityName}</span>
+      <X size={13} className="shrink-0" aria-hidden />
+    </button>
+  ) : provinceName ? (
+    <button
+      type="button"
+      onClick={() => { setProvinceId(undefined); setCityId(undefined); }}
+      aria-label="حذف فیلتر استان"
+      title="حذف فیلتر استان"
+      className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
+    >
+      <MapPin size={12} className="shrink-0" aria-hidden />
+      <span className="truncate">{provinceName}</span>
+      <X size={13} className="shrink-0" aria-hidden />
+    </button>
+  ) : null;
+
+  const chips = (
+    <>
+      {baseChips}
+      {locationChips}
     </>
   );
 
@@ -337,7 +347,9 @@ function ProductListingInner({
           </div>
         </div>
 
-        {/* نوار فیلتر و مرتب‌سازی — موبایل (الگوی باسکول/دیوار: دسته ها، مرتب سازی، فیلترهای فعال) */}
+        {/* نوار فیلتر و مرتب‌سازی — موبایل (الگوی باسکول/دیوار: دسته ها، مرتب
+            سازی، فیلترهای فعال). فیلتر مکان عین دسکتاپ اینجا است (خواستهٔ مالک
+            ۸-۱۱ دور ۲۳): اول استان، با انتخاب استان دکمهٔ شهر ظاهر می‌شود */}
         <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto border-b border-border/70 px-4 pb-2.5 lg:hidden">
           <button
             type="button"
@@ -355,7 +367,39 @@ function ProductListingInner({
             <ArrowDownWideNarrow size={14} className="text-muted-foreground" />
             مرتب سازی
           </button>
-          {chips}
+          {/* استان — قبل از انتخاب ساده، بعد از انتخاب هم‌شکل چیپ فعال */}
+          <button
+            type="button"
+            onClick={() => setSheet('province')}
+            aria-label={provinceName ? `تغییر فیلتر استان: ${provinceName}` : 'انتخاب استان'}
+            className={cn(
+              'flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border px-3 py-2 text-xs transition-colors',
+              provinceName
+                ? 'max-w-[11rem] border-primary/35 bg-primary/10 font-bold text-primary'
+                : 'border-border bg-card font-medium text-foreground/85 hover:border-foreground/30',
+            )}
+          >
+            <MapPin size={14} className={provinceName ? 'text-primary' : 'text-muted-foreground'} />
+            <span className="truncate">{provinceName ?? 'استان'}</span>
+          </button>
+          {/* شهر — فقط بعد از انتخاب استان (عین سایدبار دسکتاپ) */}
+          {provinceId && (
+            <button
+              type="button"
+              onClick={() => setSheet('city')}
+              aria-label={cityName ? `تغییر فیلتر شهر: ${cityName}` : 'انتخاب شهر'}
+              className={cn(
+                'flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border px-3 py-2 text-xs transition-colors',
+                cityName
+                  ? 'max-w-[11rem] border-primary/35 bg-primary/10 font-bold text-primary'
+                  : 'border-border bg-card font-medium text-foreground/85 hover:border-foreground/30',
+              )}
+            >
+              <MapPin size={14} className={cityName ? 'text-primary' : 'text-muted-foreground'} />
+              <span className="truncate">{cityName ?? 'شهر'}</span>
+            </button>
+          )}
+          {baseChips}
         </div>
 
         {/* گرید */}
@@ -455,6 +499,91 @@ function ProductListingInner({
               </button>
             </li>
           ))}
+        </ul>
+      </BottomSheet>
+
+      {/* ─── بات‌شیت انتخاب استان — موبایل؛ عین سایدبار دسکتاپ، فقط
+          جای آن در نوار فیلتر است (خواستهٔ مالک ۸-۱۱ دور ۲۳) ── */}
+      <BottomSheet
+        open={sheet === 'province'}
+        onClose={() => setSheet(null)}
+        title="انتخاب استان"
+      >
+        <ul>
+          <li>
+            <button
+              type="button"
+              onClick={() => { setProvinceId(undefined); setCityId(undefined); setSheet(null); }}
+              className={cn(
+                'flex w-full items-center justify-between gap-2 rounded-md px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
+                !provinceId ? 'font-bold text-primary' : 'font-medium text-muted-foreground',
+              )}
+            >
+              <span>همه استان‌ها</span>
+              {!provinceId && <Check size={16} className="text-primary" />}
+            </button>
+          </li>
+          {provinces.map((p) => (
+            <li key={p.id}>
+              <button
+                type="button"
+                onClick={() => { setProvinceId(p.id); setCityId(undefined); setSheet(null); }}
+                className={cn(
+                  'flex w-full items-center justify-between gap-2 rounded-md px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
+                  provinceId === p.id ? 'font-bold text-primary' : 'font-medium',
+                )}
+              >
+                <span>{p.name}</span>
+                {provinceId === p.id && <Check size={16} className="text-primary" />}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </BottomSheet>
+
+      {/* ─── بات‌شیت انتخاب شهر — موبایل؛ فقط با استان انتخاب‌شده ── */}
+      <BottomSheet
+        open={sheet === 'city'}
+        onClose={() => setSheet(null)}
+        title={provinceName ? `شهرهای ${provinceName}` : 'انتخاب شهر'}
+      >
+        <ul>
+          <li>
+            <button
+              type="button"
+              onClick={() => { setCityId(undefined); setSheet(null); }}
+              className={cn(
+                'flex w-full items-center justify-between gap-2 rounded-md px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
+                !cityId ? 'font-bold text-primary' : 'font-medium text-muted-foreground',
+              )}
+            >
+              <span>همه شهرها</span>
+              {!cityId && <Check size={16} className="text-primary" />}
+            </button>
+          </li>
+          {citiesLoading ? (
+            <li className="space-y-2 p-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 rounded-md" />
+              ))}
+            </li>
+          ) : (
+            cities.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => { setCityId(c.id); setSheet(null); }}
+                  className={cn(
+                    'flex w-full items-center justify-between gap-2 rounded-md px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
+                    cityId === c.id ? 'font-bold text-primary' : 'font-medium',
+                  )}
+                >
+                  <span>{c.name}</span>
+                  {cityId === c.id && <Check size={16} className="text-primary" />}
+                </button>
+              </li>
+            ))
+          )}
         </ul>
       </BottomSheet>
     </div>

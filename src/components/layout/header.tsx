@@ -8,7 +8,6 @@ import { BrandLogo } from '@/components/shared/brand';
 import { HeaderUserMenu } from '@/components/layout/header-user-menu';
 import {
   BuyersIcon,
-  LocationIconBuskool,
   MessagesIcon,
   MyAccountIcon,
   SearchIconBuskool,
@@ -42,6 +41,9 @@ import type { Category } from '@/lib/types';
  * موبایل: [لوگو | جستجو] — آواتار کاربر از هدر موبایل حذف شد تا جعبه جستجو
  *         جا داشته باشد (خواسته مالک ۸-۱۱)؛ حساب کاربری و منوی نقش‌محور از
  *         نوار پایین («ایمچ من») در دسترس است. ناوبری اصلی از نوار پایین.
+ *         فیلتر استان/شهر در موبایل «سرتاسری کنار جستجو» نیست (خواستهٔ مالک
+ *         ۸-۱۱ دور ۲۳) — عین دسکتاپ، بعد از جستجو در نوار فیلتر صفحهٔ
+ *         لیست/جستجو انتخاب می‌شود (product-listing)؛ جعبهٔ جستجو فقط جستجوست.
  */
 export function Header() {
   const router = useRouter();
@@ -212,16 +214,6 @@ export function Header() {
             />
             <button type="submit" aria-label="جستجو" className="shrink-0 text-muted-foreground">
               <SearchIconBuskool size={24} />
-            </button>
-            <span className="h-6 w-px shrink-0 bg-border" aria-hidden />
-            <button
-              type="button"
-              title="فیلتر مکان"
-              aria-label="فیلتر مکان: همه ایران"
-              className="flex shrink-0 items-center gap-2 text-secondary-foreground"
-            >
-              <span className="whitespace-nowrap text-sm font-medium">همه ایران</span>
-              <LocationIconBuskool size={20} className="text-muted-foreground" />
             </button>
           </form>
         </div>
