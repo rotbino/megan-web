@@ -359,10 +359,12 @@ export default function PanelMessagesPage() {
       {/* وب‌پوش (B10) — اعلان پیام‌های جدید وقتی سایت باز نیست */}
       <PushEnableBanner />
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[320px_1fr] lg:grid-rows-[minmax(0,1fr)]">
-        {/* مرحلهٔ ۱ (موبایل): لیست مخاطبان — دسکتاپ: ستون ثابت */}
+        {/* مرحلهٔ ۱ (موبایل): لیست مخاطبان — دسکتاپ: ستون ثابت؛
+            موبایل: بدون بورد کلی — فلت (خواسته مالک ۸-۱۱) */}
         <PanelCard
           className={cn(
             'order-2 flex flex-col lg:order-1',
+            'max-lg:border-0 max-lg:p-0 max-lg:shadow-none',
             stage === 'chat' && 'hidden lg:flex',
           )}
         >
@@ -456,10 +458,12 @@ export default function PanelMessagesPage() {
 
         {/* مرحلهٔ ۲ (موبایل): مکالمه — دسکتاپ: همیشه باز؛ ارتفاع از فلکس والد.
             در لیست موبایل محتوا اصلاً مونت نمی‌شود (نه فقط CSS-hidden) تا
-            اثرهای اسکرول/خوانده‌شدن چتِ پشت‌پرده اجرا نشود (خواسته مالک ۸-۱۱) */}
+            اثرهای اسکرول/خوانده‌شدن چتِ پشت‌پرده اجرا نشود (خواسته مالک ۸-۱۱).
+            موبایل: بدون بورد کلی — فلت (خواسته مالک ۸-۱۱) */}
         <PanelCard
           className={cn(
             'order-1 flex h-full min-h-0 flex-col lg:order-2',
+            'max-lg:border-0 max-lg:p-0 max-lg:shadow-none',
             stage === 'list' && 'hidden lg:flex',
           )}
         >
@@ -486,7 +490,7 @@ export default function PanelMessagesPage() {
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain touch-pan-y px-0.5 py-3 sm:px-1 sm:py-4 sm:space-y-3 sm:bg-[radial-gradient(circle_at_1px_1px,var(--border)_1px,transparent_0)] sm:[background-size:18px_18px]">
+              <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain touch-pan-y bg-secondary px-0.5 py-3 sm:px-1 sm:py-4 sm:space-y-3 sm:bg-[radial-gradient(circle_at_1px_1px,var(--border)_1px,transparent_0)] sm:[background-size:18px_18px]">
                 {supportMessages.length === 0 ? (
                   <p className="py-8 text-center text-xs leading-6 text-muted-foreground">
                     هنوز پیامی از پشتیبانی ندارید.
