@@ -152,7 +152,7 @@ export function HeaderUserMenu() {
             </div>
           ))}
           {/* خروج — تنها راه خروج از صفحات عمومی */}
-          <div className="my-1 h-px bg-border/70" aria-hidden />
+          {/*<div className="my-1 h-px bg-border/70" aria-hidden />
           <button
             type="button"
             role="menuitem"
@@ -164,7 +164,7 @@ export function HeaderUserMenu() {
           >
             <LogOut size={17} className="shrink-0" />
             <span className="truncate">خروج از حساب کاربری</span>
-          </button>
+          </button>*/}
         </div>
       )}
     </div>
