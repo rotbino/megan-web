@@ -331,8 +331,8 @@ export interface SuggestedSellerGroup {
   href: string;
 }
 
-/** گزینه نظرسنجی */
-export type SurveyScore = 'excellent' | 'good' | 'average' | 'bad' | 'very_bad';
+/** دسته بازخورد نظرسنجی — «تحقیقات بازار» (خطا/انتقاد/بهبود/نیاز جدید) */
+export type FeedbackCategory = 'bug' | 'critique' | 'improvement' | 'feature';
 
 // ─────────────────────────────────────────────────────────────
 // کیف پول — پرداخت کارت به کارت (جایگزین درگاه پرداخت)

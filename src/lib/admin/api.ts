@@ -1408,12 +1408,15 @@ export async function fetchAdminCallReport(filters: AdminCallReportFilters = {})
   return adminFetch<AdminCallReport>('/admin/calls/getCallReport', filters as unknown as Record<string, unknown>);
 }
 
-// ─── نظرسنجی‌های کاربران (admin/surveys) ─────────────────────────────────────
+// ─── بازخوردهای نظرسنجی کاربران (admin/surveys) ────────────────────────────
 
 export interface AdminSurveyRow {
   id: string;
-  score: 'excellent' | 'good' | 'average' | 'bad' | 'very_bad';
-  note: string | null;
+  category: 'bug' | 'critique' | 'improvement' | 'feature';
+  title: string;
+  body: string;
+  isStaff: boolean;
+  upvoteCount: number;
   createdAt: string;
   updatedAt: string;
   user: {
@@ -1428,8 +1431,8 @@ export interface AdminSurveyRow {
 
 export interface AdminSurveyStats {
   total: number;
-  withNote: number;
-  distribution: Array<{ score: string; count: number }>;
+  byCategory: Array<{ category: string; count: number }>;
+  totalUpvotes: number;
   last7Days: number;
 }
 
@@ -1444,18 +1447,17 @@ export interface AdminSurveyList {
 
 export interface AdminSurveyListFilters {
   search?: string;
-  score?: string;
-  withNote?: 'true' | 'false';
+  category?: string;
   page?: number;
   perPage?: number;
 }
 
-/** فهرست پاسخ‌های نظرسنجی کاربران + آمار توزیع پنج‌گانه */
+/** فهرست بازخوردها/نیازهای کاربران + آمار دسته‌ای و مجموع موافقت‌ها */
 export async function fetchAdminSurveyList(filters: AdminSurveyListFilters = {}): Promise<AdminSurveyList> {
   return adminFetch<AdminSurveyList>('/admin/surveys/getSurveyList', filters as unknown as Record<string, unknown>);
 }
 
-/** حذف یک پاسخ نظرسنجی (توهین‌آمیز/نامعتبر) */
+/** حذف یک بازخورد (توهین‌آمیز/نامعتبر) */
 export async function deleteAdminSurveyResponse(id: string): Promise<{ id: string }> {
   return adminFetch<{ id: string }>('/admin/surveys/deleteSurveyResponse', { id });
 }

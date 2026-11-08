@@ -37,7 +37,7 @@ const ACCOUNT_LINKS: LinkItem[] = [
   { href: '/panel/secure-deals', label: 'معاملات پرداخت امن', icon: Handshake },
   { href: '/help', label: 'راهنما', icon: HelpCircle },
   { href: '/panel/support', label: 'پشتیبانی', icon: LifeBuoy },
-  { href: '/panel/survey', label: 'نظرسنجی', icon: ClipboardList },
+  { href: '/panel/survey', label: 'نظرسنجی و نیازها', icon: ClipboardList },
   { label: 'خروج از حساب کاربری', icon: LogOut },
 ];
 

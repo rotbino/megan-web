@@ -51,7 +51,7 @@ const PAGE_TITLES: Array<{ href: string; label: string; exact?: boolean }> = [
   { href: '/panel/secure-deals', label: 'معاملات پرداخت امن' },
   { href: '/panel/secure-deals/guide', label: 'راهنمای پرداخت امن' },
   { href: '/panel/support', label: 'پشتیبانی' },
-  { href: '/panel/survey', label: 'نظرسنجی' },
+  { href: '/panel/survey', label: 'نظرسنجی و نیازها' },
   { href: '/panel/received-offers', label: 'پیشنهادهای تامین' },
   { href: '/panel/buy-requests', label: 'درخواست های خرید' },
   { href: '/panel/buy-requests/new', label: 'ثبت درخواست خرید' },

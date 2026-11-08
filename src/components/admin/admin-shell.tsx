@@ -95,7 +95,7 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
       // پیام مستقیم به کاربران (خواستهٔ مالک ۸-۱۱ دور ۲۴) — ارسال تکی/گروهی؛
       // سمت کاربر در مکالمهٔ «پشتیبانی ایمچ» می‌نشیند + بج لحظه‌ای (WS)
       { href: '/admin/user-messages', label: 'پیام به کاربران', Icon: Megaphone, superOnly: false },
-      { href: '/admin/surveys', label: 'نظرسنجی‌ها', Icon: MessageSquareText, superOnly: false },
+      { href: '/admin/surveys', label: 'بازخوردهای نظرسنجی', Icon: MessageSquareText, superOnly: false },
     ],
   },
   {
