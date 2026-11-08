@@ -1,22 +1,24 @@
 'use client';
 
 /**
- * بسته‌های اشتراک ایمچ — کمپین‌محور (بازطراحی ۳۱-۱۰ به درخواست مالک):
- *  • گرید auto-fit — اگر ادمین بسته‌ای را از دید خارج کند، بقیه کارت‌ها
- *    عرض صفحه دسکتاپ را کامل پر می‌کنند.
- *  • کارت خلوتر: قیمت اصلی بالا با فونت بزرگ و رنگ غلیظ (با تخفیف خط‌خورده)،
- *    قیمت نهایی با همان وضوح زیرش، بج درصد بزرگ، بدون «تومان در ماه».
- *  • امکانات هر بسته با فونت بزرگ‌تر (به‌خصوص دسکتاپ).
- *  • نردبان از این صفحه حذف شد — فقط در کیف پول (جدا بودن دو مفهوم).
+ * بسته‌های اشتراک ایمچ — دو حالت (خواستهٔ مالک ۸-۱۱):
+ *  • دارندهٔ بستهٔ فعال: بستهٔ خریداری‌شده دیگر بین کارت‌ها گم نمی‌شود —
+ *    فقط کارت بزرگ «بستهٔ فعلی شما» دیده می‌شود (دونات روزهای باقی‌مانده
+ *    + امکانات) و زیرش آکاردئون جمع‌شوندهٔ «خرید بسته رزرو» قرار دارد که
+ *    با باز شدنش گرید بسته‌ها برای خرید رزرو ظاهر می‌شود.
+ *  • بدون بسته: همان گرید کمپین‌محور (بازطراحی ۳۱-۱۰) — رایگان + پولی‌ها.
  *  • پرداخت کارت به کارت + فیش → تأیید ادمین؛ خرید در حین بسته فعال =
  *    رزرو با امتداد از انقضای فعلی (مالکان فعلی محروم نمی‌شوند).
+ *  • نردبان از این صفحه حذف شده — فقط در کیف پول (جدا بودن دو مفهوم).
  */
 
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   BadgeCheck,
+  CalendarClock,
   Check,
+  ChevronDown,
   Copy,
   CreditCard,
   Crown,
@@ -42,6 +44,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { PanelCard } from '@/components/panel/panel-parts';
+import { VipDonut } from '@/components/panel/vip-donut';
 import {
   Dialog,
   DialogContent,
@@ -58,7 +61,7 @@ import {
 } from '@/lib/mock/data';
 import { dateFa, priceFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { CampaignTier, MembershipPlan, MyPackageOrder, SalesCampaignInfo } from '@/lib/types';
+import type { CampaignTier, MembershipPlan, MyPackage, MyPackageOrder, SalesCampaignInfo } from '@/lib/types';
 
 /** ردیف امکانات بسته رایگان — ✓ دارد یا ✗ ندارد (قابل مقایسه با پولی‌ها) */
 const FREE_ROWS: Array<{ label: string; included: boolean }> = [
@@ -70,6 +73,17 @@ const FREE_ROWS: Array<{ label: string; included: boolean }> = [
   { label: 'خریداران مرتب‌شده بر اساس تطابق با آگهی‌های شما', included: false },
   { label: 'نشان فروشنده ویژه روی محصولات و پروفایل', included: false },
 ];
+
+/** عنوان فارسی مدت بسته از pakageType */
+const planTitle = (t: number) => (t === 1 ? 'دو ماهه' : t === 2 ? 'شش ماهه' : 'یک‌ساله');
+
+/** ردیف‌های امکانات یک پلن — از ادمین؛ سهمیهٔ تماس روزانه همیشه دیده می‌شود
+ *  حتی اگر ردیف‌های ادمین قدیمی باشند (خواستهٔ مالک ۱-۱۱) */
+function planFeatureRows(p: MembershipPlan): string[] {
+  const features = p.features?.length ? [...p.features] : [...PAID_PLAN_FEATURES];
+  const hasCallRow = features.some((f) => f.startsWith('تماس روزانه'));
+  return hasCallRow ? features : [...features, 'تماس روزانه با تا ۳۰ کاربر ایمچ'];
+}
 
 /** درصد پیشرفت پله جاری کمپین تعدادی — برای نوار پیشرفت بنر */
 function tierProgress(campaign: SalesCampaignInfo): number {
@@ -189,10 +203,241 @@ function CampaignBanner({ campaign }: { campaign: SalesCampaignInfo }) {
   );
 }
 
+/** کارت بستهٔ پولی — دو حالت: خرید عادی و رزرو (دارندهٔ بستهٔ فعال، خواستهٔ مالک ۸-۱۱).
+ *  قیمت اصلی بالا با فونت بزرگ و رنگ غلیظ (با تخفیف خط‌خورده)، قیمت نهایی با
+ *  همان وضوح زیرش، بج درصد بزرگ (خواسته مالک ۳۱-۱۰). */
+function PlanCard({
+  p,
+  reserve = false,
+  isCurrent = false,
+  onBuy,
+}: {
+  p: MembershipPlan;
+  reserve?: boolean;
+  isCurrent?: boolean;
+  onBuy: (p: MembershipPlan) => void;
+}) {
+  const percent = p.discountPercent ?? 0;
+  const finalAmount = p.finalAmount ?? p.amount;
+  return (
+    <div
+      className={cn(
+        'relative flex flex-col rounded-xl border p-6',
+        p.bestSeller ? 'border-amber-300 bg-card shadow-md' : 'bg-card',
+      )}
+    >
+      {p.bestSeller && (
+        <span className="absolute -top-3 right-5 inline-flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold text-white">
+          <Sparkles size={12} /> پرفروش‌ترین
+        </span>
+      )}
+      {reserve && isCurrent && (
+        <span className="absolute -top-3 left-5 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-bold text-white">
+          <BadgeCheck size={12} /> همین بسته فعلی
+        </span>
+      )}
+      <p className="text-center text-[15px] font-extrabold">اشتراک {p.title}</p>
+
+      {/* بلوک قیمت — بج درصد بزرگ + قیمت اصلی خط‌خورده + قیمت نهایی */}
+      <div className="mt-4 flex flex-col items-center gap-1.5">
+        {percent > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-4 py-1.5 text-[17px] font-black text-white shadow-sm">
+            <Percent size={16} strokeWidth={2.8} /> {toFa(percent)}٪ تخفیف
+          </span>
+        )}
+        <p className="mt-1 flex items-baseline gap-1.5">
+          <span
+            className={cn(
+              'font-num text-[24px] font-black leading-none sm:text-[27px]',
+              percent > 0 && 'text-neutral-800 line-through decoration-red-600 decoration-[3px]',
+            )}
+          >
+            {toFa(p.amount)}
+          </span>
+          <span className="text-xs text-muted-foreground">تومان</span>
+        </p>
+        {percent > 0 && (
+          <p className="mt-1 flex items-baseline gap-1.5">
+            <span className="font-num text-[26px] font-black leading-none text-emerald-600 sm:text-[30px]">
+              {toFa(finalAmount)}
+            </span>
+            <span className="text-xs font-bold text-emerald-700/80">تومان</span>
+          </p>
+        )}
+      </div>
+
+      <Button
+        size="sm"
+        className={cn(
+          'mx-auto mt-5 w-full rounded-md text-xs',
+          p.bestSeller && 'bg-amber-500 hover:bg-amber-600',
+        )}
+        onClick={() => onBuy(p)}
+      >
+        <CreditCard size={14} className="ms-1" /> {reserve ? 'رزرو این بسته' : 'انتخاب و پرداخت'}
+      </Button>
+      <ul className="mt-6 flex-1 space-y-3 border-t pt-5">
+        {planFeatureRows(p).map((f) => (
+          <li key={f} className="flex items-start gap-2 text-[12.5px] leading-6 lg:text-[13.5px]">
+            <Check size={16} className="mt-1 shrink-0 text-emerald-600" />
+            {f}
+          </li>
+        ))}
+        <li className="flex items-start gap-2 text-[12.5px] leading-6 lg:text-[13.5px]">
+          <InfinityIcon size={16} className="mt-1 shrink-0 text-emerald-600" />
+          تمدید خودکار اعتبار با خرید مجدد (امتداد از انقضای فعلی)
+        </li>
+      </ul>
+    </div>
+  );
+}
+
+/** کارت بزرگ «بستهٔ فعلی شما» — تنها بستهٔ قابل مشاهده برای دارندهٔ بستهٔ فعال؛
+ *  تا وقتی کاربر بسته دارد بستهٔ خریده‌اش بین کارت‌های فروش گم نمی‌شود (خواستهٔ مالک ۸-۱۱). */
+function ActivePackageCard({ pkg, plan }: { pkg: MyPackage; plan?: MembershipPlan }) {
+  const daysLeft = pkg.daysLeft ?? 0;
+  const totalDays = pkg.totalDays ?? null;
+  const hasDonut = totalDays != null && totalDays > 0 && daysLeft >= 0;
+  const rows = plan ? planFeatureRows(plan) : [...PAID_PLAN_FEATURES];
+
+  return (
+    <section className="relative overflow-hidden rounded-xl border border-amber-300/80 bg-card p-5 shadow-md sm:p-6">
+      {/* لهجه دکور */}
+      <span className="pointer-events-none absolute -left-10 -top-14 size-44 rounded-full bg-amber-400/15 blur-2xl" aria-hidden />
+      <span className="pointer-events-none absolute -bottom-16 -right-8 size-40 rounded-full bg-amber-300/15 blur-2xl" aria-hidden />
+
+      <div className="relative flex flex-wrap items-center justify-between gap-x-5 gap-y-4">
+        <div className="flex min-w-0 flex-1 items-center gap-4">
+          <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-amber-400 text-white shadow-md ring-1 ring-amber-500/50">
+            <Crown size={26} />
+          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-700 ring-1 ring-emerald-200">
+                <BadgeCheck size={12} /> بسته فعال شما
+              </span>
+              {!!pkg.pendingCount && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-800">
+                  <Hourglass size={12} /> {toFa(pkg.pendingCount)} فیش در انتظار بررسی
+                </span>
+              )}
+            </div>
+            <p className="mt-1.5 text-lg font-extrabold sm:text-xl">
+              اشتراک {pkg.planTitle ?? planTitle(pkg.pakageType)}
+            </p>
+            <p className="mt-1 text-xs leading-6 text-muted-foreground">
+              {pkg.expiresAt ? (
+                <>
+                  اعتبار تا <b className="text-foreground">{dateFa(pkg.expiresAt)}</b>
+                </>
+              ) : (
+                <>
+                  اعتبار: <b className="text-foreground">{toFa(daysLeft)} روز</b>
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+        {hasDonut ? (
+          <VipDonut daysLeft={daysLeft} totalDays={totalDays as number} size={88} />
+        ) : (
+          <span className="grid shrink-0 place-items-center rounded-xl border border-red-100 bg-red-50/60 px-4 py-3 text-center">
+            <b className="font-num text-2xl font-black leading-tight text-red-600">{toFa(daysLeft)}</b>
+            <span className="text-[10px] font-bold text-muted-foreground">روز مانده</span>
+          </span>
+        )}
+      </div>
+
+      {/* امکانات بستهٔ فعلی — همان ردیف‌های کارت فروش (یادآوری ارزش بسته) */}
+      <ul className="relative mt-5 grid gap-x-6 gap-y-3 border-t pt-5 sm:grid-cols-2">
+        {rows.map((f) => (
+          <li key={f} className="flex items-start gap-2 text-[12.5px] leading-6 lg:text-[13.5px]">
+            <Check size={16} className="mt-1 shrink-0 text-emerald-600" />
+            {f}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** آکاردئون «خرید بسته رزرو» — تنها مسیر خریدِ دارندهٔ بستهٔ فعال (خواستهٔ مالک ۸-۱۱):
+ *  جمع‌شده تا صفحه خلوت بماند؛ با باز شدن، گرید بسته‌ها برای خرید رزرو می‌آید. */
+function ReserveSection({
+  plans,
+  plansLoading,
+  currentType,
+  onBuy,
+}: {
+  plans: MembershipPlan[];
+  plansLoading: boolean;
+  currentType: number;
+  onBuy: (p: MembershipPlan) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (!plansLoading && plans.length === 0) return null;
+
+  return (
+    <section className="overflow-hidden rounded-xl border bg-card">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full cursor-pointer items-center gap-3 p-4 text-start transition-colors hover:bg-secondary/40 sm:p-5"
+      >
+        <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+          <CalendarClock size={20} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-extrabold">خرید بسته رزرو</span>
+          <span className="mt-0.5 block text-[11px] leading-5 text-muted-foreground">
+            اعتبار بستهٔ جدید از تاریخ پایان بستهٔ فعلی شروع و به آن اضافه می‌شود
+          </span>
+        </span>
+        <ChevronDown
+          size={18}
+          className={cn('shrink-0 text-muted-foreground/70 transition-transform duration-300', open && 'rotate-180')}
+        />
+      </button>
+
+      {/* بازشو — انیمیشن با grid-rows (بدون محاسبهٔ ارتفاع)؛ invisible در حالت
+          بسته تا دکمه‌های داخلش در ترتیب تب باقی نمانند */}
+      <div
+        aria-hidden={!open}
+        className={cn(
+          'grid transition-all duration-300 ease-in-out',
+          open ? 'visible grid-rows-[1fr] opacity-100' : 'invisible grid-rows-[0fr] opacity-0',
+        )}
+      >
+        <div className="overflow-hidden">
+          <div className="border-t p-4 sm:p-5">
+            <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-800">
+              خرید شما به‌عنوان <b>رزرو</b> ثبت می‌شود؛ پس از تأیید ادمین، اعتبار آن به انتهای بستهٔ فعلی
+              شما اضافه می‌شود — هیچ روزی هدر نمی‌رود.
+            </p>
+            {plansLoading ? (
+              <div className="h-40 animate-pulse rounded-lg bg-secondary/50" />
+            ) : (
+              <div
+                className="grid items-stretch gap-4 lg:gap-5"
+                style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))' }}
+              >
+                {plans.map((p) => (
+                  <PlanCard key={p.key} p={p} reserve isCurrent={p.pakageType === currentType} onBuy={onBuy} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function PricingPage() {
   const { toast } = useToast();
   const { data: planData, isLoading: plansLoading } = useMembershipPlans();
-  const { data: myPackage } = useMyPackage();
+  const { data: myPackage, isLoading: myPkgLoading } = useMyPackage();
   const { data: orders } = useMyPackageOrders();
   const submitOrder = useSubmitPackageOrder();
 
@@ -203,6 +448,9 @@ export default function PricingPage() {
 
   const plans = planData?.plans ?? [];
   const campaign = planData?.campaign ?? null;
+  const currentPlan = myPackage?.isActive
+    ? plans.find((p) => p.pakageType === myPackage.pakageType)
+    : undefined;
 
   const copyCard = async () => {
     try {
@@ -249,171 +497,90 @@ export default function PricingPage() {
     setSent(false);
   };
 
-  const planTitle = (t: number) => (t === 1 ? 'دو ماهه' : t === 2 ? 'شش ماهه' : 'یک‌ساله');
-
   return (
     <div className="mx-auto max-w-[1400px] space-y-5">
-      {/* بنر کمپین فعال — بالای بسته‌ها (خواسته مالک ۳۱-۱۰) */}
+      {/* بنر کمپین فعال — بالای بسته‌ها (خواسته مالک ۳۱-۱۰)؛ روی خرید رزرو هم اعمال می‌شود */}
       {campaign && campaign.discountPercent > 0 && <CampaignBanner campaign={campaign} />}
 
-      {/* بسته فعال من */}
-      <PanelCard className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span
-            className={cn(
-              'grid size-12 place-items-center rounded-md border',
-              myPackage?.isActive
-                ? 'border-red-200 bg-red-50 text-red-600'
-                : 'border-border bg-secondary text-muted-foreground',
-            )}
-          >
-            {myPackage?.isActive ? <Crown size={22} /> : <ShieldCheck size={22} />}
-          </span>
-          <div>
-            <p className="text-xs text-muted-foreground">بسته فعلی شما</p>
-            <p className="mt-0.5 text-base font-extrabold">
-              {myPackage?.isActive
-                ? `اشتراک ${myPackage.planTitle ?? planTitle(myPackage.pakageType)}`
-                : 'رایگان (همیشگی)'}
-            </p>
-          </div>
+      {myPkgLoading ? (
+        /* اسکلت تا روشن شدن وضعیت بسته — بدون فلاش گرید فروش برای دارندهٔ بسته */
+        <div className="space-y-5">
+          <div className="h-44 animate-pulse rounded-xl border bg-card" />
+          <div className="h-20 animate-pulse rounded-xl border bg-card" />
         </div>
-        <div className="text-left text-[11px] leading-5 text-muted-foreground">
-          {myPackage?.isActive ? (
-            <>
-              اعتبار: <b className="text-foreground">{toFa(myPackage.daysLeft ?? 0)} روز</b>
-              {myPackage.expiresAt && <span className="block">تا {dateFa(myPackage.expiresAt)}</span>}
-            </>
-          ) : (
-            <>
-              ثبت تا <b className="text-foreground">{toFa(FREE_PACKAGE.features.productCapacity)} محصول</b> — بدون دسترسی به خریداران
-            </>
-          )}
-          {!!myPackage?.pendingCount && (
-            <span className="mt-1 flex items-center gap-1 text-amber-600">
-              <Hourglass size={12} /> {toFa(myPackage.pendingCount)} فیش در انتظار بررسی
-            </span>
-          )}
-        </div>
-      </PanelCard>
-
-      {/* کارت‌های بسته — رایگان + پولی‌ها (از جدول Plan ادمین).
-          گرید auto-fit: با حذف/مخفی شدن هر بسته، بقیه کارت‌ها عرض صفحه را
-          کامل پر می‌کنند (خواسته مالک ۳۱-۱۰). */}
-      {plansLoading ? (
-        <div className="h-40 animate-pulse rounded-xl border bg-card" />
+      ) : myPackage?.isActive ? (
+        /* ── دارندهٔ بستهٔ فعال (خواستهٔ مالک ۸-۱۱): فقط بستهٔ خودش + آکاردئون رزرو ── */
+        <>
+          <ActivePackageCard pkg={myPackage} plan={currentPlan} />
+          <ReserveSection
+            plans={plans}
+            plansLoading={plansLoading}
+            currentType={myPackage.pakageType}
+            onBuy={setBuying}
+          />
+        </>
       ) : (
-        <div
-          className="grid items-stretch gap-4 lg:gap-5"
-          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))' }}
-        >
-          {/* ── رایگان ── */}
-          <div className="relative flex flex-col rounded-xl border bg-card p-6">
-            <p className="text-center text-[15px] font-extrabold">{FREE_PACKAGE.title}</p>
-            <p className="mt-4 text-center">
-              <span className="font-num text-[26px] font-black text-primary">رایگان</span>
-              <span className="ms-1.5 text-xs text-muted-foreground">برای همیشه</span>
-            </p>
-            <Button asChild variant="outline" size="sm" className="mx-auto mt-5 w-full rounded-md text-xs">
-              <Link href="/panel">{myPackage?.isActive ? 'بسته جایگزین رایگان' : 'بسته فعلی شما'}</Link>
-            </Button>
-            <ul className="mt-6 flex-1 space-y-3 border-t pt-5">
-              {FREE_ROWS.map((f) => (
-                <li key={f.label} className="flex items-start gap-2 text-[12.5px] leading-6 lg:text-[13.5px]">
-                  {f.included ? (
-                    <Check size={16} className="mt-1 shrink-0 text-emerald-600" />
-                  ) : (
-                    <X size={16} className="mt-1 shrink-0 text-red-400" />
-                  )}
-                  <span className={cn(!f.included && 'text-muted-foreground/80')}>{f.label}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+        /* ── بدون بسته: گرید رایگان + پولی‌ها (کمپین‌محور ۳۱-۱۰) ── */
+        <>
+          <PanelCard className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="grid size-12 place-items-center rounded-md border border-border bg-secondary text-muted-foreground">
+                <ShieldCheck size={22} />
+              </span>
+              <div>
+                <p className="text-xs text-muted-foreground">بسته فعلی شما</p>
+                <p className="mt-0.5 text-base font-extrabold">رایگان (همیشگی)</p>
+              </div>
+            </div>
+            <div className="text-left text-[11px] leading-5 text-muted-foreground">
+              ثبت تا <b className="text-foreground">{toFa(FREE_PACKAGE.features.productCapacity)} محصول</b> — بدون
+              دسترسی به خریداران
+              {!!myPackage?.pendingCount && (
+                <span className="mt-1 flex items-center gap-1 text-amber-600">
+                  <Hourglass size={12} /> {toFa(myPackage.pendingCount)} فیش در انتظار بررسی
+                </span>
+              )}
+            </div>
+          </PanelCard>
 
-          {/* ── پولی‌ها — قیمت اصلی (بالا/غلیظ/خط‌خورده) + قیمت نهایی (خواسته مالک ۳۱-۱۰) ── */}
-          {plans.map((p) => {
-            const active = myPackage?.isActive && myPackage.pakageType === p.pakageType;
-            const percent = p.discountPercent ?? 0;
-            const finalAmount = p.finalAmount ?? p.amount;
-            const features = p.features?.length ? p.features : PAID_PLAN_FEATURES;
-            // سهمیهٔ تماس روزانه همیشه دیده می‌شود — حتی اگر ردیف‌های ادمین قدیمی باشند (خواستهٔ مالک ۱-۱۱)
-            const hasCallRow = features.some((f) => f.startsWith('تماس روزانه'));
-            const allFeatures = hasCallRow ? features : [...features, 'تماس روزانه با تا ۳۰ کاربر ایمچ'];
-            return (
-              <div
-                key={p.key}
-                className={cn(
-                  'relative flex flex-col rounded-xl border p-6',
-                  p.bestSeller ? 'border-amber-300 shadow-md' : 'bg-card',
-                )}
-              >
-                {p.bestSeller && (
-                  <span className="absolute -top-3 right-5 inline-flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold text-white">
-                    <Sparkles size={12} /> پرفروش‌ترین
-                  </span>
-                )}
-                {active && (
-                  <span className="absolute -top-3 left-5 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-bold text-white">
-                    <BadgeCheck size={12} /> فعال شما
-                  </span>
-                )}
-                <p className="text-center text-[15px] font-extrabold">اشتراک {p.title}</p>
-
-                {/* بلوک قیمت — بج درصد بزرگ + قیمت اصلی خط‌خورده + قیمت نهایی */}
-                <div className="mt-4 flex flex-col items-center gap-1.5">
-                  {percent > 0 && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-4 py-1.5 text-[17px] font-black text-white shadow-sm">
-                      <Percent size={16} strokeWidth={2.8} /> {toFa(percent)}٪ تخفیف
-                    </span>
-                  )}
-                  <p className="mt-1 flex items-baseline gap-1.5">
-                    <span
-                      className={cn(
-                        'font-num text-[24px] font-black leading-none sm:text-[27px]',
-                        percent > 0 && 'text-neutral-800 line-through decoration-red-600 decoration-[3px]',
-                      )}
-                    >
-                      {toFa(p.amount)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">تومان</span>
-                  </p>
-                  {percent > 0 && (
-                    <p className="mt-1 flex items-baseline gap-1.5">
-                      <span className="font-num text-[26px] font-black leading-none text-emerald-600 sm:text-[30px]">
-                        {toFa(finalAmount)}
-                      </span>
-                      <span className="text-xs font-bold text-emerald-700/80">تومان</span>
-                    </p>
-                  )}
-                </div>
-
-                <Button
-                  size="sm"
-                  className={cn(
-                    'mx-auto mt-5 w-full rounded-md text-xs',
-                    p.bestSeller && 'bg-amber-500 hover:bg-amber-600',
-                  )}
-                  onClick={() => setBuying(p)}
-                >
-                  <CreditCard size={14} className="ms-1" /> انتخاب و پرداخت
+          {plansLoading ? (
+            <div className="h-40 animate-pulse rounded-xl border bg-card" />
+          ) : (
+            <div
+              className="grid items-stretch gap-4 lg:gap-5"
+              style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))' }}
+            >
+              {/* ── رایگان ── */}
+              <div className="relative flex flex-col rounded-xl border bg-card p-6">
+                <p className="text-center text-[15px] font-extrabold">{FREE_PACKAGE.title}</p>
+                <p className="mt-4 text-center">
+                  <span className="font-num text-[26px] font-black text-primary">رایگان</span>
+                  <span className="ms-1.5 text-xs text-muted-foreground">برای همیشه</span>
+                </p>
+                <Button asChild variant="outline" size="sm" className="mx-auto mt-5 w-full rounded-md text-xs">
+                  <Link href="/panel">بسته فعلی شما</Link>
                 </Button>
                 <ul className="mt-6 flex-1 space-y-3 border-t pt-5">
-                  {allFeatures.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-[12.5px] leading-6 lg:text-[13.5px]">
-                      <Check size={16} className="mt-1 shrink-0 text-emerald-600" />
-                      {f}
+                  {FREE_ROWS.map((f) => (
+                    <li key={f.label} className="flex items-start gap-2 text-[12.5px] leading-6 lg:text-[13.5px]">
+                      {f.included ? (
+                        <Check size={16} className="mt-1 shrink-0 text-emerald-600" />
+                      ) : (
+                        <X size={16} className="mt-1 shrink-0 text-red-400" />
+                      )}
+                      <span className={cn(!f.included && 'text-muted-foreground/80')}>{f.label}</span>
                     </li>
                   ))}
-                  <li className="flex items-start gap-2 text-[12.5px] leading-6 lg:text-[13.5px]">
-                    <InfinityIcon size={16} className="mt-1 shrink-0 text-emerald-600" />
-                    تمدید خودکار اعتبار با خرید مجدد (امتداد از انقضای فعلی)
-                  </li>
                 </ul>
               </div>
-            );
-          })}
-        </div>
+
+              {/* ── پولی‌ها ── */}
+              {plans.map((p) => (
+                <PlanCard key={p.key} p={p} onBuy={setBuying} />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* سفارش‌های من */}
@@ -434,7 +601,7 @@ export default function PricingPage() {
         )}
       </PanelCard>
 
-      {/* دیالوگ خرید کارت به کارت */}
+      {/* دیالوگ خرید/رزرو کارت به کارت */}
       <Dialog open={Boolean(buying)} onOpenChange={(o) => !o && closeDialog()}>
         <DialogContent className="rounded-lg sm:max-w-md">
           {sent ? (
@@ -442,8 +609,9 @@ export default function PricingPage() {
               <DialogHeader>
                 <DialogTitle>فیش شما ارسال شد</DialogTitle>
                 <DialogDescription>
-                  فیش خرید بسته {buying?.title} ثبت شد و پس از بررسی و تأیید ادمین، بسته روی حساب شما فعال
-                  می‌شود. وضعیت را در «سفارش‌های بسته من» دنبال کنید.
+                  {myPackage?.isActive
+                    ? `فیش رزرو بسته ${buying?.title} ثبت شد؛ پس از تأیید ادمین، اعتبار آن از تاریخ پایان بسته فعلی به حساب شما اضافه می‌شود. وضعیت را در «سفارش‌های بسته من» دنبال کنید.`
+                    : `فیش خرید بسته ${buying?.title} ثبت شد و پس از بررسی و تأیید ادمین، بسته روی حساب شما فعال می‌شود. وضعیت را در «سفارش‌های بسته من» دنبال کنید.`}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="gap-2">
@@ -455,9 +623,15 @@ export default function PricingPage() {
           ) : (
             <>
               <DialogHeader>
-                <DialogTitle>خرید اشتراک {buying?.title} — کارت به کارت</DialogTitle>
+                <DialogTitle>
+                  {myPackage?.isActive
+                    ? `رزرو اشتراک ${buying?.title} — کارت به کارت`
+                    : `خرید اشتراک ${buying?.title} — کارت به کارت`}
+                </DialogTitle>
                 <DialogDescription>
-                  مبلغ را کارت به کارت کنید و تصویر فیش را بفرستید؛ پس از تأیید ادمین بسته فعال می‌شود.
+                  {myPackage?.isActive
+                    ? 'مبلغ را کارت به کارت کنید و تصویر فیش را بفرستید؛ پس از تأیید ادمین، اعتبار این بسته از پایان بسته فعلی شما شروع می‌شود.'
+                    : 'مبلغ را کارت به کارت کنید و تصویر فیش را بفرستید؛ پس از تأیید ادمین بسته فعال می‌شود.'}
                 </DialogDescription>
               </DialogHeader>
 
