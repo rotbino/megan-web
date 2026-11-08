@@ -1,0 +1,740 @@
+     1→'use client';
+     2→
+     3→/**
+     4→ * پیام‌ها — پیام‌رسان پنل (B8 — واقعی، منطق MHTML باسکول):
+     5→ * + چت دو مرحله‌ای موبایل (خواسته مالک ۷-۱۱): اول لیست مخاطبان، بعد مکالمه.
+     6→ * + بج خوانده‌نشده تا باز کردن واقعی چت نمی‌پرد (خواسته مالک ۸-۱۱): واکشی
+     7→ *   پیام‌ها ≠ خواندن؛ در موبایل هیچ مکالمه‌ای تا انتخاب کاربر باز/واکشی نمی‌شود
+     8→ *   و علامت‌گذاری خوانده‌شده فقط بعد از رندر پیام‌های مرئی انجام می‌شود.
+     9→ * + ورود به مکالمهٔ دارای پیام جدید: اسکرول روی اولین پیام خوانده‌نشده
+    10→ *   می‌ایستد + جداکنندهٔ «پیام‌های جدید» (خواسته مالک ۸-۱۱).
+    11→ * + چت با URL می‌ماند (خواسته مالک ۸-۱۱): ?thread= — رفرش همان مکالمه را
+    12→ *   باز می‌کند؛ دکمهٔ back مرورگر هم به لیست برمی‌گردد (pushState + popstate).
+    13→ * + پیام‌های کاربر راست، مخاطب چپ؛ طراحی مینیمال موبایل/دسکتاپ.
+    14→ * + پیوست تصویر/ویدئو/سند تا ۵MB (لیست سفید + بایت جادویی سمت سرور).
+    15→ * + ویرایش/حذف فقط تا قبل از مشاهدهٔ طرف مقابل — چت مدرک است.
+    16→ * + پیجینگ معکوس: آخرین ۲۰ پیام اول، اسکرول به بالا صفحهٔ قدیمی‌تر.
+    17→ * + مکالمهٔ «پشتیبانی ایمچ» با نشان M برند؛ گفتگوی دارای آخرین پیامِ
+    18→ *   تازه‌تر بالاتر از پشتیبانی می‌نشیند (خواسته مالک ۷-۱۱).
+    19→ */
+    20→
+    21→import { useEffect, useRef, useState } from 'react';
+    22→import Link from 'next/link';
+    23→import { ArrowRight, MessageSquare } from 'lucide-react';
+    24→import { Input } from '@/components/ui/input';
+    25→import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
+    26→import { PushEnableBanner } from '@/components/shared/push-enable';
+    27→import { ImchMark } from '@/components/chat/imch-mark';
+    28→import { MessageList } from '@/components/chat/message-list';
+    29→import { ChatComposer } from '@/components/chat/chat-composer';
+    30→import { useToast } from '@/hooks/use-toast';
+    31→import {
+    32→  useAdminMessages,
+    33→  useChatSocketEvents,
+    34→  useChatThreadMessages,
+    35→  useConversations,
+    36→  useDeleteChatMessage,
+    37→  useEditChatMessage,
+    38→  useMarkAdminMessagesRead,
+    39→  useMarkThreadRead,
+    40→  useSendChatMessage,
+    41→  useUnreadMessagesCount,
+    42→  useUploadChatFile,
+    43→} from '@/lib/mock/hooks';
+    44→import type { ChatFileMeta, ChatMessage, ChatThreadInfo } from '@/lib/mock/api';
+    45→import { toFa } from '@/lib/format';
+    46→import { RelativeTime } from '@/components/shared/relative-time';
+    47→import { PresenceDot } from '@/components/shared/presence-dot';
+    48→import { findPresence, usePresenceStatus } from '@/lib/api/presence';
+    49→import { cn } from '@/lib/utils';
+    50→
+    51→/** شناسه ساختگی مکالمه پشتیبانی — از id مکالمات واقعی جدا می‌ماند */
+    52→const SUPPORT_ID = '__support__';
+    53→
+    54→/**
+    55→ * اعلان پاسخ پشتیبان — خواستهٔ مالک ۸-۱۱ (دور ۲۲): «در چت هم یه پیام بیاد
+    56→ * که نوشته باشه شما یک پیام در پنل پشتیبانی دارید و دارای یه لینک باشه».
+    57→ * دوجا رندر می‌شود تا بدون کلیک اضافه دیده شود:
+    58→ *  • card  — بالای لیست مخاطبان (لیست موبایل + ستون دسکتاپ)
+    59→ *  • strip — نوار باریک زیر هدر مکالمهٔ باز (هر مکالمه + پشتیبانی ایمچ)
+    60→ * کلیک در هر دو حالت → تیکت پشتیبانی (/panel/support).
+    61→ */
+    62→function SupportTicketNotice({
+    63→  count,
+    64→  variant,
+    65→  className,
+    66→}: {
+    67→  count: number;
+    68→  variant: 'card' | 'strip';
+    69→  className?: string;
+    70→}) {
+    71→  if (count <= 0) return null;
+    72→  return (
+    73→    <Link
+    74→      href="/panel/support"
+    75→      className={cn(
+    76→        'group flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 text-start transition-colors hover:bg-red-100',
+    77→        variant === 'card' ? 'mt-3 px-3.5 py-2.5' : 'shrink-0 px-3 py-2',
+    78→        className,
+    79→      )}
+    80→    >
+    81→      <span
+    82→        className={cn(
+    83→          'grid shrink-0 place-items-center rounded-full bg-red-500 text-white',
+    84→          variant === 'card' ? 'size-8' : 'size-7',
+    85→        )}
+    86→      >
+    87→        <MessageSquare size={variant === 'card' ? 15 : 13} />
+    88→      </span>
+    89→      <span className="min-w-0 flex-1">
+    90→        <span className="block text-xs font-bold leading-5 text-red-700">
+    91→          شما {toFa(count)} پیام در پنل پشتیبانی دارید
+    92→        </span>
+    93→        <span className="block text-[11px] font-bold leading-5 text-red-600 underline underline-offset-2 group-hover:text-red-700">
+    94→          مشاهدهٔ گفتگو با پشتیبان
+    95→        </span>
+    96→      </span>
+    97→    </Link>
+    98→  );
+    99→}
+   100→
+   101→/** مقدار پشتیبانی در URL — از id های ۲۴کاراکتری MongoDB جدا می‌ماند */
+   102→const SUPPORT_URL_VALUE = 'support';
+   103→
+   104→/** خواندن ?thread= — «support» یا ObjectId؛ چیز دیگر نادیده گرفته می‌شود */
+   105→function threadFromUrl(): string | null {
+   106→  try {
+   107→    const t = new URLSearchParams(window.location.search).get('thread');
+   108→    if (t === SUPPORT_URL_VALUE) return SUPPORT_ID;
+   109→    return t && /^[0-9a-fA-F]{24}$/.test(t) ? t : null;
+   110→  } catch {
+   111→    return null;
+   112→  }
+   113→}
+   114→
+   115→/** مکالمهٔ جاری را در URL نگه می‌دارد (خواسته مالک ۸-۱۱):
+   116→ *  رفرش همان چت را باز می‌کند و back مرورگر به لیست برمی‌گردد. pushState
+   117→ *  (نه replace) تا هر مکالمه در تاریخچهٔ مرورگر جای خودش را داشته باشد. */
+   118→function syncThreadUrl(id: string | null) {
+   119→  try {
+   120→    const url = new URL(window.location.href);
+   121→    if (id) url.searchParams.set('thread', id === SUPPORT_ID ? SUPPORT_URL_VALUE : id);
+   122→    else url.searchParams.delete('thread');
+   123→    window.history.pushState(null, '', url);
+   124→  } catch {
+   125→    /* محیط بدون history — بی‌خطر */
+   126→  }
+   127→}
+   128→
+   129→export default function PanelMessagesPage() {
+   130→  const { toast } = useToast();
+   131→  const { data: conversations, isLoading } = useConversations();
+   132→  const { data: adminInbox } = useAdminMessages();
+   133→  // بج و پیام لینک‌دار «پشتیبانی» — پاسخ‌های خوانده‌نشدهٔ گفتگوی پشتیبانی
+   134→  // (خواسته مالک ۸-۱۱): بج قرمز منو + اعلان داخل چت با لینک به /panel/support
+   135→  const { data: unreadCounts } = useUnreadMessagesCount(true);
+   136→  const ticketUnread = unreadCounts?.ticket ?? 0;
+   137→  const markAdminRead = useMarkAdminMessagesRead();
+   138→  const markRead = useMarkThreadRead();
+   139→
+   140→  // دو مرحله‌ای موبایل: «لیست» → انتخاب → «چت»؛ برگشت → «لیست».
+   141→  // مکالمهٔ جاری در URL می‌ماند (?thread=) — رفرش همان چت را باز می‌کند
+   142→  // و back مرورگر به لیست برمی‌گردد (خواسته مالک ۸-۱۱).
+   143→  const [directThread] = useState(threadFromUrl);
+   144→  const [stage, setStage] = useState<'list' | 'chat'>(directThread ? 'chat' : 'list');
+   145→  const [activeId, setActiveId] = useState<string | null>(directThread);
+   146→  const [q, setQ] = useState('');
+   147→
+   148→  // دسکتاپ = پنل مکالمه همیشه مرئی (lg 1024px). موبایل: مکالمه فقط وقتی
+   149→  // مرئی است که کاربر آن را باز کرده باشد (stage==='chat') — برای انتخاب
+   150→  // خودکار مکالمهٔ اول و علامت‌گذاری خوانده‌شدهٔ درست (خواسته مالک ۸-۱۱).
+   151→  const [isDesktop, setIsDesktop] = useState(false);
+   152→  useEffect(() => {
+   153→    if (typeof window === 'undefined' || !window.matchMedia) return;
+   154→    const mq = window.matchMedia('(min-width: 1024px)');
+   155→    const update = () => setIsDesktop(mq.matches);
+   156→    update();
+   157→    mq.addEventListener?.('change', update);
+   158→    return () => mq.removeEventListener?.('change', update);
+   159→  }, []);
+   160→  const chatVisible = isDesktop || stage === 'chat';
+   161→
+   162→  // back مرورگر / popstate — چت باز ↔ لیست، هم‌گام با URL
+   163→  useEffect(() => {
+   164→    const onPop = () => {
+   165→      const t = threadFromUrl();
+   166→      if (t) {
+   167→        setActiveId(t);
+   168→        setStage('chat');
+   169→      } else {
+   170→        setStage('list');
+   171→      }
+   172→    };
+   173→    window.addEventListener('popstate', onPop);
+   174→    return () => window.removeEventListener('popstate', onPop);
+   175→  }, []);
+   176→
+   177→  const send = useSendChatMessage();
+   178→  const edit = useEditChatMessage();
+   179→  const del = useDeleteChatMessage();
+   180→  const upload = useUploadChatFile();
+   181→
+   182→  // پیوست در انتظار ارسال + پیام در حال ویرایش
+   183→  const [attachment, setAttachment] = useState<ChatFileMeta | null>(null);
+   184→  const [editing, setEditing] = useState<ChatMessage | null>(null);
+   185→
+   186→  // ورود مستقیم با لینک thread → stage در مقداردهی اولیه تنظیم شده است
+   187→
+   188→  // رویدادهای زنده — لیست و پیام‌ها خودشان تازه می‌شوند (چت + پشتیبانی)
+   189→  useChatSocketEvents();
+   190→
+   191→  const threads: ChatThreadInfo[] = conversations ?? [];
+   192→  const supportMessages = adminInbox?.items ?? [];
+   193→  const supportUnread = adminInbox?.unread ?? 0;
+   194→  const isSupport = activeId === SUPPORT_ID;
+   195→  // دسکتاپ: اولین مکالمه به‌صورت پیش‌فرض باز است؛ موبایل: تا انتخاب کاربر
+   196→  // هیچ مکالمه‌ای باز نمی‌شود (خواسته مالک ۸-۱۱) — واکشی پیام‌های مکالمهٔ
+   197→  // دیده‌نشده یعنی پاک شدن بی‌دلیل بج خوانده‌نشده؛ پس در موبایل رخ نمی‌دهد.
+   198→  const active = isSupport
+   199→    ? null
+   200→    : activeId
+   201→      ? threads.find((t) => t.id === activeId) ?? null
+   202→      : isDesktop
+   203→        ? threads[0] ?? null
+   204→        : null;
+   205→  // پشتیبانی: انتخاب صریح کاربر (activeId) در هر دستگاه باز می‌شود؛
+   206→  // باز شدن «خودکار» فقط روی دسکتاپ است (پنل مرئی است) — در موبایل بدون
+   207→  // انتخاب کاربر نباید پیام‌های پشتیبانی بدون دیدن خوانده شوند.
+   208→  const effectiveActive = isSupport
+   209→    ? SUPPORT_ID
+   210→    : active ?? (isDesktop && !isLoading && supportMessages.length > 0 ? SUPPORT_ID : null);
+   211→  const showingSupport = effectiveActive === SUPPORT_ID;
+   212→  const myId = active?.myId ?? null;
+   213→  const lastSupport = supportMessages[supportMessages.length - 1];
+   214→
+   215→  const {
+   216→    messages,
+   217→    hasMore,
+   218→    isFetching: messagesFetching,
+   219→    isFetchingNextPage,
+   220→    fetchNextPage,
+   221→  } = useChatThreadMessages(showingSupport ? null : active?.id ?? null);
+   222→
+   223→  // ── اولین پیام خوانده‌نشده (خواسته مالک ۸-۱۱) ──
+   224→  // یک‌بار به ازای هر «ورود واقعی» به مکالمه و قبل از علامت‌گذاری ثبت می‌شود
+   225→  // تا اسکرول ورود روی آن بایستد و جداکنندهٔ «پیام‌های جدید» تا خروج از مکالمه
+   226→  // بماند. کلید ورود = مکالمه فقط وقتی چت مرئی است: در موبایل با بازگشت به
+   227→  // لیست محاسبه صفر می‌شود (چت مخفی است و پیام‌های زندهٔ میان‌رسنده پنجرهٔ
+   228→  // لودشده را جابه‌جا می‌کنند) و با ورود دوباره از دادهٔ همین لحظه محاسبه می‌شود.
+   229→  const activeThreadKey = showingSupport ? SUPPORT_ID : active?.id ?? null;
+   230→  const entryKey = chatVisible ? activeThreadKey : null;
+   231→  const firstUnreadRef = useRef<{ key: string | null; id: string | null; settled: boolean }>({
+   232→    key: null,
+   233→    id: null,
+   234→    settled: true,
+   235→  });
+   236→  if (firstUnreadRef.current.key !== entryKey) {
+   237→    firstUnreadRef.current = { key: entryKey, id: null, settled: entryKey === null };
+   238→  }
+   239→  if (!firstUnreadRef.current.settled && myId && messages && messages.length > 0) {
+   240→    const first = messages.find((m) => m.senderId !== myId && m.readAt === null) ?? null;
+   241→    if (first) {
+   242→      firstUnreadRef.current = { key: entryKey, id: first.id, settled: true };
+   243→    } else if (!hasMore && !messagesFetching) {
+   244→      // همهٔ پیام‌های مکالمه لود شد و رفرش هم تمام شد و خوانده‌نشده‌ای نبود.
+   245→      // (کش کهنه ممکن است «همه خوانده‌شده» بگوید و رفرش پشت‌زمین پیام‌های
+   246→      // جدید بیاورد — تا isFetching تمام نشده null نمی‌نشینیم.)
+   247→      firstUnreadRef.current = { key: entryKey, id: null, settled: true };
+   248→    }
+   249→  }
+   250→  const firstUnreadId = firstUnreadRef.current.id;
+   251→
+   252→  // ── جستجوی عمیق (حاشیه): بج خوانده‌نشده هست ولی در صفحهٔ لودشده نیست ──
+   253→  // (مثلاً ۲۰+ پیام خودِ کاربر بعد از آخرین پیام خوانده‌نشدهٔ مخاطب آمده).
+   254→  // صفحه‌های قدیمی‌تر تا یافتن اولین خوانده‌نشده لود می‌شوند (حداکثر ۴ صفحه)؛
+   255→  // دریچهٔ ۸۰۰ms هم هست تا رندرهای پشت‌سرهم فچ تکراری نگیرند.
+   256→  const deepScanRef = useRef<{ key: string | null; tries: number; at: number }>({
+   257→    key: null,
+   258→    tries: 0,
+   259→    at: 0,
+   260→  });
+   261→  if (deepScanRef.current.key !== entryKey) {
+   262→    deepScanRef.current = { key: entryKey, tries: 0, at: 0 };
+   263→  }
+   264→  useEffect(() => {
+   265→    if (
+   266→      !showingSupport &&
+   267→      chatVisible &&
+   268→      myId &&
+   269→      !firstUnreadRef.current.settled &&
+   270→      !isFetchingNextPage &&
+   271→      hasMore &&
+   272→      deepScanRef.current.tries < 4 &&
+   273→      Date.now() - deepScanRef.current.at > 800
+   274→    ) {
+   275→      const badgeSaysUnread =
+   276→        (threads.find((t) => t.id === activeThreadKey)?.unreadCount ?? 0) > 0;
+   277→      if (badgeSaysUnread) {
+   278→        deepScanRef.current = {
+   279→          key: deepScanRef.current.key,
+   280→          tries: deepScanRef.current.tries + 1,
+   281→          at: Date.now(),
+   282→        };
+   283→        void fetchNextPage();
+   284→      }
+   285→    }
+   286→  }, [activeThreadKey, showingSupport, chatVisible, myId, messages, hasMore, isFetchingNextPage, threads, fetchNextPage]);
+   287→
+   288→  // ── علامت‌گذاری خوانده‌شده — فقط وقتی چت واقعاً دیده می‌شود (خواسته ۸-۱۱) ──
+   289→  // موبایل: فقط در مرحلهٔ «چت»؛ دسکتاپ: پنل همیشه مرئی است. تایمر ۶۰۰ms بدون
+   290→  // پاک‌شدن با رندرهای تازه (پیام‌های زندهٔ پشت‌سرهم با هم خوانده می‌شوند)؛
+   291→  // هنگام شلیک، هنوز همان مکالمه مرئی است چک می‌شود (تعویض سریع چت ≠ خواندن).
+   292→  const markTimerRef = useRef<number | null>(null);
+   293→  const markContextRef = useRef<{ key: string | null; visible: boolean }>({ key: null, visible: false });
+   294→  markContextRef.current = { key: activeThreadKey, visible: chatVisible };
+   295→  useEffect(() => {
+   296→    const key = showingSupport ? SUPPORT_ID : active?.id ?? null;
+   297→    if (!key || !chatVisible) return;
+   298→    if (showingSupport) {
+   299→      if (supportUnread > 0 && !markAdminRead.isPending) markAdminRead.mutate();
+   300→      return;
+   301→    }
+   302→    if (!myId || markRead.isPending) return;
+   303→    const msgs = messages ?? [];
+   304→    if (!msgs.some((m) => m.senderId !== myId && m.readAt === null)) return;
+   305→    if (markTimerRef.current !== null) return; // زمان‌بندی فعال است
+   306→    markTimerRef.current = window.setTimeout(() => {
+   307→      markTimerRef.current = null;
+   308→      const ctx = markContextRef.current;
+   309→      if (ctx.key === key && ctx.visible) markRead.mutate(key);
+   310→    }, 600);
+   311→  }, [chatVisible, showingSupport, active?.id, messages, myId, supportUnread, markRead.isPending, markRead.mutate, markAdminRead.isPending, markAdminRead.mutate]);
+   312→  // تعویض مکالمه/خروج از صفحه — تایمر معلق پاک شود
+   313→  useEffect(() => {
+   314→    return () => {
+   315→      if (markTimerRef.current !== null) {
+   316→        window.clearTimeout(markTimerRef.current);
+   317→        markTimerRef.current = null;
+   318→      }
+   319→    };
+   320→  }, [activeThreadKey]);
+   321→
+   322→  const visible = threads.filter((t) => {
+   323→    const name = `${t.counterpart.firstName} ${t.counterpart.lastName}`.trim();
+   324→    return !q.trim() || name.includes(q.trim()) || (t.productName ?? '').includes(q.trim());
+   325→  });
+   326→
+   327→  // وضعیت آنلاین همه مخاطبان — یک درخواست گروهی (تا ۵۰ نفر)
+   328→  const counterpartNames = threads.map((t) => t.counterpart.userName).filter(Boolean);
+   329→  const { data: presenceItems } = usePresenceStatus({ userNames: counterpartNames });
+   330→  const presenceOf = (t: ChatThreadInfo) =>
+   331→    findPresence(presenceItems, { id: t.counterpart.id, userName: t.counterpart.userName });
+   332→
+   333→  /**
+   334→   * ترتیب لیست (خواسته مالک ۷-۱۱): گفتگوی دارای آخرین پیامِ تازه‌تر بالای
+   335→   * «پشتیبانی ایمچ» می‌نشیند؛ پشتیبانی سنجاقِ بقیهٔ گفتگوهای قدیمی‌تر است.
+   336→   */
+   337→  const listOrder = (() => {
+   338→    const time = (t: ChatThreadInfo) => new Date(t.lastMessage?.at ?? t.updatedAt).getTime() || 0;
+   339→    const supportTime = lastSupport ? new Date(lastSupport.createdAt).getTime() : 0;
+   340→    const newer = visible.filter((t) => time(t) > supportTime);
+   341→    const older = visible.filter((t) => time(t) <= supportTime);
+   342→    return { newer, older };
+   343→  })();
+   344→
+   345→  const nameOf = (t: ChatThreadInfo) =>
+   346→    `${t.counterpart.firstName} ${t.counterpart.lastName}`.trim() || 'کاربر ایمچ';
+   347→
+   348→  // ── ارسال / ویرایش ──
+   349→  const handleSend = (text: string) => {
+   350→    if (editing) {
+   351→      edit.mutate(
+   352→        { messageId: editing.id, text },
+   353→        {
+   354→          onSuccess: () => setEditing(null),
+   355→          onError: (err) =>
+   356→            toast({ description: err instanceof Error ? err.message : 'ویرایش ناموفق بود.' }),
+   357→        },
+   358→      );
+   359→      return;
+   360→    }
+   361→    if (!active || send.isPending) return;
+   362→    const file = attachment;
+   363→    send.mutate(
+   364→      { threadId: active.id, text, file },
+   365→      {
+   366→        onSuccess: () => setAttachment(null),
+   367→        onError: (err) =>
+   368→          toast({ description: err instanceof Error ? err.message : 'ارسال پیام ناموفق بود.' }),
+   369→      },
+   370→    );
+   371→  };
+   372→
+   373→  const handlePickFile = (file: File) => {
+   374→    upload.mutate(file, {
+   375→      onSuccess: (meta) => setAttachment(meta),
+   376→      onError: (err) =>
+   377→        toast({
+   378→          description: err instanceof Error ? err.message : 'آپلود فایل ناموفق بود.',
+   379→          variant: 'destructive',
+   380→        }),
+   381→    });
+   382→  };
+   383→
+   384→  const handleDelete = (m: ChatMessage) => {
+   385→    del.mutate(m.id, {
+   386→      onError: (err) =>
+   387→        toast({ description: err instanceof Error ? err.message : 'حذف ناموفق بود.' }),
+   388→    });
+   389→    if (editing?.id === m.id) setEditing(null);
+   390→  };
+   391→
+   392→  const openConversation = (id: string) => {
+   393→    setActiveId(id);
+   394→    setStage('chat');
+   395→    setEditing(null);
+   396→    setAttachment(null);
+   397→    syncThreadUrl(id);
+   398→  };
+   399→
+   400→  /** بازگشت به لیست (موبایل) — URL هم پاک می‌شود تا back مرورگر ناسازگار نشود */
+   401→  const backToList = () => {
+   402→    setStage('list');
+   403→    syncThreadUrl(null);
+   404→  };
+   405→
+   406→  return (
+   407→    // چت اپ‌طور: در موبایل عرض مفید = 100dvh منهای هدر چسبان (۵۶) + ناوبری
+   408→    // پایین (۵۹) + پدینگ‌ها — فلکس کالمن، کارت چت فضای باقی‌مانده را می‌گیرد و
+   409→    // بنرها/جستجو ارتفاع خودشان را کم می‌کنند. دسکتاپ: ریشه h-full پوسته.
+   410→    <div className="mx-auto flex h-[calc(100dvh-140px)] min-h-[480px] max-w-5xl flex-col gap-4 lg:h-full lg:min-h-0">
+   411→      {/* وب‌پوش (B10) — اعلان پیام‌های جدید وقتی سایت باز نیست */}
+   412→      <PushEnableBanner />
+   413→      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[320px_1fr] lg:grid-rows-[minmax(0,1fr)]">
+   414→        {/* مرحلهٔ ۱ (موبایل): لیست مخاطبان — دسکتاپ: ستون ثابت؛
+   415→            موبایل: بدون بورد کلی — فلت (خواسته مالک ۸-۱۱) */}
+   416→        <PanelCard
+   417→          className={cn(
+   418→            'order-2 flex flex-col lg:order-1',
+   419→            'max-lg:border-0 max-lg:p-0 max-lg:shadow-none',
+   420→            stage === 'chat' && 'hidden lg:flex',
+   421→          )}
+   422→        >
+   423→          <div className="flex items-center justify-between">
+   424→            <p className="text-sm font-bold">
+   425→              مخاطب <span className="text-muted-foreground">({toFa(threads.length)})</span>
+   426→            </p>
+   427→          </div>
+   428→          {/* اعلان پاسخ پشتیبان — بالای لیست تا بدون باز کردن «پشتیبانی ایمچ»
+   429→              هم دیده شود (خواستهٔ مالک ۸-۱۱) */}
+   430→          <SupportTicketNotice count={ticketUnread} variant="card" />
+   431→          <div className="relative mt-3">
+   432→            <Input
+   433→              value={q}
+   434→              onChange={(e) => setQ(e.target.value)}
+   435→              placeholder="جستجوی مکالمه…"
+   436→              className="rounded-md"
+   437→            />
+   438→          </div>
+   439→          {isLoading ? (
+   440→            <div className="mt-3 space-y-2">
+   441→              {Array.from({ length: 3 }).map((_, i) => (
+   442→                <div key={i} className="h-14 animate-pulse rounded-md bg-secondary/60" />
+   443→              ))}
+   444→            </div>
+   445→          ) : (
+   446→            <ul className="mt-3 min-h-0 flex-1 divide-y divide-border/70 overflow-y-auto overscroll-contain touch-pan-y">
+   447→              {/* گفتگوهای تازه‌تر از پشتیبانی — بالای آن (خواسته مالک ۷-۱۱) */}
+   448→              {listOrder.newer.map((t) => (
+   449→                <ThreadRow
+   450→                  key={t.id}
+   451→                  thread={t}
+   452→                  active={!showingSupport && active?.id === t.id}
+   453→                  presence={presenceOf(t)}
+   454→                  onSelect={() => openConversation(t.id)}
+   455→                  nameOf={nameOf}
+   456→                />
+   457→              ))}
+   458→
+   459→              {/* پشتیبانی ایمچ — نشان M برند؛ زیر گفتگوهای تازه‌تر */}
+   460→              <li className="pb-1">
+   461→                <button
+   462→                  type="button"
+   463→                  onClick={() => openConversation(SUPPORT_ID)}
+   464→                  className={cn(
+   465→                    'flex w-full items-center gap-3 rounded-md px-2 py-3 text-start transition-colors',
+   466→                    showingSupport ? 'bg-primary/10' : 'hover:bg-secondary/70',
+   467→                  )}
+   468→                >
+   469→                  <ImchMark className="size-10 shrink-0" />
+   470→                  <span className="min-w-0 flex-1">
+   471→                    <span className="flex items-center justify-between gap-2">
+   472→                      <span className="truncate text-sm font-bold text-primary">پشتیبانی ایمچ</span>
+   473→                      <span className="shrink-0 text-[10px] text-muted-foreground">
+   474→                        {lastSupport ? <RelativeTime date={lastSupport.createdAt} /> : ''}
+   475→                      </span>
+   476→                    </span>
+   477→                    <span className="mt-0.5 flex items-center justify-between gap-2">
+   478→                      <span className="truncate text-xs text-muted-foreground">
+   479→                        {ticketUnread > 0
+   480→                          ? 'پاسخ تازه از پشتیبان — مشاهدهٔ گفتگو'
+   481→                          : (lastSupport?.text ?? '')}
+   482→                      </span>
+   483→                      {supportUnread + ticketUnread > 0 && (
+   484→                        <span className="grid size-5 shrink-0 place-items-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+   485→                          {toFa(supportUnread + ticketUnread)}
+   486→                        </span>
+   487→                      )}
+   488→                    </span>
+   489→                  </span>
+   490→                </button>
+   491→              </li>
+   492→
+   493→              {/* گفتگوهای قدیمی‌تر از پشتیبانی */}
+   494→              {listOrder.older.map((t) => (
+   495→                <ThreadRow
+   496→                  key={t.id}
+   497→                  thread={t}
+   498→                  active={!showingSupport && active?.id === t.id}
+   499→                  presence={presenceOf(t)}
+   500→                  onSelect={() => openConversation(t.id)}
+   501→                  nameOf={nameOf}
+   502→                />
+   503→              ))}
+   504→
+   505→              {visible.length === 0 && (
+   506→                <li>
+   507→                  <p className="rounded-md bg-secondary/50 px-3 py-3 text-center text-xs leading-6 text-muted-foreground">
+   508→                    مکالمه‌ای یافت نشد. گفتگو از صفحه هر آگهی («چت با فروشنده») شروع می‌شود.
+   509→                  </p>
+   510→                </li>
+   511→              )}
+   512→            </ul>
+   513→          )}
+   514→        </PanelCard>
+   515→
+   516→        {/* مرحلهٔ ۲ (موبایل): مکالمه — دسکتاپ: همیشه باز؛ ارتفاع از فلکس والد.
+   517→            در لیست موبایل محتوا اصلاً مونت نمی‌شود (نه فقط CSS-hidden) تا
+   518→            اثرهای اسکرول/خوانده‌شدن چتِ پشت‌پرده اجرا نشود (خواسته مالک ۸-۱۱).
+   519→            موبایل: بدون بورد کلی — فلت (خواسته مالک ۸-۱۱) */}
+   520→        <PanelCard
+   521→          className={cn(
+   522→            'order-1 flex h-full min-h-0 flex-col lg:order-2',
+   523→            'max-lg:border-0 max-lg:p-0 max-lg:shadow-none',
+   524→            stage === 'list' && 'hidden lg:flex',
+   525→          )}
+   526→        >
+   527→          {(stage === 'chat' || isDesktop) && (
+   528→            <>
+   529→          {showingSupport ? (
+   530→            <>
+   531→              {/* مکالمه پشتیبانی — یک‌طرفه (ادمین → کاربر) */}
+   532→              <div className="flex shrink-0 items-center gap-2 border-b border-border/70 pb-3">
+   533→                <button
+   534→                  type="button"
+   535→                  aria-label="بازگشت به لیست"
+   536→                  onClick={backToList}
+   537→                  className="grid size-8 place-items-center rounded-full transition-colors hover:bg-secondary lg:hidden"
+   538→                >
+   539→                  <ArrowRight size={17} />
+   540→                </button>
+   541→                <ImchMark className="size-10 shrink-0" />
+   542→                <div className="min-w-0 flex-1">
+   543→                  <p className="truncate text-sm font-bold text-primary">پشتیبانی ایمچ</p>
+   544→                  <p className="truncate text-[11px] text-muted-foreground">
+   545→                    اطلاع‌رسانی و پاسخ‌های پشتیبانی
+   546→                  </p>
+   547→                </div>
+   548→              </div>
+   549→
+   550→              {/* اعلان پاسخ پشتیبان — نوار بالای گفتگو (خواستهٔ مالک ۸-۱۱) */}
+   551→              <SupportTicketNotice count={ticketUnread} variant="strip" className="mt-2" />
+   552→
+   553→              <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain touch-pan-y bg-secondary px-0.5 py-3 sm:px-1 sm:py-4 sm:space-y-3 sm:bg-[radial-gradient(circle_at_1px_1px,var(--border)_1px,transparent_0)] sm:[background-size:18px_18px]">
+   554→                {supportMessages.length === 0 ? (
+   555→                  <p className="py-8 text-center text-xs leading-6 text-muted-foreground">
+   556→                    هنوز پیامی از پشتیبانی ندارید.
+   557→                  </p>
+   558→                ) : (
+   559→                  supportMessages.map((m) => (
+   560→                    <div key={m.id} className="flex w-full justify-end">
+   561→                      <div
+   562→                        dir="auto"
+   563→                        className={cn(
+   564→                          'w-fit whitespace-pre-wrap break-words shadow-sm',
+   565→                          'max-w-[85%] rounded-2xl rounded-se-md border border-border/70 bg-card px-3.5 py-2.5',
+   566→                          'text-[13px] leading-6 sm:max-w-[75%] sm:px-4 sm:text-[13.5px] sm:leading-7',
+   567→                          'animate-in fade-in slide-in-from-bottom-1 duration-200',
+   568→                        )}
+   569→                      >
+   570→                        <p dir="auto">{m.text}</p>
+   571→                        <p className="mt-1 flex items-center gap-1.5 text-[9px] text-muted-foreground">
+   572→                          <span>{m.adminUsername}</span>·<span><RelativeTime date={m.createdAt} /></span>
+   573→                        </p>
+   574→                      </div>
+   575→                    </div>
+   576→                  ))
+   577→                )}
+   578→
+   579→                {/* هدایت به تیکت پشتیبانی با نوار بالای گفتگو
+   580→                    (SupportTicketNotice) انجام می‌شود؛ این‌جا فقط پیام‌های
+   581→                    یک‌طرفهٔ ادمین است */}
+   582→              </div>
+   583→
+   584→              <div className="shrink-0 border-t pt-3">
+   585→                <p className="rounded-md bg-secondary/50 px-3 py-2.5 text-center text-[11px] leading-6 text-muted-foreground">
+   586→                  برای پرسش‌های خود از{' '}
+   587→                  <Link href="/panel/support" className="font-bold text-primary hover:underline">
+   588→                    صفحهٔ پشتیبانی
+   589→                  </Link>{' '}
+   590→                  استفاده کنید.
+   591→                </p>
+   592→              </div>
+   593→            </>
+   594→          ) : active ? (
+   595→            <>
+   596→              {/* هدر مکالمه — مینیمال: برگشت (موبایل) + مخاطب + حضور */}
+   597→              <div className="flex shrink-0 items-center gap-2 border-b border-border/70 pb-3">
+   598→                <button
+   599→                  type="button"
+   600→                  aria-label="بازگشت به لیست"
+   601→                  onClick={backToList}
+   602→                  className="grid size-8 shrink-0 place-items-center rounded-full transition-colors hover:bg-secondary lg:hidden"
+   603→                >
+   604→                  <ArrowRight size={17} />
+   605→                </button>
+   606→                <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/10 text-xs font-extrabold text-primary">
+   607→                  {active.counterpart.avatarUrl ? (
+   608→                     
+   609→                    <img src={active.counterpart.avatarUrl} alt="" className="size-full object-cover" />
+   610→                  ) : (
+   611→                    nameOf(active).charAt(0)
+   612→                  )}
+   613→                </span>
+   614→                <div className="min-w-0 flex-1">
+   615→                  <p className="flex min-w-0 items-center gap-2 text-sm font-bold">
+   616→                    <span className="truncate">{nameOf(active)}</span>
+   617→                    <PresenceDot
+   618→                      online={presenceOf(active)?.online}
+   619→                      lastSeenAt={presenceOf(active)?.lastSeenAt ?? undefined}
+   620→                      className="shrink-0"
+   621→                    />
+   622→                  </p>
+   623→                  {active.productName && (
+   624→                    <p className="truncate text-[11px] text-muted-foreground">
+   625→                      مکالمه روی: {active.productName}
+   626→                    </p>
+   627→                  )}
+   628→                </div>
+   629→              </div>
+   630→
+   631→              {/* اعلان پاسخ پشتیبان — نوار بالای مکالمهٔ باز (خواستهٔ مالک ۸-۱۱) */}
+   632→              <SupportTicketNotice count={ticketUnread} variant="strip" className="mt-2" />
+   633→
+   634→              {/* پیام‌ها — پیجینگ معکوس؛ ورود: توقف روی اولین پیام خوانده‌نشده
+   635→                  (خواسته مالک ۸-۱۱)، بدون پیام جدید: پرش به آخرین پیام */}
+   636→              <MessageList
+   637→                threadKey={active.id}
+   638→                messages={messages ?? []}
+   639→                myId={myId}
+   640→                firstUnreadId={firstUnreadId}
+   641→                hasMore={hasMore}
+   642→                loadingOlder={isFetchingNextPage}
+   643→                onLoadOlder={() => void fetchNextPage()}
+   644→                onEdit={(m) => setEditing(m)}
+   645→                onDelete={handleDelete}
+   646→              />
+   647→
+   648→              {/* ارسال — متن یا پیوست (تا ۵MB) */}
+   649→              <ChatComposer
+   650→                sending={send.isPending}
+   651→                uploading={upload.isPending}
+   652→                attachment={attachment}
+   653→                onPickFile={handlePickFile}
+   654→                onClearAttachment={() => setAttachment(null)}
+   655→                editing={editing}
+   656→                onCancelEdit={() => setEditing(null)}
+   657→                onSend={handleSend}
+   658→              />
+   659→            </>
+   660→          ) : isLoading ? (
+   661→            <div className="grid flex-1 place-items-center">
+   662→              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+   663→            </div>
+   664→          ) : (
+   665→            <PanelEmptyState
+   666→              icon={MessageSquare}
+   667→              title="هیچ پیام جدیدی ندارید!"
+   668→              hint="برای شروع گفتگو با خریداران و فروشندگان ایمچ، از صفحه هر آگهی پیام ارسال کنید."
+   669→            />
+   670→          )}
+   671→            </>
+   672→          )}
+   673→        </PanelCard>
+   674→      </div>
+   675→    </div>
+   676→  );
+   677→}
+   678→
+   679→/** ردیف مکالمه در لیست — بج خوانده‌نشده قرمز (خواسته مالک ۷-۱۱) */
+   680→function ThreadRow({
+   681→  thread,
+   682→  active,
+   683→  presence,
+   684→  onSelect,
+   685→  nameOf,
+   686→}: {
+   687→  thread: ChatThreadInfo;
+   688→  active: boolean;
+   689→  presence: { online?: boolean; lastSeenAt?: string | null } | undefined;
+   690→  onSelect: () => void;
+   691→  nameOf: (t: ChatThreadInfo) => string;
+   692→}) {
+   693→  return (
+   694→    <li className="pb-1">
+   695→      <button
+   696→        type="button"
+   697→        onClick={onSelect}
+   698→        className={cn(
+   699→          'flex w-full items-center gap-3 rounded-md px-2 py-3 text-start transition-colors',
+   700→          active ? 'bg-primary/10' : 'hover:bg-secondary/70',
+   701→        )}
+   702→      >
+   703→        <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-secondary text-xs font-extrabold">
+   704→          {thread.counterpart.avatarUrl ? (
+   705→             
+   706→            <img src={thread.counterpart.avatarUrl} alt="" className="size-full object-cover" loading="lazy" />
+   707→          ) : (
+   708→            nameOf(thread).charAt(0)
+   709→          )}
+   710→          <PresenceDot
+   711→            online={presence?.online}
+   712→            showLabel={false}
+   713→            size="sm"
+   714→            className="absolute -bottom-0.5 -start-0.5"
+   715→          />
+   716→        </span>
+   717→        <span className="min-w-0 flex-1">
+   718→          <span className="flex items-center justify-between gap-2">
+   719→            <span className="truncate text-sm font-bold">{nameOf(thread)}</span>
+   720→            <span className="shrink-0 text-[10px] text-muted-foreground">
+   721→              <RelativeTime date={thread.lastMessage?.at ?? thread.updatedAt} />
+   722→            </span>
+   723→          </span>
+   724→          <span className="mt-0.5 flex items-center justify-between gap-2">
+   725→            <span className="truncate text-xs text-muted-foreground">
+   726→              {thread.lastMessage?.senderId === thread.myId ? 'شما: ' : ''}
+   727→              {thread.lastMessage?.text ?? 'بدون پیام'}
+   728→            </span>
+   729→            {thread.unreadCount > 0 && (
+   730→              <span className="grid size-5 shrink-0 place-items-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+   731→                {toFa(thread.unreadCount)}
+   732→              </span>
+   733→            )}
+   734→          </span>
+   735→        </span>
+   736→      </button>
+   737→    </li>
+   738→  );
+   739→}
+   740→
