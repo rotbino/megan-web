@@ -7,8 +7,10 @@
  *
  * گفتگو با پشتیبان (دور ۲۱): چت واقعی دوطرفه — پیام‌ها در بک‌اند
  * (support/*) ذخیره می‌شوند و پاسخ پشتیبان از پنل مدیریت
- * (پشتیبانی → تیکت کاربران) می‌آید. باز کردن صفحه = خواندن
- * پیام‌های پشتیبان. موبایل و دسکتاپ هم‌سنجه (قانون §۲).
+ * (پشتیبانی → تیکت کاربران) می‌آید. باز کردن واقعی صفحه (تب مرئی) =
+ * خواندن پیام‌های پشتیبان (خواستهٔ مالک ۸-۱۱ دور ۲۴: قبلاً هر fetch —
+ * polling پس‌زمینه/تب مخفی — بج پشتیبانی را بی‌آنکه کاربر ببیند صفر
+ * می‌کرد و حلقهٔ اعلان می‌شکست). موبایل و دسکتاپ هم‌سنجه (قانون §۲).
  *
  * خواستهٔ مالک ۸-۱۱: پیوست تصویر/ویدئو/سند تا ۵MB (هر دو سو) + ریل‌تایم —
  * پاسخ پشتیبان با WS (support:newMessage) همان لحظه می‌آید؛ حباب‌های
@@ -21,6 +23,7 @@ import { Check, ChevronDown, LifeBuoy, Loader2, Paperclip, Send, Users, X } from
 import { usePanelProfile, useChatSocketEvents } from '@/lib/mock/hooks';
 import {
   getSupportConversation,
+  markSupportConversationRead,
   sendSupportMessage,
   uploadSupportAttachment,
   type SupportChatMessage,
@@ -204,12 +207,30 @@ function SupportChatSection() {
   // خود هوک «support-conversation» و شمارنده‌ها را تازه می‌کند.
   useChatSocketEvents();
 
-  // گفتگو — باز کردن صفحه = خواندن پیام‌های پشتیبان؛ شبکهٔ ایمنی REST ۳۰s
+  // گفتگو — fetch خالص (بدون خواندن خودکار)؛ شبکهٔ ایمنی REST ۳۰s.
+  // خواندن جداگانه و فقط با تب مرئی انجام می‌شود (اثر پایین)
   const { data, isLoading } = useQuery({
     queryKey: ['support-conversation'],
     queryFn: getSupportConversation,
     refetchInterval: 30_000,
   });
+
+  // خواندن پاسخ‌های پشتیبان — فقط وقتی صفحه واقعاً دیده می‌شود (رفع باگ
+  // دور ۲۴): تب مخفی/polling پس‌زمینه بج را نمی‌شکند؛ برگشت به تب =
+  // refetchOnWindowFocus → unread تازه → همین اثر خواندن را می‌زند
+  const unreadFromAdmin = data?.unreadFromAdmin ?? 0;
+  const markReadMutation = useMutation({
+    mutationFn: markSupportConversationRead,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['support-conversation'] });
+      void queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
+    },
+  });
+  useEffect(() => {
+    if (unreadFromAdmin <= 0 || markReadMutation.isPending) return;
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    markReadMutation.mutate();
+  }, [unreadFromAdmin, markReadMutation]);
 
   // آپلود پیوست — پیش‌نمایش قبل از ارسال (الگوی چت)
   const uploadMutation = useMutation({

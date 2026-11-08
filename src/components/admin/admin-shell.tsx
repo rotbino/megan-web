@@ -33,6 +33,7 @@ import {
   Loader2,
   LogOut,
   MapPin,
+  Megaphone,
   Menu,
   MessageSquareText,
   MessagesSquare,
@@ -91,6 +92,9 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
     title: 'پشتیبانی',
     items: [
       { href: '/admin/support', label: 'تیکت کاربران', Icon: Headset, superOnly: false, badge: 'unreadSupportMessages' },
+      // پیام مستقیم به کاربران (خواستهٔ مالک ۸-۱۱ دور ۲۴) — ارسال تکی/گروهی؛
+      // سمت کاربر در مکالمهٔ «پشتیبانی ایمچ» می‌نشیند + بج لحظه‌ای (WS)
+      { href: '/admin/user-messages', label: 'پیام به کاربران', Icon: Megaphone, superOnly: false },
       { href: '/admin/surveys', label: 'نظرسنجی‌ها', Icon: MessageSquareText, superOnly: false },
     ],
   },

@@ -14,7 +14,7 @@ import {
   SellersIcon,
 } from '@/components/shared/buskool-icons';
 import { useAuth } from '@/lib/mock/auth';
-import { useCategoryTree, useSuggestions, useUnreadMessagesCount } from '@/lib/mock/hooks';
+import { useCategoryTree, useSuggestions, useUnreadMessagesCount, useChatSocketEvents } from '@/lib/mock/hooks';
 import { searchPath } from '@/lib/popular-searches';
 import { UnreadBadge } from '@/components/shared/unread-badge';
 import { cn } from '@/lib/utils';
@@ -55,6 +55,11 @@ export function Header() {
   const [barHidden, setBarHidden] = useState(false);
   const searchWrap = useRef<HTMLDivElement>(null);
   const megaWrap = useRef<HTMLDivElement>(null);
+
+  // بج پیام‌ها در همهٔ صفحات سایت لحظه‌ای تازه شود (WS) — نه فقط پنل.
+  // حلقهٔ اعلان پشتیبانی (خواستهٔ مالک ۸-۱۱ دور ۲۴): پاسخ پشتیبان → بج
+  // هم‌ان لحظه روی صفحهٔ اول می‌نشیند، بدون انتظار برای polling ۳۰s.
+  useChatSocketEvents();
 
   // ─── نوار زیر هدر: با اسکرول به پایین جمع، با اسکرول به بالا باز ───
   // جهش‌های ریز (کمتر از ۴px) نادیده گرفته می‌شوند؛ بالای صفحه همیشه باز است.

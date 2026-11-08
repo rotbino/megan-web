@@ -1219,12 +1219,21 @@ export interface SupportChatMessage {
   createdAt: string;
 }
 
-/** گفتگوی پشتیبانی من — باز کردن صفحهٔ پشتیبانی = خواندن پیام‌های پشتیبان */
+/** گفتگوی پشتیبانی من — fetch خالص (بدون عوارض جانبی). خواندن پاسخ‌های
+ *  پشتیبان فقط با فراخوانی صریح markSupportConversationRead انجام می‌شود
+ *  (رفع باگ ۸-۱۱ دور ۲۴: قبلاً هر fetch — polling پس‌زمینه/تب مخفی — بج
+ *  پشتیبانی را بی‌آنکه کاربر ببیند صفر می‌کرد و حلقهٔ اعلان می‌شکست) */
 export async function getSupportConversation(): Promise<{
   messages: SupportChatMessage[];
   unreadFromAdmin: number;
 }> {
   return apiFetch('/support/getConversation', {});
+}
+
+/** خواندن پاسخ‌های پشتیبان — فقط وقتی صفحهٔ پشتیبانی واقعاً مرئی است؛
+ *  بج‌ها (ticket) صفر می‌شوند */
+export async function markSupportConversationRead(): Promise<{ read: number }> {
+  return apiFetch('/support/markRead', {});
 }
 
 /** آپلود پیوست گفتگوی پشتیبانی — تصویر/ویدئو/سند تا ۵MB */

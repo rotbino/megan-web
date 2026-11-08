@@ -492,6 +492,37 @@ export async function fetchAdminUserMessages(id: string, page = 1, perPage = 20)
   return adminFetch('/admin/messages/getUserMessages', { userId: id, page, perPage });
 }
 
+// ─── پیام به کاربران (خواستهٔ مالک ۸-۱۱ دور ۲۴) ─────────────────────────────
+
+/** گیرندهٔ یک دستهٔ ارسال — کارت کاربر بک‌اند */
+export interface AdminSendRecipient {
+  id: string;
+  firstName: string;
+  lastName: string;
+  userName: string;
+  phone: string;
+  displayName: string;
+  isActive: boolean;
+  isVerified: boolean;
+}
+
+/** دستهٔ ارسال در «آخرین ارسال‌ها» — عین AdminSendBatch بک‌اند */
+export interface AdminSendBatch {
+  batchId: string;
+  text: string;
+  adminUsername: string;
+  at: string;
+  total: number;
+  read: number;
+  /** حداکثر ۶ گیرندهٔ اول — بقیه با «+N دیگر» */
+  recipients: AdminSendRecipient[];
+}
+
+/** آخرین دسته‌های ارسال «پیام به کاربران» — جدیدترین اول */
+export async function fetchAdminRecentSends(): Promise<{ items: AdminSendBatch[] }> {
+  return adminFetch('/admin/messages/getRecentSends', {});
+}
+
 // ─── فاز A4 — مدیریت آگهی‌ها و درخواست‌های خرید ───────────────────────────────
 
 /** وضعیت آگهی/درخواست — تب‌های ادمین (عین پنل کاربر) */

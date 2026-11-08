@@ -20,6 +20,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, MessageSquare } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
@@ -41,7 +42,8 @@ import {
   useUnreadMessagesCount,
   useUploadChatFile,
 } from '@/lib/mock/hooks';
-import type { ChatFileMeta, ChatMessage, ChatThreadInfo } from '@/lib/mock/api';
+import type { AdminInboxMessage, ChatFileMeta, ChatMessage, ChatThreadInfo, SupportChatMessage } from '@/lib/mock/api';
+import { getSupportConversation } from '@/lib/mock/api';
 import { toFa } from '@/lib/format';
 import { RelativeTime } from '@/components/shared/relative-time';
 import { PresenceDot } from '@/components/shared/presence-dot';
@@ -130,6 +132,16 @@ export default function PanelMessagesPage() {
   const { toast } = useToast();
   const { data: conversations, isLoading } = useConversations();
   const { data: adminInbox } = useAdminMessages();
+  // گفتگوی پشتیبانی (تیکت) — fetch خالص؛ فقط برای پیام‌های لینک‌دارِ ماندگار
+  // داخل مکالمهٔ «پشتیبانی ایمچ» (خواستهٔ مالک ۸-۱۱ دور ۲۴: «هیچ پیامی داخل
+  // پشتیبانی ایمچ نیست که شامل لینک پنل پشتیبانی باشد» — حلقهٔ کامل اعلان).
+  // خواندن اینجا انجام نمی‌شود؛ تیکت فقط با باز کردن واقعی /panel/support
+  // خوانده می‌شود (قیف: بج هدر → لیست چت → لینک همین پیام‌ها → تیکت).
+  const { data: supportConv } = useQuery({
+    queryKey: ['support-conversation'],
+    queryFn: getSupportConversation,
+    refetchInterval: 30_000,
+  });
   // بج و پیام لینک‌دار «پشتیبانی» — پاسخ‌های خوانده‌نشدهٔ گفتگوی پشتیبانی
   // (خواسته مالک ۸-۱۱): بج قرمز منو + اعلان داخل چت با لینک به /panel/support
   const { data: unreadCounts } = useUnreadMessagesCount(true);
@@ -192,6 +204,58 @@ export default function PanelMessagesPage() {
   const supportMessages = adminInbox?.items ?? [];
   const supportUnread = adminInbox?.unread ?? 0;
   const isSupport = activeId === SUPPORT_ID;
+
+  // ── دسته‌های پاسخ پشتیبان در گفتگوی تیکت (خواستهٔ مالک ۸-۱۱ دور ۲۴) ──
+  // رشتهٔ پیام‌های ادمین پشت‌سرهم (پیام کاربر بینشان نباشد) = یک اعلان
+  // «شما N پیام در پنل پشتیبانی دارید» با لینک به /panel/support.
+  const ticketMessages = supportConv?.messages ?? [];
+  const replyBursts: SupportChatMessage[][] = (() => {
+    const groups: SupportChatMessage[][] = [];
+    for (const m of ticketMessages) {
+      if (m.senderRole === 'user') {
+        groups.push([]); // پیام کاربر دستهٔ قبل را می‌شکند
+        continue;
+      }
+      const last = groups[groups.length - 1];
+      if (last) last.push(m);
+      else groups.push([m]);
+    }
+    return groups.filter((g) => g.length > 0);
+  })();
+  const lastTicketReply =
+    ticketMessages.filter((m) => m.senderRole === 'admin').at(-1) ?? null;
+  // آخرین فعالیت پشتیبانی ایمچ — هر کدام از دو منبع (اعلان مستقیم / پاسخ
+  // تیکت) جدیدتر باشد، زمانِ ردیف و پیش‌نمایش لیست از همان می‌آید
+  const lastAdminMsg = supportMessages[supportMessages.length - 1] ?? null;
+  const supportLastMs = Math.max(
+    lastAdminMsg ? new Date(lastAdminMsg.createdAt).getTime() : 0,
+    lastTicketReply ? new Date(lastTicketReply.createdAt).getTime() : 0,
+  );
+  const supportPreview =
+    ticketUnread > 0
+      ? 'پاسخ تازه از پشتیبان — مشاهدهٔ گفتگو'
+      : lastTicketReply &&
+          (!lastAdminMsg ||
+            new Date(lastTicketReply.createdAt) > new Date(lastAdminMsg.createdAt))
+        ? `پشتیبان: ${lastTicketReply.text}`
+        : (lastAdminMsg?.text ?? '');
+  // آیتم‌های مکالمهٔ «پشتیبانی ایمچ» — اعلان‌های مستقیم ادمین + پیام‌های
+  // لینک‌دار پاسخ تیکت، به‌ترتیب زمان (خواستهٔ مالک ۸-۱۱ دور ۲۴)
+  const supportThreadItems: Array<
+    | { key: string; kind: 'admin'; at: string; msg: AdminInboxMessage }
+    | { key: string; kind: 'burst'; at: string; messages: SupportChatMessage[] }
+  > = (() => {
+    const items = [
+      ...supportMessages.map((m) => ({ key: `a:${m.id}`, kind: 'admin' as const, at: m.createdAt, msg: m })),
+      ...replyBursts.map((messages) => ({
+        key: `t:${messages[0].id}`,
+        kind: 'burst' as const,
+        at: messages[0].createdAt,
+        messages,
+      })),
+    ];
+    return items.sort((x, y) => new Date(x.at).getTime() - new Date(y.at).getTime());
+  })();
   // دسکتاپ: اولین مکالمه به‌صورت پیش‌فرض باز است؛ موبایل: تا انتخاب کاربر
   // هیچ مکالمه‌ای باز نمی‌شود (خواسته مالک ۸-۱۱) — واکشی پیام‌های مکالمهٔ
   // دیده‌نشده یعنی پاک شدن بی‌دلیل بج خوانده‌نشده؛ پس در موبایل رخ نمی‌دهد.
@@ -210,7 +274,7 @@ export default function PanelMessagesPage() {
     : active ?? (isDesktop && !isLoading && supportMessages.length > 0 ? SUPPORT_ID : null);
   const showingSupport = effectiveActive === SUPPORT_ID;
   const myId = active?.myId ?? null;
-  const lastSupport = supportMessages[supportMessages.length - 1];
+  // (lastSupport → lastAdminMsg در بالا — همراه پاسخ‌های تیکت محاسبه شد)
 
   const {
     messages,
@@ -336,7 +400,7 @@ export default function PanelMessagesPage() {
    */
   const listOrder = (() => {
     const time = (t: ChatThreadInfo) => new Date(t.lastMessage?.at ?? t.updatedAt).getTime() || 0;
-    const supportTime = lastSupport ? new Date(lastSupport.createdAt).getTime() : 0;
+    const supportTime = supportLastMs;
     const newer = visible.filter((t) => time(t) > supportTime);
     const older = visible.filter((t) => time(t) <= supportTime);
     return { newer, older };
@@ -467,14 +531,16 @@ export default function PanelMessagesPage() {
                     <span className="flex items-center justify-between gap-2">
                       <span className="truncate text-sm font-bold text-primary">پشتیبانی ایمچ</span>
                       <span className="shrink-0 text-[10px] text-muted-foreground">
-                        {lastSupport ? <RelativeTime date={lastSupport.createdAt} /> : ''}
+                        {supportLastMs > 0 ? (
+                          <RelativeTime date={new Date(supportLastMs).toISOString()} />
+                        ) : (
+                          ''
+                        )}
                       </span>
                     </span>
                     <span className="mt-0.5 flex items-center justify-between gap-2">
                       <span className="truncate text-xs text-muted-foreground">
-                        {ticketUnread > 0
-                          ? 'پاسخ تازه از پشتیبان — مشاهدهٔ گفتگو'
-                          : (lastSupport?.text ?? '')}
+                        {supportPreview}
                       </span>
                       {supportUnread + ticketUnread > 0 && (
                         <span className="grid size-5 shrink-0 place-items-center rounded-full bg-red-500 text-[10px] font-bold text-white">
@@ -547,34 +613,19 @@ export default function PanelMessagesPage() {
               <SupportTicketNotice count={ticketUnread} variant="strip" className="mt-2" />
 
               <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain touch-pan-y bg-secondary px-0.5 py-3 sm:px-1 sm:py-4 sm:space-y-3 sm:bg-[radial-gradient(circle_at_1px_1px,var(--border)_1px,transparent_0)] sm:[background-size:18px_18px]">
-                {supportMessages.length === 0 ? (
+                {supportThreadItems.length === 0 ? (
                   <p className="py-8 text-center text-xs leading-6 text-muted-foreground">
                     هنوز پیامی از پشتیبانی ندارید.
                   </p>
                 ) : (
-                  supportMessages.map((m) => (
-                    <div key={m.id} className="flex w-full justify-end">
-                      <div
-                        dir="auto"
-                        className={cn(
-                          'w-fit whitespace-pre-wrap break-words shadow-sm',
-                          'max-w-[85%] rounded-2xl rounded-se-md border border-border/70 bg-card px-3.5 py-2.5',
-                          'text-[13px] leading-6 sm:max-w-[75%] sm:px-4 sm:text-[13.5px] sm:leading-7',
-                          'animate-in fade-in slide-in-from-bottom-1 duration-200',
-                        )}
-                      >
-                        <p dir="auto">{m.text}</p>
-                        <p className="mt-1 flex items-center gap-1.5 text-[9px] text-muted-foreground">
-                          <span>{m.adminUsername}</span>·<span><RelativeTime date={m.createdAt} /></span>
-                        </p>
-                      </div>
-                    </div>
-                  ))
+                  supportThreadItems.map((item) =>
+                    item.kind === 'admin' ? (
+                      <AdminAnnounceBubble key={item.key} m={item.msg} />
+                    ) : (
+                      <SupportReplyNotice key={item.key} messages={item.messages} />
+                    ),
+                  )
                 )}
-
-                {/* هدایت به تیکت پشتیبانی با نوار بالای گفتگو
-                    (SupportTicketNotice) انجام می‌شود؛ این‌جا فقط پیام‌های
-                    یک‌طرفهٔ ادمین است */}
               </div>
 
               <div className="shrink-0 border-t pt-3">
@@ -731,5 +782,87 @@ function ThreadRow({
         </span>
       </button>
     </li>
+  );
+}
+
+/** حباب اعلان مستقیم ادمین (AdminMessage) در مکالمهٔ «پشتیبانی ایمچ» —
+ *  همان رندر قبلی، استخراج‌شده تا کنار SupportReplyNotice ادغام زمانی شود */
+function AdminAnnounceBubble({ m }: { m: AdminInboxMessage }) {
+  return (
+    <div className="flex w-full justify-end">
+      <div
+        dir="auto"
+        className={cn(
+          'w-fit whitespace-pre-wrap break-words shadow-sm',
+          'max-w-[85%] rounded-2xl rounded-se-md border border-border/70 bg-card px-3.5 py-2.5',
+          'text-[13px] leading-6 sm:max-w-[75%] sm:px-4 sm:text-[13.5px] sm:leading-7',
+          'animate-in fade-in slide-in-from-bottom-1 duration-200',
+        )}
+      >
+        <p dir="auto">{m.text}</p>
+        <p className="mt-1 flex items-center gap-1.5 text-[9px] text-muted-foreground">
+          <span>{m.adminUsername}</span>·<span><RelativeTime date={m.createdAt} /></span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * پیام لینک‌دارِ ماندگار پاسخ پشتیبان — خواستهٔ مالک ۸-۱۱ دور ۲۴:
+ * «هیچ پیامی داخل پشتیبانی ایمچ نیست که شامل لینک پنل پشتیبانی باشد».
+ * هر دستهٔ پاسخ پشتیبان در گفتگوی تیکت = یک پیام «شما N پیام در پنل
+ * پشتیبانی دارید» + لینک «مشاهدهٔ گفتگو با پشتیبان» → /panel/support.
+ * حلقهٔ کامل: بج هدر → لیست چت (بج روی پشتیبانی ایمچ) → همین پیام → تیکت.
+ * ماندگار است — خواندن تیکت فقط رنگ قرمز را آرام می‌کند؛ پیام در
+ * تاریخچهٔ چت می‌ماند (برخلاف کارت/نوار موقتِ شمارنده‌محور).
+ */
+function SupportReplyNotice({ messages }: { messages: SupportChatMessage[] }) {
+  const last = messages[messages.length - 1];
+  const unread = messages.some((m) => m.readAt === null);
+  const count = messages.length;
+  // پیش‌نمایش یک‌خطی آخرین پاسخ — کارت‌های تاریخی از هم قابل تشخیص شوند
+  const previewOf = (m: SupportChatMessage) =>
+    m.text.trim() ||
+    (m.kind === 'image' ? '📷 تصویر' : m.kind === 'video' ? '🎬 ویدئو' : m.kind === 'file' ? '📎 فایل' : '');
+  return (
+    <div className="flex w-full justify-end">
+      <Link
+        href="/panel/support"
+        className={cn(
+          'group block w-fit max-w-[85%] rounded-2xl rounded-se-md border px-3.5 py-2.5 shadow-sm transition-colors sm:max-w-[75%] sm:px-4',
+          'animate-in fade-in slide-in-from-bottom-1 duration-200',
+          unread
+            ? 'border-red-200 bg-red-50 hover:bg-red-100'
+            : 'border-border/70 bg-card hover:bg-secondary/60',
+        )}
+      >
+        <p
+          className={cn(
+            'text-[13px] font-bold leading-6',
+            unread ? 'text-red-700' : 'text-foreground',
+          )}
+        >
+          شما {count === 1 ? 'یک' : toFa(count)} پیام در پنل پشتیبانی دارید
+        </p>
+        {previewOf(last) && (
+          <p dir="auto" className="mt-0.5 line-clamp-1 max-w-60 text-[11px] leading-5 text-muted-foreground">
+            آخرین پاسخ: {previewOf(last)}
+          </p>
+        )}
+        <p className="mt-0.5 text-[11px] font-bold leading-5 text-primary underline underline-offset-2">
+          مشاهدهٔ گفتگو با پشتیبان
+        </p>
+        <p className="mt-1.5 flex items-center gap-1.5 text-[9px] text-muted-foreground">
+          <span>پشتیبانی ایمچ</span>
+          {last.adminUsername ? (
+            <>
+              ·<span>{last.adminUsername}</span>
+            </>
+          ) : null}
+          ·<span><RelativeTime date={last.createdAt} /></span>
+        </p>
+      </Link>
+    </div>
   );
 }
