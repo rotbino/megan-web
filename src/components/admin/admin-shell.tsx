@@ -90,7 +90,7 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
     // بعداً تیکت و بقیه هم به همین گروه اضافه می‌شوند
     title: 'پشتیبانی',
     items: [
-      { href: '/admin/support', label: 'چت‌های پشتیبانی', Icon: Headset, superOnly: false, badge: 'unreadSupportMessages' },
+      { href: '/admin/support', label: 'تیکت کاربران', Icon: Headset, superOnly: false, badge: 'unreadSupportMessages' },
       { href: '/admin/surveys', label: 'نظرسنجی‌ها', Icon: MessageSquareText, superOnly: false },
     ],
   },
@@ -156,10 +156,16 @@ function SidebarNav({ onNavigate, superAdmin }: { onNavigate?: () => void; super
     return idx === -1 ? null : idx;
   }, [isActive]);
 
-  // آکاردئون (خواستهٔ مالک): همهٔ گروه‌ها بسته؛ فقط گروه اول باز است و
-  // باز کردن هر گره بقیه را می‌بندد
-  const [openGroup, setOpenGroup] = useState<number | null>(0);
-  const effectiveOpen = activeGroupIndex ?? openGroup;
+  // آکاردئون (خواستهٔ مالک): تک‌باز — باز کردن هر گره بقیه را می‌بندد.
+  // ناوبری به داخل یک گروه، همان گروه را باز می‌کند؛ اما کلیک صریح
+  // کاربر همیشه مؤثر است (رفع باگ ۸-۱۱: روی صفحهٔ داخل یک گروه، بقیهٔ
+  // گره‌ها دیگر قفل نبودند و باز نمی‌شدند — گروه فعال openGroup را
+  // override می‌کرد و هیچ کلیکی اثر نمی‌کرد)
+  const [openGroup, setOpenGroup] = useState<number | null>(activeGroupIndex ?? 0);
+  useEffect(() => {
+    if (activeGroupIndex !== null) setOpenGroup(activeGroupIndex);
+  }, [activeGroupIndex]);
+  const effectiveOpen = openGroup;
 
   // صف‌های در انتظار — نشان قرمز آیتم‌ها (۶۰ ثانیه یک‌بار تازه می‌شود)
   const { data: queues } = useQuery({

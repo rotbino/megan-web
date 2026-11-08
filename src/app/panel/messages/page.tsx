@@ -51,6 +51,53 @@ import { cn } from '@/lib/utils';
 /** شناسه ساختگی مکالمه پشتیبانی — از id مکالمات واقعی جدا می‌ماند */
 const SUPPORT_ID = '__support__';
 
+/**
+ * اعلان پاسخ پشتیبان — خواستهٔ مالک ۸-۱۱ (دور ۲۲): «در چت هم یه پیام بیاد
+ * که نوشته باشه شما یک پیام در پنل پشتیبانی دارید و دارای یه لینک باشه».
+ * دوجا رندر می‌شود تا بدون کلیک اضافه دیده شود:
+ *  • card  — بالای لیست مخاطبان (لیست موبایل + ستون دسکتاپ)
+ *  • strip — نوار باریک زیر هدر مکالمهٔ باز (هر مکالمه + پشتیبانی ایمچ)
+ * کلیک در هر دو حالت → تیکت پشتیبانی (/panel/support).
+ */
+function SupportTicketNotice({
+  count,
+  variant,
+  className,
+}: {
+  count: number;
+  variant: 'card' | 'strip';
+  className?: string;
+}) {
+  if (count <= 0) return null;
+  return (
+    <Link
+      href="/panel/support"
+      className={cn(
+        'group flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 text-start transition-colors hover:bg-red-100',
+        variant === 'card' ? 'mt-3 px-3.5 py-2.5' : 'shrink-0 px-3 py-2',
+        className,
+      )}
+    >
+      <span
+        className={cn(
+          'grid shrink-0 place-items-center rounded-full bg-red-500 text-white',
+          variant === 'card' ? 'size-8' : 'size-7',
+        )}
+      >
+        <MessageSquare size={variant === 'card' ? 15 : 13} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-xs font-bold leading-5 text-red-700">
+          شما {toFa(count)} پیام در پنل پشتیبانی دارید
+        </span>
+        <span className="block text-[11px] font-bold leading-5 text-red-600 underline underline-offset-2 group-hover:text-red-700">
+          مشاهدهٔ گفتگو با پشتیبان
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 /** مقدار پشتیبانی در URL — از id های ۲۴کاراکتری MongoDB جدا می‌ماند */
 const SUPPORT_URL_VALUE = 'support';
 
@@ -378,6 +425,9 @@ export default function PanelMessagesPage() {
               مخاطب <span className="text-muted-foreground">({toFa(threads.length)})</span>
             </p>
           </div>
+          {/* اعلان پاسخ پشتیبان — بالای لیست تا بدون باز کردن «پشتیبانی ایمچ»
+              هم دیده شود (خواستهٔ مالک ۸-۱۱) */}
+          <SupportTicketNotice count={ticketUnread} variant="card" />
           <div className="relative mt-3">
             <Input
               value={q}
@@ -497,6 +547,9 @@ export default function PanelMessagesPage() {
                 </div>
               </div>
 
+              {/* اعلان پاسخ پشتیبان — نوار بالای گفتگو (خواستهٔ مالک ۸-۱۱) */}
+              <SupportTicketNotice count={ticketUnread} variant="strip" className="mt-2" />
+
               <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain touch-pan-y bg-secondary px-0.5 py-3 sm:px-1 sm:py-4 sm:space-y-3 sm:bg-[radial-gradient(circle_at_1px_1px,var(--border)_1px,transparent_0)] sm:[background-size:18px_18px]">
                 {supportMessages.length === 0 ? (
                   <p className="py-8 text-center text-xs leading-6 text-muted-foreground">
@@ -523,28 +576,9 @@ export default function PanelMessagesPage() {
                   ))
                 )}
 
-                {/* پاسخ خوانده‌نشدهٔ گفتگوی پشتیبانی — اعلان لینک‌دار داخل چت
-                    (خواسته مالک ۸-۱۱): کلیک → صفحهٔ تیکت پشتیبانی */}
-                {ticketUnread > 0 && (
-                  <div className="flex w-full justify-center">
-                    <Link
-                      href="/panel/support"
-                      className="flex w-full max-w-[92%] items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-start transition-colors hover:bg-red-100"
-                    >
-                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-red-500 text-white">
-                        <MessageSquare size={15} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-xs font-bold text-red-700">
-                          شما {toFa(ticketUnread)} پیام خوانده‌نشده در پنل پشتیبانی دارید
-                        </span>
-                        <span className="mt-0.5 block text-[11px] font-bold text-red-600 underline underline-offset-2">
-                          مشاهدهٔ گفتگو با پشتیبان
-                        </span>
-                      </span>
-                    </Link>
-                  </div>
-                )}
+                {/* هدایت به تیکت پشتیبانی با نوار بالای گفتگو
+                    (SupportTicketNotice) انجام می‌شود؛ این‌جا فقط پیام‌های
+                    یک‌طرفهٔ ادمین است */}
               </div>
 
               <div className="shrink-0 border-t pt-3">
@@ -593,6 +627,9 @@ export default function PanelMessagesPage() {
                   )}
                 </div>
               </div>
+
+              {/* اعلان پاسخ پشتیبان — نوار بالای مکالمهٔ باز (خواستهٔ مالک ۸-۱۱) */}
+              <SupportTicketNotice count={ticketUnread} variant="strip" className="mt-2" />
 
               {/* پیام‌ها — پیجینگ معکوس؛ ورود: توقف روی اولین پیام خوانده‌نشده
                   (خواسته مالک ۸-۱۱)، بدون پیام جدید: پرش به آخرین پیام */}

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * چت‌های پشتیبانی (خواستهٔ مالک ۸-۱۱ دور ۲۱) — نمای پاسخ‌دهندهٔ ادمین.
+ * تیکت کاربران (خواستهٔ مالک ۸-۱۱ دور ۲۱) — نمای پاسخ‌دهندهٔ ادمین.
  *
  * تفاوت با «چت‌های کاربران» (admin/chats): آنجا ادمین تماشاگر است، اینجا
  * گیرندهٔ واقعی و پاسخ‌دهنده — باز کردن گفتگو پیام‌های کاربر را خوانده‌شده
@@ -112,7 +112,7 @@ function AdminSupportInner() {
             <Headset size={18} />
           </span>
           <div>
-            <h1 className="text-base font-extrabold">چت‌های پشتیبانی</h1>
+            <h1 className="text-base font-extrabold">تیکت کاربران</h1>
             <p className="text-[11px] text-muted-foreground">
               {data ? `${toFa(data.total)} گفتگو — پاسخ به پیام‌های کاربران` : 'گفتگوی کاربران با پشتیبانی'}
             </p>

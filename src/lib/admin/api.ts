@@ -769,7 +769,7 @@ export interface AdminQueues {
   pendingPackages: number;
   /** نظرات در انتظار تحقیق و تأیید (قانون انتشار مالک ۲-۱۱) */
   pendingReviews: number;
-  /** پیام‌های پشتیبانی خوانده‌نشده — بج منوی «چت‌های پشتیبانی» */
+  /** پیام‌های پشتیبانی خوانده‌نشده — بج منوی «تیکت کاربران» */
   unreadSupportMessages: number;
 }
 
@@ -1197,7 +1197,7 @@ export async function fetchAdminChatStats(): Promise<AdminChatStats> {
   return adminFetch<AdminChatStats>('/admin/chats/getChatStats', {});
 }
 
-// ─── چت‌های پشتیبانی (پاسخ‌دهی) ────────────────────────────────────────────────
+// ─── تیکت کاربران (پاسخ‌دهی) ────────────────────────────────────────────────
 
 /** ردیف گفتگوی پشتیبانی (ادمین) — عین AdminSupportThreadRow بک‌اند */
 export interface AdminSupportThreadRow {
