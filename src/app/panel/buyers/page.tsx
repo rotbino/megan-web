@@ -23,7 +23,8 @@
  *    داده‌ها مطابق‌ترین و به‌صرفه‌ترین خریداران را می‌سازد
  */
 
-import { useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   CalendarClock,
   ChevronLeft,
@@ -65,10 +66,23 @@ type PanelBuyersTab = 'requests' | 'periodic' | 'sent';
 const REQ_BATCH = 10;
 
 export default function PanelBuyersPage() {
+  return (
+    <Suspense fallback={<div className="h-40 animate-pulse rounded-lg border bg-card" />}>
+      <PanelBuyersInner />
+    </Suspense>
+  );
+}
+
+function PanelBuyersInner() {
+  // تب از URL می‌آید (?tab=requests|periodic|sent — دور ۲۸): کلیک روی سکشن‌های
+  // «درخواست‌های خرید فوری/دوره‌ای» صفحهٔ اول، تبِ متناسب را باز می‌کند
+  const tabParam = useSearchParams().get('tab');
+  const initialTab: PanelBuyersTab =
+    tabParam === 'periodic' ? 'periodic' : tabParam === 'sent' ? 'sent' : 'requests';
   const { data: tree } = useCategoryTree();
   const { data: provinces = [] } = useProvinces();
 
-  const [tab, setTab] = useState<PanelBuyersTab>('requests');
+  const [tab, setTab] = useState<PanelBuyersTab>(initialTab);
   const [q, setQ] = useState('');
   const [rootCat, setRootCat] = useState('all');
   const [provinceId, setProvinceId] = useState<number | null>(null);

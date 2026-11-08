@@ -59,3 +59,6 @@ server.log
 megan-back/
 .local-mongo-data/
 .zscripts/
+
+# خروجی ابزارهای عامل (Read tool)
+tool-results/

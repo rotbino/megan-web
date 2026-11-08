@@ -19,7 +19,7 @@ import { useAuth } from '@/lib/mock/auth';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-function LoginGate({ onOpen }: { onOpen: () => void }) {
+function LoginGate({ onOpen, buyersLock }: { onOpen: () => void; buyersLock?: boolean }) {
   return (
     <div className="grid min-h-[70vh] place-items-center p-6">
       <div className="w-full max-w-sm rounded-lg border bg-card p-8 text-center shadow-sm">
@@ -28,7 +28,9 @@ function LoginGate({ onOpen }: { onOpen: () => void }) {
         </span>
         <h1 className="mt-4 text-lg font-extrabold">ورود به پنل ایمچ</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          برای مدیریت فروشگاه، ثبت محصول و پیگیری خریداران، با شماره موبایل خود وارد شوید.
+          {buyersLock
+            ? 'برای دیدن خریداران و درخواست‌های خرید فوری و دوره‌ای، با شماره موبایل خود وارد شوید یا ثبت‌نام کنید.'
+            : 'برای مدیریت فروشگاه، ثبت محصول و پیگیری خریداران، با شماره موبایل خود وارد شوید.'}
         </p>
         <Button className="mt-5 w-full rounded-md" onClick={onOpen}>
           ورود / ثبت نام
@@ -100,6 +102,14 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
     const t = setTimeout(() => setHydrated(true), 120);
     return () => clearTimeout(t);
   }, []);
+
+  // گیت صفحهٔ «خریداران» (خواستهٔ مالک ۸-۱۱ دور ۲۸): مهمان که از سکشن‌های
+  // «درخواست‌های خرید فوری/دوره‌ای» صفحهٔ اول به اینجا می‌رسد، فرم ورود
+  // موبایل خودکار باز می‌شود تا مجبور به ثبت‌نام/ورود شود؛ اگر بستش کرد،
+  // دروازهٔ ورود با دکمهٔ «ورود / ثبت نام» سرِ جایش است
+  useEffect(() => {
+    if (hydrated && !user && pathname === '/panel/buyers') requireAuth('login');
+  }, [hydrated, user, pathname, requireAuth]);
 
   return (
     // پوسته اپ (خواسته مالک ۸-۱۱): در دسکتاپ هیچ‌چیز — نه هدر و نه سایدبار —
@@ -210,7 +220,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
               children
             )
           ) : (
-            <LoginGate onOpen={() => requireAuth('login')} />
+            <LoginGate onOpen={() => requireAuth('login')} buyersLock={pathname === '/panel/buyers'} />
           )
         ) : (
           <div className="grid min-h-[60vh] place-items-center" aria-hidden>

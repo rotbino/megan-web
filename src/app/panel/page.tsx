@@ -125,7 +125,7 @@ export default function PanelDashboard() {
         // ارسال شده» همان صفحهٔ خریداران است
         { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
         ...(!active ? [{ href: '/panel/pricing', label: 'ارتقا عضویت', icon: Medal }] : []),
-        { href: '/panel/saved', label: 'سرنخ‌های فروش', icon: Bookmark },
+        { href: '/panel/sell-leads', label: 'سرنخ‌های فروش', icon: Bookmark },
       ];
 
   return (

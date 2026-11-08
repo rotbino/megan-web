@@ -8,7 +8,7 @@ import { ensureChatSocket, onChatEvent } from '@/lib/api/socket';
 import { useBaseData } from '@/lib/base-data';
 import * as api from './api';
 import type { Paged, ChatFileMeta, ChatMessage } from './api';
-import type { BuyRequest, FollowFolder, FollowItem, FollowPriority, FollowStatus, FollowTargetType, Product, ProductQuery } from '@/lib/types';
+import type { BuyRequest, FollowFolder, FollowFolderKind, FollowItem, FollowPriority, FollowStatus, FollowTargetType, Product, ProductQuery } from '@/lib/types';
 
 const qk = {
   products: (q: ProductQuery) => ['products', q] as const,
@@ -170,9 +170,14 @@ export function useMyProducts(enabled = true) {
 
 // ─── پیگیری‌ها — CRM کوچک ایمچ ────────────────────────────────────────
 
-/** پرونده‌های پیگیری من — تعداد و خلاصه قیف هر پرونده */
-export function useFollowFolders() {
-  return useQuery({ queryKey: ['follow-folders'], queryFn: api.getFollowFolders, staleTime: 15_000 });
+/** پرونده‌های پیگیری من — تعداد و خلاصه قیف هر پرونده؛ kind: فقط همان
+ *  نوع سرنخ (خرید/فروش — مستقل‌سازی دور ۲۸؛ کلید کوئری شامل kind است) */
+export function useFollowFolders(kind?: FollowFolderKind) {
+  return useQuery({
+    queryKey: ['follow-folders', kind ?? 'all'],
+    queryFn: () => api.getFollowFolders(kind),
+    staleTime: 15_000,
+  });
 }
 
 /** موارد یک پرونده — با snapshot درخواست خرید/آگهی فروش */
@@ -185,12 +190,12 @@ export function useFollowFolderItems(folderId: string) {
   });
 }
 
-/** همهٔ موارد پیگیری از همهٔ پرونده‌ها — تک‌صفحهٔ CRM
- *  (prefix مشترک ['follow-items'] → با هر تغییر باطل می‌شود) */
-export function useAllFollowItems() {
+/** همهٔ موارد پیگیری از همهٔ پرونده‌ها — تک‌صفحهٔ CRM؛ targetType: فقط همان
+ *  نوع سرنخ (دور ۲۸). prefix مشترک ['follow-items'] → با هر تغییر باطل می‌شود */
+export function useAllFollowItems(targetType?: FollowTargetType) {
   return useQuery({
-    queryKey: ['follow-items', 'all'],
-    queryFn: api.getAllFollowItems,
+    queryKey: ['follow-items', 'all', targetType ?? 'all'],
+    queryFn: () => api.getAllFollowItems(targetType),
     staleTime: 15_000,
   });
 }
@@ -539,7 +544,8 @@ export function useMarkSupportConversationRead() {
 export function useCreateFollowFolder() {
   const invalidate = useInvalidateFollows();
   return useMutation({
-    mutationFn: (input: { name: string }) => api.createFollowFolder(input.name),
+    mutationFn: (input: { name: string; kind?: FollowFolderKind }) =>
+      api.createFollowFolder(input.name, input.kind),
     onSuccess: invalidate,
   });
 }

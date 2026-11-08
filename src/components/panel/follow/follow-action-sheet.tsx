@@ -31,7 +31,7 @@ import {
   useSetFollowStatus,
 } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
-import { FOLLOW_PRIORITY_MAP, FOLLOW_STATUS_MAP, FOLLOW_TARGET_LABEL, followPriorityOf } from '@/lib/follow';
+import { FOLLOW_PRIORITY_MAP, FOLLOW_STATUS_MAP, FOLLOW_TARGET_LABEL, followKindOfTarget, followPriorityOf } from '@/lib/follow';
 import { toFa } from '@/lib/format';
 import type { BuyRequest, FollowItem, FollowStatus, Product } from '@/lib/types';
 import type { FollowActionMode } from './follow-item-row';
@@ -63,7 +63,9 @@ export function FollowActionSheet({
   onClose: () => void;
 }) {
   const { toast } = useToast();
-  const { data: folders } = useFollowFolders();
+  // پرونده‌های فقط همان نوع سرنخ (دور ۲۸ — خرید/فروش مستقل)
+  const leadKind = followKindOfTarget(item.targetType);
+  const { data: folders } = useFollowFolders(leadKind);
   const [mode, setMode] = useState<FollowActionMode>(initialMode);
   const [creatingNew, setCreatingNew] = useState(false);
   const [newName, setNewName] = useState('');
@@ -154,7 +156,7 @@ export function FollowActionSheet({
     const name = newName.trim();
     if (!name || createFolder.isPending) return;
     try {
-      const folder = await createFolder.mutateAsync({ name });
+      const folder = await createFolder.mutateAsync({ name, kind: leadKind });
       await moveM.mutateAsync({ itemId: item.id, folderId: folder.id });
       toast({ description: `به پروندهٔ «${folder.name}» منتقل شد.` });
       onClose();

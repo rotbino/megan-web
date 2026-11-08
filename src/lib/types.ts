@@ -232,6 +232,11 @@ export interface PanelProfile {
 /** هدف پیگیری — درخواست خرید (دید فروشنده) یا آگهی فروش (دید خریدار) */
 export type FollowTargetType = 'buy_request' | 'product';
 
+/** نوع پرونده/سرنخ — مستقل‌سازی کامل خرید/فروش (خواستهٔ مالک ۸-۱۱ دور ۲۸):
+ *  buy: سرنخ خرید (آگهی فروشِ ذخیره‌شده، دید خریدار)
+ *  sell: سرنخ فروش (درخواست خریدِ ذخیره‌شده، دید فروشنده) */
+export type FollowFolderKind = 'buy' | 'sell';
+
 /** قیف پیگیری — از ذخیره تا نتیجه */
 export type FollowStatus =
   | 'reviewing' // در بررسی

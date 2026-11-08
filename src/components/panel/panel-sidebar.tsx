@@ -54,18 +54,18 @@ export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel/buyers', label: 'خریداران', icon: Users },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
   { href: '/panel/pricing', label: 'ارتقا عضویت', icon: Medal },
-  { href: '/panel/saved', label: 'سرنخ‌های فروش', icon: Bookmark },
+  { href: '/panel/sell-leads', label: 'سرنخ‌های فروش', icon: Bookmark },
 ];
 
-/** منوی خریدار — ۶ آیتم (خواستهٔ مالک ۸-۱۱): «دفتر خرید من» حذف شد — به‌عنوان
- *  تب «درخواست‌های خرید دوره‌ای» داخل «درخواست‌های خرید من» زندگی می‌کند و
- *  منو خلوت‌تر شد؛ عنوان همان هم گویاتر شد. دور ۱۶: «آیمچ من» اول از همه */
+/** منوی خریدار — ۵ آیتم (خواستهٔ مالک ۸-۱۱ دور ۲۸): «احراز هویت» حذف شد —
+ *  لینکش روی صفحهٔ پروفایل (آیمچ من → لینک‌های حساب) هست و منو خلوت‌تر شد؛
+ *  «دفتر خرید من» هم تب «درخواست‌های خرید دوره‌ای» داخل «درخواست‌های خرید من»
+ *  است (۸-۱۱). دور ۱۶: «آیمچ من» اول از همه */
 export const BUYER_NAV: PanelNavItem[] = [
   { href: '/panel', label: 'آیمچ من', icon: UserRound, exact: true },
   { href: '/panel/my-requests', label: 'درخواست های خرید من', icon: FileText },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
   { href: '/panel/suggested-sellers', label: 'فروشندگان پیشنهادی', icon: Sparkles },
-  { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
   { href: '/panel/saved', label: 'سرنخ‌های خرید', icon: Bookmark },
 ];
 

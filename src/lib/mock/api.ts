@@ -616,6 +616,7 @@ import { PRODUCT_CAPACITY } from './data';
 import { uploadImage, deleteImage } from '@/lib/api/client';
 import type {
   FollowFolder,
+  FollowFolderKind,
   FollowItem,
   FollowPriority,
   FollowStatus,
@@ -913,13 +914,14 @@ export async function ladderProduct(input: {
 // ذخیره می‌کند؛ هر مورد وضعیت قیف تماس + یادداشت‌های زمان‌دار دارد.
 // جریان ذخیره دومرحله‌ای: ۱) انتخاب/ساخت پرونده ۲) وضعیت + یادداشت اختیاری.
 
-/** پرونده‌های من با تعداد و خلاصه قیف وضعیت‌ها */
-export async function getFollowFolders(): Promise<FollowFolder[]> {
-  return apiFetch<FollowFolder[]>('/follow/getFolders', {});
+/** پرونده‌های من با تعداد و خلاصه قیف وضعیت‌ها — kind اختیاری: فقط همان
+ *  نوع سرنخ (خرید/فروش — مستقل‌سازی دور ۲۸؛ غیب = همه) */
+export async function getFollowFolders(kind?: FollowFolderKind): Promise<FollowFolder[]> {
+  return apiFetch<FollowFolder[]>('/follow/getFolders', kind ? { kind } : {});
 }
 
-export async function createFollowFolder(name: string): Promise<FollowFolder> {
-  return apiFetch<FollowFolder>('/follow/createFolder', { name });
+export async function createFollowFolder(name: string, kind?: FollowFolderKind): Promise<FollowFolder> {
+  return apiFetch<FollowFolder>('/follow/createFolder', kind ? { name, kind } : { name });
 }
 
 export async function renameFollowFolder(folderId: string, name: string): Promise<void> {
@@ -942,9 +944,10 @@ export async function getFollowFolderItems(folderId: string): Promise<FollowItem
 }
 
 /** همهٔ موارد پیگیری از همهٔ پرونده‌ها — تک‌صفحهٔ CRM
- *  (جستجو و فیلتر پرونده/وضعیت/شهر سمت فرانت روی همین لیست) */
-export async function getAllFollowItems(): Promise<FollowItem[]> {
-  return apiFetch<FollowItem[]>('/follow/getAllItems', {});
+ *  (جستجو و فیلتر پرونده/وضعیت/شهر سمت فرانت روی همین لیست).
+ *  targetType اختیاری: فقط همان نوع سرنخ (دور ۲۸؛ غیب = همه) */
+export async function getAllFollowItems(targetType?: FollowTargetType): Promise<FollowItem[]> {
+  return apiFetch<FollowItem[]>('/follow/getAllItems', targetType ? { targetType } : {});
 }
 
 /** ذخیره/به‌روزرسانی (گام ۲ جریان ذخیره) — اگر از قبل ذخیره باشد،

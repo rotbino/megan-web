@@ -3,7 +3,7 @@ import { Footer } from '@/components/layout/footer';
 import { Hero } from '@/components/home/hero';
 import { CategoryCards } from '@/components/home/category-cards';
 import { LatestProducts } from '@/components/home/latest-products';
-import { LatestBuyRequests } from '@/components/home/latest-buy-requests';
+import { LatestBuyRequests, LatestPeriodicBuyRequests } from '@/components/home/latest-buy-requests';
 import { RfqForm } from '@/components/home/rfq-form';
 import { RegisterBanner } from '@/components/home/register-banner';
 import { SeoCards } from '@/components/home/seo-cards';
@@ -23,6 +23,7 @@ export default function HomePage() {
         <CategoryCards />
         <LatestProducts />
         <LatestBuyRequests />
+        <LatestPeriodicBuyRequests />
         <div id="rfq" className="scroll-mt-20 mt-6">
           <RfqForm />
         </div>

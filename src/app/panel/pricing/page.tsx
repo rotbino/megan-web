@@ -5,7 +5,9 @@
  *  • دارندهٔ بستهٔ فعال: بستهٔ خریداری‌شده دیگر بین کارت‌ها گم نمی‌شود —
  *    فقط کارت بزرگ «بستهٔ فعلی شما» دیده می‌شود (دونات روزهای باقی‌مانده
  *    + امکانات) و زیرش آکاردئون جمع‌شوندهٔ «خرید بسته رزرو» قرار دارد که
- *    با باز شدنش گرید بسته‌ها برای خرید رزرو ظاهر می‌شود.
+ *    با باز شدنش گرید بسته‌ها برای خرید رزرو ظاهر می‌شود؛ بنر کمپین هم
+ *    (مثل «تخفیف خوش آمد گویی») زیر همین آکاردئون است — دارندهٔ بسته بالای
+ *    صفحه هیچ محتوای تبلیغاتی نمی‌بیند (دور ۲۸).
  *  • بدون بسته: همان گرید کمپین‌محور (بازطراحی ۳۱-۱۰) — رایگان + پولی‌ها.
  *  • پرداخت کارت به کارت + فیش → تأیید ادمین؛ خرید در حین بسته فعال =
  *    رزرو با امتداد از انقضای فعلی (مالکان فعلی محروم نمی‌شوند).
@@ -362,16 +364,22 @@ function ActivePackageCard({ pkg, plan }: { pkg: MyPackage; plan?: MembershipPla
 }
 
 /** آکاردئون «خرید بسته رزرو» — تنها مسیر خریدِ دارندهٔ بستهٔ فعال (خواستهٔ مالک ۸-۱۱):
- *  جمع‌شده تا صفحه خلوت بماند؛ با باز شدن، گرید بسته‌ها برای خرید رزرو می‌آید. */
+ *  جمع‌شده تا صفحه خلوت بماند؛ با باز شدن، گرید بسته‌ها برای خرید رزرو می‌آید.
+ *  دور ۲۸ (خواستهٔ مالک ۸-۱۱): بنر کمپین (مثل «تخفیف خوش آمد گویی») هم
+ *  زیر همین اسلایدر پنهان‌شونده می‌نشیند — دارندهٔ بسته دیگر بالای صفحه
+ *  محتوای تبلیغاتی نمی‌بیند. */
 function ReserveSection({
   plans,
   plansLoading,
   currentType,
+  campaign,
   onBuy,
 }: {
   plans: MembershipPlan[];
   plansLoading: boolean;
   currentType: number;
+  /** بنر کمپین فعال — برای دارندهٔ بسته فقط داخل همین آکاردئون دیده می‌شود */
+  campaign: SalesCampaignInfo | null;
   onBuy: (p: MembershipPlan) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -411,6 +419,13 @@ function ReserveSection({
       >
         <div className="overflow-hidden">
           <div className="border-t p-4 sm:p-5">
+            {/* بنر کمپین — زیر همان اسلایدر (دور ۲۸): خرید رزرو هم از تخفیف کمپین
+                بهره می‌برد؛ دارندهٔ بسته فقط همین‌جا آن را می‌بیند */}
+            {campaign && campaign.discountPercent > 0 && (
+              <div className="mb-4">
+                <CampaignBanner campaign={campaign} />
+              </div>
+            )}
             <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-800">
               خرید شما به‌عنوان <b>رزرو</b> ثبت می‌شود؛ پس از تأیید ادمین، اعتبار آن به انتهای بستهٔ فعلی
               شما اضافه می‌شود — هیچ روزی هدر نمی‌رود.
@@ -499,8 +514,11 @@ export default function PricingPage() {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-5">
-      {/* بنر کمپین فعال — بالای بسته‌ها (خواسته مالک ۳۱-۱۰)؛ روی خرید رزرو هم اعمال می‌شود */}
-      {campaign && campaign.discountPercent > 0 && <CampaignBanner campaign={campaign} />}
+      {/* بنر کمپین فقط برای بی‌بسته‌ها بالای صفحه است؛ دارندهٔ بستهٔ فعال آن را
+          زیر آکاردئون «خرید بسته رزرو» می‌بیند (خواستهٔ مالک ۸-۱۱ دور ۲۸) */}
+      {campaign && campaign.discountPercent > 0 && !myPkgLoading && !myPackage?.isActive && (
+        <CampaignBanner campaign={campaign} />
+      )}
 
       {myPkgLoading ? (
         /* اسکلت تا روشن شدن وضعیت بسته — بدون فلاش گرید فروش برای دارندهٔ بسته */
@@ -516,6 +534,7 @@ export default function PricingPage() {
             plans={plans}
             plansLoading={plansLoading}
             currentType={myPackage.pakageType}
+            campaign={campaign}
             onBuy={setBuying}
           />
         </>

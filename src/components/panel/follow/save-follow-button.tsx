@@ -47,7 +47,7 @@ import {
   useUpsertFollow,
 } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
-import { FOLLOW_STATUSES, FOLLOW_TARGET_LABEL } from '@/lib/follow';
+import { FOLLOW_STATUSES, FOLLOW_TARGET_LABEL, followKindOfTarget } from '@/lib/follow';
 import { cn } from '@/lib/utils';
 import { toFa } from '@/lib/format';
 import type { FollowItem, FollowPriority, FollowStatus, FollowTargetType } from '@/lib/types';
@@ -185,9 +185,11 @@ function SaveFollowSheet({
   onClose: () => void;
 }) {
   const { toast } = useToast();
-  const { data: folders, isLoading: foldersLoading } = useFollowFolders();
+  // پرونده‌های فقط همان نوع سرنخ (دور ۲۸ — خرید/فروش مستقل)
+  const leadKind = followKindOfTarget(targetType);
+  const { data: folders, isLoading: foldersLoading } = useFollowFolders(leadKind);
   // ادبیات سرنخ (خواسته مالک ۸-۱۱) — عنوان شیت: ایجاد/مدیریت سرنخ فروش یا خرید
-  const leadKind = targetType === 'buy_request' ? 'فروش' : 'خرید';
+  const leadKindLabel = targetType === 'buy_request' ? 'فروش' : 'خرید';
   const { data: state } = useIsFollowing(targetType, targetId);
   const item: FollowItem | null = useMemo(() => state?.item ?? null, [state]);
 
@@ -225,7 +227,7 @@ function SaveFollowSheet({
     const name = newName.trim();
     if (!name || createFolder.isPending) return;
     try {
-      const folder = await createFolder.mutateAsync({ name });
+      const folder = await createFolder.mutateAsync({ name, kind: leadKind });
       setFolderId(folder.id);
       setNewName('');
       setExplicitCreate(null);
@@ -597,12 +599,12 @@ function SaveFollowSheet({
 
   const title =
     mode === 'folder'
-      ? `ایجاد سرنخ ${leadKind}`
+      ? `ایجاد سرنخ ${leadKindLabel}`
       : mode === 'status'
         ? 'وضعیت سرنخ'
         : mode === 'move'
           ? 'انتقال به پروندهٔ دیگر'
-          : `مدیریت سرنخ ${leadKind}`;
+          : `مدیریت سرنخ ${leadKindLabel}`;
 
   return (
     <>

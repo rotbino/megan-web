@@ -4,7 +4,7 @@
  * برای هر دو طرف بازار: فروشنده (درخواست‌های خرید) و خریدار (آگهی‌های فروش).
  */
 
-import type { FollowPriority, FollowStatus, FollowTargetType } from '@/lib/types';
+import type { FollowFolderKind, FollowPriority, FollowStatus, FollowTargetType } from '@/lib/types';
 
 export interface FollowStatusMeta {
   key: FollowStatus;
@@ -146,6 +146,27 @@ export function followDueLabel(nextFollowAt: string | null | undefined): string 
 export const FOLLOW_TARGET_LABEL: Record<FollowTargetType, string> = {
   buy_request: 'درخواست خرید',
   product: 'آگهی فروش',
+};
+
+/** ─── مستقل‌سازی سرنخ خرید/فروش (خواستهٔ مالک ۸-۱۱ دور ۲۸) ─────
+ *  دو نوع سرنخ کاملاً جدا از هم زندگی می‌کنند — صفحات، پرونده‌ها و همه‌چیز.
+ *  مثلاً کارخانه‌ای رب می‌فروشد (سرنخ فروش از درخواست‌های خرید) و گوجه
+ *  می‌خرد (سرنخ خرید از آگهی‌های فروش). نوع (FollowFolderKind) در types است. */
+
+/** نوع سرنخ متناظر هر نوع هدف — آگهی (product) → خرید، درخواست خرید → فروش */
+export function followKindOfTarget(targetType: FollowTargetType): FollowFolderKind {
+  return targetType === 'buy_request' ? 'sell' : 'buy';
+}
+
+/** نوع هدف متناظر هر نوع سرنخ — برعکسِ بالا */
+export function followTargetOfKind(kind: FollowFolderKind): FollowTargetType {
+  return kind === 'sell' ? 'buy_request' : 'product';
+}
+
+/** برچسب فارسی نوع سرنخ */
+export const FOLLOW_KIND_LABEL: Record<FollowFolderKind, string> = {
+  buy: 'خرید',
+  sell: 'فروش',
 };
 
 /** کلید یکتای هدف برای نقشه‌ی «چه چیزهایی ذخیره شده» */
