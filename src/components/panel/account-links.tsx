@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/mock/auth';
 import { useToast } from '@/hooks/use-toast';
+import { useUnreadMessagesCount } from '@/lib/mock/hooks';
+import { UnreadBadge } from '@/components/shared/unread-badge';
 import { PanelCard } from '@/components/panel/panel-parts';
 
 interface LinkItem {
@@ -40,8 +42,13 @@ const ACCOUNT_LINKS: LinkItem[] = [
 ];
 
 export function AccountLinks({ className }: { className?: string }) {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { toast } = useToast();
+
+  // بج قرمز «پشتیبانی» — پاسخ‌های خوانده‌نشدهٔ گفتگوی پشتیبانی (خواسته مالک ۸-۱۱):
+  // polling ۳۰s + push WS؛ با باز کردن صفحهٔ پشتیبانی صفر می‌شود.
+  const { data: unread } = useUnreadMessagesCount(Boolean(user));
+  const supportUnread = unread?.ticket ?? 0;
 
   return (
     <PanelCard className={className}>
@@ -56,6 +63,12 @@ export function AccountLinks({ className }: { className?: string }) {
             >
               <Icon size={17} className="shrink-0 text-muted-foreground/70" />
               <span className="flex-1">{label}</span>
+              {label === 'پشتیبانی' && (
+                <UnreadBadge
+                  count={supportUnread}
+                  className="static ms-1 h-5 min-w-5 border-0 text-[11px]"
+                />
+              )}
               <ChevronLeft size={15} className="shrink-0 text-muted-foreground/40" />
             </Link>
           ) : (

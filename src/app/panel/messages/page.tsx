@@ -38,6 +38,7 @@ import {
   useMarkAdminMessagesRead,
   useMarkThreadRead,
   useSendChatMessage,
+  useUnreadMessagesCount,
   useUploadChatFile,
 } from '@/lib/mock/hooks';
 import type { ChatFileMeta, ChatMessage, ChatThreadInfo } from '@/lib/mock/api';
@@ -82,6 +83,10 @@ export default function PanelMessagesPage() {
   const { toast } = useToast();
   const { data: conversations, isLoading } = useConversations();
   const { data: adminInbox } = useAdminMessages();
+  // بج و پیام لینک‌دار «پشتیبانی» — پاسخ‌های خوانده‌نشدهٔ گفتگوی پشتیبانی
+  // (خواسته مالک ۸-۱۱): بج قرمز منو + اعلان داخل چت با لینک به /panel/support
+  const { data: unreadCounts } = useUnreadMessagesCount(true);
+  const ticketUnread = unreadCounts?.ticket ?? 0;
   const markAdminRead = useMarkAdminMessagesRead();
   const markRead = useMarkThreadRead();
 
@@ -421,11 +426,13 @@ export default function PanelMessagesPage() {
                     </span>
                     <span className="mt-0.5 flex items-center justify-between gap-2">
                       <span className="truncate text-xs text-muted-foreground">
-                        {lastSupport?.text ?? ''}
+                        {ticketUnread > 0
+                          ? 'پاسخ تازه از پشتیبان — مشاهدهٔ گفتگو'
+                          : (lastSupport?.text ?? '')}
                       </span>
-                      {supportUnread > 0 && (
+                      {supportUnread + ticketUnread > 0 && (
                         <span className="grid size-5 shrink-0 place-items-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-                          {toFa(supportUnread)}
+                          {toFa(supportUnread + ticketUnread)}
                         </span>
                       )}
                     </span>
@@ -514,6 +521,29 @@ export default function PanelMessagesPage() {
                       </div>
                     </div>
                   ))
+                )}
+
+                {/* پاسخ خوانده‌نشدهٔ گفتگوی پشتیبانی — اعلان لینک‌دار داخل چت
+                    (خواسته مالک ۸-۱۱): کلیک → صفحهٔ تیکت پشتیبانی */}
+                {ticketUnread > 0 && (
+                  <div className="flex w-full justify-center">
+                    <Link
+                      href="/panel/support"
+                      className="flex w-full max-w-[92%] items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-start transition-colors hover:bg-red-100"
+                    >
+                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-red-500 text-white">
+                        <MessageSquare size={15} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-xs font-bold text-red-700">
+                          شما {toFa(ticketUnread)} پیام خوانده‌نشده در پنل پشتیبانی دارید
+                        </span>
+                        <span className="mt-0.5 block text-[11px] font-bold text-red-600 underline underline-offset-2">
+                          مشاهدهٔ گفتگو با پشتیبان
+                        </span>
+                      </span>
+                    </Link>
+                  </div>
                 )}
               </div>
 

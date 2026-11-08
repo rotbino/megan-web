@@ -1236,9 +1236,24 @@ export interface AdminSupportMessage {
   id: string;
   senderRole: 'user' | 'admin';
   adminUsername: string | null;
+  /** متن یا کپشن — با پیوست می‌تواند خالی باشد (خواسته مالک ۸-۱۱) */
   text: string;
+  /** نوع پیام — متن | تصویر | ویدئو | فایل */
+  kind: 'text' | 'image' | 'video' | 'file';
+  /** فایل پیوست — null برای پیام متنی */
+  file: { url: string; key: string; name: string; size: number; mime: string } | null;
   readAt: string | null;
   createdAt: string;
+}
+
+/** متادیتای فایل آپلودشده — خروجی آپلود ادمین */
+export interface AdminSupportFileMeta {
+  url: string;
+  key: string;
+  name: string;
+  size: number;
+  mime: string;
+  kind: 'image' | 'video' | 'file';
 }
 
 export interface AdminSupportThreadDetail {
@@ -1272,9 +1287,48 @@ export async function fetchAdminSupportMessages(userId: string): Promise<AdminSu
   return adminFetch<AdminSupportThreadDetail>('/admin/support/getThreadMessages', { userId });
 }
 
-/** پاسخ پشتیبان به کاربر */
-export async function sendAdminSupportMessage(userId: string, text: string): Promise<AdminSupportMessage> {
-  return adminFetch<AdminSupportMessage>('/admin/support/sendMessage', { userId, text });
+/** پاسخ پشتیبان به کاربر — متن، یا فایل + کپشن (خواستهٔ مالک ۸-۱۱) */
+export async function sendAdminSupportMessage(
+  userId: string,
+  text: string,
+  file?: AdminSupportFileMeta | null,
+): Promise<AdminSupportMessage> {
+  return adminFetch<AdminSupportMessage>('/admin/support/sendMessage', {
+    userId,
+    text,
+    ...(file
+      ? {
+          kind: file.kind,
+          fileUrl: file.url,
+          fileKey: file.key,
+          fileName: file.name,
+          fileSize: file.size,
+          fileMime: file.mime,
+        }
+      : {}),
+  });
+}
+
+/** آپلود پیوست پاسخ پشتیبان — تصویر/ویدئو/سند تا ۵MB */
+export async function uploadAdminSupportFile(file: File): Promise<AdminSupportFileMeta> {
+  const token = getAdminToken();
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${apiBase()}/admin/support/uploadFile`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  const json = (await res.json().catch(() => null)) as
+    | { status: true; data: AdminSupportFileMeta; message?: string }
+    | { status: false; message: string; code?: string }
+    | null;
+  if (!json) throw new ApiError('آپلود ناموفق بود.', res.status, 'NETWORK');
+  if (json.status === false) {
+    if (res.status === 401) clearAdminToken();
+    throw new ApiError(json.message, res.status, json.code);
+  }
+  return json.data;
 }
 
 /** آمار پشتیبانی — بج منو + صف انتظار داشبورد */

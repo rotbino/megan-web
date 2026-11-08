@@ -305,6 +305,7 @@ export function useChatSocketEvents(
     onAdminMessage?: (p: unknown) => void;
     onEdit?: (p: unknown) => void;
     onDelete?: (p: unknown) => void;
+    onSupportMessage?: (p: unknown) => void;
   } = {},
 ) {
   const queryClient = useQueryClient();
@@ -323,6 +324,13 @@ export function useChatSocketEvents(
     const offAdmin = onChatEvent('adminMessage', (p) => {
       opts.onAdminMessage?.(p);
       queryClient.invalidateQueries({ queryKey: ['admin-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
+    });
+    // پاسخ تازهٔ گفتگوی پشتیبانی (خواستهٔ مالک ۸-۱۱) — صفحهٔ پشتیبانی،
+    // بج منوی «پشتیبانی» و پیام لینک‌دار چت همان لحظه تازه می‌شوند
+    const offSupport = onChatEvent('supportMessage', (p) => {
+      opts.onSupportMessage?.(p);
+      queryClient.invalidateQueries({ queryKey: ['support-conversation'] });
       queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
     });
     // ویرایش/حذف پیام (فقط قبل از مشاهده) — پیام‌ها و لیست مکالمات تازه شوند
@@ -344,6 +352,7 @@ export function useChatSocketEvents(
       offNew();
       offRead();
       offAdmin();
+      offSupport();
       offEdit();
       offDelete();
     };

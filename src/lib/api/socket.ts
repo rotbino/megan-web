@@ -54,14 +54,22 @@ export interface AdminNewMessageEvent {
   };
 }
 
+/** پاسخ تازهٔ گفتگوی پشتیبانی (ادمین → کاربر) — ریل‌تایم (خواستهٔ مالک ۸-۱۱) */
+export interface SupportNewMessageEvent {
+  message: ChatMessagePayload;
+}
+
 type Handler = (payload: unknown) => void;
 
-const listeners: Record<'newMessage' | 'read' | 'adminMessage' | 'edit' | 'delete', Set<Handler>> = {
+export type ChatEventName = 'newMessage' | 'read' | 'adminMessage' | 'edit' | 'delete' | 'supportMessage';
+
+const listeners: Record<ChatEventName, Set<Handler>> = {
   newMessage: new Set(),
   read: new Set(),
   adminMessage: new Set(),
   edit: new Set(),
   delete: new Set(),
+  supportMessage: new Set(),
 };
 
 let socket: Socket | null = null;
@@ -108,6 +116,9 @@ export function ensureChatSocket(): Socket | null {
   socket.on('chat:delete', (p) => {
     listeners.delete.forEach((h) => h(p));
   });
+  socket.on('support:newMessage', (p) => {
+    listeners.supportMessage.forEach((h) => h(p));
+  });
   socket.on('connect', () => {
     connecting = false;
   });
@@ -120,10 +131,7 @@ export function ensureChatSocket(): Socket | null {
 }
 
 /** اشتراک رویداد چت — تابع لغو اشتراک برمی‌گرداند */
-export function onChatEvent(
-  event: 'newMessage' | 'read' | 'adminMessage' | 'edit' | 'delete',
-  handler: Handler,
-): () => void {
+export function onChatEvent(event: ChatEventName, handler: Handler): () => void {
   listeners[event].add(handler);
   ensureChatSocket();
   return () => {

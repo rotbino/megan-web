@@ -14,7 +14,7 @@ import { usePathname } from 'next/navigation';
 import { Crown, Home, LogIn, Loader2 } from 'lucide-react';
 import { PanelSidebar, BUYER_NAV, SELLER_NAV } from '@/components/panel/panel-sidebar';
 import { PasswordBanner, PasswordLock } from '@/components/panel/password-banner';
-import { usePanelProfile, useMyPackage } from '@/lib/mock/hooks';
+import { usePanelProfile, useMyPackage, useChatSocketEvents } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -72,6 +72,10 @@ function panelPageTitle(pathname: string): string {
 }
 
 export function PanelShell({ children }: { children: React.ReactNode }) {
+  // ریل‌تایم سراسری پنل (خواسته مالک ۸-۱۱): رویدادهای WS چت/پشتیبانی
+  // شمارنده‌ها و گفتگوها را همان لحظه تازه می‌کنند — بج «پشتیبانی» در
+  // «ایمچ من» و بج «پیام ها» سایدبار بدون انتظار برای polling ۳۰s.
+  useChatSocketEvents();
   const { user, requireAuth } = useAuth();
   const { data: profile } = usePanelProfile();
   const { data: myPackage } = useMyPackage();

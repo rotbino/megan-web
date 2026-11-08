@@ -17,26 +17,34 @@ import { useSearchParams } from 'next/navigation';
 import {
   ArrowRight,
   BadgeCheck,
+  Download,
+  FileText,
   Headset,
   Loader2,
+  Paperclip,
   RefreshCw,
   Search,
   Send,
   User,
+  X,
 } from 'lucide-react';
 import {
   fetchAdminSupportMessages,
   fetchAdminSupportStats,
   fetchAdminSupportThreads,
   sendAdminSupportMessage,
+  uploadAdminSupportFile,
+  type AdminSupportFileMeta,
   type AdminSupportThreadRow,
 } from '@/lib/admin/api';
+import { fileRejectReason } from '@/components/chat/chat-composer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { RelativeTime } from '@/components/shared/relative-time';
 import { toFa } from '@/lib/format';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 type FilterKey = 'all' | 'unread' | 'awaiting';
@@ -296,10 +304,13 @@ function StatCard({
   );
 }
 
-/** نمای یک گفتگو + جعبهٔ پاسخ */
+/** نمای یک گفتگو + جعبهٔ پاسخ (متن/پیوست — خواستهٔ مالک ۸-۱۱) */
 function SupportThreadPane({ userId, onBack }: { userId: string; onBack: () => void }) {
   const listRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [reply, setReply] = useState('');
+  const [attachment, setAttachment] = useState<AdminSupportFileMeta | null>(null);
+  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -308,15 +319,28 @@ function SupportThreadPane({ userId, onBack }: { userId: string; onBack: () => v
     refetchInterval: 30_000,
   });
 
+  // آپلود پیوست پاسخ
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => uploadAdminSupportFile(file),
+    onSuccess: (meta) => setAttachment(meta),
+    onError: (err: Error) => {
+      toast({ description: err.message || 'بارگذاری فایل ناموفق بود.', variant: 'destructive' });
+    },
+  });
+
   // پاسخ پشتیبان — بعد از موفقیت گفتگو و لیست تازه می‌شوند
   const sendMutation = useMutation({
-    mutationFn: () => sendAdminSupportMessage(userId, reply.trim()),
+    mutationFn: () => sendAdminSupportMessage(userId, reply.trim(), attachment),
     onSuccess: () => {
       setReply('');
+      setAttachment(null);
       void queryClient.invalidateQueries({ queryKey: ['admin-support-messages', userId] });
       void queryClient.invalidateQueries({ queryKey: ['admin-support-threads'] });
       void queryClient.invalidateQueries({ queryKey: ['admin-support-stats'] });
       void queryClient.invalidateQueries({ queryKey: ['admin-queues'] });
+    },
+    onError: (err: Error) => {
+      toast({ description: err.message || 'ارسال پاسخ ناموفق بود.', variant: 'destructive' });
     },
   });
 
@@ -334,8 +358,21 @@ function SupportThreadPane({ userId, onBack }: { userId: string; onBack: () => v
     );
   }
 
+  const busy = sendMutation.isPending || uploadMutation.isPending;
+  const canSend = !busy && (attachment ? true : reply.trim().length >= 1);
+
+  const pickFile = (f: File | undefined | null) => {
+    if (!f) return;
+    const reason = fileRejectReason(f);
+    if (reason) {
+      toast({ description: reason, variant: 'destructive' });
+      return;
+    }
+    uploadMutation.mutate(f);
+  };
+
   const send = () => {
-    if (reply.trim().length < 1 || sendMutation.isPending) return;
+    if (!canSend) return;
     sendMutation.mutate();
   };
 
@@ -380,7 +417,7 @@ function SupportThreadPane({ userId, onBack }: { userId: string; onBack: () => v
       </div>
 
       {/* پیام‌ها */}
-      <div ref={listRef} className="flex-1 space-y-2.5 overflow-y-auto p-3.5 lg:max-h-[460px]">
+      <div ref={listRef} className="flex-1 space-y-2.5 overflow-y-auto p-3.5 lg:max-h-[42vh]">
         {data.messages.length === 0 ? (
           <p className="py-8 text-center text-xs text-muted-foreground">این گفتگو پیامی ندارد.</p>
         ) : (
@@ -388,8 +425,35 @@ function SupportThreadPane({ userId, onBack }: { userId: string; onBack: () => v
         )}
       </div>
 
-      {/* جعبهٔ پاسخ */}
+      {/* جعبهٔ پاسخ — متن + پیوست (خواستهٔ مالک ۸-۱۱) */}
       <div className="border-t bg-secondary/30 p-3">
+        {/* پیش‌نمایش پیوست پیش از ارسال */}
+        {attachment && (
+          <div className="mb-2 flex items-center gap-2.5 rounded-md border bg-card p-2">
+            {attachment.kind === 'image' ? (
+              <img src={attachment.url} alt="" className="size-10 shrink-0 rounded-md object-cover" />
+            ) : (
+              <span className="grid size-10 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground">
+                {attachment.kind === 'video' ? '🎬' : <FileText size={16} />}
+              </span>
+            )}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs font-bold">{attachment.name}</span>
+              <span className="text-[10px] text-muted-foreground">
+                {uploadMutation.isPending ? 'در حال بارگذاری…' : 'آماده ارسال'}
+              </span>
+            </span>
+            <button
+              type="button"
+              aria-label="حذف پیوست"
+              disabled={uploadMutation.isPending}
+              onClick={() => setAttachment(null)}
+              className="grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-foreground/5"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        )}
         <Textarea
           dir="rtl"
           rows={2}
@@ -409,17 +473,42 @@ function SupportThreadPane({ userId, onBack }: { userId: string; onBack: () => v
           <p className="text-[10px] leading-4 text-muted-foreground">
             پاسخ در صفحهٔ «پشتیبانی» کاربر ظاهر می‌شود.
           </p>
-          <Button size="sm" className="h-8 gap-1.5 rounded-md" disabled={reply.trim().length < 1 || sendMutation.isPending} onClick={send}>
-            {sendMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-            ارسال پاسخ
-          </Button>
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              hidden
+              accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.webm,.mov,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
+              onChange={(e) => {
+                pickFile(e.target.files?.[0]);
+                e.target.value = '';
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label="پیوست فایل"
+              title="ارسال تصویر، ویدئو یا فایل (حداکثر ۵ مگابایت)"
+              disabled={busy}
+              onClick={() => fileRef.current?.click()}
+              className="h-8 gap-1.5 rounded-md"
+            >
+              {uploadMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Paperclip size={13} />}
+              پیوست
+            </Button>
+            <Button size="sm" className="h-8 gap-1.5 rounded-md" disabled={!canSend} onClick={send}>
+              {sendMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+              ارسال پاسخ
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-/** حباب پیام — کاربر یک‌سو / پشتیبان سو دیگر + وضعیت خوانده‌شدن */
+/** حباب پیام — کاربر یک‌سو / پشتیبان سو دیگر + پیوست (خواسته مالک ۸-۱۱) + وضعیت خوانده‌شدن */
 function SupportBubble({
   m,
 }: {
@@ -428,6 +517,8 @@ function SupportBubble({
     senderRole: 'user' | 'admin';
     adminUsername: string | null;
     text: string;
+    kind?: 'text' | 'image' | 'video' | 'file';
+    file?: { url: string; key: string; name: string; size: number; mime: string } | null;
     readAt: string | null;
     createdAt: string;
   };
@@ -459,17 +550,54 @@ function SupportBubble({
               <span title="هنوز توسط کاربر خوانده نشده">✓</span>
             ))}
         </p>
-        <p
-          dir="auto"
+        <div
           className={cn(
-            'w-fit whitespace-pre-wrap rounded-lg px-3.5 py-2.5 text-xs leading-6',
+            'flex w-fit max-w-full flex-col gap-1 rounded-lg px-3 py-2 text-xs leading-6',
             isUser
               ? 'rounded-tl-sm bg-secondary text-secondary-foreground'
               : 'rounded-tr-sm bg-primary text-primary-foreground',
           )}
         >
-          {m.text}
-        </p>
+          {(m.kind === 'image' || m.kind === 'video') && m.file && (
+            <span className="block overflow-hidden rounded-md">
+              {m.kind === 'image' ? (
+                <a href={m.file.url} target="_blank" rel="noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={m.file.url} alt={m.file.name} className="max-h-44 w-auto rounded-md object-cover" />
+                </a>
+              ) : (
+                <video src={m.file.url} controls preload="metadata" className="max-h-44 w-full max-w-[260px] rounded-md" />
+              )}
+            </span>
+          )}
+          {m.kind === 'file' && m.file && (
+            <a
+              href={m.file.url}
+              download={m.file.name}
+              target="_blank"
+              rel="noreferrer"
+              className="flex w-52 items-center gap-2 rounded-md bg-card/70 p-2 transition-colors hover:bg-card"
+            >
+              <span className="grid size-8 shrink-0 place-items-center rounded-md bg-secondary text-secondary-foreground">
+                <FileText size={15} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[11px] font-bold text-foreground" dir="auto">
+                  {m.file.name}
+                </span>
+                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  دریافت
+                  <Download size={10} />
+                </span>
+              </span>
+            </a>
+          )}
+          {m.text && (
+            <p dir="auto" className="whitespace-pre-wrap">
+              {m.text}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

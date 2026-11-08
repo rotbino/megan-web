@@ -6,7 +6,7 @@
  * (برچسب‌ها، پکیج‌ها، شماره کارت) از data.ts می‌آیند.
  */
 
-import { apiFetch, serverPost, setTokens, clearTokens, getTokens, ApiError, uploadImage as clientUploadImage, uploadChatFile as clientUploadChatFile } from '@/lib/api/client';
+import { apiFetch, serverPost, setTokens, clearTokens, getTokens, ApiError, uploadImage as clientUploadImage, uploadChatFile as clientUploadChatFile, uploadSupportFile as clientUploadSupportFile } from '@/lib/api/client';
 import type { BuyRequest, Category, City, PackageType, Product, ProductQuery, Province, SessionUser } from '@/lib/types';
 
 export interface Paged<T> {
@@ -1159,11 +1159,14 @@ export async function markChatThreadRead(threadId: string): Promise<{ read: numb
 
 // ─── پیام‌های پشتیبانی (ادمین → کاربر) ─────────────────────────────────────
 
-/** شمار خوانده‌نشده — بج آیکون پیام هدر/فوتر موبایل (چت + پشتیبانی) */
+/** شمار خوانده‌نشده — بج آیکون پیام هدر/فوتر موبایل (چت + پشتیبانی)
+ *  ticket (خواستهٔ مالک ۸-۱۱): پاسخ‌های خوانده‌نشدهٔ گفتگوی پشتیبانی — بج قرمز
+ *  منوی «پشتیبانی» و پیام لینک‌دار در چت. */
 export interface UnreadCounts {
   count: number;
   chat: number;
   support: number;
+  ticket: number;
 }
 
 /** POST /chat/unreadCount — ریز؛ بج همه صفحات هر ۳۰s و با هر push WS تازه می‌شود */
@@ -1194,6 +1197,59 @@ export async function getMyAdminMessages(): Promise<AdminInbox> {
 /** باز کردن مکالمه پشتیبانی = خواندن همه پیام‌های خوانده‌نشده */
 export async function markAdminMessagesRead(): Promise<{ read: number }> {
   return apiFetch<{ read: number }>('/chat/markMyAdminMessagesRead', {});
+}
+
+// ─── گفتگوی پشتیبانی (دوطرفهٔ کاربر ↔ پشتیبان) ─────────────────────────────
+
+/** پیام گفتگوی پشتیبانی — قرارداد سمت کاربر (خواسته مالک ۸-۱۱: پیوست + ریل‌تایم) */
+export interface SupportChatMessage {
+  id: string;
+  /** user | admin — فرستنده */
+  senderRole: 'user' | 'admin';
+  /** نام کاربری ادمین پاسخ‌دهنده — فقط پیام‌های ادمین */
+  adminUsername: string | null;
+  /** متن یا کپشن — با پیوست می‌تواند خالی باشد */
+  text: string;
+  /** نوع پیام — متن | تصویر | ویدئو | فایل */
+  kind: 'text' | 'image' | 'video' | 'file';
+  /** فایل پیوست — null برای پیام متنی */
+  file: { url: string; key: string; name: string; size: number; mime: string } | null;
+  /** null = گیرنده هنوز نخوانده */
+  readAt: string | null;
+  createdAt: string;
+}
+
+/** گفتگوی پشتیبانی من — باز کردن صفحهٔ پشتیبانی = خواندن پیام‌های پشتیبان */
+export async function getSupportConversation(): Promise<{
+  messages: SupportChatMessage[];
+  unreadFromAdmin: number;
+}> {
+  return apiFetch('/support/getConversation', {});
+}
+
+/** آپلود پیوست گفتگوی پشتیبانی — تصویر/ویدئو/سند تا ۵MB */
+export async function uploadSupportAttachment(file: File): Promise<ChatFileMeta> {
+  return clientUploadSupportFile(file);
+}
+
+/** ارسال پیام به پشتیبان — متن، یا فایل + کپشن دلخواه */
+export async function sendSupportMessage(
+  text: string,
+  file?: ChatFileMeta | null,
+): Promise<SupportChatMessage> {
+  return apiFetch<SupportChatMessage>('/support/sendMessage', {
+    text,
+    ...(file
+      ? {
+          kind: file.kind,
+          fileUrl: file.url,
+          fileKey: file.key,
+          fileName: file.name,
+          fileSize: file.size,
+          fileMime: file.mime,
+        }
+      : {}),
+  });
 }
 
 // ─── مخاطبین گوشی («ارسال به مخاطبین» — خواسته مالک ۴-۱۱) ───────────────────

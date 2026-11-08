@@ -9,13 +9,25 @@
  * (support/*) ذخیره می‌شوند و پاسخ پشتیبان از پنل مدیریت
  * (پشتیبانی → چت‌های پشتیبانی) می‌آید. باز کردن صفحه = خواندن
  * پیام‌های پشتیبان. موبایل و دسکتاپ هم‌سنجه (قانون §۲).
+ *
+ * خواستهٔ مالک ۸-۱۱: پیوست تصویر/ویدئو/سند تا ۵MB (هر دو سو) + ریل‌تایم —
+ * پاسخ پشتیبان با WS (support:newMessage) همان لحظه می‌آید؛ حباب‌های
+ * پیام مشابه چت (MessageBubble مشترک) رندر می‌شوند.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCheck, Check, ChevronDown, LifeBuoy, Loader2, Send, Users } from 'lucide-react';
-import { usePanelProfile } from '@/lib/mock/hooks';
-import { apiFetch } from '@/lib/api/client';
+import { Check, ChevronDown, LifeBuoy, Loader2, Paperclip, Send, Users, X } from 'lucide-react';
+import { usePanelProfile, useChatSocketEvents } from '@/lib/mock/hooks';
+import {
+  getSupportConversation,
+  sendSupportMessage,
+  uploadSupportAttachment,
+  type SupportChatMessage,
+} from '@/lib/mock/api';
+import type { ChatFileMeta, ChatMessage } from '@/lib/mock/api';
+import { fileRejectReason } from '@/components/chat/chat-composer';
+import { MessageBubble } from '@/components/chat/message-bubble';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -179,24 +191,40 @@ function FaqSection() {
   );
 }
 
-/** گفتگو با پشتیبان — چت واقعی دوطرفه (بک‌اند support/*) */
+/** گفتگو با پشتیبان — چت دوطرفهٔ واقعی: متن/پیوست + ریل‌تایم WS (خواسته مالک ۸-۱۱) */
 function SupportChatSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
+  const [attachment, setAttachment] = useState<ChatFileMeta | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  // گفتگو — باز کردن صفحه = خواندن پیام‌های پشتیبان؛ تازه‌سازی خودکار ۳۰ ثانیه
+  // ریل‌تایم (خواسته مالک ۸-۱۱): پاسخ پشتیبان با WS همان لحظه می‌آید —
+  // خود هوک «support-conversation» و شمارنده‌ها را تازه می‌کند.
+  useChatSocketEvents();
+
+  // گفتگو — باز کردن صفحه = خواندن پیام‌های پشتیبان؛ شبکهٔ ایمنی REST ۳۰s
   const { data, isLoading } = useQuery({
     queryKey: ['support-conversation'],
-    queryFn: () => apiFetch<{ messages: SupportMessage[]; unreadFromAdmin: number }>('/support/getConversation', {}),
+    queryFn: getSupportConversation,
     refetchInterval: 30_000,
   });
 
+  // آپلود پیوست — پیش‌نمایش قبل از ارسال (الگوی چت)
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => uploadSupportAttachment(file),
+    onSuccess: (meta) => setAttachment(meta),
+    onError: (err: Error) => {
+      toast({ description: err.message || 'بارگذاری فایل ناموفق بود.', variant: 'destructive' });
+    },
+  });
+
   const sendMutation = useMutation({
-    mutationFn: () => apiFetch<SupportMessage>('/support/sendMessage', { text: message.trim() }),
+    mutationFn: () => sendSupportMessage(message.trim(), attachment),
     onSuccess: () => {
       setMessage('');
+      setAttachment(null);
       void queryClient.invalidateQueries({ queryKey: ['support-conversation'] });
     },
     onError: (err: Error) => {
@@ -210,12 +238,24 @@ function SupportChatSection() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [data?.messages?.length]);
 
-  const send = () => {
-    if (message.trim().length < 5 || sendMutation.isPending) return;
-    sendMutation.mutate();
+  const messages = data?.messages ?? [];
+  const busy = sendMutation.isPending || uploadMutation.isPending;
+  const canSend = !busy && (attachment ? true : message.trim().length >= 5);
+
+  const pickFile = (f: File | undefined | null) => {
+    if (!f) return;
+    const reason = fileRejectReason(f);
+    if (reason) {
+      toast({ description: reason, variant: 'destructive' });
+      return;
+    }
+    uploadMutation.mutate(f);
   };
 
-  const messages = data?.messages ?? [];
+  const send = () => {
+    if (!canSend) return;
+    sendMutation.mutate();
+  };
 
   return (
     <PanelCard>
@@ -227,10 +267,10 @@ function SupportChatSection() {
         پاسخ پرسش خود را پیدا نکردید؟ برای راهنمایی بیشتر و یا اعلام مشکل خود، توضیحات را بنویسید.
       </p>
 
-      {/* تاریخچهٔ گفتگو */}
+      {/* تاریخچهٔ گفتگو — زمینهٔ ملایم مثل چت (خواسته مالک ۸-۱۱) */}
       <div
         ref={listRef}
-        className="mt-3 max-h-72 space-y-2.5 overflow-y-auto rounded-md border bg-secondary/20 p-3"
+        className="mt-3 flex max-h-80 flex-col gap-y-2.5 overflow-y-auto overscroll-contain touch-pan-y rounded-md border bg-secondary/60 p-3"
       >
         {isLoading ? (
           <p className="py-6 text-center text-xs text-muted-foreground">در حال بارگذاری گفتگو…</p>
@@ -239,9 +279,39 @@ function SupportChatSection() {
             هنوز پیامی رد و بدل نشده است — اولین پیام را بنویسید تا پشتیبان پاسخ بدهد.
           </p>
         ) : (
-          messages.map((m) => <ChatBubble key={m.id} m={m} />)
+          messages.map((m) => (
+            <SupportBubble key={m.id} m={m} />
+          ))
         )}
       </div>
+
+      {/* پیش‌نمایش پیوست پیش از ارسال — عین کامپوزر چت */}
+      {attachment && (
+        <div className="mt-3 flex items-center gap-2.5 rounded-md border bg-secondary/40 p-2">
+          {attachment.kind === 'image' ? (
+            <img src={attachment.url} alt="" className="size-11 shrink-0 rounded-md object-cover" />
+          ) : (
+            <span className="grid size-11 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground">
+              {attachment.kind === 'video' ? '🎬' : '📄'}
+            </span>
+          )}
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-xs font-bold">{attachment.name}</span>
+            <span className="text-[10px] text-muted-foreground">
+              {uploadMutation.isPending ? 'در حال بارگذاری…' : 'آماده ارسال'}
+            </span>
+          </span>
+          <button
+            type="button"
+            aria-label="حذف پیوست"
+            disabled={uploadMutation.isPending}
+            onClick={() => setAttachment(null)}
+            className="grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-foreground/5"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
 
       {/* ارسال پیام */}
       <Textarea
@@ -261,57 +331,75 @@ function SupportChatSection() {
       />
       <div className="mt-3 flex items-center justify-between gap-2">
         <p className="hidden text-[10px] text-muted-foreground sm:block">Ctrl+Enter برای ارسال سریع</p>
-        <Button
-          size="sm"
-          className="rounded-md"
-          disabled={message.trim().length < 5 || sendMutation.isPending}
-          onClick={send}
-        >
-          {sendMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-          ارسال پیام
-        </Button>
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            hidden
+            accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.webm,.mov,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
+            onChange={(e) => {
+              pickFile(e.target.files?.[0]);
+              e.target.value = '';
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label="پیوست فایل"
+            title="ارسال تصویر، ویدئو یا فایل (حداکثر ۵ مگابایت)"
+            disabled={busy}
+            onClick={() => fileRef.current?.click()}
+            className="rounded-md gap-1.5"
+          >
+            {uploadMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Paperclip size={14} />}
+            پیوست
+          </Button>
+          <Button
+            size="sm"
+            className="rounded-md"
+            disabled={!canSend}
+            onClick={send}
+          >
+            {sendMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            ارسال پیام
+          </Button>
+        </div>
       </div>
     </PanelCard>
   );
 }
 
-/** حباب پیام — پیام‌های پشتیبان یک‌سو (راست) / پیام‌های خودم سو دیگر (چپ) + وضعیت خوانده‌شدن */
-function ChatBubble({ m }: { m: SupportMessage }) {
+/** نگاشت پیام پشتیبانی → شکل ChatMessage — رندر با MessageBubble مشترک چت */
+function toChatMessage(m: SupportChatMessage): ChatMessage {
+  return {
+    id: m.id,
+    threadId: 'support',
+    senderId: m.senderRole,
+    text: m.text,
+    readAt: m.readAt,
+    createdAt: m.createdAt,
+    kind: m.kind,
+    file: m.file,
+    editedAt: null,
+  };
+}
+
+/** حباب پیام پشتیبانی — از همان MessageBubble چت
+ *  (تصویر/ویدئو/سند + لایت‌باکس + زمان و تیک خوانده‌شدن داخل حباب) */
+function SupportBubble({ m }: { m: SupportChatMessage }) {
   const isMine = m.senderRole === 'user';
   return (
-    <div className={cn('flex', isMine ? 'justify-end' : 'justify-start')}>
-      <div className={cn('flex max-w-[85%] flex-col gap-1', isMine ? 'items-end' : 'items-start')}>
+    <div className={cn('flex w-full flex-col gap-1', isMine ? 'items-end' : 'items-start')}>
+      {!isMine && (
         <p className="flex items-center gap-1.5 px-1 text-[9.5px] text-muted-foreground">
-          <span
-            className={cn(
-              'rounded-full px-1.5 py-px font-bold',
-              isMine ? 'bg-secondary text-secondary-foreground' : 'bg-primary/10 text-primary',
-            )}
-          >
-            {isMine ? 'شما' : 'پشتیبان ایمچ'}
+          <span className="rounded-full bg-primary/10 px-1.5 py-px font-bold text-primary">
+            پشتیبان ایمچ
           </span>
-          <span dir="ltr" className="font-mono">
-            {new Date(m.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}
-          </span>
-          {isMine &&
-            (m.readAt ? (
-              <CheckCheck size={11} className="text-emerald-600" aria-label="خوانده شد" />
-            ) : (
-              <Check size={11} aria-label="ارسال شد" />
-            ))}
+          {m.adminUsername && <span className="font-bold">{m.adminUsername}</span>}
         </p>
-        <p
-          dir="auto"
-          className={cn(
-            'w-fit whitespace-pre-wrap rounded-lg px-3.5 py-2.5 text-xs leading-6',
-            isMine
-              ? 'rounded-tl-sm bg-primary text-primary-foreground'
-              : 'rounded-tr-sm bg-secondary text-secondary-foreground',
-          )}
-        >
-          {m.text}
-        </p>
-      </div>
+      )}
+      <MessageBubble message={toChatMessage(m)} mine={isMine} />
     </div>
   );
 }
