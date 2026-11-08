@@ -2,8 +2,14 @@
 
 /**
  * پشتیبانی — عین MHTML باسکول:
- * «سامی جابر عزیز، سلام!» + «پاسخگویی به سوالات شما» + پرسش‌های متداول
- * با تب‌های (فروشندگان/خریداران/احراز هویت) + آکاردئون + «گفتگو با پشتیبان».
+ * «سامی جابر عزیز، سلام!» + «پاسخگویی به سوالات شما» + «گفتگو با پشتیبان».
+ *
+ * دور ۲۶ (خواستهٔ مالک ۸-۱۱): پرسش‌های متداول از صفحه رفت و کلی از صفحه
+ * را اشغال نمی‌کند — به‌جایش یک لینک در سرصفحهٔ «گفتگو با پشتیبان» است
+ * که آن را به‌صورت مودال باز می‌کند (موبایل: بات‌شیت / دسکتاپ: مودال
+ * مرکزی — قانون §۲). نتیجه: چت پشتیبانی تقریبا تمام ارتفاع صفحه را
+ * می‌گیرد (موبایل: 100dvh منهای هدر ۵۶ + نوار پایین ۵۹ + پدینگ main؛
+ * دسکتاپ: h-full داخل main که خودش ظرف اسکرول است) و کاربر با آن راحت‌تر است.
  *
  * گفتگو با پشتیبان (دور ۲۱): چت واقعی دوطرفه — پیام‌ها در بک‌اند
  * (support/*) ذخیره می‌شوند و پاسخ پشتیبان از پنل مدیریت
@@ -12,14 +18,14 @@
  * polling پس‌زمینه/تب مخفی — بج پشتیبانی را بی‌آنکه کاربر ببیند صفر
  * می‌کرد و حلقهٔ اعلان می‌شکست). موبایل و دسکتاپ هم‌سنجه (قانون §۲).
  *
- * خواستهٔ مالک ۸-۱۱: پیوست تصویر/ویدئو/سند تا ۵MB (هر دو سو) + ریل‌تایم —
+ * خواسته مالک ۸-۱۱: پیوست تصویر/ویدئو/سند تا ۵MB (هر دو سو) + ریل‌تایم —
  * پاسخ پشتیبان با WS (support:newMessage) همان لحظه می‌آید؛ حباب‌های
  * پیام مشابه چت (MessageBubble مشترک) رندر می‌شوند.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronDown, LifeBuoy, Loader2, Paperclip, Send, Users, X } from 'lucide-react';
+import { ChevronDown, HelpCircle, LifeBuoy, Loader2, Paperclip, Send, Users, X } from 'lucide-react';
 import { usePanelProfile, useChatSocketEvents } from '@/lib/mock/hooks';
 import {
   getSupportConversation,
@@ -35,6 +41,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { PanelCard } from '@/components/panel/panel-parts';
+import { BottomSheet } from '@/components/shared/bottom-sheet';
 import { cn } from '@/lib/utils';
 
 type FaqTab = 'sellers' | 'buyers' | 'verification';
@@ -115,43 +122,60 @@ interface SupportMessage {
 export default function SupportPage() {
   const { data: profile } = usePanelProfile();
   const firstName = profile?.userInfo.firstName ?? 'کاربر';
+  const [faqOpen, setFaqOpen] = useState(false);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      <div>
+    // تمام‌قد (خواستهٔ مالک ۸-۱۱ دور ۲۶): پرسش‌های متداول به لینک/مودال رفت
+    // تا گفتگو تقریبا تمام ارتفاع صفحه را بگیرد. موبایل: 100dvh − هدر چسبان
+    // ۵۶ − نوار پایین ۵۹ − پدینگ main (p-3=۲۴ / sm:p-4=۳۲)؛ دسکتاپ: h-full
+    // داخل main (خودش ظرف اسکرول است پس کارت دقیقا تا پایین صفحه می‌رسد).
+    // نکته: height قطعی (نه min-height) لازم است وگرنه در موبایل — که هیچ
+    // جدی در زنجیره ارتفاع قطعی ندارد — کارت به اندازهٔ کل تاریخچه رشد
+    // می‌کند و چت «تمام‌قد» نمی‌شود.
+    <div className="mx-auto flex h-[calc(100dvh-139px)] max-w-3xl flex-col gap-4 sm:h-[calc(100dvh-147px)] lg:h-full">
+      <div className="shrink-0">
         <h1 className="text-lg font-extrabold">
           {firstName} عزیز، سلام!
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">پاسخگویی به سوالات شما</p>
       </div>
 
-      <FaqSection />
-      <SupportChatSection />
+      <SupportChatSection onOpenFaq={() => setFaqOpen(true)} />
+      <FaqModal open={faqOpen} onClose={() => setFaqOpen(false)} />
     </div>
   );
 }
 
-/** پرسش‌های متداول — تب‌ها + آکاردئون (بدون تغییر) */
-function FaqSection() {
+/**
+ * پرسش‌های متداول — دیگر روی صفحه نیست (خواستهٔ مالک ۸-۱۱ دور ۲۶):
+ * لینک سرصفحهٔ گفتگو بازش می‌کند. موبایل: بات‌شیت پایین‌رونده؛ دسکتاپ:
+ * مودال مرکزی — قانون §۲. محتوا (تب‌ها + آکاردئون) عین قبل است.
+ */
+function FaqModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [tab, setTab] = useState<FaqTab>('buyers');
-  const [open, setOpen] = useState<string | null>(null);
+  const [openQ, setOpenQ] = useState<string | null>(null);
 
-  return (
-    <PanelCard>
-      <div className="flex items-center gap-2">
-        <Users size={16} className="text-primary" />
-        <p className="text-sm font-bold">پرسش‌های متداول</p>
-      </div>
+  // ESC برای مودال دسکتاپ (بات‌شیت موبایل خودش ESC دارد)
+  useEffect(() => {
+    if (!open) return;
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', esc);
+    return () => document.removeEventListener('keydown', esc);
+  }, [open, onClose]);
 
+  const body = (
+    <>
       {/* تب‌ها */}
-      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+      <div className="flex gap-2 overflow-x-auto pb-1">
         {TABS.map(({ key, label }) => (
           <button
             key={key}
             type="button"
             onClick={() => {
               setTab(key);
-              setOpen(null);
+              setOpenQ(null);
             }}
             className={cn(
               'shrink-0 rounded-md border px-3.5 py-1.5 text-xs font-bold transition-colors',
@@ -168,12 +192,12 @@ function FaqSection() {
       {/* آکاردئون پرسش‌ها */}
       <div className="mt-3 divide-y divide-border/70 rounded-md border">
         {FAQS[tab].map(({ q, a }) => {
-          const isOpen = open === q;
+          const isOpen = openQ === q;
           return (
             <div key={q}>
               <button
                 type="button"
-                onClick={() => setOpen(isOpen ? null : q)}
+                onClick={() => setOpenQ(isOpen ? null : q)}
                 aria-expanded={isOpen}
                 className="flex w-full items-center justify-between gap-2 px-4 py-3 text-start text-sm font-bold transition-colors hover:bg-secondary/40"
               >
@@ -190,12 +214,51 @@ function FaqSection() {
           );
         })}
       </div>
-    </PanelCard>
+    </>
+  );
+
+  return (
+    <>
+      {/* موبایل — بات‌شیت پایین‌رونده (قانون §۲) */}
+      <BottomSheet open={open} onClose={onClose} title="سوال‌های متداول">
+        <div className="p-2">{body}</div>
+      </BottomSheet>
+
+      {/* دسکتاپ — مودال مرکزی */}
+      {open && (
+        <div
+          className="fixed inset-0 z-[60] hidden items-center justify-center p-4 nav-desktop:flex"
+          role="dialog"
+          aria-modal="true"
+          aria-label="سوال‌های متداول"
+        >
+          <div className="animate-sheet-fade absolute inset-0 bg-black/40" onClick={onClose} />
+          <div className="relative flex max-h-[82vh] w-full max-w-lg flex-col rounded-xl bg-card shadow-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b border-border/70 px-4 py-3">
+              <h2 className="flex items-center gap-2 text-base font-bold">
+                <Users size={17} className="text-primary" />
+                سوال‌های متداول
+              </h2>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="بستن"
+                className="flex size-8 items-center justify-center rounded-lg text-foreground hover:bg-accent"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overscroll-contain overflow-y-auto p-4">{body}</div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
-/** گفتگو با پشتیبان — چت دوطرفهٔ واقعی: متن/پیوست + ریل‌تایم WS (خواسته مالک ۸-۱۱) */
-function SupportChatSection() {
+/** گفتگو با پشتیبان — چت دوطرفهٔ واقعی: متن/پیوست + ریل‌تایم WS (خواسته مالک ۸-۱۱)
+ *  + تمام‌قد (دور ۲۶): کارت flex-1 است و تاریخچهٔ گفتگو تا پایین صفحه کشیده می‌شود */
+function SupportChatSection({ onOpenFaq }: { onOpenFaq: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
@@ -279,19 +342,30 @@ function SupportChatSection() {
   };
 
   return (
-    <PanelCard>
-      <div className="flex items-center gap-2">
-        <LifeBuoy size={16} className="text-primary" />
-        <p className="text-sm font-bold">گفتگو با پشتیبان</p>
+    // min-h-0 لازم است وگرنه min-height:auto (ارتفاع کل تاریخچه) کارت را
+    // از سهم flex-1 بزرگ‌تر می‌کند و کامپوزر زیر تاشو می‌رود.
+    <PanelCard className="flex min-h-0 flex-1 flex-col">
+      {/* سرصفحه — عنوان راست + لینک «سوال‌های متداول» چپ (خواستهٔ مالک
+          دور ۲۶: پرسش‌ها از صفحه رفتند و با این لینک به‌صورت مودال باز می‌شوند) */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-sm font-bold">
+          <LifeBuoy size={16} className="text-primary" />
+          گفتگو با پشتیبان
+        </p>
+        <button
+          type="button"
+          onClick={onOpenFaq}
+          className="flex shrink-0 items-center gap-1.5 rounded-md border border-primary/25 bg-primary/5 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/10"
+        >
+          <HelpCircle size={14} />
+          سوال‌های متداول
+        </button>
       </div>
-      <p className="mt-1 text-xs leading-6 text-muted-foreground">
-        پاسخ پرسش خود را پیدا نکردید؟ برای راهنمایی بیشتر و یا اعلام مشکل خود، توضیحات را بنویسید.
-      </p>
 
-      {/* تاریخچهٔ گفتگو — زمینهٔ ملایم مثل چت (خواسته مالک ۸-۱۱) */}
+      {/* تاریخچهٔ گفتگو — تمام‌قد (دور ۲۶): flex-1 تا پایین کارت؛ زمینهٔ ملایم مثل چت */}
       <div
         ref={listRef}
-        className="mt-3 flex max-h-80 flex-col gap-y-2.5 overflow-y-auto overscroll-contain touch-pan-y rounded-md border bg-secondary/60 p-3"
+        className="mt-3 flex min-h-32 flex-1 flex-col gap-y-2.5 overflow-y-auto overscroll-contain touch-pan-y rounded-md border bg-secondary/60 p-3"
       >
         {isLoading ? (
           <p className="py-6 text-center text-xs text-muted-foreground">در حال بارگذاری گفتگو…</p>
