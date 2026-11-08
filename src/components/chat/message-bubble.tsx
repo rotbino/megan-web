@@ -70,7 +70,7 @@ export function MessageBubble({
       <div
         dir="auto"
         className={cn(
-          'w-fit max-w-[85%] shadow-sm',
+          'w-fit max-w-[85%] shadow-sm ',
           'rounded-2xl px-3 py-2 text-[13px] leading-6',
           'sm:max-w-[70%] sm:px-3.5 sm:py-2.5',
           'animate-in fade-in slide-in-from-bottom-1 duration-200',

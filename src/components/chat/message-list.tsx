@@ -167,7 +167,7 @@ export function MessageList({
       ref={scrollRef}
       onScroll={handleScroll}
       className={cn(
-        'min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y',
+        'min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y ',
         // زمینهٔ ملایم خاکستری — حباب‌های سفید از هم و از زمینه جدا دیده شوند
         // (مثل چت‌اپ‌های استاندارد؛ خواسته مالک ۸-۱۱: پیام‌ها چسبیده نباشند)
         'bg-secondary',
@@ -197,7 +197,7 @@ export function MessageList({
               {m.id === firstUnreadId && (
                 <div
                   data-new-divider
-                  className="flex items-center justify-center py-1.5"
+                  className="flex items-center justify-center py-1.5 "
                   aria-label="شروع پیام‌های جدید"
                 >
                   <span className="rounded-full bg-red-500/10 px-2.5 py-0.5 text-[10px] font-bold text-red-600">

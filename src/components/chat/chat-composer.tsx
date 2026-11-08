@@ -184,9 +184,7 @@ export function ChatComposer({
         </Button>
       </form>
 
-      <p className={cn('mt-1.5 hidden text-[10px] text-muted-foreground sm:block')}>
-        پیام‌ها پس از مشاهدهٔ طرف مقابل قابل ویرایش یا حذف نیستند. فایل تا ۵ مگابایت.
-      </p>
+
     </div>
   );
 }
