@@ -707,6 +707,56 @@ export async function deleteAdminBuyRequest(id: number): Promise<{ id: number; s
   return adminFetch('/admin/buy-requests/deleteBuyRequest', { id });
 }
 
+// ─── دفتر خرید (درخواست‌های خرید دوره‌ای) — admin/buyer-book ────────────────
+
+/** ردیف کالای دفتر خرید — join‌شده با خریدار و مسیر دسته */
+export interface AdminBookRow {
+  id: string;
+  user: { id: string; userName: string; firstName: string; lastName: string; phone: string };
+  category: { id: number; name: string; rootName: string; parentName: string };
+  minAmount: number;
+  period: string; // daily | weekly | monthly | yearly | occasional
+  unit: string;
+  status: AdminItemStatus;
+  rejectionReasons: string[];
+  createdAt: string;
+}
+
+export interface AdminBookList {
+  total: number;
+  page: number;
+  perPage: number;
+  pageCount: number;
+  counts: Record<'pending' | 'confirmed' | 'rejected' | 'all', number>;
+  items: AdminBookRow[];
+}
+
+export interface AdminBookListFilters {
+  search?: string;
+  status?: AdminItemStatus;
+  page?: number;
+  perPage?: number;
+}
+
+/** لیست کالاهای دفتر خرید خریداران — جستجو/فیلتر وضعیت + شمارنده تب‌ها */
+export async function fetchAdminBuyerBook(filters: AdminBookListFilters = {}): Promise<AdminBookList> {
+  return adminFetch<AdminBookList>('/admin/buyer-book/getList', filters as unknown as Record<string, unknown>);
+}
+
+/** بازبینی کالای دفتر خرید — تأیید یا رد با دلیل */
+export async function reviewAdminBookItem(id: string, approve: boolean, rejectionReason?: string): Promise<{ id: string; status: string }> {
+  return adminFetch('/admin/buyer-book/review', {
+    id,
+    approve,
+    ...(approve ? {} : { rejectionReason }),
+  });
+}
+
+/** حذف کالای دفتر خرید */
+export async function deleteAdminBookItem(id: string): Promise<{ id: string }> {
+  return adminFetch('/admin/buyer-book/delete', { id });
+}
+
 // ─── فاز A5 — داشبورد عملیاتی، لاگ، ادمین‌ها، شارژها ─────────────────────────
 
 /** نقطه روند ۳۰ روزه — هر روز یک نقطه */
@@ -1413,7 +1463,6 @@ export async function fetchAdminCallReport(filters: AdminCallReportFilters = {})
 export interface AdminSurveyRow {
   id: string;
   category: 'bug' | 'critique' | 'improvement' | 'feature';
-  title: string;
   body: string;
   isStaff: boolean;
   upvoteCount: number;

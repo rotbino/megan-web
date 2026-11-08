@@ -131,8 +131,10 @@ export default function RegisterBuyRequestPage() {
             >
               <RotateCcw size={15} /> ثبت درخواست دیگر
             </Button>
+            {/* مستقیم روی تب «در انتظار تایید» — کاربر آیتم تازه‌اش را می‌بیند
+                (خواستهٔ مالک ۸-۱۱؛ قبلاً روی تب تاییدشده‌ها می‌افتاد و گیج می‌کرد) */}
             <Button asChild className="rounded-md">
-              <Link href="/panel/my-requests">درخواست های من</Link>
+              <Link href="/panel/my-requests?tab=pending">مشاهده درخواست‌ها</Link>
             </Button>
           </div>
         </PanelCard>

@@ -17,7 +17,6 @@
 
 import Link from 'next/link';
 import {
-  BookOpenText,
   Bookmark,
   ChevronLeft,
   Crown,
@@ -100,11 +99,12 @@ export default function PanelDashboard() {
   const totalDays = myPackage?.totalDays ?? null;
   const hasDonut = active && daysLeft != null && daysLeft >= 0 && totalDays != null && totalDays > 0;
 
-  /** سه‌تای مهم خریدار — افقی بالای منوی عمودی، فقط موبایل (خواسته مالک دور ۱۵) */
+  /** سه‌تای مهم خریدار — افقی بالای منوی عمودی، فقط موبایل (خواسته مالک دور ۱۵).
+   *  ۸-۱۱: «دفتر خرید» حذف شد — تب دومِ «درخواست‌های خرید من» شد؛ کاشیِ آن
+   *  هم گویاتر شد و مستقیم همان صفحه را باز می‌کند. */
   const buyerQuick = [
+    { href: '/panel/my-requests', label: 'درخواست‌های خرید من', icon: FileText },
     { href: '/panel/saved', label: 'سرنخ‌های خرید', icon: Bookmark },
-    { href: '/panel/buyer-book', label: 'دفتر خرید', icon: BookOpenText },
-    { href: '/panel/my-requests', label: 'درخواستهای خرید', icon: FileText },
   ];
 
   /** منوی نقش داخل صفحه — فقط موبایل (دسکتاپ: همین آیتم‌ها در سایدبارند).

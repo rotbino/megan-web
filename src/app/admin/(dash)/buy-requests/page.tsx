@@ -1,10 +1,14 @@
 'use client';
 
 /**
- * مدیریت درخواست‌های خرید (فاز A4) — جدول جستجو + تب‌های وضعیت + صفحه‌بندی.
- *
- * ردیف‌ها join‌شده (نام دسته-مکان + موبایل خریدار)؛ بازبینی با دیالوگ دلیل
- * (تأیید/رد) و حذف نرم. پشتیبانی لینک عمقی ?userId= از صفحه مدیریت کاربر.
+ * مدیریت درخواست‌های خرید (فاز A4) — دو تب بالایی (خواستهٔ مالک ۸-۱۱):
+ *  • «درخواست‌های فوری» — جدول جستجو + تب‌های وضعیت + صفحه‌بندی؛ ردیف‌ها
+ *    join‌شده (نام دسته-مکان + موبایل خریدار)؛ بازبینی با دیالوگ دلیل
+ *    (تأیید/رد) و حذف نرم.
+ *  • «دفتر خرید» — کالاهای خرید دوره‌ای خریداران (دفتر خرید) با همان
+ *    بازبینی/حذف؛ ردیف تازه «در انتظار تایید» است و تا تأیید برای
+ *    فروشندگان نامرئی می‌ماند.
+ * پشتیبانی لینک عمقی ?userId= از صفحه مدیریت کاربر.
  */
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
@@ -12,6 +16,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  CalendarClock,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -21,11 +26,16 @@ import {
   Trash2,
   X,
   XCircle,
+  Zap,
 } from 'lucide-react';
 import {
+  deleteAdminBookItem,
   deleteAdminBuyRequest,
   fetchAdminBuyRequests,
+  fetchAdminBuyerBook,
+  reviewAdminBookItem,
   reviewAdminBuyRequest,
+  type AdminBookRow,
   type AdminBuyRequestRow,
   type AdminItemStatus,
 } from '@/lib/admin/api';
@@ -35,6 +45,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { stockFa, toFa, timeAgoFa } from '@/lib/format';
+import { PERIOD_LABELS } from '@/lib/types';
+import type { PurchasePeriod } from '@/lib/types';
 
 type TabKey = AdminItemStatus | 'all';
 
@@ -69,6 +81,13 @@ function BuyRequestsPageInner() {
   const [reviewRow, setReviewRow] = useState<AdminBuyRequestRow | null>(null);
   const [reason, setReason] = useState('');
   const [pendingAction, setPendingAction] = useState<'approve' | 'reject' | null>(null);
+
+  // تب بالایی — فوری / دفتر خرید (خواستهٔ مالک ۸-۱۱)
+  const [mode, setMode] = useState<'requests' | 'book'>('requests');
+  // بازبینی کالای دفتر خرید
+  const [bookReviewRow, setBookReviewRow] = useState<AdminBookRow | null>(null);
+  const [bookReason, setBookReason] = useState('');
+  const [bookPendingAction, setBookPendingAction] = useState<'approve' | 'reject' | null>(null);
 
   // تب اولیه از لینک عمقی (مثل داشبورد: /admin/buy-requests?status=pending)
   const statusParam = searchParams.get('status');
@@ -107,6 +126,32 @@ function BuyRequestsPageInner() {
     refetchOnWindowFocus: true,
   });
 
+  // ── دفتر خرید — همان الگو با صفحهٔ خودش (فقط وقتی تب فعال است) ──
+  const [bookPage, setBookPage] = useState(1);
+  const bookQueryKey = useMemo(
+    () => ['admin-buyer-book', debounced, tab, bookPage] as const,
+    [debounced, tab, bookPage],
+  );
+  const {
+    data: bookData,
+    isLoading: bookLoading,
+    isFetching: bookFetching,
+  } = useQuery({
+    queryKey: bookQueryKey,
+    queryFn: () =>
+      fetchAdminBuyerBook({
+        ...(debounced ? { search: debounced } : {}),
+        ...(tab !== 'all' && tab !== 'deleted' ? { status: tab } : {}),
+        page: bookPage,
+        perPage: 20,
+      }),
+    placeholderData: keepPreviousData,
+    enabled: mode === 'book',
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  });
+
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['admin-buy-requests'] });
     void queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
@@ -120,6 +165,42 @@ function BuyRequestsPageInner() {
     },
     onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
   });
+
+  const invalidateBook = () => {
+    void queryClient.invalidateQueries({ queryKey: ['admin-buyer-book'] });
+  };
+
+  const removeBook = useMutation({
+    mutationFn: (id: string) => deleteAdminBookItem(id),
+    onSuccess: () => {
+      invalidateBook();
+      toast({ description: 'کالای دفتر خرید حذف شد.' });
+    },
+    onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
+  });
+
+  const submitBookReview = async (approve: boolean) => {
+    if (!bookReviewRow) return;
+    if (!approve && !bookReason.trim()) {
+      toast({ description: 'برای رد کالا، دلیل را بنویسید.', variant: 'destructive' });
+      return;
+    }
+    setBookPendingAction(approve ? 'approve' : 'reject');
+    try {
+      await reviewAdminBookItem(bookReviewRow.id, approve, approve ? undefined : bookReason.trim());
+      invalidateBook();
+      toast({ description: approve ? 'کالای دفتر خرید تأیید شد.' : 'کالای دفتر خرید رد شد.' });
+      setBookReviewRow(null);
+      setBookReason('');
+    } catch (err) {
+      toast({
+        description: err instanceof Error ? err.message : 'عملیات ناموفق بود.',
+        variant: 'destructive',
+      });
+    } finally {
+      setBookPendingAction(null);
+    }
+  };
 
   const submitReview = async (approve: boolean) => {
     if (!reviewRow) return;
@@ -148,6 +229,10 @@ function BuyRequestsPageInner() {
   const pageCount = data?.pageCount ?? 1;
   const counts = data?.counts;
 
+  const bookItems = bookData?.items ?? [];
+  const bookPageCount = bookData?.pageCount ?? 1;
+  const bookCounts = bookData?.counts;
+
   return (
     <div className="mx-auto max-w-6xl space-y-4">
       {/* سربرگ */}
@@ -159,13 +244,65 @@ function BuyRequestsPageInner() {
           <div>
             <h1 className="text-base font-extrabold">مدیریت درخواست‌های خرید</h1>
             <p className="text-[11px] text-muted-foreground">
-              {data ? `${toFa(data.total)} درخواست — جستجو با نوع محصول، موبایل یا نام خریدار` : 'جستجو و بازبینی درخواست‌ها'}
+              {mode === 'requests'
+                ? data
+                  ? `${toFa(data.total)} درخواست فوری — جستجو با نوع محصول، موبایل یا نام خریدار`
+                  : 'جستجو و بازبینی درخواست‌های فوری'
+                : bookData
+                  ? `${toFa(bookData.total)} کالای دوره‌ای — جستجو با نام کالا، موبایل یا نام خریدار`
+                  : 'جستجو و بازبینی کالاهای دوره‌ای'}
             </p>
           </div>
         </div>
-        {isFetching && !isLoading ? <Loader2 size={15} className="animate-spin text-muted-foreground" /> : null}
+        {(mode === 'requests' ? isFetching && !isLoading : bookFetching && !bookLoading) ? (
+          <Loader2 size={15} className="animate-spin text-muted-foreground" />
+        ) : null}
       </div>
 
+      {/* تب بالایی — فوری / دفتر خرید (خواستهٔ مالک ۸-۱۱؛ خط زیرین عین پنل) */}
+      <div role="tablist" aria-label="نوع درخواست‌ها">
+        <div className="flex items-stretch gap-4 overflow-x-auto border-b border-border sm:gap-6">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'requests'}
+            onClick={() => setMode('requests')}
+            className={cn(
+              '-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-1 pb-2.5 pt-1 text-sm font-bold transition-colors',
+              mode === 'requests'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <Zap size={15} className="shrink-0" />
+            درخواست‌های فوری
+            <span className={cn('font-num text-[11px]', mode === 'requests' ? 'text-primary/70' : 'text-muted-foreground/70')}>
+              {data && !isLoading ? toFa(data.total) : '…'}
+            </span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'book'}
+            onClick={() => setMode('book')}
+            className={cn(
+              '-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-1 pb-2.5 pt-1 text-sm font-bold transition-colors',
+              mode === 'book'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <CalendarClock size={15} className="shrink-0" />
+            دفتر خرید (دوره‌ای)
+            <span className={cn('font-num text-[11px]', mode === 'book' ? 'text-primary/70' : 'text-muted-foreground/70')}>
+              {bookData && !bookLoading ? toFa(bookData.total) : '…'}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {mode === 'requests' ? (
+        <>
       {/* جستجو + تب‌ها */}
       <div className="space-y-2.5 rounded-lg border bg-card p-3">
         <div className="relative">
@@ -437,6 +574,269 @@ function BuyRequestsPageInner() {
           </div>
         </div>
       ) : null}
+        </>
+      ) : (
+        <>
+          {/* ── دفتر خرید: جستجو + تب‌های وضعیت (بدون «حذف شده») ── */}
+          <div className="space-y-2.5 rounded-lg border bg-card p-3">
+            <div className="relative">
+              <Search size={15} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="جستجو: نام کالا، موبایل یا نام خریدار…"
+                className="h-9 rounded-md pe-9"
+                maxLength={60}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {TABS.filter((t) => t.key !== 'deleted').map((t) => {
+                const count = bookCounts ? (t.key === 'all' ? bookCounts.all : bookCounts[t.key as 'pending' | 'confirmed' | 'rejected']) : null;
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => { setTab(t.key); setBookPage(1); }}
+                    className={cn(
+                      'h-8 rounded-[10px] border px-3 text-[11.5px] font-bold transition-colors',
+                      tab === t.key
+                        ? 'border-primary-line bg-primary-soft text-primary'
+                        : 'border-input bg-card text-secondary-foreground hover:bg-secondary/60',
+                    )}
+                  >
+                    {t.label}
+                    {count != null ? <span className="ms-1 text-[10px] font-normal opacity-70">({toFa(count)})</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* جدول دسکتاپ — دفتر خرید */}
+          <div className="hidden overflow-hidden rounded-lg border bg-card lg:block">
+            {bookLoading ? (
+              <div className="space-y-2 p-4">
+                {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-md" />)}
+              </div>
+            ) : bookItems.length === 0 ? (
+              <div className="grid place-items-center gap-2 p-12 text-center text-muted-foreground">
+                <CalendarClock size={28} className="opacity-40" />
+                <p className="text-sm">کالایی مطابق جستجو/فیلتر پیدا نشد.</p>
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-secondary/40 text-[11px] text-muted-foreground">
+                    <th className="px-3 py-2.5 text-start font-bold">کالا</th>
+                    <th className="px-3 py-2.5 text-start font-bold">خریدار</th>
+                    <th className="px-3 py-2.5 text-start font-bold">حداقل خرید</th>
+                    <th className="px-3 py-2.5 text-start font-bold">دوره</th>
+                    <th className="px-3 py-2.5 text-start font-bold">وضعیت</th>
+                    <th className="px-3 py-2.5 text-start font-bold">ثبت</th>
+                    <th className="px-3 py-2.5 text-start font-bold">عملیات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bookItems.map((r) => (
+                    <tr key={r.id} className="border-b transition-colors last:border-0 hover:bg-secondary/30">
+                      <td className="px-3 py-2.5">
+                        <div className="min-w-0">
+                          <span className="block max-w-[240px] truncate font-bold">{r.category.name}</span>
+                          <span className="text-[10.5px] text-muted-foreground">
+                            {[r.category.rootName, r.category.parentName].filter(Boolean).join(' / ')}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex flex-col">
+                          <Link href={`/admin/users/${r.user.id}`} className="text-[12px] font-bold hover:text-primary">
+                            {`${r.user.firstName ?? ''} ${r.user.lastName ?? ''}`.trim() || r.user.userName}
+                          </Link>
+                          <span dir="ltr" className="font-num text-[11px] text-muted-foreground">{r.user.phone}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 text-[12px] font-bold">{stockFa(r.minAmount, r.unit)}</td>
+                      <td className="px-3 py-2.5 text-[11px] text-muted-foreground">
+                        {PERIOD_LABELS[r.period as PurchasePeriod] ?? r.period}
+                      </td>
+                      <td className="px-3 py-2.5"><StatusChip status={r.status} /></td>
+                      <td className="px-3 py-2.5 text-[11px] text-muted-foreground">{timeAgoFa(r.createdAt)}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-1.5">
+                          {r.status === 'pending' ? (
+                            <Button
+                              size="sm"
+                              className="h-7 rounded-[10px] px-2.5 text-[11px]"
+                              onClick={() => { setBookReviewRow(r); setBookReason(''); }}
+                            >
+                              بازبینی
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 rounded-[10px] px-2.5 text-[11px]"
+                              onClick={() => { setBookReviewRow(r); setBookReason(''); }}
+                            >
+                              بازبینی مجدد
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 rounded-[10px] border-destructive/30 px-2 text-[11px] text-muted-foreground hover:border-destructive/40 hover:bg-destructive/5 hover:text-destructive"
+                            disabled={removeBook.isPending}
+                            onClick={() => removeBook.mutate(r.id)}
+                          >
+                            حذف
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* کارت موبایل — دفتر خرید */}
+          <div className="space-y-2 lg:hidden">
+            {bookLoading
+              ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-lg" />)
+              : bookItems.map((r) => (
+                  <div key={r.id} className="rounded-lg border bg-card p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate text-[13px] font-bold">{r.category.name}</span>
+                      <StatusChip status={r.status} />
+                    </div>
+                    <p className="mt-1 truncate text-[11px] text-muted-foreground">
+                      {stockFa(r.minAmount, r.unit)} · {PERIOD_LABELS[r.period as PurchasePeriod] ?? r.period}
+                    </p>
+                    <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                      <span dir="ltr">{r.user.phone}</span>
+                      <span>{timeAgoFa(r.createdAt)}</span>
+                    </div>
+                    <div className="mt-2 flex gap-1.5">
+                      <Button
+                        size="sm"
+                        className="h-7 flex-1 rounded-[10px] text-[11px]"
+                        onClick={() => { setBookReviewRow(r); setBookReason(''); }}
+                      >
+                        {r.status === 'pending' ? 'بازبینی' : 'بازبینی مجدد'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 flex-1 rounded-[10px] border-destructive/30 text-[11px] text-muted-foreground hover:bg-destructive/5 hover:text-destructive"
+                        disabled={removeBook.isPending}
+                        onClick={() => removeBook.mutate(r.id)}
+                      >
+                        <Trash2 size={12} /> حذف
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+            {!bookLoading && bookItems.length === 0 && (
+              <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
+                کالایی پیدا نشد.
+              </div>
+            )}
+          </div>
+
+          {/* صفحه‌بندی — دفتر خرید */}
+          {bookPageCount > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-[10px]"
+                disabled={bookPage <= 1}
+                onClick={() => setBookPage((p) => Math.max(1, p - 1))}
+              >
+                <ChevronRight size={14} /> قبلی
+              </Button>
+              <span className="text-[11px] text-muted-foreground">
+                صفحه {toFa(bookPage)} از {toFa(bookPageCount)}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-[10px]"
+                disabled={bookPage >= bookPageCount}
+                onClick={() => setBookPage((p) => Math.min(bookPageCount, p + 1))}
+              >
+                بعدی <ChevronLeft size={14} />
+              </Button>
+            </div>
+          )}
+
+          {/* پانوشت راهنما — دفتر خرید */}
+          <p className="text-center text-[10.5px] leading-6 text-muted-foreground">
+            کالاهای تأییدشده در دایرکتوری «خریداران» برای فروشندگان نمایش داده می‌شوند؛ کالای تازه تا تأیید نامرئی است.
+          </p>
+
+          {/* دیالوگ بازبینی — دفتر خرید */}
+          {bookReviewRow ? (
+            <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true">
+              <div className="w-full max-w-md rounded-xl border bg-card p-4 shadow-xl">
+                <p className="text-sm font-extrabold">بازبینی کالای «{bookReviewRow.category.name}»</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  خریدار: {`${bookReviewRow.user.firstName ?? ''} ${bookReviewRow.user.lastName ?? ''}`.trim() || bookReviewRow.user.userName} — حداقل{' '}
+                  {stockFa(bookReviewRow.minAmount, bookReviewRow.unit)} · {PERIOD_LABELS[bookReviewRow.period as PurchasePeriod] ?? bookReviewRow.period}
+                </p>
+                {bookReviewRow.status === 'rejected' && bookReviewRow.rejectionReasons.length > 0 && (
+                  <p className="mt-2 rounded-md bg-destructive/5 p-2.5 text-[11px] leading-5 text-destructive">
+                    دلیل رد قبلی: {bookReviewRow.rejectionReasons.join('، ')}
+                  </p>
+                )}
+                <div className="mt-3 space-y-1.5">
+                  <label htmlFor="book-reject-reason" className="text-[11px] font-bold text-muted-foreground">
+                    دلیل رد (در صورت رد کردن — الزامی):
+                  </label>
+                  <Input
+                    id="book-reject-reason"
+                    value={bookReason}
+                    onChange={(e) => setBookReason(e.target.value)}
+                    placeholder="مثلاً: این کالا مقیاس عمده ندارد."
+                    className="rounded-md text-[12px]"
+                    maxLength={500}
+                  />
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    size="lg"
+                    className="flex-1 rounded-md"
+                    disabled={bookPendingAction !== null}
+                    onClick={() => void submitBookReview(true)}
+                  >
+                    {bookPendingAction === 'approve' ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                    تأیید
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="flex-1 rounded-md border-destructive/40 text-destructive hover:bg-destructive/5 hover:text-destructive"
+                    disabled={bookPendingAction !== null}
+                    onClick={() => void submitBookReview(false)}
+                  >
+                    {bookPendingAction === 'reject' ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />}
+                    رد
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="ghost"
+                    className="rounded-md text-muted-foreground"
+                    disabled={bookPendingAction !== null}
+                    onClick={() => setBookReviewRow(null)}
+                  >
+                    بستن
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

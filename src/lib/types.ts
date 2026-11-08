@@ -498,7 +498,9 @@ export const PERIOD_LABELS: Record<PurchasePeriod, string> = {
   occasional: 'موردی',
 };
 
-/** ردیف دفتر خرید من — دسته برگ + حداقل خرید + دوره؛ واحد از خود دسته (ثابت) */
+/** ردیف دفتر خرید من — دسته برگ + حداقل خرید + دوره؛ واحد از خود دسته (ثابت).
+ *  وضعیت بازبینی ادمین (خواستهٔ مالک ۸-۱۱): درخواست‌های خرید دوره‌ای هم
+ *  مثل فوری تایید/رد می‌شوند — دایرکتوری خریداران فقط تاییدشده‌ها را می‌بیند. */
 export interface BuyerBookItem {
   categoryId: number;
   name: string; // نام دسته (برای نمایش)
@@ -507,6 +509,8 @@ export interface BuyerBookItem {
   unit: string; // واحد دسته — کیلوگرم | تن | عدد | بسته | لیتر
   minAmount: number; // حداقل خرید در هر دوره
   period: PurchasePeriod;
+  status: 'pending' | 'confirmed' | 'rejected';
+  rejectionReasons: string[];
 }
 
 /** پاسخ getMyBook */

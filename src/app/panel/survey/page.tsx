@@ -9,9 +9,9 @@
  *    می‌شود نیاز خودش را بفرستد (نمونه‌های راهنما از «تیم ایمچ» در بذر)
  *  • «من هم همین را دارم» — تعداد موافقت‌ها = سیگنال تقاضای واقعی برای تیم
  *  • مرتب‌سازی جدیدترین / پرموافق‌ترین (اولویت‌بندی نیازها)
- * دکمهٔ ارسال فقط با «دسته + عنوان + شرح» معتبر فعال می‌شود؛ شمارنده‌های
- * نویسهٔ کنار هر فیلد دلیل غیرفعال‌بودن را همیشه نشان می‌دهند (رفع باگ
- * «دکمه هیچ‌وقت فعال نمی‌شود»).
+ * فرم فقط «دسته + شرح» دارد (خواستهٔ مالک ۸-۱۱): فیلد عنوان حذف شد —
+ * هم فرم خلوت‌تر است و هم کاربر برای عنوان مکث نمی‌کند؛ دکمهٔ ارسال با
+ * «دسته + شرح» فعال می‌شود و شمارندهٔ نویسه دلیلش را می‌گوید.
  */
 
 import { useState } from 'react';
@@ -35,7 +35,6 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { PanelCard } from '@/components/panel/panel-parts';
@@ -56,7 +55,6 @@ const CATEGORIES: { key: FeedbackCategory; label: string; icon: LucideIcon; chip
 
 const catOf = (key: string) => CATEGORIES.find((c) => c.key === key) ?? CATEGORIES[1];
 
-const TITLE_MIN = 5, TITLE_MAX = 120;
 const BODY_MIN = 20, BODY_MAX = 2000;
 
 // ─── انواع API ──────────────────────────────────────────────────────────────
@@ -64,7 +62,6 @@ const BODY_MIN = 20, BODY_MAX = 2000;
 interface FeedbackRow {
   id: string;
   category: FeedbackCategory;
-  title: string;
   body: string;
   isStaff: boolean;
   isMine: boolean;
@@ -90,27 +87,23 @@ export default function SurveyPage() {
 
   // ── فرم ──
   const [category, setCategory] = useState<FeedbackCategory | null>(null);
-  const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
 
   // ── فیلتر/مرتب‌سازی فید ──
   const [filter, setFilter] = useState<FeedbackCategory | ''>('');
   const [sort, setSort] = useState<'recent' | 'top'>('recent');
 
-  const titleLen = title.trim().length;
   const bodyLen = body.trim().length;
-  const canSubmit = !!category && titleLen >= TITLE_MIN && bodyLen >= BODY_MIN;
+  const canSubmit = !!category && bodyLen >= BODY_MIN;
 
   const submit = useMutation({
     mutationFn: () =>
       apiFetch<FeedbackRow>('/survey/submit', {
         category: category as FeedbackCategory,
-        title: title.trim(),
         body: body.trim(),
       }),
     onSuccess: () => {
       setCategory(null);
-      setTitle('');
       setBody('');
       queryClient.invalidateQueries({ queryKey: ['feedback-list'] });
       toast({ description: 'نظر شما ثبت شد و در فید نمایش داده می‌شود.' });
@@ -205,29 +198,8 @@ export default function SurveyPage() {
           ))}
         </div>
 
-        {/* عنوان */}
+        {/* شرح — تنها فیلد متنی فرم (عنوان حذف شد — خواستهٔ مالک ۸-۱۱) */}
         <div className="mt-4 space-y-1.5">
-          <div className="flex items-baseline justify-between">
-            <label htmlFor="fb-title" className="text-xs font-bold text-muted-foreground">عنوان</label>
-            <span
-              className={cn('font-num text-[11px]', titleLen >= TITLE_MIN ? 'text-muted-foreground' : 'text-destructive/80')}
-            >
-              {toFa(titleLen)}/{toFa(TITLE_MIN)} از {toFa(TITLE_MAX)}
-            </span>
-          </div>
-          <Input
-            id="fb-title"
-            dir="rtl"
-            value={title}
-            maxLength={TITLE_MAX}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="مثلاً: اعلان پیام جدید حتی وقتی ایمچ باز نیست"
-            className="text-sm"
-          />
-        </div>
-
-        {/* شرح */}
-        <div className="mt-3 space-y-1.5">
           <div className="flex items-baseline justify-between">
             <label htmlFor="fb-body" className="text-xs font-bold text-muted-foreground">شرح</label>
             <span
@@ -239,7 +211,7 @@ export default function SurveyPage() {
           <Textarea
             id="fb-body"
             dir="rtl"
-            rows={4}
+            rows={5}
             value={body}
             maxLength={BODY_MAX}
             onChange={(e) => setBody(e.target.value)}
@@ -358,8 +330,7 @@ export default function SurveyPage() {
 
                   {/* متن */}
                   <div>
-                    <p className="text-sm font-extrabold leading-6">{item.title}</p>
-                    <p className="mt-1.5 whitespace-pre-line text-sm leading-7 text-muted-foreground">{item.body}</p>
+                    <p className="whitespace-pre-line text-sm leading-7 text-muted-foreground">{item.body}</p>
                   </div>
 
                   {/* اقدامات: موافقت + حذفِ خودم */}
