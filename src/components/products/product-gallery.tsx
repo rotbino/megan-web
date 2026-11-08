@@ -5,7 +5,8 @@
  *  — تامبنیل‌های آلبوم حذف شدند (جا می‌گرفتند)؛ به‌جایش سوییپ/درگ
  *  — نشانه‌های کاملاً بصری و بدون هیچ نوشته‌ای: فلش‌های جهت + نقطه‌های جایگاه
  *  — کلیک روی عکس بزرگ → نمایش تمام‌صفحه؛ بستن با ✕ یا Esc یا تپ روی صحنه
- *  — واترمارک شیشه‌ای و نشان «نردبان/ویدیو» روی عکس اصلی حفظ شده‌اند
+ *  — واترمارک: الگوی قطری ایمچ موقع آپلود داخل پیکسل‌های خود عکس نشسته
+ *    (دور ۲۷) — لایهٔ نمایشی حذف شد؛ نشان «نردبان/ویدیو» روی عکس اصلی حفظ شده
  *  — امبلا با direction:rtl — اسلاید بعدی از سمت چپ می‌آید؛
  *    فلش چپ = بعدی (end)، فلش راست = قبلی (start)
  * عکس‌ها همان URLهای اصلیِ بهینه‌شدهٔ next/image صفحه‌اند (رفتار قبلی حفظ شد).
@@ -16,7 +17,6 @@ import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import useEmblaCarousel from 'embla-carousel-react';
 import { ChevronLeft, ChevronRight, Package, X } from 'lucide-react';
-import { GlassWatermark } from '@/components/shared/glass-watermark';
 import { LadderBadge } from '@/components/shared/badges';
 import { cn } from '@/lib/utils';
 
@@ -29,7 +29,6 @@ export function ProductGallery({
   alt,
   isLadder = false,
   hasVideo = false,
-  watermarkSeed,
   priority = false,
   sizes = '(max-width: 640px) 100vw, 420px',
 }: {
@@ -37,7 +36,6 @@ export function ProductGallery({
   alt: string;
   isLadder?: boolean;
   hasVideo?: boolean;
-  watermarkSeed?: string;
   /** فقط برای تصویر LCP اول صفحه */
   priority?: boolean;
   sizes?: string;
@@ -148,10 +146,9 @@ export function ProductGallery({
         </div>
       </div>
 
-      {/* واترمارک شیشه‌ای ضد دزدی (خواسته مالک ۳-۱۱) — روی همهٔ اسلایدها */}
-      <GlassWatermark seed={watermarkSeed} />
-
-      {/* نردبان روی گوشهٔ عکس (خواسته مالک ۱-۱۱) */}
+      {/* نردبان روی گوشهٔ عکس (خواسته مالک ۱-۱۱) — واترمارک دیگر اینجا لازم
+          نیست: الگوی قطری ایمچ موقع آپلود داخل پیکسل‌های خود عکس نشسته است
+          (خواسته مالک ۸-۱۱ دور ۲۷ — ضدسرقت واقعی، همراه ذخیره/کپی می‌ماند) */}
       {isLadder && (
         <span className="pointer-events-none absolute left-0 top-0">
           <LadderBadge className="rounded-br-[6px] px-2.5 py-1.5 text-xs shadow-sm" />
@@ -212,7 +209,6 @@ export function ProductGallery({
           photos={photos}
           alt={alt}
           initialIndex={sel}
-          watermarkSeed={watermarkSeed}
           onClose={closeFullscreen}
         />
       )}
@@ -223,19 +219,17 @@ export function ProductGallery({
 /* ─────────────────────────── تمام‌صفحه ─────────────────────────── */
 
 /** نمایش تمام‌صفحهٔ عکس — تپ/Esc/✕ می‌بندد؛ سوییپ و فلش‌ها همان گالری‌اند.
- *  تصویر با object-contain در کادرِ اندازه‌شدهٔ خودش می‌نشیند تا واترمارک
- *  دقیقاً روی عکس بماند (نه روی نوارهای سیاه کنارش). */
+ *  تصویر با object-contain در کادرِ اندازه‌شدهٔ خودش می‌نشیند. واترمارک
+ *  داخل خود فایل است (دور ۲۷) — لایهٔ نمایشی دیگر لازم نیست. */
 function GalleryLightbox({
   photos,
   alt,
   initialIndex,
-  watermarkSeed,
   onClose,
 }: {
   photos: string[];
   alt: string;
   initialIndex: number;
-  watermarkSeed?: string;
   onClose: (index: number) => void;
 }) {
   const multi = photos.length > 1;
@@ -405,10 +399,7 @@ function GalleryLightbox({
                     onLoad={(e) => onImgLoad(i, e.currentTarget)}
                     className="object-contain"
                   />
-                  {/* واترمارک دقیقاً روی خودِ عکس — نه روی نوارهای سیاه */}
-                  {dims[i] && (
-                    <GlassWatermark seed={watermarkSeed ? `${watermarkSeed}-${i}` : undefined} />
-                  )}
+                  {/* واترمارک داخل خود فایل است (دور ۲۷) — لایهٔ نمایشی حذف شد */}
                 </div>
               </div>
             ))}

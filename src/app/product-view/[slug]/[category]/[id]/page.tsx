@@ -217,7 +217,6 @@ export default async function ProductViewPage({ params }: Props) {
                 alt={`فروش عمده ${product.productName} در ${city}`}
                 isLadder={product.isLadder}
                 hasVideo={product.hasVideo}
-                watermarkSeed={product.id ? String(product.id) : undefined}
                 priority
                 sizes="(max-width: 640px) 100vw, 420px"
               />
