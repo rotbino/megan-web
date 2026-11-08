@@ -329,30 +329,7 @@ export default function MyRequestsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-lg font-extrabold">درخواست‌های خرید من</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {view === 'urgent'
-              ? 'درخواست‌های فوری شما و وضعیت بررسی آنها.'
-              : 'کالاهایی که به‌طور مستمر می‌خرید — پس از تایید، فروشندگان مناسب پیشنهادشان را می‌فرستند.'}
-          </p>
-        </div>
-        {/* اقدام متناسب با تب — ثبت درخواست فوری / افزودن کالای دوره‌ای */}
-        {view === 'urgent' ? (
-          <Button asChild className="rounded-md">
-            <Link href="/panel/buy-requests/new">
-              <Plus size={16} />
-              ثبت درخواست جدید
-            </Link>
-          </Button>
-        ) : (
-          <Button className="rounded-md" onClick={() => setAddOpen(true)} disabled={remaining === 0}>
-            <Plus size={16} />
-            افزودن کالا
-          </Button>
-        )}
-      </div>
+
 
       {/* ── تب‌های بالایی: فوری / دوره‌ای (خط زیرین — عین صفحه خریداران) ── */}
       <div role="tablist" aria-label="نوع درخواست‌های خرید">
@@ -403,7 +380,7 @@ export default function MyRequestsPage() {
       </div>
 
       {/* جعبه دلایل رد شدن — عین باسکول (هر دو تب) */}
-      <PanelCard className="border-amber-200/70 bg-amber-50/50">
+     {/* <PanelCard className="border-amber-200/70 bg-amber-50/50">
         <p className="flex items-center gap-1.5 text-sm font-bold text-amber-700">
           <Info size={16} className="shrink-0" />
           دلایل رد شدن درخواست های خرید
@@ -413,28 +390,55 @@ export default function MyRequestsPage() {
             <li key={r}>{r}</li>
           ))}
         </ul>
-      </PanelCard>
+      </PanelCard>*/}
 
       {/* تب‌های وضعیت — شمارنده‌دار، در هر دو تب بالایی */}
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {TABS.map(({ key, label, icon: Icon }) => {
-          const count = countOf(key);
-          const active = statusTab === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setStatusTab(key)}
-              className={cn(
-                'flex shrink-0 items-center gap-1.5 rounded-md border px-3.5 py-2 text-xs font-bold transition-colors',
-                active ? 'border-primary bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:border-primary/40',
-              )}
-            >
-              <Icon size={14} />
-              {label} ({toFa(count)})
-            </button>
-          );
-        })}
+        <div className={"flex flex-1 gap-2 overflow-x-auto pb-1"}>
+          {TABS.map(({ key, label, icon: Icon }) => {
+            const count = countOf(key);
+            const active = statusTab === key;
+            return (
+                <button
+                    key={key}
+                    type="button"
+                    onClick={() => setStatusTab(key)}
+                    className={cn(
+                        'flex shrink-0 items-center gap-1.5 rounded-md border px-3.5 py-2 text-xs font-bold transition-colors',
+                        active ? 'border-primary bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:border-primary/40',
+                    )}
+                >
+                  <Icon size={14} />
+                  {label} ({toFa(count)})
+                </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/*<div className="min-w-0">
+          <h1 className="text-lg font-extrabold">درخواست‌های خرید من</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {view === 'urgent'
+              ? 'درخواست‌های فوری شما و وضعیت بررسی آنها.'
+              : 'کالاهایی که به‌طور مستمر می‌خرید — پس از تایید، فروشندگان مناسب پیشنهادشان را می‌فرستند.'}
+          </p>
+        </div>*/}
+          {/* اقدام متناسب با تب — ثبت درخواست فوری / افزودن کالای دوره‌ای */}
+          {view === 'urgent' ? (
+              <Button asChild className="rounded-md bg-orange-600 ">
+                <Link href="/panel/buy-requests/new">
+                  <Plus size={16} />
+                  ثبت درخواست فوری
+                </Link>
+              </Button>
+          ) : (
+              <Button className="rounded-md bg-orange-600 " onClick={() => setAddOpen(true)} disabled={remaining === 0}>
+                <Plus size={16} />
+                ثبت درخواست دوره ای
+              </Button>
+          )}
+        </div>
       </div>
 
       {/* آیتم‌ها / حالت خالی */}
