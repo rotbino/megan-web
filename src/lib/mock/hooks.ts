@@ -750,6 +750,8 @@ export function useSubmitPackageOrder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['panel-package-orders'] });
       queryClient.invalidateQueries({ queryKey: ['panel-my-package'] });
+      // سهمیهٔ خرید کمپین «کاربران جدید» کم شد → شمارشگر/تخفیف تازه شود (۹-۱۱)
+      queryClient.invalidateQueries({ queryKey: ['membership-plans'] });
     },
   });
 }

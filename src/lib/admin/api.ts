@@ -1074,13 +1074,17 @@ export interface AdminCampaignRow {
   id: string;
   title: string;
   description: string | null;
-  type: 'time' | 'quantity';
+  type: 'time' | 'quantity' | 'new_user';
   discountPercent: number;
   manualDiscountPercent: number | null;
   /** درصد عمومی پس از اتمام پله‌های محدود — تا پایان کمپین */
   finalPercent: number | null;
   /** شمار دستی/نمایشی خریداران — مؤثر = max(واقعی، دستی) */
   manualPurchaseCount: number | null;
+  /** نوع کاربران جدید — طول پنجره پس از ثبت‌نام (روز) (خواسته مالک ۹-۱۱) */
+  newUserDays: number | null;
+  /** نوع کاربران جدید — سقف خرید بسته با تخفیف برای هر کاربر */
+  newUserMaxPurchases: number | null;
   startsAt: string;
   endsAt: string | null;
   isActive: boolean;
@@ -1102,13 +1106,16 @@ export interface AdminCampaignInput {
   id?: string;
   title: string;
   description?: string;
-  type: 'time' | 'quantity';
+  type: 'time' | 'quantity' | 'new_user';
   discountPercent: number;
   manualDiscountPercent?: number | null;
   /** درصد عمومی پس از اتمام پله‌های محدود — تا پایان کمپین */
   finalPercent?: number | null;
   /** شمار دستی/نمایشی خریداران */
   manualPurchaseCount?: number | null;
+  /** نوع کاربران جدید — پنجره پس از ثبت‌نام (روز) و سقف خرید (خواسته مالک ۹-۱۱) */
+  newUserDays?: number;
+  newUserMaxPurchases?: number;
   startsAt?: string;
   endsAt?: string | null;
   isActive: boolean;

@@ -422,8 +422,9 @@ export interface SalesCampaignInfo {
   id: string;
   title: string;
   description: string | null;
-  type: 'time' | 'quantity';
-  /** درصد جاری — در تعدادی از پله/override دستی */
+  type: 'time' | 'quantity' | 'new_user';
+  /** درصد جاری — در تعدادی از پله/override دستی؛ در کاربران جدید: درصد مؤثر
+   *  همین بیننده (مهمان = تبلیغ‌شده، نا‌واجد = ۰) (خواسته مالک ۹-۱۱) */
   discountPercent: number;
   endsAt: string | null;
   /** شمار مؤثر خریداران (بیشینهٔ واقعی/دستی) — عدد نمایشی کاربر */
@@ -439,6 +440,16 @@ export interface SalesCampaignInfo {
   tiers: CampaignTier[];
   /** درصد عمومی پس از اتمام پله‌های محدود — تا پایان کمپین (خواسته مالک ۳۱-۱۰) */
   finalPercent: number | null;
+  /** نوع کاربران جدید — طول پنجره پس از ثبت‌نام (روز)؛ بقیه انواع = null (۹-۱۱) */
+  newUserDays: number | null;
+  /** نوع کاربران جدید — سقف خرید بسته با تخفیف برای هر کاربر */
+  newUserMaxPurchases: number | null;
+  /** مهلت شخصی همین کاربر (مبنای شمارشگر معکوس) — مهمان/نوع دیگر = null */
+  userDeadline: string | null;
+  /** خریدهای باقی‌مانده همین کاربر با تخفیف — مهمان/نوع دیگر = null */
+  userPurchasesLeft: number | null;
+  /** آیا همین بیننده الان مشمول تخفیف است؟ (مهمان = false) */
+  userEligible: boolean;
 }
 
 /** بسته فعال من + امکانات مؤثر — تک منبع گیت‌های سمت کلاینت */

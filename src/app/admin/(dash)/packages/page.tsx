@@ -4,8 +4,10 @@
  * بسته‌ها و کمپین‌ها (admin/packages) — سه تب (خواسته مالک ۳۱-۱۰):
  *  • سفارش‌ها: صف بازبینی فیش‌های خرید بسته (تأیید → فعال/تمدید؛ رد → دلیل)
  *  • بسته‌ها: CRUD کامل — قیمت/مدت/عنوان/ویژگی‌ها همه قابل تعریف ادمین
- *  • کمپین‌ها: کمپین زمانی (٪ ثابت تا پایان) و تعدادی (پله‌ای: ۱۰ نفر اول
- *    ۷۰٪…) + تغییر دستی درصد جاری + آمار جذب هر کمپین/بسته
+ *  • کمپین‌ها: زمانی (٪ ثابت تا پایان)، تعدادی (پله‌ای: ۱۰ نفر اول ۷۰٪…)
+ *    و کاربران جدید (خواسته مالک ۹-۱۱: ٪ تخفیف تا N روز پس از ثبت‌نام و
+ *    تا M خرید برای هر کاربر — با شمارشگر معکوس در پنل کاربر) + تغییر
+ *    دستی درصد جاری + آمار جذب هر کمپین/بسته
  */
 
 import { useEffect, useState } from 'react';
@@ -103,7 +105,7 @@ export default function AdminPackagesPage() {
           <div>
             <h1 className="text-base font-extrabold">بسته‌ها و کمپین‌ها</h1>
             <p className="text-[11px] text-muted-foreground">
-              بازبینی سفارش‌ها + تعریف بسته/ویژگی‌ها + کمپین‌های زمانی و تعدادی
+              بازبینی سفارش‌ها + تعریف بسته/ویژگی‌ها + کمپین‌های زمانی، تعدادی و کاربران جدید
             </p>
           </div>
         </div>
@@ -810,8 +812,9 @@ function CampaignsTab() {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[11.5px] leading-5 text-muted-foreground">
-          کمپین زمانی = درصد ثابت تا تاریخ پایان؛ کمپین تعدادی = پله‌ای بر اساس شمار خریداران. عنوان و شعار
-          کمپین فعال، بالای بسته‌ها در صفحه کاربران نمایش داده می‌شود.
+          کمپین زمانی = درصد ثابت تا تاریخ پایان؛ تعدادی = پله‌ای بر اساس شمار خریداران؛ کاربران جدید =
+          تخفیف شخصیِ N روز اول پس از ثبت‌نام هر کاربر با سقف تعداد خرید (شمارشگر معکوس در پنل کاربر).
+          عنوان و شعار کمپین فعال، بالای بسته‌ها در صفحه کاربران نمایش داده می‌شود.
         </p>
         <Button
           size="sm"
@@ -824,6 +827,8 @@ function CampaignsTab() {
               discountPercent: 50,
               finalPercent: 30,
               manualPurchaseCount: null,
+              newUserDays: 7,
+              newUserMaxPurchases: 3,
               isActive: true,
               tiers: [{ from: 1, to: 10, percent: 70 }],
             })
@@ -879,9 +884,17 @@ function CampaignsTab() {
                       )}
                     </p>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      {c.type === 'time' ? 'زمانی' : 'تعدادی (پله‌ای)'}
+                      {c.type === 'time'
+                        ? 'زمانی'
+                        : c.type === 'quantity'
+                          ? 'تعدادی (پله‌ای)'
+                          : 'کاربران جدید (خوش‌آمدگویی)'}
                       {' · '}
-                      {c.type === 'time' ? `${toFa(c.discountPercent)}٪ ثابت` : `${toFa(c.tiers.length)} پله`}
+                      {c.type === 'time'
+                        ? `${toFa(c.discountPercent)}٪ ثابت`
+                        : c.type === 'quantity'
+                          ? `${toFa(c.tiers.length)} پله`
+                          : `${toFa(c.discountPercent)}٪ · تا ${toFa(c.newUserDays ?? 7)} روز پس از ثبت‌نام · حداکثر ${toFa(c.newUserMaxPurchases ?? 3)} خرید`}
                       {' · '}
                       {c.endsAt ? `پایان: ${dateFa(c.endsAt)}` : 'بی‌پایان'}
                     </p>
@@ -986,6 +999,8 @@ function CampaignsTab() {
                         manualDiscountPercent: c.manualDiscountPercent,
                         finalPercent: c.finalPercent,
                         manualPurchaseCount: c.manualPurchaseCount,
+                        newUserDays: c.newUserDays ?? 7,
+                        newUserMaxPurchases: c.newUserMaxPurchases ?? 3,
                         startsAt: c.startsAt,
                         endsAt: c.endsAt,
                         isActive: c.isActive,
@@ -1202,14 +1217,15 @@ function CampaignEditDialog({
                 <Label className="text-[12px]">نوع کمپین</Label>
                 <select
                   value={form.type}
-                  onChange={(e) => setForm({ ...form, type: e.target.value as 'time' | 'quantity' })}
+                  onChange={(e) => setForm({ ...form, type: e.target.value as 'time' | 'quantity' | 'new_user' })}
                   className="h-9 w-full rounded-md border border-input bg-card px-2 text-[13px]"
                 >
                   <option value="time">زمانی — درصد ثابت تا پایان</option>
                   <option value="quantity">تعدادی — پله‌ای بر اساس خریداران</option>
+                  <option value="new_user">کاربران جدید — تخفیف خوش‌آمدگویی</option>
                 </select>
               </div>
-              {form.type === 'time' && (
+              {(form.type === 'time' || form.type === 'new_user') && (
                 <div className="space-y-1.5">
                   <Label className="text-[12px]">درصد تخفیف</Label>
                   <Input
@@ -1266,6 +1282,48 @@ function CampaignEditDialog({
               <Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
               کمپین فعال باشد
             </label>
+
+            {/* پیکربندی کمپین کاربران جدید — پنجره پس از ثبت‌نام + سقف خرید (خواسته مالک ۹-۱۱) */}
+            {form.type === 'new_user' && (
+              <div className="space-y-3 rounded-md border border-dashed border-red-200 bg-red-50/30 p-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-[12px] text-red-800">مهلت استفاده پس از ثبت‌نام (روز)</Label>
+                    <Input
+                      dir="ltr"
+                      type="number"
+                      min={1}
+                      max={365}
+                      value={form.newUserDays ?? 7}
+                      onChange={(e) =>
+                        setForm({ ...form, newUserDays: Math.max(1, Math.min(365, Number(e.target.value) || 1)) })
+                      }
+                      className="h-9 rounded-md"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[12px] text-red-800">سقف تعداد خرید با تخفیف</Label>
+                    <Input
+                      dir="ltr"
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={form.newUserMaxPurchases ?? 3}
+                      onChange={(e) =>
+                        setForm({ ...form, newUserMaxPurchases: Math.max(1, Math.min(100, Number(e.target.value) || 1)) })
+                      }
+                      className="h-9 rounded-md"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] leading-5 text-red-900/70">
+                  هر کاربر به‌محض ثبت‌نام، به‌اندازهٔ همین تعداد روز فرصت دارد با درصد تخفیف بالا بسته بخرد؛ مهلت
+                  شخصی هر کاربر به‌صورت شمارشگر معکوس در صفحه قیمت‌های او نمایش داده می‌شود. پس از پایان مهلت یا
+                  پر شدن سقف خرید، تخفیف همان کاربر به‌صورت خودکار برداشته می‌شود. مثال: ۷ روز و ۳ خرید و ۶۰٪ =
+                  «تا ۷ روز پس از ثبت‌نام، تا ۳ بسته با ۶۰٪ تخفیف».
+                </p>
+              </div>
+            )}
 
             {/* پله‌های کمپین تعدادی + تخفیف عمومی بعد از پله‌ها */}
             {form.type === 'quantity' && (
@@ -1386,7 +1444,11 @@ function CampaignEditDialog({
               !form ||
               form.title.trim().length < 3 ||
               (form.type === 'time' && form.discountPercent <= 0) ||
-              (form.type === 'quantity' && (form.tiers ?? []).length === 0)
+              (form.type === 'quantity' && (form.tiers ?? []).length === 0) ||
+              (form.type === 'new_user' &&
+                (form.discountPercent <= 0 ||
+                  (form.newUserDays ?? 0) < 1 ||
+                  (form.newUserMaxPurchases ?? 0) < 1))
             }
             onClick={() => form && onSave({ ...form, title: form.title.trim() })}
           >

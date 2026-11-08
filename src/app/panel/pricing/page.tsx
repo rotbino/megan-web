@@ -6,15 +6,18 @@
  *    فقط کارت بزرگ «بستهٔ فعلی شما» دیده می‌شود (دونات روزهای باقی‌مانده
  *    + امکانات) و زیرش آکاردئون جمع‌شوندهٔ «خرید بسته رزرو» قرار دارد که
  *    با باز شدنش گرید بسته‌ها برای خرید رزرو ظاهر می‌شود؛ بنر کمپین هم
- *    (مثل «تخفیف خوش آمد گویی») زیر همین آکاردئون است — دارندهٔ بسته بالای
+ *    (مثل «هدیه خوش‌آمدگویی») زیر همین آکاردئون است — دارندهٔ بسته بالای
  *    صفحه هیچ محتوای تبلیغاتی نمی‌بیند (دور ۲۸).
  *  • بدون بسته: همان گرید کمپین‌محور (بازطراحی ۳۱-۱۰) — رایگان + پولی‌ها.
  *  • پرداخت کارت به کارت + فیش → تأیید ادمین؛ خرید در حین بسته فعال =
  *    رزرو با امتداد از انقضای فعلی (مالکان فعلی محروم نمی‌شوند).
  *  • نردبان از این صفحه حذف شده — فقط در کیف پول (جدا بودن دو مفهوم).
+ *  • کمپین «کاربران جدید» (خواسته مالک ۹-۱۱): مهلت شخصی هر کاربر
+ *    (N روز پس از ثبت‌نام) به‌صورت شمارشگر معکوس زنده نمایش داده می‌شود؛
+ *    پایان مهلت یا پر شدن سقف خرید = حذف خودکار تخفیف همان کاربر.
  */
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   BadgeCheck,
@@ -24,6 +27,7 @@ import {
   Copy,
   CreditCard,
   Crown,
+  Gift,
   Hourglass,
   ImagePlus,
   Infinity as InfinityIcon,
@@ -32,6 +36,7 @@ import {
   Percent,
   ReceiptText,
   ShieldCheck,
+  ShoppingBag,
   Sparkles,
   Users,
   X,
@@ -43,6 +48,7 @@ import {
   useMyPackageOrders,
   useSubmitPackageOrder,
 } from '@/lib/mock/hooks';
+import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { PanelCard } from '@/components/panel/panel-parts';
@@ -203,6 +209,165 @@ function CampaignBanner({ campaign }: { campaign: SalesCampaignInfo }) {
       </div>
     </section>
   );
+}
+
+/** شمارشگر معکوس زنده — هر ثانیه تیک می‌خورد؛ در لحظهٔ صفر یک‌بار رفرش
+ *  شلیک می‌شود تا بسته‌ها از سرور تازه شوند و تخفیف تمام‌شده برداشته شود. */
+function useCountdown(deadlineIso: string | null, onExpire?: () => void) {
+  const deadline = deadlineIso ? new Date(deadlineIso).getTime() : null;
+  const [remaining, setRemaining] = useState(() =>
+    deadline != null ? Math.max(0, deadline - Date.now()) : 0,
+  );
+  const firedRef = useRef(false);
+
+  useEffect(() => {
+    if (deadline == null) return;
+    firedRef.current = false;
+    const tick = () => {
+      const left = Math.max(0, deadline - Date.now());
+      setRemaining(left);
+      if (left === 0 && !firedRef.current) {
+        firedRef.current = true;
+        onExpire?.();
+      }
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deadline]);
+
+  return remaining;
+}
+
+/** خانهٔ شمارشگر — عدد بزرگ فارسی + برچسب زیرش */
+function CountdownBox({ value, label, pulse }: { value: string; label: string; pulse?: boolean }) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <span
+        dir="ltr"
+        className={cn(
+          'grid min-w-12 place-items-center rounded-lg bg-white px-2.5 py-1.5 font-num text-xl font-black text-red-700 shadow-sm tabular-nums ring-1 ring-white/60 sm:text-[22px]',
+          pulse && 'animate-pulse',
+        )}
+      >
+        {value}
+      </span>
+      <span className="text-[10px] font-extrabold text-white/85">{label}</span>
+    </div>
+  );
+}
+
+/** بنر کمپین کاربران جدید — هدیه خوش‌آمدگویی با شمارشگر معکوس شخصی و سقف
+ *  خرید (خواسته مالک ۹-۱۱). پایان مهلت = رفرش خودکار و حذف تخفیف.
+ *  مهمان (بدون مهلت شخصی) نسخهٔ تبلیغاتی می‌بیند. */
+function NewUserCampaignBanner({ campaign }: { campaign: SalesCampaignInfo }) {
+  const queryClient = useQueryClient();
+  const remaining = useCountdown(campaign.userDeadline, () => {
+    // پایان مهلت — بسته‌ها از سرور تازه شوند؛ تخفیف تمام‌شده حذف می‌شود
+    void queryClient.invalidateQueries({ queryKey: ['membership-plans'] });
+  });
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  // ── مهمان (بدون مهلت شخصی) — دعوت به ثبت‌نام ──
+  if (!campaign.userDeadline) {
+    return (
+      <section
+        aria-label="کمپین کاربران جدید"
+        className="relative overflow-hidden rounded-xl border border-red-200 bg-gradient-to-l from-red-50 via-amber-50/70 to-red-50 p-5 sm:p-6"
+      >
+        <div className="flex flex-wrap items-start gap-4">
+          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-red-600 text-white shadow-md">
+            <Gift size={22} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-base font-extrabold text-red-700 sm:text-lg">{campaign.title}</h2>
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-1 text-[12px] font-extrabold text-white shadow-sm">
+                <Percent size={12} strokeWidth={2.6} /> {toFa(campaign.discountPercent)}٪ تخفیف
+              </span>
+            </div>
+            <p className="mt-2 max-w-2xl text-xs leading-6 text-red-900/75 sm:text-[13px]">
+              ثبت‌نام کن و تا {toFa(campaign.newUserDays ?? 7)} روز اول، تا{' '}
+              {toFa(campaign.newUserMaxPurchases ?? 3)} بسته اشتراک را با{' '}
+              {toFa(campaign.discountPercent)}٪ تخفیف بخر.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const days = Math.floor(remaining / 86_400_000);
+  const hours = Math.floor((remaining % 86_400_000) / 3_600_000);
+  const minutes = Math.floor((remaining % 3_600_000) / 60_000);
+  const seconds = Math.floor((remaining % 60_000) / 1000);
+  const urgent = remaining < 86_400_000; // کمتر از یک روز — تیک ثانیه برجسته‌تر
+
+  return (
+    <section
+      aria-label="کمپین کاربران جدید"
+      className="relative overflow-hidden rounded-xl border border-red-300 bg-gradient-to-l from-red-600 via-red-500 to-amber-500 p-5 text-white shadow-lg sm:p-6"
+    >
+      {/* لهجه دکور */}
+      <span className="pointer-events-none absolute -left-10 -top-12 size-40 rounded-full bg-white/15 blur-2xl" aria-hidden />
+      <span className="pointer-events-none absolute -bottom-14 -right-8 size-36 rounded-full bg-amber-300/30 blur-2xl" aria-hidden />
+
+      <div className="relative flex flex-wrap items-start gap-4">
+        <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-white/20 shadow-md backdrop-blur">
+          <Gift size={22} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-base font-extrabold sm:text-lg">{campaign.title}</h2>
+            <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[12px] font-extrabold text-red-600 shadow-sm">
+              <Percent size={12} strokeWidth={2.6} /> {toFa(campaign.discountPercent)}٪ تخفیف
+            </span>
+          </div>
+
+          {/* شمارشگر معکوس شخصی — قلب کمپین کاربران جدید */}
+          <p className="mt-2.5 text-[12.5px] font-extrabold text-white/95 sm:text-[13px]">
+            فرصت باقی‌مانده هدیه خوش‌آمدگویی شما:
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2" dir="rtl">
+            {days > 0 && <CountdownBox value={toFa(days)} label="روز" />}
+            <CountdownBox value={toFa(pad(hours))} label="ساعت" />
+            <CountdownBox value={toFa(pad(minutes))} label="دقیقه" />
+            <CountdownBox value={toFa(pad(seconds))} label="ثانیه" pulse={urgent} />
+          </div>
+
+          {/* سقف خرید باقی‌مانده + توضیح کمپین از ادمین */}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {campaign.userPurchasesLeft != null && campaign.userPurchasesLeft > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-[12px] font-extrabold text-white ring-1 ring-white/30 backdrop-blur">
+                <ShoppingBag size={13} />
+                {toFa(campaign.userPurchasesLeft)} خرید بسته با این تخفیف برایت باقی مانده
+              </span>
+            )}
+            {urgent && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-3 py-1.5 text-[12px] font-extrabold text-amber-950 shadow-sm">
+                <Sparkles size={13} /> آخرین ساعات! بعد از این، دیگر تکرار نمی‌شود
+              </span>
+            )}
+          </div>
+          {campaign.description && (
+            <p className="mt-2.5 max-w-2xl text-[11.5px] leading-6 text-white/85 sm:text-xs">
+              {campaign.description}
+            </p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** مسیریاب بنر — کمپین کاربران جدید بنر شمارشگر معکوس دارد، بقیه انواع بنر
+ *  عادی زمانی/تعدادی (خواسته مالک ۹-۱۱). */
+function CampaignBannerAuto({ campaign }: { campaign: SalesCampaignInfo }) {
+  if (campaign.type === 'new_user') {
+    return <NewUserCampaignBanner campaign={campaign} />;
+  }
+  return <CampaignBanner campaign={campaign} />;
 }
 
 /** کارت بستهٔ پولی — دو حالت: خرید عادی و رزرو (دارندهٔ بستهٔ فعال، خواستهٔ مالک ۸-۱۱).
@@ -423,7 +588,7 @@ function ReserveSection({
                 بهره می‌برد؛ دارندهٔ بسته فقط همین‌جا آن را می‌بیند */}
             {campaign && campaign.discountPercent > 0 && (
               <div className="mb-4">
-                <CampaignBanner campaign={campaign} />
+                <CampaignBannerAuto campaign={campaign} />
               </div>
             )}
             <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-800">
@@ -517,7 +682,7 @@ export default function PricingPage() {
       {/* بنر کمپین فقط برای بی‌بسته‌ها بالای صفحه است؛ دارندهٔ بستهٔ فعال آن را
           زیر آکاردئون «خرید بسته رزرو» می‌بیند (خواستهٔ مالک ۸-۱۱ دور ۲۸) */}
       {campaign && campaign.discountPercent > 0 && !myPkgLoading && !myPackage?.isActive && (
-        <CampaignBanner campaign={campaign} />
+        <CampaignBannerAuto campaign={campaign} />
       )}
 
       {myPkgLoading ? (
