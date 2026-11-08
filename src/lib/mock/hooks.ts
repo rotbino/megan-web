@@ -520,6 +520,20 @@ export function useMarkAdminMessagesRead() {
   });
 }
 
+/** خواندن پاسخ‌های گفتگوی پشتیبانی (تیکت) — باز کردن مکالمهٔ «پشتیبانی
+ *  ایمچ» هم بج تیکت را صفر می‌کند (خواستهٔ مالک ۸-۱۱ دور ۲۵: «دقیقا مثل
+ *  پیام‌های خوانده‌نشده» — تا کاربر خودِ چت را باز نکند بج نمی‌پرد) */
+export function useMarkSupportConversationRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.markSupportConversationRead,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support-conversation'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
+    },
+  });
+}
+
 // ─── پیگیری‌ها — تغییرات (CRM کوچک) ───────────────────────────────────
 
 export function useCreateFollowFolder() {
