@@ -1,0 +1,744 @@
+     1→/**
+     2→ * ─── سرویس فایل‌ها (پورت imach-back، منطبق مدل‌های مگان) ──────────────────────
+     3→ * یک جدول چندریختی File هر موجودیتی که تصویر می‌خواهد را تزئین می‌کند:
+     4→ * User.avatar و Product.gallery — کلاینت اسلات را با fieldKey انتخاب می‌کند و
+     5→ * با همان کلید آن را می‌خواند. بایت‌ها روی درایور ذخیره‌سازی (آروان) هستند.
+     6→ *
+     7→ * نظم ضد-فایل-سرگردان (خواسته‌ی کاربر):
+     8→ *   • فرانت فقط وقتی آپلود می‌کند که مدل مقصد وجود دارد (یا لحظه‌ی ثبت نهایی) —
+     9→ *     هرگز حدسی وسط پرکردن فرم.
+    10→ *   • جریان replace اول آپلود می‌کند، ردیف قبلی فقط بعد از امن‌شدن بایت‌های
+    11→ *     جدید حذف می‌شود — عکس قدیمی به‌خاطر خطای آپلود هیچ‌وقت گم نمی‌شود.
+    12→ *   • حذف از ذخیره‌سازی بهترین‌حال است؛ ردیف DB منبع حقیقت است و عروسک
+    13→ *     دوره‌ای ادمین بایت‌ها و ردیف‌های جامانده را جمع می‌کند.
+    14→ *
+    15→ * خواندن‌ها URL عمومی مستقیم برمی‌گردانند — کلاینت بایت‌ها را مستقیم از
+    16→ * ابر می‌گیرد، بدون توکن، بدون پروکسی.
+    17→ */
+    18→
+    19→import { Injectable, HttpStatus, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+    20→import type { FastifyRequest } from 'fastify';
+    21→import { randomBytes } from 'node:crypto';
+    22→import { PrismaService } from '../common/prisma/prisma.module';
+    23→import { CacheService } from '../common/cache/cache.module';
+    24→import { storage, FILES_STAGING_TTL_DAYS } from '../common/config/env';
+    25→import { AppError } from '../common/errors/app-error';
+    26→import type { AuthUser } from '../common/guards';
+    27→import { buildStorage, type StorageDriver } from './storage';
+    28→
+    29→/** مدل‌هایی که فایل تزئین می‌کند — کلاینت نمی‌تواند دیگری بسازد. */
+    30→export const RELATED_MODELS = ['User', 'Product', 'Verification', 'ChargeOrder', 'PackageOrder'] as const;
+    31→export type RelatedModel = (typeof RELATED_MODELS)[number];
+    32→
+    33→/** ObjectIdهای ارسالی کلاینت قبل از لمس Prisma اعتبارسنجی می‌شوند (۲۴hex → 404 تمیز) */
+    34→const OID_RE = /^[0-9a-fA-F]{24}$/;
+    35→function oidOr404(id: string | null | undefined): string {
+    36→  if (!id || !OID_RE.test(id)) throw AppError.notFound('فایل یافت نشد.');
+    37→  return id;
+    38→}
+    39→
+    40→/** قواعد تصویر باسکول: jpeg/jpg/png — به‌علاوه webp برای آینده */
+    41→const ALLOWED_MIME = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'] as const;
+    42→
+    43→/**
+    44→ * حداقل حجم معنادار تصویر.
+    45→ * باسکول ۲۰KB بود، اما بهینه‌سازی سمت کلاینت (canvas ≤‌۱۲۰۰px/۵۰۰KB) تصاویر
+    46→ * تمیز (پس‌زمینه ساده/عکس‌های کاتالوگی) را گاهی زیر ۲۰KB می‌برد و رد کردنشان
+    47→ * یعنی گم‌شدن بی‌صدای تصویر آگهی کاربر. کف ۴KB کافی است زباله‌ها را بگیرد؛
+    48→ * اعتبارسنجی واقعی ابعاد (≥۲۰۰px پس از پردازش sharp) جداگانه انجام می‌شود.
+    49→ */
+    50→const MIN_IMAGE_BYTES = 4 * 1024;
+    51→
+    52→/** حداقل عرض معنادار پس از پردازش — عکس‌های ریز/آیکون‌وار رد می‌شوند */
+    53→const MIN_IMAGE_WIDTH = 200;
+    54→
+    55→/** نام پوشه‌های درست — «users» نه «user» (جمع ساده‌انگارانه) */
+    56→const MODEL_FOLDER: Record<RelatedModel, string> = {
+    57→  User: 'users',
+    58→  Product: 'products',
+    59→  Verification: 'verifications',
+    60→  ChargeOrder: 'charge-orders',
+    61→  PackageOrder: 'package-orders',
+    62→};
+    63→
+    64→const MIME_EXT: Record<string, string> = {
+    65→  'image/jpeg': 'jpg',
+    66→  'image/jpg': 'jpg',
+    67→  'image/png': 'png',
+    68→  'image/webp': 'webp',
+    69→};
+    70→
+    71→export interface ProcessedImage {
+    72→  main: Buffer;
+    73→  mainMime: string;
+    74→  mainExt: string;
+    75→  thumb: Buffer | null;
+    76→  width: number;
+    77→  height: number;
+    78→}
+    79→
+    80→/** شکل عمومی برگشتی به کلاینت — کلید ذخیره‌سازی هرگز لو نمی‌رود. */
+    81→export interface FileDto {
+    82→  id: string;
+    83→  fieldKey: string;
+    84→  url: string;
+    85→  thumbUrl: string | null;
+    86→  description: string | null;
+    87→  size: number;
+    88→  mimeType: string;
+    89→  createdAt: Date;
+    90→}
+    91→
+    92→@Injectable()
+    93→export class UploadsService implements OnModuleInit, OnModuleDestroy {
+    94→  private readonly driver: StorageDriver;
+    95→  private reaperTimer: NodeJS.Timeout | null = null;
+    96→
+    97→  constructor(
+    98→    private readonly prisma: PrismaService,
+    99→    private readonly cache: CacheService,
+   100→  ) {
+   101→    this.driver = buildStorage(); // بوت با credentials غیب فوری می‌شکند
+   102→  }
+   103→
+   104→  /**
+   105→   * ضدفایل‌سرگردان (خواسته کاربر: «اصلا نباید فایل اضافی در سرور بمونه»):
+   106→   * ردیف‌های staged (relatedId=null) که تا سقف TTL به مدلی نچسبیده‌اند — به
+   107→   * همراه بایت‌های‌شان — خودکار حذف می‌شوند؛ یک‌بار دیرهنگام بعد از بوت و بعد
+   108→   * هر ۶ ساعت. حذف idempotent است، پس چند اینستنس هم تداخل نمی‌کنند.
+   109→   */
+   110→  onModuleInit(): void {
+   111→    const bootDelay = setTimeout(() => {
+   112→      void this.reapStaged();
+   113→    }, 45_000);
+   114→    bootDelay.unref?.();
+   115→    this.reaperTimer = setInterval(() => {
+   116→      void this.reapStaged();
+   117→    }, 6 * 60 * 60 * 1000);
+   118→    this.reaperTimer.unref?.();
+   119→  }
+   120→
+   121→  onModuleDestroy(): void {
+   122→    if (this.reaperTimer) clearInterval(this.reaperTimer);
+   123→  }
+   124→
+   125→  /** حذف کامل (بایت + ردیف) آپلودهای staged رسوب‌کرده — خودکار و بی‌صدا. */
+   126→  private async reapStaged(): Promise<void> {
+   127→    try {
+   128→      const cutoff = new Date(Date.now() - FILES_STAGING_TTL_DAYS * 86_400_000);
+   129→      const rows = await this.prisma.file.findMany({
+   130→        where: { relatedId: null, createdAt: { lt: cutoff } },
+   131→        select: { id: true, storageKey: true, thumbStorageKey: true },
+   132→        take: 500,
+   133→      });
+   134→      for (const f of rows) {
+   135→        try {
+   136→          if (f.storageKey) await this.driver.delete(f.storageKey);
+   137→          if (f.thumbStorageKey) await this.driver.delete(f.thumbStorageKey).catch(() => undefined);
+   138→        } catch {
+   139→          /* بایت‌ها بهترین‌حال — قرارداد، حذف ردیف است */
+   140→        }
+   141→        await this.prisma.file.delete({ where: { id: f.id } }).catch(() => undefined);
+   142→      }
+   143→      if (rows.length > 0) {
+   144→        // پنج ثانیه بعد، دسته بعدی (تخلیه تدریجی انباشتگاه‌های بزرگ)
+   145→        const next = setTimeout(() => void this.reapStaged(), 5_000);
+   146→        next.unref?.();
+   147→      }
+   148→    } catch {
+   149→      /* reaper هرگز نباید کاربران را بیدار کند */
+   150→    }
+   151→  }
+   152→
+   153→  // ─── پاین‌لاین تصویر (sharp) ────────────────────────────────────────────────
+   154→
+   155→  /**
+   156→   * یک‌بار فشرده/تغییراندازه، دو بار ذخیره (اصلی + تامبنیل) — عین خواسته مالک:
+   157→   *  • تصویر اصلی: حداکثر عرض ۱۲۰۰px (طول به‌تناسب)؛ اگر بعد از کوچک‌شدن حجم
+   158→   *    از ۵۰۰KB بیشتر بود کیفیت پله‌ای کم می‌شود تا زیر سقف بیاید (کیفیت
+   159→   *    هر پله فقط ~۸٪ کم می‌شود تا عکس زیاد افت نکند).
+   160→   *  • تامبنیل: حداکثر عرض ۵۰۰px (طول اتوماتیک) — برای کارت‌های لیست.
+   161→   * (سرعت: کارت لیست هرگز تصویر ۱۲۰۰px نمی‌کشد)
+   162→   */
+   163→  private static readonly MAIN_MAX_WIDTH = 1200;
+   164→  private static readonly MAIN_MAX_BYTES = 500 * 1024;
+   165→  private static readonly THUMB_MAX_WIDTH = 500;
+   166→
+   167→  private async processFile(buffer: Buffer, mime: string): Promise<ProcessedImage> {
+   168→    try {
+   169→      const sharp = (await import('sharp')).default;
+   170→      const meta = await sharp(buffer).metadata();
+   171→      const hasAlpha = !!meta.hasAlpha;
+   172→      const isWebp = mime === 'image/webp';
+   173→
+   174→      // تصویر اصلی — فقط عرض محدود می‌شود؛ طول خودکار/تناسبی (fit inside با عرض ۱۲۰۰)
+   175→      const mainPipeline = sharp(buffer).rotate();
+   176→      let main = await mainPipeline
+   177→        .resize(UploadsService.MAIN_MAX_WIDTH, UploadsService.MAIN_MAX_WIDTH, {
+   178→          fit: 'inside',
+   179→          withoutEnlargement: true,
+   180→        })
+   181→        .toFormat(isWebp ? 'webp' : hasAlpha ? 'png' : 'jpeg', isWebp ? { quality: 84 } : hasAlpha ? { compressionLevel: 9 } : { quality: 84, mozjpeg: true })
+   182→        .toBuffer();
+   183→
+   184→      // پله‌ای فشرده‌تر — تا زیر ۵۰۰KB بیاید (فقط jpeg/webp؛ png شفاف را دست نمی‌زنیم)
+   185→      if (!hasAlpha && main.length > UploadsService.MAIN_MAX_BYTES) {
+   186→        for (const quality of [78, 72, 66, 60, 54, 48]) {
+   187→          main = await sharp(buffer)
+   188→            .rotate()
+   189→            .resize(UploadsService.MAIN_MAX_WIDTH, UploadsService.MAIN_MAX_WIDTH, {
+   190→              fit: 'inside',
+   191→              withoutEnlargement: true,
+   192→            })
+   193→            .toFormat(isWebp ? 'webp' : 'jpeg', isWebp ? { quality } : { quality, mozjpeg: true })
+   194→            .toBuffer();
+   195→          if (main.length <= UploadsService.MAIN_MAX_BYTES) break;
+   196→        }
+   197→      }
+   198→
+   199→      const thumb = await sharp(buffer)
+   200→        .rotate()
+   201→        .resize(UploadsService.THUMB_MAX_WIDTH, UploadsService.THUMB_MAX_WIDTH, { fit: 'inside', withoutEnlargement: true })
+   202→        .toFormat('jpeg', { quality: 78, mozjpeg: true }) // تامبنیل همیشه jpeg
+   203→        .toBuffer();
+   204→
+   205→      const outMeta = await sharp(main).metadata();
+   206→      const mainMime = isWebp ? 'image/webp' : hasAlpha ? 'image/png' : 'image/jpeg';
+   207→      const mainExt = isWebp ? 'webp' : hasAlpha ? 'png' : 'jpg';
+   208→      return { main, mainMime, mainExt, thumb, width: outMeta.width ?? 0, height: outMeta.height ?? 0 };
+   209→    } catch {
+   210→      // تصویر خراب/فرمت پشتیبانی‌نشده — بایت‌های اصلی را نگه دار، رد نکن
+   211→      return { main: buffer, mainMime: mime, mainExt: MIME_EXT[mime] ?? 'bin', thumb: null, width: 0, height: 0 };
+   212→    }
+   213→  }
+   214→
+   215→  // ─── کلید و پوشه‌ها ────────────────────────────────────────────────────────
+   216→
+   217→  /**
+   218→   * معماری پوشه (per-USER — خواسته مالک ۱۴۰۵/۰۸/۰۷):
+   219→   *   users/{ownerId}/avatars/… · users/{ownerId}/staging/…
+   220→   *   users/{ownerId}/products/{productId}/gallery/…
+   221→   *   users/{ownerId}/verifications/{orderId}/… · users/{ownerId}/charge-orders/{orderId}/…
+   222→   * همه‌ی فایل‌های یک شخص زیر پوشه خودش است — کالا، چت (آینده)، پروفایل — تا
+   223→   * سهمیه/هزینه فضای هر کاربر بعداً قابل اعمال شود (مصرف واقعی از جدول File
+   224→   * با ایندکس ownerId پاسخ داده می‌شود — نه اسکن ذخیره‌سازی).
+   225→   * فایل‌های قدیمی با کلید قبلی (products/{id}/…) در DB معتبرند و همچنان
+   226→   * سرو می‌شوند؛ ساختار جدید فقط برای آپلودهای تازه است.
+   227→   */
+   228→  private keyFor(ownerId: string, model: RelatedModel, modelId: string | null, fieldKey: string, ext: string): string {
+   229→    const stamp = Date.now().toString(36);
+   230→    const rand = randomBytes(5).toString('hex');
+   231→    // آواتار زیر پوشه خود کاربر است و نیازی به modelId ندارد
+   232→    const inner =
+   233→      model === 'User'
+   234→        ? 'avatars'
+   235→        : modelId
+   236→          ? `${MODEL_FOLDER[model]}/${modelId}`
+   237→          : 'staging';
+   238→    return `users/${ownerId}/${inner}/${fieldKey}/${stamp}-${rand}.${ext}`;
+   239→  }
+   240→
+   241→  // ─── آپلود ────────────────────────────────────────────────────────────────
+   242→
+   243→  /** تعیین اینکه فایل کجا می‌چسبد و چه کسی اجازه نوشتن دارد. */
+   244→  private async resolveTarget(user: AuthUser, model: RelatedModel, modelId: string | null) {
+   245→    if (!modelId) return null; // آپلود staged — هنوز مدلی برای چک نیست
+   246→    if (model === 'User') {
+   247→      if (modelId !== user.id && user.role !== 'ADMIN') {
+   248→        throw AppError.forbidden('شما اجازه‌ی این کار را ندارید.');
+   249→      }
+   250→      return { id: modelId };
+   251→    }
+   252→    // Verification — id آبجکت؛ فقط مالک سفارش
+   253→    if (model === 'Verification') {
+   254→      if (!OID_RE.test(modelId)) throw AppError.notFound('درخواست یافت نشد.');
+   255→      const order = await this.prisma.verificationOrder.findUnique({
+   256→        where: { id: modelId },
+   257→        select: { userId: true },
+   258→      });
+   259→      if (!order) throw AppError.notFound('درخواست یافت نشد.');
+   260→      if (order.userId !== user.id && user.role !== 'ADMIN') {
+   261→        throw AppError.forbidden('شما اجازه‌ی این کار را ندارید.');
+   262→      }
+   263→      return order;
+   264→    }
+   265→    // ChargeOrder — فیش واریزی کارت‌به‌کارت؛ id آبجکت، فقط مالک سفارش
+   266→    if (model === 'ChargeOrder') {
+   267→      if (!OID_RE.test(modelId)) throw AppError.notFound('سفارش شارژ یافت نشد.');
+   268→      const order = await this.prisma.chargeOrder.findUnique({
+   269→        where: { id: modelId },
+   270→        select: { userId: true },
+   271→      });
+   272→      if (!order) throw AppError.notFound('سفارش شارژ یافت نشد.');
+   273→      if (order.userId !== user.id && user.role !== 'ADMIN') {
+   274→        throw AppError.forbidden('شما اجازه‌ی این کار را ندارید.');
+   275→      }
+   276→      return order;
+   277→    }
+   278→    // PackageOrder — فیش خرید بسته اشتراک؛ id آبجکت، فقط مالک سفارش
+   279→    if (model === 'PackageOrder') {
+   280→      if (!OID_RE.test(modelId)) throw AppError.notFound('سفارش بسته یافت نشد.');
+   281→      const order = await this.prisma.packageOrder.findUnique({
+   282→        where: { id: modelId },
+   283→        select: { userId: true },
+   284→      });
+   285→      if (!order) throw AppError.notFound('سفارش بسته یافت نشد.');
+   286→      if (order.userId !== user.id && user.role !== 'ADMIN') {
+   287→        throw AppError.forbidden('شما اجازه‌ی این کار را ندارید.');
+   288→      }
+   289→      return order;
+   290→    }
+   291→    // Product — id عددی؛ فقط مالک
+   292→    if (!/^\d+$/.test(modelId)) throw AppError.notFound('محصول یافت نشد.');
+   293→    const product = await this.prisma.product.findUnique({
+   294→      where: { id: Number(modelId) },
+   295→      select: { id: true, userId: true },
+   296→    });
+   297→    if (!product) throw AppError.notFound('محصول یافت نشد.');
+   298→    if (product.userId !== user.id && user.role !== 'ADMIN') {
+   299→      throw AppError.forbidden('شما اجازه‌ی این کار را ندارید.');
+   300→    }
+   301→    return product;
+   302→  }
+   303→
+   304→  /**
+   305→   * پارس multipart به فیلدها + بافر فایل (Fastify).
+   306→   *
+   307→   * ترتیب نسبی فیلدها نباید مهم باشد: مرورگرها FormData را به همان ترتیب append
+   308→   * می‌فرستند و بعضی کلاینت‌ها فایل را اول می‌گذارند، بعضی آخر. req.file() فقط
+   309→   * فیلدهای «قبل از فایل» را می‌دهد و بقیه را می‌باخت — ریشه‌ی باگ «عکس آپلود
+   310→   * می‌شود ولی هیچ‌وقت به کالا نمی‌چسبد». اینجا کل استریم با parts() مصرف
+   311→   * می‌شود تا modelId/replace/description از هر موقعیتی بیایند.
+   312→   */
+   313→  async readMultipart(req: FastifyRequest): Promise<{
+   314→    fields: Record<string, string>;
+   315→    file: { buffer: Buffer; mimetype: string; filename: string };
+   316→  }> {
+   317→    const fastifyReq = req as FastifyRequest & {
+   318→      parts: (opts?: unknown) => AsyncIterable<MultipartPart>;
+   319→      isMultipart: () => boolean;
+   320→    };
+   321→    if (!fastifyReq.isMultipart()) {
+   322→      throw AppError.badRequest('فایل ارسال نشده است.', 'NOT_MULTIPART');
+   323→    }
+   324→
+   325→    const fields: Record<string, string> = {};
+   326→    let file: { buffer: Buffer; mimetype: string; filename: string } | null = null;
+   327→    try {
+   328→      for await (const part of fastifyReq.parts()) {
+   329→        if (part.type === 'file') {
+   330→          if (file) {
+   331→            // پلاگین files:1 است؛ فایل اضافه را هدر نده — ببلع
+   332→            await part.toBuffer().catch(() => undefined);
+   333→            continue;
+   334→          }
+   335→          const buffer = await part.toBuffer();
+   336→          file = { buffer, mimetype: part.mimetype, filename: part.filename };
+   337→        } else if (typeof part.value === 'string') {
+   338→          fields[part.fieldname] = part.value;
+   339→        }
+   340→      }
+   341→    } catch {
+   342→      // بدنه بریده (PrematureClose) = آپلود ناقص — رکورد نیم‌بند نساز
+   343→      throw AppError.badRequest('آپلود ناقص بود — دوباره تلاش کنید.', 'MULTIPART_TRUNCATED');
+   344→    }
+   345→    if (!file) {
+   346→      throw AppError.badRequest('فایل ارسال نشده است.', 'NOT_MULTIPART');
+   347→    }
+   348→    return { fields, file };
+   349→  }
+   350→
+   351→  /**
+   352→   * پارس multipart چندفایلی — فایل‌ها با نام فیلدشان جمع می‌شوند
+   353→   * (nationalCard، selfie، …). فقط فیلدهای خواسته‌شده پذیرفته می‌شوند تا
+   354→   * کلاینت نتواند اسلات‌های ناشناس بسازد؛ فایل ناشناس ببلعیده می‌شود.
+   355→   */
+   356→  async readMultipartMulti(
+   357→    req: FastifyRequest,
+   358→    acceptedFields: string[],
+   359→  ): Promise<{
+   360→    fields: Record<string, string>;
+   361→    files: Map<string, { buffer: Buffer; mimetype: string; filename: string }>;
+   362→  }> {
+   363→    const fastifyReq = req as FastifyRequest & {
+   364→      parts: (opts?: unknown) => AsyncIterable<MultipartPart>;
+   365→      isMultipart: () => boolean;
+   366→    };
+   367→    if (!fastifyReq.isMultipart()) {
+   368→      throw AppError.badRequest('فایل ارسال نشده است.', 'NOT_MULTIPART');
+   369→    }
+   370→
+   371→    const fields: Record<string, string> = {};
+   372→    const files = new Map<string, { buffer: Buffer; mimetype: string; filename: string }>();
+   373→    try {
+   374→      for await (const part of fastifyReq.parts()) {
+   375→        if (part.type === 'file') {
+   376→          if (part.fieldname && acceptedFields.includes(part.fieldname)) {
+   377→            if (files.has(part.fieldname)) {
+   378→              // تکراری — ببلع
+   379→              await part.toBuffer().catch(() => undefined);
+   380→              continue;
+   381→            }
+   382→            files.set(part.fieldname, {
+   383→              buffer: await part.toBuffer(),
+   384→              mimetype: part.mimetype ?? 'application/octet-stream',
+   385→              filename: part.filename ?? 'file',
+   386→            });
+   387→          } else {
+   388→            await part.toBuffer().catch(() => undefined);
+   389→          }
+   390→        } else if (typeof part.value === 'string') {
+   391→          fields[part.fieldname ?? ''] = part.value;
+   392→        }
+   393→      }
+   394→    } catch {
+   395→      throw AppError.badRequest('آپلود ناقص بود — دوباره تلاش کنید.', 'MULTIPART_TRUNCATED');
+   396→    }
+   397→    return { fields, files };
+   398→  }
+   399→
+   400→  async upload(
+   401→    user: AuthUser,
+   402→    input: {
+   403→      model: RelatedModel;
+   404→      modelId?: string | null;
+   405→      fieldKey: string;
+   406→      description?: string | null;
+   407→      replace?: boolean;
+   408→    },
+   409→    file: { buffer: Buffer; mimetype: string; filename: string },
+   410→  ): Promise<FileDto> {
+   411→    if (file.buffer.length > storage.MAX_FILE_SIZE) {
+   412→      throw AppError.badRequest(
+   413→        `حجم فایل نباید از ${Math.floor(storage.MAX_FILE_SIZE / 1024 / 1024)} مگابایت بیشتر باشد.`,
+   414→        'FILE_TOO_LARGE',
+   415→      );
+   416→    }
+   417→    if (file.buffer.length < MIN_IMAGE_BYTES) {
+   418→      throw AppError.badRequest('حجم تصویر بسیار کم است.', 'FILE_TOO_SMALL');
+   419→    }
+   420→    if (!(ALLOWED_MIME as readonly string[]).includes(file.mimetype)) {
+   421→      throw AppError.badRequest('این نوع فایل پشتیبانی نمی‌شود.', 'FILE_TYPE_NOT_ALLOWED');
+   422→    }
+   423→
+   424→    const modelId = input.modelId || null;
+   425→    await this.resolveTarget(user, input.model, modelId);
+   426→
+   427→    const processed = await this.processFile(file.buffer, file.mimetype);
+   428→    // ابعاد واقعی (پس از decode با sharp) — عکس‌های ریز/زباله رد می‌شوند؛
+   429→    // width=0 یعنی sharp نتوانست decode کند → همان مسیر قدیمی ادامه می‌دهد.
+   430→    if (processed.width > 0 && processed.width < MIN_IMAGE_WIDTH) {
+   431→      throw AppError.badRequest(
+   432→        `عرض تصویر باید حداقل ${MIN_IMAGE_WIDTH} پیکسل باشد.`,
+   433→        'IMAGE_TOO_SMALL',
+   434→      );
+   435→    }
+   436→    const key = this.keyFor(user.id, input.model, modelId, input.fieldKey, processed.mainExt);
+   437→    const url = await this.driver.put(key, processed.main, processed.mainMime);
+   438→
+   439→    let thumbUrl: string | null = null;
+   440→    let thumbKey: string | null = null;
+   441→    if (processed.thumb) {
+   442→      thumbKey = `${key}.thumb.jpg`; // همیشه jpeg — تامبنیل کاشی‌های <img>
+   443→      thumbUrl = await this.driver.put(thumbKey, processed.thumb, 'image/jpeg').catch(() => null);
+   444→      if (!thumbUrl) thumbKey = null;
+   445→    }
+   446→
+   447→    const row = await this.prisma.file.create({
+   448→      data: {
+   449→        ownerId: user.id,
+   450→        relatedModel: input.model,
+   451→        relatedId: modelId,
+   452→        fieldKey: input.fieldKey,
+   453→        description: input.description?.trim().slice(0, 300) || null,
+   454→        name: file.filename.slice(0, 200),
+   455→        mimeType: processed.mainMime,
+   456→        size: processed.main.length,
+   457→        url,
+   458→        thumbUrl,
+   459→        storageKey: key,
+   460→        thumbStorageKey: thumbKey,
+   461→        metadata: {
+   462→          originalSize: file.buffer.length,
+   463→          width: processed.width,
+   464→          height: processed.height,
+   465→        } as unknown as object,
+   466→      },
+   467→    });
+   468→
+   469→    // معناشناسی replace (خواسته کاربر): آپلود جدید اول، بعد حذف قبلی‌ها —
+   470→    // اسلات‌های تک‌فایلی (avatar) هرگز ردیف انباشته نمی‌کنند؛ گالری‌ها با
+   471→    // replace=false خارج می‌شوند.
+   472→    if (input.replace !== false && modelId) {
+   473→      await this.removeSiblings(input.model, modelId, input.fieldKey, row.id);
+   474→    }
+   475→    await this.bustCaches(input.model, modelId);
+   476→
+   477→    return this.toDto(row);
+   478→  }
+   479→
+   480→  /** حذف همه فایل‌های دیگرِ همان اسلات (ذخیره‌سازی بهترین‌حال). */
+   481→  private async removeSiblings(model: RelatedModel, modelId: string, fieldKey: string, keepId: string): Promise<void> {
+   482→    const stale = await this.prisma.file.findMany({
+   483→      where: { relatedModel: model, relatedId: modelId, fieldKey, id: { not: keepId } },
+   484→      select: { id: true, storageKey: true, thumbStorageKey: true },
+   485→    });
+   486→    for (const f of stale) {
+   487→      try {
+   488→        if (f.storageKey) await this.driver.delete(f.storageKey);
+   489→        if (f.thumbStorageKey) await this.driver.delete(f.thumbStorageKey).catch(() => undefined);
+   490→      } catch {
+   491→        /* پاک‌سازی ذخیره‌سازی بهترین‌حال — حذف ردیف مهم است */
+   492→      }
+   493→      await this.prisma.file.delete({ where: { id: f.id } }).catch(() => undefined);
+   494→    }
+   495→  }
+   496→
+   497→  // ─── خواندن ────────────────────────────────────────────────────────────────
+   498→
+   499→  toDto(row: {
+   500→    id: string;
+   501→    fieldKey: string;
+   502→    url: string;
+   503→    thumbUrl: string | null;
+   504→    description: string | null;
+   505→    size: number;
+   506→    mimeType: string;
+   507→    createdAt: Date;
+   508→  }): FileDto {
+   509→    return {
+   510→      id: row.id,
+   511→      fieldKey: row.fieldKey,
+   512→      url: row.url,
+   513→      thumbUrl: row.thumbUrl,
+   514→      description: row.description,
+   515→      size: row.size,
+   516→      mimeType: row.mimeType,
+   517→      createdAt: row.createdAt,
+   518→    };
+   519→  }
+   520→
+   521→  /** خواندن عمومی با اسلات — اندپوینتی که کلاینت قبل از <img src> می‌زند. */
+   522→  async getFileUrl(model: string, modelId: string, key: string): Promise<FileDto> {
+   523→    if (!(RELATED_MODELS as readonly string[]).includes(model)) {
+   524→      throw AppError.badRequest('مدل معتبر نیست.', 'BAD_MODEL');
+   525→    }
+   526→    const row = await this.prisma.file.findFirst({
+   527→      where: { relatedModel: model, relatedId: modelId, fieldKey: key },
+   528→      orderBy: { createdAt: 'desc' },
+   529→    });
+   530→    if (!row) throw AppError.notFound('فایل یافت نشد.');
+   531→    return this.toDto(row);
+   532→  }
+   533→
+   534→  /**
+   535→   * نقشه گالری گروهی برای payload لیست‌ها (کارت‌های محصول) — یک کوئری in
+   536→   * برای کل صفحه، نه یکی برای هر ردیف. (الگوی imach-back)
+   537→   */
+   538→  async galleryMap(productIds: number[]): Promise<Map<number, FileDto[]>> {
+   539→    const map = new Map<number, FileDto[]>();
+   540→    if (productIds.length === 0) return map;
+   541→    const rows = await this.prisma.file.findMany({
+   542→      where: {
+   543→        relatedModel: 'Product',
+   544→        relatedId: { in: productIds.map((id) => String(id)) },
+   545→        fieldKey: 'gallery',
+   546→      },
+   547→      orderBy: { createdAt: 'asc' },
+   548→      take: 500,
+   549→    });
+   550→    for (const r of rows) {
+   551→      const pid = Number(r.relatedId);
+   552→      const list = map.get(pid) ?? [];
+   553→      list.push(this.toDto(r));
+   554→      map.set(pid, list);
+   555→    }
+   556→    return map;
+   557→  }
+   558→
+   559→  // ─── حذف ────────────────────────────────────────────────────────────────────
+   560→
+   561→  /** «حذف» فرانت (مثلاً X پروفایل) — مالک یا ادمین. */
+   562→  async remove(user: AuthUser, fileId: string): Promise<{ ok: true }> {
+   563→    oidOr404(fileId);
+   564→    const row = await this.prisma.file.findUnique({ where: { id: fileId } });
+   565→    if (!row) throw AppError.notFound('فایل یافت نشد.');
+   566→
+   567→    let allowed = user.role === 'ADMIN' || row.ownerId === user.id;
+   568→    if (!allowed && row.relatedModel === 'Product' && row.relatedId) {
+   569→      const product = await this.prisma.product.findUnique({
+   570→        where: { id: Number(row.relatedId) },
+   571→        select: { userId: true },
+   572→      });
+   573→      if (product) allowed = product.userId === user.id;
+   574→    }
+   575→    if (!allowed) throw AppError.forbidden('شما اجازه‌ی این کار را ندارید.');
+   576→
+   577→    try {
+   578→      if (row.storageKey) await this.driver.delete(row.storageKey);
+   579→      if (row.thumbStorageKey) await this.driver.delete(row.thumbStorageKey).catch(() => undefined);
+   580→    } catch {
+   581→      /* بهترین‌حال — ردیف DB مرجع است */
+   582→    }
+   583→    await this.prisma.file.delete({ where: { id: row.id } });
+   584→    await this.bustCaches(row.relatedModel as RelatedModel, row.relatedId);
+   585→    return { ok: true };
+   586→  }
+   587→
+   588→  /** حذف کل گالری یک محصول (هنگام حذف دائمی) — بایت + ردیف. */
+   589→  async removeAllForModel(model: RelatedModel, modelId: string): Promise<number> {
+   590→    const rows = await this.prisma.file.findMany({
+   591→      where: { relatedModel: model, relatedId: modelId },
+   592→      select: { id: true, storageKey: true, thumbStorageKey: true },
+   593→    });
+   594→    // پاک‌سازی ذخیره‌سازی «best-effort و غیرمسدودکننده» — درس تست ۲۸-۱۰: با
+   595→    // شبکه لرزان آروان، حذف سنکرون (۲۰s×۴ retry برای هر آبجکت) کل درخواست
+   596→    // ادمین را دقیقه‌ها معلق و سپس ۵۰۰ (شکستن پروکسی) می‌کرد، در حالی که
+   597→    // سند File منبع حقیقت است و همین‌جا حذف می‌شود؛ آبجکت‌های یتیم روی
+   598→    // ذخیره‌سازی بعداً توسط ابزار «آپلودهای یتیم» ادمین جمع می‌شوند.
+   599→    for (const f of rows) {
+   600→      if (f.storageKey) void this.driver.delete(f.storageKey).catch(() => undefined);
+   601→      if (f.thumbStorageKey) void this.driver.delete(f.thumbStorageKey).catch(() => undefined);
+   602→    }
+   603→    await this.prisma.file.deleteMany({ where: { relatedModel: model, relatedId: modelId } });
+   604→    await this.bustCaches(model, modelId);
+   605→    return rows.length;
+   606→  }
+   607→
+   608→  // ─── انسجام کش ──────────────────────────────────────────────────────────────
+   609→
+   610→  /** عوض‌شدن گالری باید فوراً لیست‌های کش‌شده را تازه کند. */
+   611→  private async bustCaches(model: RelatedModel, modelId: string | null): Promise<void> {
+   612→    try {
+   613→      if (model === 'Product' && modelId) {
+   614→        this.cache.invalidateTag(`product:${modelId}`);
+   615→      }
+   616→      if (model === 'User' && modelId) {
+   617→        // آواتار/گالری/گواهی کاربر — کش پروفایل عمومی فروشنده هم بشکند
+   618→        const owner = await this.prisma.user.findUnique({
+   619→          where: { id: modelId },
+   620→          select: { userName: true },
+   621→        });
+   622→        if (owner?.userName) this.cache.invalidateTag(`seller:${owner.userName.trim()}`);
+   623→      }
+   624→      this.cache.invalidateTag('products');
+   625→    } catch {
+   626→      /* غیرمسدودکننده */
+   627→    }
+   628→  }
+   629→
+   630→  // ─── ادمین: عروسک‌ها و مصرف ────────────────────────────────────────────────
+   631→
+   632→  /**
+   633→   * عروسک = ردیف‌هایی که موجودیت‌شان رفته (dangling) یا هرگز به مدل نچسبیدند
+   634→   * (staged گذشته از TTL). چک‌های dangling محدودند (۱۰۰۰ ردیف اخیر) تا
+   635→   * اندپوینت در مقیاس میلیونها ارزان بماند.
+   636→   */
+   637→  async listOrphans(limit = 100) {
+   638→    const cutoff = new Date(Date.now() - FILES_STAGING_TTL_DAYS * 86_400_000);
+   639→
+   640→    const staged = await this.prisma.file.findMany({
+   641→      where: { relatedId: null, createdAt: { lt: cutoff } },
+   642→      orderBy: { createdAt: 'desc' },
+   643→      take: limit,
+   644→    });
+   645→
+   646→    const recent = await this.prisma.file.findMany({
+   647→      where: { relatedId: { not: null } },
+   648→      orderBy: { createdAt: 'desc' },
+   649→      take: 1000,
+   650→    });
+   651→
+   652→    const dangling: typeof recent = [];
+   653→    const userIds = new Set<string>();
+   654→    const productIds = new Set<number>();
+   655→    for (const f of recent) {
+   656→      if (f.relatedModel === 'User') userIds.add(f.relatedId!);
+   657→      else if (f.relatedModel === 'Product') productIds.add(Number(f.relatedId));
+   658→    }
+   659→    const [userRows, productRows] = await Promise.all([
+   660→      userIds.size
+   661→        ? this.prisma.user.findMany({ where: { id: { in: [...userIds] } }, select: { id: true } })
+   662→        : [],
+   663→      productIds.size
+   664→        ? this.prisma.product.findMany({ where: { id: { in: [...productIds] } }, select: { id: true } })
+   665→        : [],
+   666→    ]);
+   667→    const userSet = new Set(userRows.map((r) => r.id));
+   668→    const productSet = new Set(productRows.map((r) => r.id));
+   669→    for (const f of recent) {
+   670→      const ok =
+   671→        f.relatedModel === 'User'
+   672→          ? userSet.has(f.relatedId!)
+   673→          : f.relatedModel === 'Product'
+   674→            ? productSet.has(Number(f.relatedId))
+   675→            : false;
+   676→      if (!ok) dangling.push(f);
+   677→    }
+   678→
+   679→    return { staged: staged.map((r) => this.toDto(r)), dangling: dangling.map((r) => this.toDto(r)) };
+   680→  }
+   681→
+   682→  /** حذف ردیف‌های عروسک (+ بایت‌ها بهترین‌حال) با id، یا همه وقتی ids نیست. */
+   683→  async deleteOrphans(ids?: string[]): Promise<{ deleted: number }> {
+   684→    const { staged, dangling } = await this.listOrphans(1000);
+   685→    const all = [...staged, ...dangling];
+   686→    const targets = ids && ids.length > 0 ? all.filter((f) => ids.includes(f.id)) : all;
+   687→    for (const f of targets) {
+   688→      if (!OID_RE.test(f.id)) continue;
+   689→      // کلیدهای ذخیره‌سازی هرگز از سرویس بیرون نمی‌روند — دوباره با id بگیر
+   690→      const row = await this.prisma.file.findUnique({
+   691→        where: { id: f.id },
+   692→        select: { storageKey: true, thumbStorageKey: true },
+   693→      });
+   694→      if (row) {
+   695→        try {
+   696→          if (row.storageKey) await this.driver.delete(row.storageKey);
+   697→          if (row.thumbStorageKey) await this.driver.delete(row.thumbStorageKey).catch(() => undefined);
+   698→        } catch {
+   699→          /* بهترین‌حال */
+   700→        }
+   701→      }
+   702→      await this.prisma.file.delete({ where: { id: f.id } }).catch(() => undefined);
+   703→    }
+   704→    return { deleted: targets.length };
+   705→  }
+   706→
+   707→  /** مصرف ذخیره‌سازی هر کاربر (خواسته کاربر: «هر کاربر چقدر حجم مصرف کرده»). */
+   708→  async usage(limit = 50) {
+   709→    const grouped = await this.prisma.file.groupBy({
+   710→      by: ['ownerId'],
+   711→      _sum: { size: true },
+   712→      _count: { id: true },
+   713→      orderBy: { _sum: { size: 'desc' } },
+   714→      take: limit,
+   715→    });
+   716→    const users = await this.prisma.user.findMany({
+   717→      where: { id: { in: grouped.map((g) => g.ownerId) } },
+   718→      select: { id: true, userName: true, firstName: true, lastName: true, phone: true },
+   719→    });
+   720→    const nameOf = new Map(users.map((u) => [u.id, u]));
+   721→    return grouped.map((g) => {
+   722→      const u = nameOf.get(g.ownerId);
+   723→      return {
+   724→        ownerId: g.ownerId,
+   725→        userName: u?.userName ?? '—',
+   726→        name: `${u?.firstName ?? ''} ${u?.lastName ?? ''}`.trim() || '—',
+   727→        phone: u?.phone ?? '',
+   728→        files: g._count.id,
+   729→        bytes: g._sum.size ?? 0,
+   730→      };
+   731→    });
+   732→  }
+   733→}
+   734→
+   735→/** یک پارت multipart از @fastify/multipart — فیلد یا فایل (هر ترتیبی) */
+   736→interface MultipartPart {
+   737→  type?: 'field' | 'file';
+   738→  fieldname?: string;
+   739→  value?: unknown;
+   740→  mimetype?: string;
+   741→  filename?: string;
+   742→  toBuffer: () => Promise<Buffer>;
+   743→}
+   744→
