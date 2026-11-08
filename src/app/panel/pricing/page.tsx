@@ -13,8 +13,11 @@
  *    رزرو با امتداد از انقضای فعلی (مالکان فعلی محروم نمی‌شوند).
  *  • نردبان از این صفحه حذف شده — فقط در کیف پول (جدا بودن دو مفهوم).
  *  • کمپین «کاربران جدید» (خواسته مالک ۹-۱۱): مهلت شخصی هر کاربر
- *    (N روز پس از ثبت‌نام) به‌صورت شمارشگر معکوس زنده نمایش داده می‌شود؛
+ *    (N ساعت پس از ثبت‌نام) به‌صورت شمارشگر معکوس زنده نمایش داده می‌شود؛
  *    پایان مهلت یا پر شدن سقف خرید = حذف خودکار تخفیف همان کاربر.
+ *    انحصار انواع: سرور برای هر بیننده فقط یک کمپین برمی‌گرداند — تازه‌وارد
+ *    فقط خوش‌آمدگویی را می‌بیند (کمپین مناسبتی برایش نه دیده می‌شود نه
+ *    اعمال می‌شود) و بقیه کمپین زمانی/تعدادی را.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -117,6 +120,10 @@ function displayTiers(campaign: SalesCampaignInfo): CampaignTier[] {
   }
   return tiers;
 }
+
+/** برچسب ساعت فارسی — ۴۸ → «۴۸ ساعت»؛ ۱۶۸ → «۱۶۸ ساعت (۷ روز)» */
+const hoursLabel = (h: number) =>
+  h % 24 === 0 ? `${toFa(h)} ساعت (${toFa(h / 24)} روز)` : `${toFa(h)} ساعت`;
 
 /** بنر کمپین فعال — عنوان + شعار + درصد + پایان + پیشرفت تعدادی (خواسته مالک ۳۱-۱۰) */
 function CampaignBanner({ campaign }: { campaign: SalesCampaignInfo }) {
@@ -288,8 +295,8 @@ function NewUserCampaignBanner({ campaign }: { campaign: SalesCampaignInfo }) {
               </span>
             </div>
             <p className="mt-2 max-w-2xl text-xs leading-6 text-red-900/75 sm:text-[13px]">
-              ثبت‌نام کن و تا {toFa(campaign.newUserDays ?? 7)} روز اول، تا{' '}
-              {toFa(campaign.newUserMaxPurchases ?? 3)} بسته اشتراک را با{' '}
+              ثبت‌نام کن و تا {hoursLabel(campaign.newUserHours ?? 168)} اول، تا{' '}
+              {toFa(campaign.newUserMaxPurchases ?? 1)} بسته اشتراک را با{' '}
               {toFa(campaign.discountPercent)}٪ تخفیف بخر.
             </p>
           </div>

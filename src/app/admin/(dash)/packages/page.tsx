@@ -5,9 +5,14 @@
  *  • سفارش‌ها: صف بازبینی فیش‌های خرید بسته (تأیید → فعال/تمدید؛ رد → دلیل)
  *  • بسته‌ها: CRUD کامل — قیمت/مدت/عنوان/ویژگی‌ها همه قابل تعریف ادمین
  *  • کمپین‌ها: زمانی (٪ ثابت تا پایان)، تعدادی (پله‌ای: ۱۰ نفر اول ۷۰٪…)
- *    و کاربران جدید (خواسته مالک ۹-۱۱: ٪ تخفیف تا N روز پس از ثبت‌نام و
- *    تا M خرید برای هر کاربر — با شمارشگر معکوس در پنل کاربر) + تغییر
- *    دستی درصد جاری + آمار جذب هر کمپین/بسته
+ *    و کاربران جدید (خواسته مالک ۹-۱۱: ٪ تخفیف تا N ساعت پس از ثبت‌نام و
+ *    تا M خرید برای هر کاربر — با شمارشگر معکوس در پنل کاربر. این نوع
+ *    به‌جای تاریخ شروع/پایان فقط فیلد «تعداد ساعت» می‌گیرد) + تغییر دستی
+ *    درصد جاری + آمار جذب هر کمپین/بسته.
+ *  • تاریخ‌های شروع/پایان با انتخابگر شمسی JalaliDateTimePicker انتخاب
+ *    می‌شوند (خواسته مالک ۹-۱۱: به‌جای اینپوت‌های میلادی).
+ *  • انحصار انواع (۹-۱۱): کمپین کاربران جدید می‌تواند همزمان با یک کمپین
+ *    زمانی/تعدادی فعال باشد؛ برای هر کاربر فقط یکی اعمال می‌شود.
  */
 
 import { useEffect, useState } from 'react';
@@ -62,6 +67,11 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { dateFa, priceFa, timeAgoFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { JalaliDateTimePicker } from '@/components/ui/jalali-datetime-picker';
+
+/** برچسب ساعت فارسی — ۴۸ → «۴۸ ساعت»؛ ۱۶۸ → «۱۶۸ ساعت (۷ روز)» */
+const hoursLabel = (h: number) =>
+  h % 24 === 0 ? `${toFa(h)} ساعت (${toFa(h / 24)} روز)` : `${toFa(h)} ساعت`;
 
 type MainTab = 'orders' | 'plans' | 'campaigns';
 type StatusKey = 'pending' | 'approved' | 'rejected';
@@ -813,7 +823,9 @@ function CampaignsTab() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[11.5px] leading-5 text-muted-foreground">
           کمپین زمانی = درصد ثابت تا تاریخ پایان؛ تعدادی = پله‌ای بر اساس شمار خریداران؛ کاربران جدید =
-          تخفیف شخصیِ N روز اول پس از ثبت‌نام هر کاربر با سقف تعداد خرید (شمارشگر معکوس در پنل کاربر).
+          تخفیف شخصیِ N ساعت اول پس از ثبت‌نام هر کاربر با سقف تعداد خرید (شمارشگر معکوس در پنل کاربر).
+          کمپین «کاربران جدید» می‌تواند همزمان با یک کمپین زمانی/تعدادی فعال باشد اما برای هر کاربر فقط
+          یکی اعمال می‌شود: تازه‌وارد فقط تخفیف خوش‌آمدگویی را می‌بیند و بقیه کمپین مناسبتی را.
           عنوان و شعار کمپین فعال، بالای بسته‌ها در صفحه کاربران نمایش داده می‌شود.
         </p>
         <Button
@@ -827,7 +839,7 @@ function CampaignsTab() {
               discountPercent: 50,
               finalPercent: 30,
               manualPurchaseCount: null,
-              newUserDays: 7,
+              newUserHours: 168,
               newUserMaxPurchases: 3,
               isActive: true,
               tiers: [{ from: 1, to: 10, percent: 70 }],
@@ -894,9 +906,13 @@ function CampaignsTab() {
                         ? `${toFa(c.discountPercent)}٪ ثابت`
                         : c.type === 'quantity'
                           ? `${toFa(c.tiers.length)} پله`
-                          : `${toFa(c.discountPercent)}٪ · تا ${toFa(c.newUserDays ?? 7)} روز پس از ثبت‌نام · حداکثر ${toFa(c.newUserMaxPurchases ?? 3)} خرید`}
+                          : `${toFa(c.discountPercent)}٪ · تا ${hoursLabel(c.newUserHours ?? 168)} پس از ثبت‌نام · حداکثر ${toFa(c.newUserMaxPurchases ?? 1)} خرید`}
                       {' · '}
-                      {c.endsAt ? `پایان: ${dateFa(c.endsAt)}` : 'بی‌پایان'}
+                      {c.type === 'new_user'
+                        ? 'بدون تاریخ پایان — پایانش ساعتی و شخصی است'
+                        : c.endsAt
+                          ? `پایان: ${dateFa(c.endsAt)}`
+                          : 'بی‌پایان'}
                     </p>
                     {c.description && (
                       <p className="mt-1 line-clamp-2 max-w-xl text-[11px] leading-5 text-muted-foreground/90">
@@ -999,8 +1015,8 @@ function CampaignsTab() {
                         manualDiscountPercent: c.manualDiscountPercent,
                         finalPercent: c.finalPercent,
                         manualPurchaseCount: c.manualPurchaseCount,
-                        newUserDays: c.newUserDays ?? 7,
-                        newUserMaxPurchases: c.newUserMaxPurchases ?? 3,
+                        newUserHours: c.newUserHours ?? 168,
+                        newUserMaxPurchases: c.newUserMaxPurchases ?? 1,
                         startsAt: c.startsAt,
                         endsAt: c.endsAt,
                         isActive: c.isActive,
@@ -1170,21 +1186,15 @@ function CampaignEditDialog({
     setForm(input);
   }, [input]);
 
-  /** تاریخ ISO → yyyy-MM-ddTHH:mm برای input datetime-local */
-  const toLocalInput = (iso?: string | null) => {
-    if (!iso) return '';
-    const d = new Date(iso);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  };
-
   return (
     <Dialog open={Boolean(form)} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{form?.id ? `ویرایش کمپین «${form.title}»` : 'کمپین جدید'}</DialogTitle>
           <DialogDescription>
-            کمپین فعال بالای بسته‌های صفحه قیمت‌ها نمایش داده می‌شود و تخفیف آن روی قیمت همه بسته‌ها اعمال می‌شود.
+            کمپین فعال بالای بسته‌های صفحه قیمت‌ها نمایش داده می‌شود و تخفیف آن روی قیمت همه بسته‌ها اعمال
+            می‌شود. کمپین «کاربران جدید» می‌تواند همزمان با یک کمپین زمانی/تعدادی فعال باشد؛ برای هر کاربر
+            فقط یکی اعمال می‌شود (تازه‌وارد = خوش‌آمدگویی، بقیه = کمپین دیگر).
           </DialogDescription>
         </DialogHeader>
 
@@ -1256,50 +1266,58 @@ function CampaignEditDialog({
                   />
                 </div>
               )}
-              <div className="space-y-1.5">
-                <Label className="text-[12px]">شروع</Label>
-                <Input
-                  dir="ltr"
-                  type="datetime-local"
-                  value={toLocalInput(form.startsAt)}
-                  onChange={(e) => setForm({ ...form, startsAt: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
-                  className="h-9 rounded-md"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[12px]">پایان (خالی = بی‌پایان)</Label>
-                <Input
-                  dir="ltr"
-                  type="datetime-local"
-                  value={toLocalInput(form.endsAt)}
-                  onChange={(e) => setForm({ ...form, endsAt: e.target.value ? new Date(e.target.value).toISOString() : null })}
-                  className="h-9 rounded-md"
-                />
-              </div>
-            </div>
+            {/* تاریخ شروع/پایان — فقط برای انواع زمانی/تعدادی و با انتخابگر شمسی
+                (خواسته مالک ۹-۱۱: به‌جای اینپوت میلادی). نوع کاربران جدید
+                تاریخ ندارد — به‌جایش فیلد «تعداد ساعت» را در پایین می‌گیرد. */}
+            {form.type !== 'new_user' && (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-[12px]">شروع (خالی = همین حالا)</Label>
+                  <JalaliDateTimePicker
+                    value={form.startsAt ?? null}
+                    onChange={(iso) => setForm({ ...form, startsAt: iso ?? undefined })}
+                    placeholder="مثلاً ۱۴۰۵/۰۸/۱۸ ۱۲:۰۰"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[12px]">پایان (خالی = بی‌پایان)</Label>
+                  <JalaliDateTimePicker
+                    value={form.endsAt ?? null}
+                    onChange={(iso) => setForm({ ...form, endsAt: iso })}
+                    placeholder="مثلاً ۱۴۰۵/۰۹/۲۰ ۲۳:۵۹"
+                  />
+                </div>
+              </>
+            )}
+          </div>
 
             <label className="flex cursor-pointer items-center gap-2 rounded-md border p-3 text-[12px] font-bold">
               <Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
               کمپین فعال باشد
             </label>
 
-            {/* پیکربندی کمپین کاربران جدید — پنجره پس از ثبت‌نام + سقف خرید (خواسته مالک ۹-۱۱) */}
+            {/* پیکربندی کمپین کاربران جدید — پنجرهٔ ساعتی پس از ثبت‌نام + سقف خرید
+                (خواسته مالک ۹-۱۱: این نوع به‌جای تاریخ شروع/پایان فقط همین فیلد
+                ساعت را می‌گیرد و بعد از تمام شدن فرصت، خودش به پایان می‌رسد) */}
             {form.type === 'new_user' && (
               <div className="space-y-3 rounded-md border border-dashed border-red-200 bg-red-50/30 p-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-[12px] text-red-800">مهلت استفاده پس از ثبت‌نام (روز)</Label>
+                    <Label className="text-[12px] text-red-800">مهلت استفاده پس از ثبت‌نام (ساعت)</Label>
                     <Input
                       dir="ltr"
                       type="number"
                       min={1}
-                      max={365}
-                      value={form.newUserDays ?? 7}
+                      max={8760}
+                      value={form.newUserHours ?? 168}
                       onChange={(e) =>
-                        setForm({ ...form, newUserDays: Math.max(1, Math.min(365, Number(e.target.value) || 1)) })
+                        setForm({ ...form, newUserHours: Math.max(1, Math.min(8760, Number(e.target.value) || 1)) })
                       }
                       className="h-9 rounded-md"
                     />
+                    <p className="text-[10px] leading-4 text-red-900/60">
+                      {form.newUserHours ? hoursLabel(form.newUserHours) : ''} فرصت از لحظهٔ ثبت‌نام هر کاربر
+                    </p>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-[12px] text-red-800">سقف تعداد خرید با تخفیف</Label>
@@ -1317,10 +1335,11 @@ function CampaignEditDialog({
                   </div>
                 </div>
                 <p className="text-[10px] leading-5 text-red-900/70">
-                  هر کاربر به‌محض ثبت‌نام، به‌اندازهٔ همین تعداد روز فرصت دارد با درصد تخفیف بالا بسته بخرد؛ مهلت
-                  شخصی هر کاربر به‌صورت شمارشگر معکوس در صفحه قیمت‌های او نمایش داده می‌شود. پس از پایان مهلت یا
-                  پر شدن سقف خرید، تخفیف همان کاربر به‌صورت خودکار برداشته می‌شود. مثال: ۷ روز و ۳ خرید و ۶۰٪ =
-                  «تا ۷ روز پس از ثبت‌نام، تا ۳ بسته با ۶۰٪ تخفیف».
+                  هر کاربر به‌محض ثبت‌نام، به‌اندازهٔ همین تعداد ساعت فرصت دارد با درصد تخفیف بالا بسته بخرد؛
+                  مهلت شخصی هر کاربر به‌صورت شمارشگر معکوس در صفحه قیمت‌های او نمایش داده می‌شود. با پایان مهلت
+                  یا پر شدن سقف خرید، تخفیف همان کاربر به‌صورت خودکار به پایان می‌رسد. مثال: ۷۲ ساعت و ۳ خرید و
+                  ۶۰٪ = «تا ۳ روز پس از ثبت‌نام، تا ۳ بسته با ۶۰٪ تخفیف». این کمپین تاریخ شروع/پایان ندارد و
+                  می‌تواند همزمان با یک کمپین زمانی/تعدادی فعال باشد — اما تازه‌وردها کمپین دیگر را نمی‌بینند.
                 </p>
               </div>
             )}
@@ -1447,10 +1466,24 @@ function CampaignEditDialog({
               (form.type === 'quantity' && (form.tiers ?? []).length === 0) ||
               (form.type === 'new_user' &&
                 (form.discountPercent <= 0 ||
-                  (form.newUserDays ?? 0) < 1 ||
-                  (form.newUserMaxPurchases ?? 0) < 1))
+                  (form.newUserHours ?? 0) < 1 ||
+                  (form.newUserMaxPurchases ?? 0) < 1)) ||
+              // پایان باید بعد از شروع باشد (فقط انواع تاریخ‌دار)
+              (form.type !== 'new_user' &&
+                form.startsAt != null &&
+                form.endsAt != null &&
+                new Date(form.endsAt).getTime() <= new Date(form.startsAt).getTime())
             }
-            onClick={() => form && onSave({ ...form, title: form.title.trim() })}
+            onClick={() =>
+              form &&
+              onSave({
+                ...form,
+                title: form.title.trim(),
+                // نوع کاربران جدید تاریخ ندارد — سرور هم نادیده می‌گیرد
+                startsAt: form.type === 'new_user' ? undefined : form.startsAt,
+                endsAt: form.type === 'new_user' ? null : form.endsAt,
+              })
+            }
           >
             {pending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
             ذخیره کمپین

@@ -1081,8 +1081,9 @@ export interface AdminCampaignRow {
   finalPercent: number | null;
   /** شمار دستی/نمایشی خریداران — مؤثر = max(واقعی، دستی) */
   manualPurchaseCount: number | null;
-  /** نوع کاربران جدید — طول پنجره پس از ثبت‌نام (روز) (خواسته مالک ۹-۱۱) */
-  newUserDays: number | null;
+  /** نوع کاربران جدید — طول پنجرهٔ ساعتی پس از ثبت‌نام (خواسته مالک ۹-۱۱).
+   *  این نوع به‌جای تاریخ شروع/پایان فقط همین یک فیلد ساعت می‌گیرد. */
+  newUserHours: number | null;
   /** نوع کاربران جدید — سقف خرید بسته با تخفیف برای هر کاربر */
   newUserMaxPurchases: number | null;
   startsAt: string;
@@ -1113,8 +1114,9 @@ export interface AdminCampaignInput {
   finalPercent?: number | null;
   /** شمار دستی/نمایشی خریداران */
   manualPurchaseCount?: number | null;
-  /** نوع کاربران جدید — پنجره پس از ثبت‌نام (روز) و سقف خرید (خواسته مالک ۹-۱۱) */
-  newUserDays?: number;
+  /** نوع کاربران جدید — پنجرهٔ ساعتی پس از ثبت‌نام و سقف خرید (خواسته مالک ۹-۱۱).
+   *  تاریخ شروع/پایان برای این نوع ارسال نمی‌شود (سرور نادیده می‌گیرد). */
+  newUserHours?: number;
   newUserMaxPurchases?: number;
   startsAt?: string;
   endsAt?: string | null;
