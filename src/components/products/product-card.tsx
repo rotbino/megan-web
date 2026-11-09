@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { History, MapPin, Package, Share2 } from 'lucide-react';
+import { History, MapPin, Package, Share2, ShoppingCart } from 'lucide-react';
 import { LadderBadge, VerifiedBadge } from '@/components/shared/badges';
 import { ProductImage } from '@/components/shared/product-image';
 import { ProductPrice } from '@/components/shared/product-price';
@@ -15,11 +15,14 @@ import type { Product } from '@/lib/types';
  * کارت آگهی محصول — همان اطلاعات باسکول (نام، مکان، موجودی، قیمت).
  *
  * موبایل (بازطراحی اختصاصی، خواستهٔ مالک ۹-۱۱): کارت افقی دوطبقه —
- *  · طبقهٔ بالا: عکس (راست) + عنوان/مکان/موجودی (چپ)؛
+ *  · طبقهٔ بالا: عکس (راست) + عنوان/مشخصات (چپ)؛
  *  · طبقهٔ پایین «نوار اقدام» زیر عکس: قیمت (متن ساده — فقط CTA مهمان
- *    دکمه است)، زمان به‌روزرسانی و دکمه‌های ذخیره/اشتراک‌گذاری — دیگر
- *    روی عکس نیستند تا توازن عمودی کارت برقرار بماند؛
+ *    دکمه است)، زمان به‌روزرسانی و دکمه‌های ذخیره/اشتراک‌گذاری؛
  * دسکتاپ: کارت عمودی گرید — عکس بالا (ذخیره روی عکس)، قیمت پایین کارت.
+ * روی عکس (خواستهٔ مالک ۹-۱۱): بچ شهر گوشهٔ پایین-راست (تیره و خوانا)،
+ * نشان نردبان گوشهٔ بالا-رایت (از کنار عنوان به عکس برگشت) و «ویدیو دارد»
+ * کنار همان — گوشه‌ها دیگر با «فروشنده ویژه» (بالا-چپ) تداخل ندارند.
+ * بدنه: موجودی و حداقل سفارش «با لیبل» — عدد بی‌لیبل معلوم نبود چیست.
  * قیمت فقط برای اعضا: مهمان دکمهٔ «مشاهده قیمت» می‌بیند (ProductPrice).
  */
 export function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
@@ -55,7 +58,8 @@ export function ProductCard({ product, priority = false }: { product: Product; p
             داشته باشد چون ProductImage با fill مطلق رندر می‌شود (والد h-auto →
             ارتفاع ۰ → عکس ناپدید — باگ ۹-۱۱ که برگشت) */}
         <div className="relative h-28 w-28 shrink-0 md:aspect-[4/3] md:h-auto md:w-full">
-          <Link href={href} className="block h-full w-full" aria-label={product.productName}>
+          {/* relative برای والدِ درست تصویر fill (آیکون‌های absolute هم همین‌جا لنگر می‌شوند) */}
+          <Link href={href} className="relative block h-full w-full" aria-label={product.productName}>
             <ProductImage
               photos={product.photos}
               thumbs={product.photoThumbs}
@@ -71,12 +75,30 @@ export function ProductCard({ product, priority = false }: { product: Product; p
                 فروشنده ویژه
               </span>
             )}
-            {product.hasVideo && (
-              <span className="absolute end-1.5 top-1.5 rounded-sm bg-black/55 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur md:end-2 md:top-2">
-                ویدیو دارد
-              </span>
-            )}
           </Link>
+          {/* نردبان + ویدیو — گروه گوشهٔ بالا-راست عکس (خواستهٔ مالک ۹-۱۱:
+              نردبان روی عکس برگشت)؛ نردبان دسکتاپ با متن، موبایل فقط آیکون */}
+          {(product.isLadder || product.hasVideo) && (
+            <div className="absolute start-1.5 top-1.5 flex items-center gap-1">
+              {product.isLadder && (
+                <>
+                  <LadderBadge className="hidden md:inline-flex" />
+                  <LadderBadge compact className="md:hidden" />
+                </>
+              )}
+              {product.hasVideo && (
+                <span className="rounded-sm bg-black/55 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur">
+                  ویدیو دارد
+                </span>
+              )}
+            </div>
+          )}
+          {/* بچ شهر — گوشهٔ پایین-راست عکس؛ تیره و خوانا روی هر عکسی
+              (خواستهٔ مالک ۹-۱۱: «تابلوتر» ولی هم‌اندازهٔ فونت قبل) */}
+          <span className="absolute bottom-1.5 start-1.5 inline-flex max-w-[85%] items-center gap-0.5 rounded-sm bg-black/55 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
+            <MapPin size={11} className="shrink-0" />
+            <span className="truncate">{product.cityName.trim()}</span>
+          </span>
           {/* ذخیره در پیگیری‌ها — دسکتاپ: روی عکس (موبایل: نوار پایین)؛
               بیرون از لینک تا کلیکِ آگهی را باز نکند؛ ۴۴px (RULES §۱) */}
           <SaveFollowButton
@@ -89,28 +111,24 @@ export function ProductCard({ product, priority = false }: { product: Product; p
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-3 md:gap-2">
-          {/* عنوان + نشان نردبان — نردبان رو‌به‌روی عنوان (انتهای چپ ردیف)؛
-              عنوان همیشه دو خط رزرو می‌کند تا کارت‌های با عنوان کوتاه/بلند هم‌قد بمانند */}
-          <div className="flex items-start justify-between gap-2">
-            <Link href={href} className="line-clamp-2 min-h-10 text-sm font-bold leading-5 hover:text-primary">
-              {product.productName}
-            </Link>
-            {product.isLadder && (
-              <span className="mt-0.5 shrink-0" title="نردبان">
-                <LadderBadge compact />
-              </span>
-            )}
-          </div>
+          {/* عنوان — تمام عرض کارت؛ نردبان روی عکس رفت (خواستهٔ مالک ۹-۱۱)؛
+              همیشه دو خط رزرو می‌کند تا کارت‌ها هم‌قد بمانند */}
+          <Link href={href} className="line-clamp-2 min-h-10 text-sm font-bold leading-5 hover:text-primary">
+            {product.productName}
+          </Link>
 
-          <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <MapPin size={13} className="shrink-0 text-primary/70" />
-              {/* فقط شهر — استان حذف شد (خواستهٔ مالک ۹-۱۱: «همان اسم شهر کافیه») */}
-              <span className="truncate">{product.cityName.trim()}</span>
-            </span>
-            <span className="inline-flex items-center gap-1">
+          {/* موجودی و حداقل سفارش — با لیبل (خواستهٔ مالک ۹-۱۱: عدد بی‌لیبل
+              معلوم نبود موجودی است یا حداقل سفارش)؛ شهر روی عکس است */}
+          <div className="flex flex-col gap-1 text-xs">
+            <span className="inline-flex items-center gap-1.5">
               <Package size={13} className="shrink-0 text-primary/70" />
-              <span className="truncate font-num">{stockFa(product.stock, product.unit)}</span>
+              <span className="shrink-0 text-muted-foreground">موجودی:</span>
+              <span className="min-w-0 truncate font-num font-semibold">{stockFa(product.stock, product.unit)}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <ShoppingCart size={13} className="shrink-0 text-primary/70" />
+              <span className="shrink-0 text-muted-foreground">حداقل سفارش:</span>
+              <span className="min-w-0 truncate font-num font-semibold">{stockFa(product.minSaleAmount, product.unit)}</span>
             </span>
           </div>
 
