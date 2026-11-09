@@ -175,7 +175,7 @@ export function CityMarketListing({
   // seed فقط برای کوئری پیش‌فرض اولیه (شهر خود صفحه، related، صفحه ۱) —
   // با اولین تیک/سورت/صفحه، رفچ تازه از سرویس چندشهری می‌رود
   const isDefaultQuery = page === 1 && sort === 'related' && extraCityIds.length === 0;
-  const { data, isFetching, isLoading } = useCityMarketProducts(
+  const { data, isFetching, isLoading, isError, refetch } = useCityMarketProducts(
     query,
     isDefaultQuery ? initialData : undefined,
   );
@@ -420,6 +420,18 @@ export function CityMarketListing({
         {isLoading ? (
           <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-4 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-md md:h-80" />)}
+          </div>
+        ) : isError ? (
+          // خطای سرویس — جدا از «نتیجه‌ای نیست» تا کاربر فکر نکند آگهی واقعاً نیست
+          <div className="rounded-md border bg-card p-8 text-center md:p-12">
+            <p className="text-lg font-bold">دریافت آگهی‌ها ناموفق بود.</p>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+              ارتباط با بازار {city.name} برقرار نشد — دوباره تلاش کنید.
+            </p>
+            <Button className="mt-4 rounded-md" onClick={() => refetch()}>
+              <RotateCcw size={15} />
+              تلاش دوباره
+            </Button>
           </div>
         ) : items.length === 0 ? (
           <div className="rounded-md border bg-card p-8 text-center md:p-12">

@@ -642,7 +642,12 @@ function BuyRequestsPageInner() {
                       <td className="px-3 py-2.5">
                         <div className="min-w-0">
                           <span className="block max-w-[240px] truncate font-bold">{r.category.name}</span>
-                          <span className="text-[10.5px] text-muted-foreground">
+                          {r.productType && (
+                            <span className="mt-0.5 inline-block rounded-full bg-secondary px-1.5 py-px text-[10px] font-bold text-secondary-foreground">
+                              از نوع {r.productType}
+                            </span>
+                          )}
+                          <span className="block text-[10.5px] text-muted-foreground">
                             {[r.category.rootName, r.category.parentName].filter(Boolean).join(' / ')}
                           </span>
                         </div>
@@ -706,7 +711,10 @@ function BuyRequestsPageInner() {
               : bookItems.map((r) => (
                   <div key={r.id} className="rounded-lg border bg-card p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="min-w-0 truncate text-[13px] font-bold">{r.category.name}</span>
+                      <span className="min-w-0 truncate text-[13px] font-bold">
+                        {r.category.name}
+                        {r.productType && <span className="font-medium text-muted-foreground"> از نوع {r.productType}</span>}
+                      </span>
                       <StatusChip status={r.status} />
                     </div>
                     <p className="mt-1 truncate text-[11px] text-muted-foreground">
@@ -783,6 +791,7 @@ function BuyRequestsPageInner() {
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   خریدار: {`${bookReviewRow.user.firstName ?? ''} ${bookReviewRow.user.lastName ?? ''}`.trim() || bookReviewRow.user.userName} — حداقل{' '}
                   {stockFa(bookReviewRow.minAmount, bookReviewRow.unit)} · {PERIOD_LABELS[bookReviewRow.period as PurchasePeriod] ?? bookReviewRow.period}
+                  {bookReviewRow.productType && <> · نوع: {bookReviewRow.productType}</>}
                 </p>
                 {bookReviewRow.status === 'rejected' && bookReviewRow.rejectionReasons.length > 0 && (
                   <p className="mt-2 rounded-md bg-destructive/5 p-2.5 text-[11px] leading-5 text-destructive">

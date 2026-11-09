@@ -717,6 +717,8 @@ export interface AdminBookRow {
   minAmount: number;
   period: string; // daily | weekly | monthly | yearly | occasional
   unit: string;
+  /** «نوع کالا» اختیاری — «سیب از نوع قرمز» (خواستهٔ مالک ۹-۱۱) */
+  productType: string | null;
   status: AdminItemStatus;
   rejectionReasons: string[];
   createdAt: string;

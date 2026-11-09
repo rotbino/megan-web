@@ -1811,13 +1811,19 @@ export async function getMyBuyerBook(): Promise<MyBuyerBook> {
   return apiFetch<MyBuyerBook>('/buyers/getMyBook', {});
 }
 
-/** ذخیره دفتر خرید من — جایگزینی کامل (تیک برگ‌ها + حداقل + دوره).
+/** ذخیره دفتر خرید من — جایگزینی کامل (تیک برگ‌ها + حداقل + دوره + نوع اختیاری).
  *  سمت سررور ستون حجم «volumeMin» است؛ نگاشت نام اینجا انجام می‌شود. */
 export async function saveMyBuyerBook(
-  items: Array<Pick<BuyerBookItem, 'categoryId' | 'minAmount' | 'period'>>,
+  items: Array<Pick<BuyerBookItem, 'categoryId' | 'minAmount' | 'period'> & { productType?: string }>,
 ): Promise<{ saved: number }> {
   return apiFetch<{ saved: number }>('/buyers/saveMyBook', {
-    items: items.map((i) => ({ categoryId: i.categoryId, volumeMin: i.minAmount, period: i.period })),
+    items: items.map((i) => ({
+      categoryId: i.categoryId,
+      volumeMin: i.minAmount,
+      period: i.period,
+      // نوع کالا اختیاری — خالی ارسال نمی‌شود (null بماند)
+      ...(i.productType?.trim() ? { productType: i.productType.trim() } : {}),
+    })),
   });
 }
 

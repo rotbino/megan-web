@@ -139,7 +139,12 @@ export function LatestPeriodicBuyRequests() {
               <p className="text-xs leading-6 text-muted-foreground">
                 خریدار دوره‌ای{' '}
                 <span className="font-bold text-foreground">{toFa(b.minAmount)} {b.unit}</span>{' '}
-                <span className="font-bold text-primary">{b.categoryName}</span> هستم
+                <span className="font-bold text-primary">{b.categoryName}</span>{' '}
+                {b.productType ? (
+                  <>از نوع <span className="font-bold text-primary">{b.productType}</span> هستم</>
+                ) : (
+                  'هستم'
+                )}
               </p>
             </Link>
           ))}

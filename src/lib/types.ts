@@ -532,9 +532,11 @@ export const PERIOD_LABELS: Record<PurchasePeriod, string> = {
   occasional: 'موردی',
 };
 
-/** ردیف دفتر خرید من — دسته برگ + حداقل خرید + دوره؛ واحد از خود دسته (ثابت).
+/** ردیف دفتر خرید من — دسته برگ + حداقل خرید + دوره + نوع کالای اختیاری؛ واحد از خود دسته (ثابت).
  *  وضعیت بازبینی ادمین (خواستهٔ مالک ۸-۱۱): درخواست‌های خرید دوره‌ای هم
- *  مثل فوری تایید/رد می‌شوند — دایرکتوری خریداران فقط تاییدشده‌ها را می‌بیند. */
+ *  مثل فوری تایید/رد می‌شوند — دایرکتوری خریداران فقط تاییدشده‌ها را می‌بیند.
+ *  نوع کالا (خواستهٔ مالک ۹-۱۱): عین درخواست فوری «سیب از نوع قرمز» —
+ *  اختیاری؛ example مثال نوع همان دسته است (پلیس‌هولدر فرم). */
 export interface BuyerBookItem {
   categoryId: number;
   name: string; // نام دسته (برای نمایش)
@@ -543,6 +545,8 @@ export interface BuyerBookItem {
   unit: string; // واحد دسته — کیلوگرم | تن | عدد | بسته | لیتر
   minAmount: number; // حداقل خرید در هر دوره
   period: PurchasePeriod;
+  productType: string | null; // نوع کالا — «قرمز» (اختیاری)
+  example: string | null; // مثال نوع از دسته — پلیس‌هولدر فرم ویرایش
   status: 'pending' | 'confirmed' | 'rejected';
   rejectionReasons: string[];
 }
@@ -566,6 +570,8 @@ export interface BuyerDirectoryItem {
   unit: string;
   minAmount: number;
   period: PurchasePeriod;
+  /** «نوع کالا» اختیاری — جملهٔ کارت: «سیب از نوع قرمز» (خواستهٔ مالک ۹-۱۱) */
+  productType: string | null;
   province: string | null;
   city: string | null;
   lastActiveAt: string;

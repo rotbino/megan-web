@@ -28,6 +28,8 @@ export interface NewBookItemInput {
   categoryId: number;
   minAmount: number;
   period: PurchasePeriod;
+  /** «نوع کالا» اختیاری — عین درخواست فوری: «سیب از نوع قرمز» (خواستهٔ مالک ۹-۱۱) */
+  productType?: string;
 }
 
 interface LeafInfo {
@@ -77,7 +79,7 @@ export function AddItemFlow({
   const [q, setQ] = useState('');
   const [stack, setStack] = useState<Category[]>([]);
   const [selected, setSelected] = useState<Record<number, Category>>({});
-  const [drafts, setDrafts] = useState<Record<number, { amount: string; period: PurchasePeriod }>>({});
+  const [drafts, setDrafts] = useState<Record<number, { amount: string; period: PurchasePeriod; type: string }>>({});
   const [submitting, setSubmitting] = useState(false);
   const [addedCount, setAddedCount] = useState(0);
 
@@ -110,7 +112,7 @@ export function AddItemFlow({
     step === 'success'
       ? 'ثبت شد'
       : step === 'details'
-        ? 'حداقل خرید و دوره'
+        ? 'جزئیات خرید'
         : searchMode
           ? 'جستجوی کالا'
           : level
@@ -150,7 +152,7 @@ export function AddItemFlow({
     setDrafts((prev) => {
       const next = { ...prev };
       if (next[cat.id]) delete next[cat.id];
-      else next[cat.id] = { amount: '', period: 'monthly' };
+      else next[cat.id] = { amount: '', period: 'monthly', type: '' };
       return next;
     });
   };
@@ -170,6 +172,7 @@ export function AddItemFlow({
       categoryId: c.id,
       minAmount: Number(drafts[c.id].amount),
       period: drafts[c.id].period,
+      productType: drafts[c.id].type.trim() || undefined,
     }));
     setSubmitting(true);
     try {
@@ -379,6 +382,26 @@ export function AddItemFlow({
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {rootName} / {parentName} — واحد: {c.unit}
                       </p>
+                    </div>
+                    {/* نوع کالا — اختیاری؛ مثال از دستهٔ آخر، عین درخواست فوری (خواستهٔ مالک ۹-۱۱) */}
+                    <div>
+                      <label
+                        htmlFor={`book-type-${c.id}`}
+                        className="mb-1 block text-[11px] font-bold text-muted-foreground"
+                      >
+                        نوع کالا (اختیاری)
+                      </label>
+                      <input
+                        id={`book-type-${c.id}`}
+                        value={draft?.type ?? ''}
+                        onChange={(e) =>
+                          setDrafts((prev) => ({ ...prev, [c.id]: { ...prev[c.id], type: e.target.value } }))
+                        }
+                        placeholder={c.example ? `مثلاً ${c.example}` : 'نوع کالا را وارد کنید.'}
+                        aria-label={`نوع کالا برای ${c.categoryName}`}
+                        maxLength={100}
+                        className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm shadow-xs transition-colors placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      />
                     </div>
                     <AmountInput
                       value={draft?.amount ?? ''}

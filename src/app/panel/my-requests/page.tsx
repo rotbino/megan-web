@@ -290,19 +290,34 @@ export default function MyRequestsPage() {
   /** افزودن کالاهای جدید — کل دفتر + موارد جدید جایگزین می‌شود */
   const handleAdd = async (inputs: NewBookItemInput[]) => {
     await save.mutateAsync([
-      ...bookItems.map((i) => ({ categoryId: i.categoryId, minAmount: i.minAmount, period: i.period })),
+      ...bookItems.map((i) => ({
+        categoryId: i.categoryId,
+        minAmount: i.minAmount,
+        period: i.period,
+        productType: i.productType ?? undefined,
+      })),
       ...inputs,
     ]);
   };
 
   /** ویرایش یک کالا — همان فهرست با یک ردیف وصله‌شده */
-  const handleSave = async (patch: { minAmount: number; period: PurchasePeriod }) => {
+  const handleSave = async (patch: { minAmount: number; period: PurchasePeriod; productType?: string }) => {
     if (!editing) return;
     await save.mutateAsync(
       bookItems.map((i) =>
         i.categoryId === editing.categoryId
-          ? { categoryId: i.categoryId, minAmount: patch.minAmount, period: patch.period }
-          : { categoryId: i.categoryId, minAmount: i.minAmount, period: i.period },
+          ? {
+              categoryId: i.categoryId,
+              minAmount: patch.minAmount,
+              period: patch.period,
+              productType: patch.productType,
+            }
+          : {
+              categoryId: i.categoryId,
+              minAmount: i.minAmount,
+              period: i.period,
+              productType: i.productType ?? undefined,
+            },
       ),
     );
     setEditing(null);
@@ -314,7 +329,12 @@ export default function MyRequestsPage() {
     await save.mutateAsync(
       bookItems
         .filter((i) => i.categoryId !== item.categoryId)
-        .map((i) => ({ categoryId: i.categoryId, minAmount: i.minAmount, period: i.period })),
+        .map((i) => ({
+          categoryId: i.categoryId,
+          minAmount: i.minAmount,
+          period: i.period,
+          productType: i.productType ?? undefined,
+        })),
     );
     toast({ description: `«${item.name}» از دفتر خرید حذف شد.` });
   };

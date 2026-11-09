@@ -1,8 +1,9 @@
 'use client';
 
 /**
- * ویرایش کالای دفتر خرید — فقط حداقل خرید و دوره قابل ویرایش است؛
- * خود کالا و واحدش از دسته‌بندی می‌آید و تغییر نمی‌کند.
+ * ویرایش کالای دفتر خرید — حداقل خرید، نوع کالا (اختیاری، خواستهٔ مالک ۹-۱۱
+ * عین درخواست فوری) و دوره قابل ویرایش است؛ خود کالا و واحدش از دسته‌بندی
+ * می‌آید و تغییر نمی‌کند.
  */
 
 import { useState } from 'react';
@@ -22,11 +23,12 @@ export function EditItemDialog({
 }: {
   item: BuyerBookItem | null;
   onClose: () => void;
-  onSave: (patch: { minAmount: number; period: PurchasePeriod }) => void;
+  onSave: (patch: { minAmount: number; period: PurchasePeriod; productType?: string }) => void;
   saving?: boolean;
 }) {
   const [amount, setAmount] = useState('');
   const [period, setPeriod] = useState<PurchasePeriod>('monthly');
+  const [type, setType] = useState('');
   const [seededId, setSeededId] = useState<number | null>(null);
 
   // با هر کالای جدید، مقادیر فعلی در فرم می‌نشیند (الگوی تنظیم state هنگام رندر — بدون افکت)
@@ -34,6 +36,7 @@ export function EditItemDialog({
     setSeededId(item.categoryId);
     setAmount(String(item.minAmount));
     setPeriod(item.period);
+    setType(item.productType ?? '');
   }
 
   const valid = Number(amount) > 0;
@@ -60,6 +63,23 @@ export function EditItemDialog({
         )}
 
         <div className="space-y-4">
+          {/* نوع کالا — اختیاری؛ مثال از دستهٔ آخر، عین درخواست فوری (خواستهٔ مالک ۹-۱۱) */}
+          <div>
+            <label htmlFor="edit-book-type" className="mb-1.5 block text-xs font-bold text-muted-foreground">
+              نوع کالا (اختیاری)
+            </label>
+            <input
+              id="edit-book-type"
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              placeholder={
+                item?.example ? `مثلاً ${item.example}` : 'نوع کالا را وارد کنید.'
+              }
+              aria-label="نوع کالا"
+              maxLength={100}
+              className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm shadow-xs transition-colors placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            />
+          </div>
           <div>
             <label className="mb-1.5 block text-xs font-bold text-muted-foreground">حداقل خرید</label>
             {item && (
@@ -81,7 +101,11 @@ export function EditItemDialog({
           <Button variant="outline" className="rounded-md" onClick={onClose}>
             انصراف
           </Button>
-          <Button className="rounded-md" disabled={!valid || saving} onClick={() => valid && onSave({ minAmount: Number(amount), period })}>
+          <Button
+            className="rounded-md"
+            disabled={!valid || saving}
+            onClick={() => valid && onSave({ minAmount: Number(amount), period, productType: type.trim() || undefined })}
+          >
             {saving && <Loader2 size={15} className="animate-spin" />}
             ذخیره
           </Button>

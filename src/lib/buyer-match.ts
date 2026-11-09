@@ -135,13 +135,13 @@ function locationScore(
   return 0;
 }
 
-/** امتیاز برای آیتم دایرکتوری (خریدهای دوره‌ای) — دستهٔ برگ + حجم ماهانه + مکان */
+/** امتیاز برای آیتم دایرکتوری (خریدهای دوره‌ای) — دستهٔ برگ + نوع کالا + حجم ماهانه + مکان */
 export function matchForDirectoryItem(
   tree: Category[],
   products: Product[] | undefined,
   item: Pick<
     BuyerDirectoryItem,
-    'categoryId' | 'categoryName' | 'minAmount' | 'unit' | 'period' | 'province' | 'city'
+    'categoryId' | 'categoryName' | 'minAmount' | 'unit' | 'period' | 'productType' | 'province' | 'city'
   >,
 ): BuyerMatch {
   if (!products || products.length === 0) return { score: 0 };
@@ -162,11 +162,17 @@ export function matchForDirectoryItem(
     else if (itemRootId != null && m.root?.id === itemRootId) cat = 10;
     if (cat === 0) continue;
 
-    // دایرکتوری نوعِ کالای جدا ندارد — امتیاز نوع تخت روی تطابق دسته
+    // نوع کالا (خواستهٔ مالک ۹-۱۱): بدون نوع = «هر نوعی از همین کالا» (کامل)؛
+    // با نوع = تطبیق متن عین درخواست فوری — «سیب از نوع قرمز» به فروشندهٔ سیب قرمز
+    const type = !item.productType?.trim()
+      ? 20
+      : typeMatches(item.productType, m.product, m.leaf?.categoryName)
+        ? 20
+        : 0;
     const vol = volumeScore(monthly, item.unit, m.product);
     const loc = locationScore(m.product, { cityName: item.city, provinceName: item.province });
 
-    const s = Math.min(100, Math.round(cat + 20 + vol + loc));
+    const s = Math.min(100, Math.round(cat + type + vol + loc));
     if (s > best) {
       best = s;
       related = m.product.productName;

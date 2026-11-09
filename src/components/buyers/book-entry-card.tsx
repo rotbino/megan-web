@@ -68,12 +68,17 @@ export function BookEntryCard({
             )}
           </div>
 
-          {/* جمله — عین باسکول: خریدار … هستم */}
+          {/* جمله — عین باسکول: خریدار … هستم؛ با نوع: «سیب از نوع قرمز» (خواستهٔ مالک ۹-۱۱) */}
           <p className="mt-3 text-[13px] leading-7 text-muted-foreground sm:text-sm">
             {entry.role === 'عمده‌خریدار' ? 'خریدار عمده ' : 'خریدار '}
             <b className="text-foreground">{toFa(entry.minAmount)} {entry.unit}</b>{' '}
             <b className="text-foreground">{entry.categoryName}</b>{' '}
-            به‌صورت {PERIOD_LABELS[entry.period] ?? 'ماهیانه'} هستم
+            {entry.productType ? (
+              <>از نوع <b className="text-foreground">{entry.productType}</b>{' '}
+              به‌صورت {PERIOD_LABELS[entry.period] ?? 'ماهیانه'} هستم</>
+            ) : (
+              <>به‌صورت {PERIOD_LABELS[entry.period] ?? 'ماهیانه'} هستم</>
+            )}
           </p>
 
           {/* زمان و مکان — عین باسکول */}
