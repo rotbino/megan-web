@@ -49,6 +49,9 @@ interface SellerData {
     responseRate?: number | null;
     productCount?: number;
     totalStock?: number;
+    // کاتالوگ محصول (خواسته مالک ۱۰-۱۱) — اگر فروشنده ساخته باشد دکمهٔ لینک
+    // به صفحهٔ مستقلش روی هدر پروفایل می‌نشیند
+    catalog?: { pageId: string } | null;
     // فیلدهای کسب‌وکار — از فرم ویرایش پروفایل (embedded myuser_profiles)
     address?: string | null;
     isCompany?: boolean;
@@ -150,6 +153,7 @@ export default async function ProfilePage({ params }: Props) {
             <ProfileHero
               user={user as unknown as Parameters<typeof ProfileHero>[0]['user']}
               shareUrl={`${SITE_URL}/profile/${user.userName}`}
+              catalogPageId={user.catalog?.pageId ?? null}
             />
             <ProfileScrollNav productCount={user.productCount ?? products.length} />
           </div>

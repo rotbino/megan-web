@@ -17,7 +17,8 @@
  * «سفید روی سفید» می‌شد.
  */
 
-import { BadgeCheck, Crown, MapPin, Phone, Share2 } from 'lucide-react';
+import { BadgeCheck, BookOpen, Crown, MapPin, Phone, Share2 } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { ChatDialog } from '@/components/products/chat-dialog';
@@ -57,7 +58,17 @@ function membershipLabel(days: number): string {
   return `${toFa(Math.max(days, 1))} روز در ایمچ`;
 }
 
-export function ProfileHero({ user, shareUrl }: { user: ProfileHeroUser; shareUrl?: string }) {
+export function ProfileHero({
+  user,
+  shareUrl,
+  catalogPageId,
+}: {
+  user: ProfileHeroUser;
+  shareUrl?: string;
+  /** آیدی کاتالوگ محصول فروشنده — اگر ساخته باشد دکمهٔ «کاتالوگ محصول»
+   *  کنار دکمه‌های تماس می‌نشیند (خواسته مالک ۱۰-۱۱) */
+  catalogPageId?: string | null;
+}) {
   const name = `${user.firstName} ${user.lastName}`.trim() || 'فروشنده ایمچ';
   const location = [user.provinceName, user.cityName].filter(Boolean).join('، ');
   const special = user.activePakageType > 0;
@@ -217,6 +228,20 @@ export function ProfileHero({ user, shareUrl }: { user: ProfileHeroUser; shareUr
               buttonVariant="outline"
               className="h-11 w-full rounded-lg px-5 text-sm font-bold lg:h-10 lg:w-[142px]"
             />
+            {/* کاتالوگ محصول (خواسته مالک ۱۰-۱۱) — لینک به صفحهٔ مستقل
+                فروشنده برای فرستادن به مشتری‌های خودش؛ فقط اگر ساخته باشد */}
+            {catalogPageId && (
+              <Button
+                asChild
+                variant="outline"
+                className="h-11 w-full rounded-lg px-5 text-sm font-bold lg:h-10 lg:w-[142px]"
+              >
+                <Link href={`/catalog/${catalogPageId}`}>
+                  <BookOpen size={18} />
+                  کاتالوگ محصول
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>

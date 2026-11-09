@@ -205,6 +205,126 @@ const PROFILE = {
   city_id: 102,
 };
 
+// ─── فروشنده‌ها/خریدارهای کاتالوگ — از روی لیست محصولات ساخته می‌شوند ───
+const SELLERS = new Map();
+for (const pr of PRODUCTS) {
+  if (!SELLERS.has(pr.seller.userName)) {
+    SELLERS.set(pr.seller.userName, {
+      id: pr.seller.id,
+      userName: pr.seller.userName,
+      firstName: pr.seller.firstName,
+      lastName: pr.seller.lastName,
+      activePakageType: pr.seller.activePakageType,
+      isVerified: pr.seller.isVerified,
+      businessDesc: 'پخش عمده و سراسری با بهترین قیمت روز؛ ارسال به سراسر کشور.',
+      avatarUrl: null,
+      createdAt: '2024-06-15 09:00:00',
+      online: false,
+      lastSeenAt: null,
+      provinceName: 'همدان',
+      cityName: pr.cityName,
+      reviewSummary: { avg: 4.3, count: 3 },
+      responseRate: 92,
+      productCount: 0,
+      totalStock: 0,
+      catalog: null,
+      products: [],
+    });
+  }
+  const s = SELLERS.get(pr.seller.userName);
+  s.products.push(pr);
+  s.productCount += 1;
+  s.totalStock += pr.stock;
+}
+
+/** خریدارهای نمونه + کاربر نشست استاب — همه با قالب یکسان برای لیست‌ها */
+const ME = { id: '50', userName: 'seller0', firstName: 'کاربر', lastName: 'تستی', avatarUrl: null, cityName: 'همدان' };
+const BUYER_USERS = [
+  { id: '90', userName: 'buyer1', firstName: 'علی', lastName: 'محمدی', avatarUrl: null, cityName: 'تهران' },
+  { id: '91', userName: 'buyer2', firstName: 'زهرا', lastName: 'کریمی', avatarUrl: null, cityName: 'ملایر' },
+];
+const findUser = (userName) =>
+  SELLERS.get(userName) ?? BUYER_USERS.find((u) => u.userName === userName) ?? (userName === ME.userName ? ME : null);
+
+// ─── کاتالوگ محصول (خواسته مالک ۱۰-۱۱) — حافظهٔ درون‌برنامه‌ای ───
+const sqlNow = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
+const strOrNull = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+const CATALOGS = new Map(); // pageId -> catalog
+const CATALOG_SAVES = new Map(); // `${userName}:${pageId}` -> savedAt
+const countSavers = (pageId) => {
+  let n = 0;
+  for (const key of CATALOG_SAVES.keys()) if (key.endsWith(`:${pageId}`)) n += 1;
+  return n;
+};
+
+// کاتالوگ نمونه برای seller1 — تا دکمهٔ کاتالوگ روی پروفایل/آگهی و صفحهٔ
+// عمومی /catalog/chitoos-hamadan از اول در پیش‌نمایش دیده شود
+CATALOGS.set('chitoos-hamadan', {
+  pageId: 'chitoos-hamadan',
+  userName: 'seller1',
+  brandColor: '#0891b2',
+  instagramId: 'chitoos.hamadan',
+  whatsappNumber: '09121112233',
+  createdAt: '2026-09-01 10:00:00',
+  updatedAt: null,
+});
+SELLERS.get('seller1').catalog = { pageId: 'chitoos-hamadan' };
+for (const pr of PRODUCTS) {
+  const c = [...CATALOGS.values()].find((x) => x.userName === pr.seller.userName);
+  pr.seller.catalog = c ? { pageId: c.pageId } : null;
+}
+// ذخیره‌شده‌های نمونه: کاربر پنل استاب (seller0) + دو خریدار — تا مودال
+// «ذخیره کنندگان» و پنل «کاتالوگهای ذخیره شده» از اول پُر باشند
+for (const u of ['seller0', 'buyer1', 'buyer2']) CATALOG_SAVES.set(`${u}:chitoos-hamadan`, '2026-11-01T10:00:00.000Z');
+
+// ─── نظرات نمونه — تا ستاره/توزیع/کارت‌های نظر در کاتالوگ دیده شود ───
+const REVIEWS = {
+  summary: {
+    avg: 4.3,
+    count: 3,
+    distribution: [
+      { rating: 5, count: 2 },
+      { rating: 4, count: 0 },
+      { rating: 3, count: 1 },
+      { rating: 2, count: 0 },
+      { rating: 1, count: 0 },
+    ],
+  },
+  items: [
+    {
+      id: 'r1',
+      rating: 5,
+      text: 'کیفیت عالی و ارسال سریع؛ تقریباً یک ساله هر ماه از این فروشنده می‌خرم و همیشه همون چیزی می‌رسه که توافق کردیم.',
+      createdAt: '2026-10-12 10:00:00',
+      status: 'approved',
+      author: { id: '90', userName: 'buyer1', firstName: 'علی', lastName: 'محمدی', avatarUrl: null },
+    },
+    {
+      id: 'r2',
+      rating: 5,
+      text: 'قیمت مناسب و بسته‌بندی مرتب. برای سوپرمارکت ما عالی بود.',
+      createdAt: '2026-10-05 12:30:00',
+      status: 'approved',
+      author: { id: '91', userName: 'buyer2', firstName: 'زهرا', lastName: 'کریمی', avatarUrl: null },
+    },
+    {
+      id: 'r3',
+      rating: 3,
+      text: 'کالا خوب بود ولی ارسال یک روز دیرتر شد.',
+      createdAt: '2026-09-18 09:15:00',
+      status: 'approved',
+      author: { ...ME },
+    },
+  ],
+};
+
+/** پاسخ خطای قراردادی — { status:false, message } مثل بک‌اند واقعی */
+class Fail {
+  constructor(message) {
+    this.message = message;
+  }
+}
+
 // ─── چت و صفحهٔ کالا — برای بازبینی بصری ویجت/پیام‌ها در سندباکس ───
 const nowIso = () => new Date().toISOString();
 const CHAT = {
@@ -253,21 +373,189 @@ const server = createServer(async (req, res) => {
     case 'categories/getAllCategories': data = CATS; break;
     case 'cityMarket/getProducts': data = paged({ cityIds: body.cityIds }); break;
     case 'products/getProductList': data = paged(body); break;
-    case 'products/getProductById':
-      data = PRODUCTS.find((x) => x.id === Number(body.id)) ?? null;
+    case 'products/getProductById': {
+      const pr = PRODUCTS.find((x) => x.id === Number(body.id)) ?? null;
+      // کاتالوگ فروشنده پویا جستجو شود — آگهی‌های قدیمی snapshot دارند
+      if (pr) {
+        const c = [...CATALOGS.values()].find((x) => x.userName === pr.seller.userName);
+        pr.seller.catalog = c ? { pageId: c.pageId } : null;
+      }
+      data = pr;
       break;
+    }
     case 'products/searchSuggestions': data = []; break;
     case 'products/getSellerProducts': data = { items: PRODUCTS.slice(0, 6), total: 6 }; break;
+    // محصولات من (پنل) — کاربر نشست استاب = seller0؛ همهٔ آگهی‌ها تاییدشده
+    case 'products/getMyProducts': {
+      const mine = (SELLERS.get(ME.userName)?.products ?? []).map((x) => ({ ...x, status: 'confirmed' }));
+      data = {
+        items: mine,
+        counts: { confirmed: mine.length, pending: 0, rejected: 0, deleted: 0 },
+        capacity: 50,
+      };
+      break;
+    }
+    case 'products/getSeller': {
+      const s = SELLERS.get(String(body.userName ?? ''));
+      if (!s) data = null;
+      else {
+        const { products, ...user } = s;
+        data = { user, products };
+      }
+      break;
+    }
+    case 'products/getSellerPhone': {
+      const u =
+        body.id != null
+          ? [...SELLERS.values()].find((s) => s.id === String(body.id))
+          : findUser(String(body.userName ?? ''));
+      data = u
+        ? { sellerId: u.id, phone: '09120000000', firstName: u.firstName, lastName: u.lastName, userName: u.userName, callLogged: false, callsLeftToday: 20 }
+        : null;
+      break;
+    }
     case 'reviews/getSellerReviews':
       data = {
-        summary: { avg: 0, count: 0, distribution: [] },
-        items: [],
-        total: 0,
+        summary: REVIEWS.summary,
+        items: REVIEWS.items,
+        myReview: null,
+        total: REVIEWS.items.length,
         page: 1,
         perPage: 5,
+        pageCount: 1,
       };
       break;
     case 'users/getProfile': data = { user: PROFILE }; break;
+    // ─── کاتالوگ محصول (خواسته مالک ۱۰-۱۱) ───
+    case 'catalog/checkPageId': {
+      const pid = String(body.pageId ?? '').trim().toLowerCase();
+      data = { available: /^[a-z0-9][a-z0-9-]{2,29}$/.test(pid) && !CATALOGS.has(pid) };
+      break;
+    }
+    case 'catalog/create': {
+      const pid = String(body.pageId ?? '').trim().toLowerCase();
+      if (!/^[a-z0-9][a-z0-9-]{2,29}$/.test(pid)) {
+        data = new Fail('آیدی پیج باید ۳ تا ۳۰ نویسه باشد: حروف لاتین کوچک، عدد و خط تیره.');
+        break;
+      }
+      if (CATALOGS.has(pid)) {
+        data = new Fail('این آیدی قبلاً گرفته شده است؛ آیدی دیگری انتخاب کنید.');
+        break;
+      }
+      if ([...CATALOGS.values()].some((c) => c.userName === ME.userName)) {
+        data = new Fail('شما قبلاً کاتالوگ ساخته‌اید؛ از همان ویرایش کنید.');
+        break;
+      }
+      const catalog = {
+        pageId: pid,
+        userName: ME.userName,
+        brandColor: typeof body.brandColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(body.brandColor) ? body.brandColor : '#0f766e',
+        instagramId: strOrNull(body.instagramId),
+        whatsappNumber: strOrNull(body.whatsappNumber),
+        createdAt: sqlNow(),
+        updatedAt: null,
+      };
+      CATALOGS.set(pid, catalog);
+      const s0 = SELLERS.get(ME.userName);
+      if (s0) s0.catalog = { pageId: pid };
+      data = catalog;
+      break;
+    }
+    case 'catalog/update': {
+      const mine = [...CATALOGS.values()].find((c) => c.userName === ME.userName);
+      if (!mine) {
+        data = new Fail('کاتالوگی برای ویرایش پیدا نشد.');
+        break;
+      }
+      const pid = body.pageId != null ? String(body.pageId).trim().toLowerCase() : mine.pageId;
+      if (!/^[a-z0-9][a-z0-9-]{2,29}$/.test(pid)) {
+        data = new Fail('آیدی پیج باید ۳ تا ۳۰ نویسه باشد: حروف لاتین کوچک، عدد و خط تیره.');
+        break;
+      }
+      if (pid !== mine.pageId) {
+        if (CATALOGS.has(pid)) {
+          data = new Fail('این آیدی قبلاً گرفته شده است؛ آیدی دیگری انتخاب کنید.');
+          break;
+        }
+        CATALOGS.delete(mine.pageId);
+        mine.pageId = pid;
+        CATALOGS.set(pid, mine);
+        const s0 = SELLERS.get(ME.userName);
+        if (s0) s0.catalog = { pageId: pid };
+      }
+      if (typeof body.brandColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(body.brandColor)) mine.brandColor = body.brandColor;
+      if ('instagramId' in body) mine.instagramId = strOrNull(body.instagramId);
+      if ('whatsappNumber' in body) mine.whatsappNumber = strOrNull(body.whatsappNumber);
+      mine.updatedAt = sqlNow();
+      data = mine;
+      break;
+    }
+    case 'catalog/getMine':
+      data = [...CATALOGS.values()].find((c) => c.userName === ME.userName) ?? null;
+      break;
+    case 'catalog/getByPageId': {
+      const c = CATALOGS.get(String(body.pageId ?? ''));
+      data = c ? { catalog: c, userName: c.userName, saversCount: countSavers(c.pageId) } : null;
+      break;
+    }
+    case 'catalog/isSaved':
+      data = { saved: CATALOG_SAVES.has(`${ME.userName}:${body.pageId}`) };
+      break;
+    case 'catalog/toggleSave': {
+      const key = `${ME.userName}:${body.pageId}`;
+      if (CATALOG_SAVES.has(key)) {
+        CATALOG_SAVES.delete(key);
+        data = { saved: false };
+      } else {
+        CATALOG_SAVES.set(key, new Date().toISOString());
+        data = { saved: true };
+      }
+      break;
+    }
+    case 'catalog/getMySaved': {
+      const items = [];
+      for (const [key, savedAt] of CATALOG_SAVES) {
+        if (!key.startsWith(`${ME.userName}:`)) continue;
+        const pageId = key.slice(ME.userName.length + 1);
+        const c = CATALOGS.get(pageId);
+        const u = c && findUser(c.userName);
+        if (!c || !u) continue;
+        items.push({
+          pageId,
+          sellerUserName: c.userName,
+          sellerId: u.id,
+          sellerName: `${u.firstName} ${u.lastName}`.trim(),
+          avatarUrl: u.avatarUrl ?? null,
+          cityName: u.cityName ?? null,
+          productCount: (SELLERS.get(c.userName)?.products ?? []).length,
+          savedAt,
+        });
+      }
+      data = { items };
+      break;
+    }
+    case 'catalog/getSavers': {
+      const pid = String(body.pageId ?? '');
+      const items = [];
+      for (const [key, savedAt] of CATALOG_SAVES) {
+        if (!key.endsWith(`:${pid}`)) continue;
+        const userName = key.slice(0, -(pid.length + 1));
+        const u = findUser(userName);
+        if (u) {
+          items.push({
+            id: u.id,
+            userName: u.userName,
+            firstName: u.firstName,
+            lastName: u.lastName,
+            avatarUrl: u.avatarUrl ?? null,
+            cityName: u.cityName ?? null,
+            savedAt,
+          });
+        }
+      }
+      data = { count: items.length, items };
+      break;
+    }
     // ─── چت — حالت حداقلی برای بازبینی بصری کامپوزر/مودال پیوست ───
     case 'chat/startThread': data = CHAT.thread; break;
     case 'chat/getConversations': data = [CHAT.thread]; break;
@@ -309,6 +597,10 @@ const server = createServer(async (req, res) => {
     default: data = [];
   }
   res.writeHead(200, { 'Content-Type': 'application/json' });
+  if (data instanceof Fail) {
+    res.end(JSON.stringify({ status: false, message: data.message }));
+    return;
+  }
   res.end(JSON.stringify({ status: true, data }));
 });
 

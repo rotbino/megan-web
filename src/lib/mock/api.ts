@@ -1898,3 +1898,124 @@ export async function getMyUrgentChats(q: { categoryId?: number }): Promise<Urge
     ...(q.categoryId != null ? { categoryId: q.categoryId } : {}),
   });
 }
+
+/* ─── کاتالوگ محصول (خواسته مالک ۱۰-۱۱) ────────────────────────────────────
+ * صفحهٔ عمومی مستقل فروشنده در /catalog/{pageId}. قرارداد REST همان بقیه:
+ * POST JSON به /catalog/*؛ پاسخ { status, data }. تا وقتی بک‌اند مگان
+ * اندپوینت‌ها را نساخته، فرانت بی‌صدا تحمل می‌کند (null/empty برمی‌گرداند)
+ * تا هیچ صفحه‌ای نشکند؛ فقط ساخت/ویرایش خطایش به کاربر می‌رسد. */
+
+import type { CatalogSaverRow, SavedCatalogRow, UserCatalog } from '@/lib/types';
+import { CATALOG_DEFAULT_COLOR } from '@/lib/catalog';
+
+/** پاسخ عمومی catalog/getByPageId — کاتالوگ + صاحبش + تعداد ذخیره‌کنندگان */
+export interface CatalogByPageId {
+  catalog: UserCatalog;
+  userName: string;
+  saversCount: number;
+}
+
+/** وضعیت کاتالوگ من — سه حالت با معنی:
+ *  supported:false → بک‌اند هنوز اندپوینت ندارد (دکمهٔ ساخت مخفی می‌ماند)؛
+ *  supported:true + catalog:null → پشتیبانی هست، کاربر هنوز نساخته (دکمهٔ
+ *  «ساخت کاتالوگ محصول» نمایش داده می‌شود)؛
+ *  catalog — تنظیمات کاتالوگ موجود (دکمهٔ «کاتالوگ من»). */
+export interface MyCatalogState {
+  supported: boolean;
+  catalog: UserCatalog | null;
+}
+
+/** کاتالوگ من (پنل) — خطای شبکه/اندپوینت = unsupported تا UX نشکند */
+export async function getMyCatalog(): Promise<MyCatalogState> {
+  try {
+    const catalog = await apiFetch<UserCatalog | null>('/catalog/getMine', {});
+    return { supported: true, catalog };
+  } catch {
+    return { supported: false, catalog: null };
+  }
+}
+
+/** بررسی یکتایی آیدی پیج — null یعنی بک‌اند جواب نداد (فرم باز می‌ماند) */
+export async function checkCatalogPageId(pageId: string): Promise<boolean | null> {
+  try {
+    const d = await apiFetch<{ available: boolean }>('/catalog/checkPageId', { pageId }, { auth: false });
+    return d.available;
+  } catch {
+    return null;
+  }
+}
+
+/** ساخت کاتالوگ — خطا (آیدی تکراری/نامعتبر) پیام فارسی سرور را می‌دهد */
+export async function createMyCatalog(input: {
+  pageId: string;
+  brandColor?: string;
+  instagramId?: string | null;
+  whatsappNumber?: string | null;
+}): Promise<UserCatalog> {
+  return apiFetch<UserCatalog>('/catalog/create', {
+    pageId: input.pageId,
+    brandColor: input.brandColor ?? CATALOG_DEFAULT_COLOR,
+    instagramId: input.instagramId ?? null,
+    whatsappNumber: input.whatsappNumber ?? null,
+  });
+}
+
+/** ویرایش تنظیمات کاتالوگ (آیدی/رنگ/اینستاگرام/واتساپ) */
+export async function updateMyCatalog(input: {
+  pageId?: string;
+  brandColor?: string;
+  instagramId?: string | null;
+  whatsappNumber?: string | null;
+}): Promise<UserCatalog> {
+  return apiFetch<UserCatalog>('/catalog/update', input);
+}
+
+/** آیا من این کاتالوگ را ذخیره کرده‌ام؟ — مهمان/false در خطا */
+export async function isCatalogSaved(pageId: string): Promise<boolean> {
+  try {
+    const d = await apiFetch<{ saved: boolean }>('/catalog/isSaved', { pageId });
+    return d.saved;
+  } catch {
+    return false;
+  }
+}
+
+/** ذخیره/حذف ذخیرهٔ کاتالوگ (toggle) — جواب: وضعیت تازه */
+export async function toggleCatalogSave(pageId: string): Promise<boolean> {
+  const d = await apiFetch<{ saved: boolean }>('/catalog/toggleSave', { pageId });
+  return d.saved;
+}
+
+/** کاتالوگ‌های ذخیره‌شدهٔ من — دفترچهٔ تلفن پنل خریدار */
+export async function getMySavedCatalogs(): Promise<SavedCatalogRow[]> {
+  try {
+    const d = await apiFetch<{ items: SavedCatalogRow[] } | SavedCatalogRow[]>('/catalog/getMySaved', {});
+    return Array.isArray(d) ? d : (d.items ?? []);
+  } catch {
+    return [];
+  }
+}
+
+/** ذخیره‌کنندگان یک کاتالوگ — لیست برای همه؛ تماس/چت فقط صاحب پیج (سمت فرانت) */
+export async function getCatalogSavers(
+  pageId: string,
+): Promise<{ count: number; items: CatalogSaverRow[] }> {
+  try {
+    return await apiFetch<{ count: number; items: CatalogSaverRow[] }>(
+      '/catalog/getSavers',
+      { pageId },
+      { auth: false },
+    );
+  } catch {
+    return { count: 0, items: [] };
+  }
+}
+
+/** SSR صفحهٔ عمومی کاتالوگ — کش ۶۰ثانیه‌ای مثل صفحهٔ پروفایل؛ null → 404 */
+export async function getCatalogByPageIdSSR(pageId: string): Promise<CatalogByPageId | null> {
+  try {
+    return await serverPost<CatalogByPageId | null>('/catalog/getByPageId', { pageId }, 60);
+  } catch {
+    return null;
+  }
+}

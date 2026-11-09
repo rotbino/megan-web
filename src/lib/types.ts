@@ -78,6 +78,9 @@ export interface Product {
     lastName: string;
     activePakageType: PackageType;
     isVerified: boolean;
+    /** کاتالوگ محصول فروشنده (خواسته مالک ۱۰-۱۱) — اگر ساخته باشد دکمهٔ
+     *  «کاتالوگ محصول» کنار «پروفایل فروشنده» نمایش داده می‌شود */
+    catalog?: { pageId: string } | null;
   };
 
   /** نردبان — آگهی نردبان‌شده بالای نتایج می‌آید (۱۰۰ هزار تومان در ماه) */
@@ -763,4 +766,52 @@ export interface BillingConfig {
   customCharge: { maxAmount: number; tiers: CustomChargeTier[]; minAmount: number };
   ladder: { monthlyPrice: number; maxMonths: number };
   groupSend: { perRecipientPrice: number };
+}
+
+/* ─── کاتالوگ محصول (خواسته مالک ۱۰-۱۱) ────────────────────────────────────
+ * صفحهٔ عمومی مستقل فروشنده در /catalog/{pageId} — فروشنده آن را برای
+ * مشتریان خودش می‌فرستد؛ خبری از لینک‌های ایمچ نیست (فقط امضای «ساخته شده
+ * با iMach» در فوتر — ابزار بازاریابی ایمچ). */
+
+/** تنظیمات کاتالوگ یک فروشنده — هر کاربر حداکثر یکی دارد */
+export interface UserCatalog {
+  /** آیدی یکتای پیج — آدرس عمومی /catalog/{pageId} */
+  pageId: string;
+  /** رنگ برند (hex) — کل تم صفحهٔ کاتالوگ با آن رنگ می‌شود */
+  brandColor: string;
+  /** آیدی اینستاگرام بدون @ (اختیاری — null یعنی دکمهٔ اینستاگرام نیست) */
+  instagramId: string | null;
+  /** شماره واتساپ (اختیاری — null یعنی دکمهٔ واتساپ نیست) */
+  whatsappNumber: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+/** مرجع سبک کاتالوگ در دیتای فروشنده (getSeller / getProductById) —
+ *  فقط pageId؛ تنظیمات کامل از catalog/getByPageId می‌آید */
+export interface CatalogRef {
+  pageId: string;
+}
+
+/** یک ذخیره‌کنندهٔ کاتالوگ — لیست برای صاحب کاتالوگ (تماس/چت فقط مالک) */
+export interface CatalogSaverRow {
+  id: string;
+  userName: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+  cityName: string | null;
+  savedAt: string;
+}
+
+/** کاتالوگ ذخیره‌شده در پنل خریدار — دفترچهٔ تلفن کاتالوگ‌ها */
+export interface SavedCatalogRow {
+  pageId: string;
+  sellerUserName: string;
+  sellerId: string;
+  sellerName: string;
+  avatarUrl: string | null;
+  cityName: string | null;
+  productCount: number;
+  savedAt: string;
 }

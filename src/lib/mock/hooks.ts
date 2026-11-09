@@ -986,3 +986,80 @@ export function useDeletePhoneContact() {
     },
   });
 }
+
+/* ─── کاتالوگ محصول (خواسته مالک ۱۰-۱۱) ──────────────────────────────────── */
+
+/** کاتالوگ من — null: هنوز نساخته یا بک‌اند اندپوینت ندارد */
+export function useMyCatalog(enabled = true) {
+  return useQuery({ queryKey: ['my-catalog'], queryFn: api.getMyCatalog, staleTime: 30_000, enabled });
+}
+
+/** بررسی یکتایی آیدی پیج — debounce فرم انجام می‌دهد؛ null: بی‌پاسخ */
+export function useCatalogPageIdAvailable(pageId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['catalog-page-id', pageId],
+    queryFn: () => api.checkCatalogPageId(pageId),
+    staleTime: 15_000,
+    enabled,
+  });
+}
+
+/** آیا من این کاتالوگ را ذخیره کرده‌ام؟ — فقط کاربر واردشده */
+export function useCatalogSaved(pageId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['catalog-saved', pageId],
+    queryFn: () => api.isCatalogSaved(pageId),
+    staleTime: 60_000,
+    enabled,
+  });
+}
+
+/** کاتالوگ‌های ذخیره‌شدهٔ من — پنل خریدار (دفترچهٔ تلفن) */
+export function useMySavedCatalogs(enabled = true) {
+  return useQuery({ queryKey: ['saved-catalogs'], queryFn: api.getMySavedCatalogs, staleTime: 30_000, enabled });
+}
+
+/** ذخیره‌کنندگان یک کاتالوگ — مودال «ذخیره کنندگان» (همه می‌بینند) */
+export function useCatalogSavers(pageId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['catalog-savers', pageId],
+    queryFn: () => api.getCatalogSavers(pageId),
+    staleTime: 30_000,
+    enabled,
+  });
+}
+
+/** ذخیره/حذف ذخیرهٔ کاتالوگ (toggle) */
+export function useToggleCatalogSave() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.toggleCatalogSave,
+    onSuccess: (saved, pageId) => {
+      queryClient.setQueryData(['catalog-saved', pageId], saved);
+      queryClient.invalidateQueries({ queryKey: ['saved-catalogs'] });
+      queryClient.invalidateQueries({ queryKey: ['catalog-savers'] });
+    },
+  });
+}
+
+/** ساخت کاتالوگ — موفقیت: کش من با شکل MyCatalogState تازه می‌شود */
+export function useCreateCatalog() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.createMyCatalog,
+    onSuccess: (catalog) => {
+      queryClient.setQueryData(['my-catalog'], { supported: true, catalog });
+    },
+  });
+}
+
+/** ویرایش تنظیمات کاتالوگ */
+export function useUpdateCatalog() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.updateMyCatalog,
+    onSuccess: (catalog) => {
+      queryClient.setQueryData(['my-catalog'], { supported: true, catalog });
+    },
+  });
+}
