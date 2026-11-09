@@ -62,3 +62,6 @@ megan-back/
 
 # خروجی ابزارهای عامل (Read tool)
 tool-results/
+
+# نشانگر محیط پیش‌نمایش سندباکس — استاب بک‌اند (instrumentation.ts) را فعال می‌کند
+.sandbox-preview

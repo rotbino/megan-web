@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 import { existsSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { createConnection } from "node:net";
 
 /**
  * ── آدرس بک‌اند — یک کلید برای همه ────────────────────────────────────────
@@ -70,5 +72,44 @@ const nextConfig: NextConfig = {
     remotePatterns: imageRemotePatterns(),
   },
 };
+
+// ── سندباکس پیش‌نمایش: بک‌اند استاب (:4000) ──────────────────────────────
+// محیط پیش‌نمایش بین پیام‌ها ری‌استارت می‌شود و فقط خودِ dev دوباره بالا
+// می‌آید؛ بدون بک‌اند رزولور شهر/دسته خالی می‌شود → باکس «بازار عمده
+// شهرها» مخفی و صفحه‌های /city/* و دسته‌ها 404 (باگ ۹-۱۱). پس در هر بوتِ
+// dev، اگر نشانگر ".sandbox-preview" در ریشه باشد (gitignore — روی ماشین
+// مالک وجود ندارد) و پورت ۴000 خالی باشد (بک‌اند واقعی مگان زنده است)،
+// استاب با همین nodeِ پروسه detached بالا می‌آید. در بیلد/پروداکشن و
+// ماشین مالک کاملاً بی‌اثر است.
+function sandboxStubBackend(): void {
+  if (process.env.NODE_ENV !== "development") return;
+  if (!existsSync("./.sandbox-preview") || !existsSync("./scripts/stub-backend.mjs")) return;
+  const portOpen = (port: number): Promise<boolean> =>
+    new Promise((resolve) => {
+      const sock = createConnection({ port, host: "127.0.0.1" });
+      const done = (ok: boolean) => {
+        sock.destroy();
+        resolve(ok);
+      };
+      sock.setTimeout(800, () => done(false));
+      sock.on("connect", () => done(true));
+      sock.on("error", () => done(false));
+    });
+  void (async () => {
+    try {
+      if (await portOpen(4000)) return; // بک‌اند/استاب قبلی زنده است
+      const child = spawn(process.execPath, ["scripts/stub-backend.mjs"], {
+        detached: true,
+        stdio: "ignore",
+        cwd: process.cwd(),
+      });
+      child.unref();
+      console.log("[sandbox] بک‌اند استاب پیش‌نمایش روی :4000 بالا آمد");
+    } catch {
+      /* بالابر ناموفق — پیش‌نمایش بدون دیتا ادامه می‌دهد */
+    }
+  })();
+}
+sandboxStubBackend();
 
 export default nextConfig;
