@@ -29,17 +29,20 @@ export function LatestBuyRequests() {
       aria-labelledby="latest-buyads"
       className="mx-auto max-w-7xl px-4 py-6 lg:px-6 nav-desktop:mt-6 nav-desktop:rounded-lg nav-desktop:border nav-desktop:border-border/70 nav-desktop:bg-card nav-desktop:shadow-sm"
     >
-      <div className="mb-3 flex h-10 items-center justify-between nav-desktop:mb-4">
-        <h2 id="latest-buyads" className="flex items-center gap-2 text-base font-medium leading-7 nav-desktop:text-xl">
-          <ClipboardList size={20} className="shrink-0 text-primary" />
-          جدیدترین درخواست‌های خرید فوری
+      <div className="mb-3 flex h-10 items-center justify-between gap-2 nav-desktop:mb-4">
+        <h2
+            id="latest-buyads"
+            className="flex min-w-0 items-center gap-1.5 text-[13px] font-medium leading-6 nav-desktop:gap-2 nav-desktop:text-xl nav-desktop:leading-7"
+        >
+          <ClipboardList size={16} className="shrink-0 text-primary nav-desktop:size-5" />
+          <span className="truncate">جدیدترین درخواست‌های خرید فوری</span>
         </h2>
         <Link
-          href={`${BUYERS_HREF}?tab=requests`}
-          className="inline-flex h-10 items-center gap-2 rounded-md px-2 text-sm font-medium text-primary transition-colors hover:bg-secondary"
+            href={`${BUYERS_HREF}?tab=requests`}
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-1.5 text-[12px] font-medium text-primary transition-colors hover:bg-secondary nav-desktop:h-10 nav-desktop:gap-2 nav-desktop:px-2 nav-desktop:text-sm"
         >
           مشاهده همه
-          <ChevronLeft size={24} />
+          <ChevronLeft size={18} className="nav-desktop:size-6" />
         </Link>
       </div>
 
@@ -88,17 +91,20 @@ export function LatestPeriodicBuyRequests() {
       aria-labelledby="latest-periodic-buyads"
       className="mx-auto max-w-7xl px-4 py-6 lg:px-6 nav-desktop:rounded-lg nav-desktop:border nav-desktop:border-border/70 nav-desktop:bg-card nav-desktop:shadow-sm"
     >
-      <div className="mb-3 flex h-10 items-center justify-between nav-desktop:mb-4">
-        <h2 id="latest-periodic-buyads" className="flex items-center gap-2 text-base font-medium leading-7 nav-desktop:text-xl">
-          <CalendarClock size={20} className="shrink-0 text-primary" />
-          جدیدترین درخواست‌های خرید دوره‌ای
+      <div className="mb-3 flex h-10 items-center justify-between gap-2 nav-desktop:mb-4">
+        <h2
+            id="latest-periodic-buyads"
+            className="flex min-w-0 items-center gap-1.5 text-[13px] font-medium leading-6 nav-desktop:gap-2 nav-desktop:text-xl nav-desktop:leading-7"
+        >
+          <CalendarClock size={16} className="shrink-0 text-primary nav-desktop:size-5" />
+          <span className="truncate">جدیدترین درخواست‌های خرید دوره‌ای</span>
         </h2>
         <Link
-          href={`${BUYERS_HREF}?tab=periodic`}
-          className="inline-flex h-10 items-center gap-2 rounded-md px-2 text-sm font-medium text-primary transition-colors hover:bg-secondary"
+            href={`${BUYERS_HREF}?tab=periodic`}
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-1.5 text-[12px] font-medium text-primary transition-colors hover:bg-secondary nav-desktop:h-10 nav-desktop:gap-2 nav-desktop:px-2 nav-desktop:text-sm"
         >
           مشاهده همه
-          <ChevronLeft size={24} />
+          <ChevronLeft size={18} className="nav-desktop:size-6" />
         </Link>
       </div>
 

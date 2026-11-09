@@ -115,44 +115,7 @@ export async function CityMarketView({ city, categoryPath, requestedCityIds }: C
 
   return (
     <>
-      {/* ---------- هیرو مینیمال: هویت بازار + آمار واقعی ---------- */}
-      <div className="mx-auto max-w-7xl px-4 pt-4 lg:px-6 lg:pt-6">
-        <div className="rounded-lg border border-border/70 bg-card p-4 shadow-sm lg:p-5">
-          <h1 className="text-lg font-extrabold lg:text-2xl">{h1}</h1>
-          <p className="mt-1.5 max-w-3xl text-xs leading-6 text-muted-foreground lg:text-sm">
-            {category ? (
-              <>
-                خرید و فروش عمده {category.categoryName} مستقیم از فروشندگان، تولیدکنندگان و
-                شرکت‌های پخش {city.name}؛ قیمت‌ها را مقایسه کنید و بی‌واسطه با تامین‌کنندهٔ
-                همشهرتان در تماس باشید.
-              </>
-            ) : (
-              <>
-                خرید و فروش عمده مستقیم از فروشندگان، تولیدکنندگان و شرکت‌های پخش {city.name}؛
-                قیمت‌ها را مقایسه کنید و بی‌واسطه با تامین‌کنندهٔ همشهرتان در تماس باشید.
-              </>
-            )}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {total > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 text-[11px] font-medium text-secondary-foreground">
-                {toFa(total)} آگهی فعال در {city.name}
-              </span>
-            )}
-            {provinceName && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 text-[11px] font-medium text-secondary-foreground">
-                <MapPin size={12} />
-                استان {provinceName}
-              </span>
-            )}
-            {extraCityIds.length > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 text-[11px] font-medium text-secondary-foreground">
-                جستجو در {toFa(extraCityIds.length + 1)} شهر استان
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
+
 
       {/* ---------- لیست چندشهری — ساختار عین صفحهٔ فیلتر ملی ---------- */}
       <CityMarketListing

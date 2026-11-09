@@ -298,10 +298,7 @@ export function CityMarketListing({
           variant === 'sidebar' ? '' : 'px-2.5 pb-1 pt-2',
         )}
       >
-        <h2 className="flex items-center gap-1.5 text-sm font-bold">
-          <MapPin size={14} className="text-primary" />
-          شهرهای استان {city.provinceName}
-        </h2>
+
         {extraCityIds.length > 0 && (
           <button
             type="button"
@@ -313,10 +310,7 @@ export function CityMarketListing({
           </button>
         )}
       </div>
-      <p className={cn('text-[11px] leading-5 text-muted-foreground', variant === 'sidebar' ? 'mt-1' : 'px-2.5')}>
-        برای جستجو در چند شهر، شهرهای موردنظر را تیک بزنید — تیک‌ها تا خودتان
-        بردارید همان‌ها می‌مانند.
-      </p>
+
       <div className={cn('mt-2', variant === 'sheet' && 'pb-1')}>
         {/* شهر خود صفحه — تیک‌شده و قفل (فیلتر شهر حذف نمی‌شود) */}
         <CityCheckRow checked onChange={() => {}} label={city.name} note="بازار این صفحه" disabled locked />

@@ -21,7 +21,7 @@ export default function HomePage() {
       <Header />
       <main className="flex-1">
         <Hero />
-        <CityBar />
+
         <CategoryCards />
         <LatestProducts />
         <LatestBuyRequests />
@@ -29,6 +29,7 @@ export default function HomePage() {
         <div id="rfq" className="scroll-mt-20 mt-6">
           <RfqForm />
         </div>
+        <CityBar />
         <RegisterBanner />
         <SeoCards />
       </main>
