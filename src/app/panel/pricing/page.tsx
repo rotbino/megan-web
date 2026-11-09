@@ -9,6 +9,9 @@
  *    (مثل «هدیه خوش‌آمدگویی») زیر همین آکاردئون است — دارندهٔ بسته بالای
  *    صفحه هیچ محتوای تبلیغاتی نمی‌بیند (دور ۲۸).
  *  • بدون بسته: همان گرید کمپین‌محور (بازطراحی ۳۱-۱۰) — رایگان + پولی‌ها.
+ *  • کارت‌ها مینیمال به سبک باسکول (خواستهٔ مالک ۹-۱۱): حداکثر ۷ امکان،
+ *    تیک خاکستری، بدون بج قرمز/خط جداکننده؛ در موبایل امکانات پشت دکمهٔ
+ *    «امکانات بسته» جمع می‌شود تا کارت کوتاه بماند و اسکرول سریع شود.
  *  • پرداخت کارت به کارت + فیش → تأیید ادمین؛ خرید در حین بسته فعال =
  *    رزرو با امتداد از انقضای فعلی (مالکان فعلی محروم نمی‌شوند).
  *  • نردبان از این صفحه حذف شده — فقط در کیف پول (جدا بودن دو مفهوم).
@@ -28,19 +31,15 @@ import {
   Check,
   ChevronDown,
   Copy,
-  CreditCard,
   Crown,
   Gift,
   Hourglass,
   ImagePlus,
-  Infinity as InfinityIcon,
   Lock,
   Megaphone,
-  Percent,
   ReceiptText,
   ShieldCheck,
   ShoppingBag,
-  Sparkles,
   X,
   XCircle,
 } from 'lucide-react';
@@ -88,11 +87,87 @@ const FREE_ROWS: Array<{ label: string; included: boolean }> = [
 const planTitle = (t: number) => (t === 1 ? 'دو ماهه' : t === 2 ? 'شش ماهه' : 'یک‌ساله');
 
 /** ردیف‌های امکانات یک پلن — از ادمین؛ سهمیهٔ تماس روزانه همیشه دیده می‌شود
- *  حتی اگر ردیف‌های ادمین قدیمی باشند (خواستهٔ مالک ۱-۱۱) */
+ *  حتی اگر ردیف‌های ادمین قدیمی باشند (خواستهٔ مالک ۱-۱۱)؛ نمایش حداکثر
+ *  ۷ ردیف — خلاصه و مینیمال (خواستهٔ مالک ۹-۱۱، الگوی باسکول)؛ اگر ردیف
+ *  تماس میان ردیف‌های ادمین نباشد، جای خودش را در همان ۷ مورد نگه می‌دارد. */
 function planFeatureRows(p: MembershipPlan): string[] {
   const features = p.features?.length ? [...p.features] : [...PAID_PLAN_FEATURES];
   const hasCallRow = features.some((f) => f.startsWith('تماس روزانه'));
-  return hasCallRow ? features : [...features, 'تماس روزانه با تا ۳۰ کاربر ایمچ'];
+  return hasCallRow
+    ? features.slice(0, 7)
+    : [...features.slice(0, 6), 'تماس روزانه با تا ۳۰ کاربر ایمچ'];
+}
+
+/** یک ردیف امکان — included=false فقط در کارت رایگان (مقایسه با پولی‌ها) */
+type FeatureRow = { label: string; included?: boolean };
+
+/** فهرست امکانات بسته — مینیمال به سبک باسکول (خواستهٔ مالک ۹-۱۱):
+ *  دسکتاپ فهرست باز با تیک خاکستری کم‌رنگ و بدون خط جداکننده/باکس؛
+ *  موبایل جمع‌شده پشت دکمهٔ «امکانات بسته» تا ارتفاع کارت کم شود و
+ *  کاربر سریع‌تر بین بسته‌ها اسکرول کند — فقط با خواست خودش باز می‌شود. */
+function PackageFeatures({
+  rows,
+  desktopTwoCols = false,
+  className,
+}: {
+  rows: FeatureRow[];
+  /** گرید دوستونه در دسکتاپ — برای کارت پهن «بستهٔ فعلی شما» */
+  desktopTwoCols?: boolean;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const item = (f: FeatureRow, i: number) => (
+    <li key={`${i}-${f.label}`} className="flex items-start gap-2 text-[12.5px] leading-6 lg:text-[13px]">
+      {f.included === false ? (
+        <X size={15} className="mt-1 shrink-0 text-muted-foreground/50" />
+      ) : (
+        <Check size={15} className="mt-1 shrink-0 text-muted-foreground" />
+      )}
+      <span className={cn(f.included === false && 'text-muted-foreground/70')}>{f.label}</span>
+    </li>
+  );
+
+  return (
+    <div className={cn('mt-5 flex-1', className)}>
+      {/* دسکتاپ — فهرست باز (مثل باسکول) */}
+      <ul
+        className={cn(
+          'hidden gap-y-2.5 lg:grid',
+          desktopTwoCols ? 'lg:grid-cols-2 lg:gap-x-8' : 'lg:grid-cols-1',
+        )}
+      >
+        {rows.map(item)}
+      </ul>
+
+      {/* موبایل — اسلایدر جمع‌شوندهٔ «امکانات بسته»؛ متن + فلش، بدون کادر */}
+      <div className="lg:hidden">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className="flex w-full cursor-pointer items-center justify-center gap-1.5 pt-1 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
+        >
+          امکانات بسته
+          <ChevronDown
+            size={15}
+            className={cn('transition-transform duration-300', open && 'rotate-180')}
+          />
+        </button>
+        <div
+          aria-hidden={!open}
+          className={cn(
+            'grid transition-all duration-300 ease-in-out',
+            open ? 'visible grid-rows-[1fr] opacity-100' : 'invisible grid-rows-[0fr] opacity-0',
+          )}
+        >
+          <div className="overflow-hidden">
+            <ul className="space-y-2.5 pt-3">{rows.map(item)}</ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /** درصد پیشرفت پله جاری کمپین تعدادی — برای نوار پیشرفت بنر */
@@ -323,9 +398,11 @@ function CampaignBannerAuto({ campaign }: { campaign: SalesCampaignInfo }) {
   return <CampaignBanner campaign={campaign} />;
 }
 
-/** کارت بستهٔ پولی — دو حالت: خرید عادی و رزرو (دارندهٔ بستهٔ فعال، خواستهٔ مالک ۸-۱۱).
- *  قیمت اصلی بالا با فونت بزرگ و رنگ غلیظ (با تخفیف خط‌خورده)، قیمت نهایی با
- *  همان وضوح زیرش، بج درصد بزرگ (خواسته مالک ۳۱-۱۰). */
+/** کارت بستهٔ پولی — مینیمال به سبک باسکول (خواستهٔ مالک ۹-۱۱): فقط یک
+ *  قیمت درشت و خنثی، تخفیف یک خط کوچک (قیمت قبل خط‌خورده + درصد قرمز)،
+ *  بدون بج رنگی و بدون خط جداکننده؛ دکمهٔ پرفروش توپر، بقیه outline؛
+ *  امکانات حداکثر ۷ ردیف و در موبایل پشت «امکانات بسته» جمع می‌شود.
+ *  دو حالت: خرید عادی و رزرو (دارندهٔ بستهٔ فعال، خواستهٔ مالک ۸-۱۱). */
 function PlanCard({
   p,
   reserve = false,
@@ -342,13 +419,13 @@ function PlanCard({
   return (
     <div
       className={cn(
-        'relative flex flex-col rounded-xl border p-6',
-        p.bestSeller ? 'border-amber-300 bg-card shadow-md' : 'bg-card',
+        'relative flex flex-col rounded-xl border bg-card p-5 sm:p-6',
+        p.bestSeller && 'border-amber-300 shadow-sm',
       )}
     >
       {p.bestSeller && (
-        <span className="absolute -top-3 right-5 inline-flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold text-white">
-          <Sparkles size={12} /> پرفروش‌ترین
+        <span className="absolute -top-3 right-5 rounded-full bg-amber-500 px-3 py-1 text-[11px] font-bold text-white">
+          پرفروش‌ترین
         </span>
       )}
       {reserve && isCurrent && (
@@ -358,56 +435,36 @@ function PlanCard({
       )}
       <p className="text-center text-[15px] font-extrabold">اشتراک {p.title}</p>
 
-      {/* بلوک قیمت — بج درصد بزرگ + قیمت اصلی خط‌خورده + قیمت نهایی */}
-      <div className="mt-4 flex flex-col items-center gap-1.5">
-        {percent > 0 && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-4 py-1.5 text-[17px] font-black text-white shadow-sm">
-            <Percent size={16} strokeWidth={2.8} /> {toFa(percent)}٪ تخفیف
-          </span>
-        )}
-        <p className="mt-1 flex items-baseline gap-1.5">
-          <span
-            className={cn(
-              'font-num text-[24px] font-black leading-none sm:text-[27px]',
-              percent > 0 && 'text-neutral-800 line-through decoration-red-600 decoration-[3px]',
-            )}
-          >
-            {toFa(p.amount)}
+      {/* قیمت — قیمت نهایی درشت و خنثی؛ تخفیف فقط یک خط کوچک زیرش؛
+          ارتفاع ثابت تا دکمه‌های همهٔ کارت‌های گرید هم‌تراز بمانند */}
+      <div className="mt-3 flex min-h-[46px] flex-col items-center justify-center gap-1">
+        <p className="flex items-baseline gap-1.5">
+          <span className="font-num text-[24px] font-black leading-none sm:text-[26px]">
+            {toFa(finalAmount)}
           </span>
           <span className="text-xs text-muted-foreground">تومان</span>
         </p>
         {percent > 0 && (
-          <p className="mt-1 flex items-baseline gap-1.5">
-            <span className="font-num text-[26px] font-black leading-none text-emerald-600 sm:text-[30px]">
-              {toFa(finalAmount)}
-            </span>
-            <span className="text-xs font-bold text-emerald-700/80">تومان</span>
+          <p className="flex items-center gap-2 text-xs">
+            <span className="font-num text-muted-foreground/80 line-through">{toFa(p.amount)}</span>
+            <span className="font-num font-extrabold text-red-600">{toFa(percent)}٪ تخفیف</span>
           </p>
         )}
       </div>
 
       <Button
         size="sm"
+        variant={p.bestSeller ? 'default' : 'outline'}
         className={cn(
           'mx-auto mt-5 w-full rounded-md text-xs',
           p.bestSeller && 'bg-amber-500 hover:bg-amber-600',
         )}
         onClick={() => onBuy(p)}
       >
-        <CreditCard size={14} className="ms-1" /> {reserve ? 'رزرو این بسته' : 'انتخاب و پرداخت'}
+        {reserve ? 'رزرو این بسته' : 'انتخاب و پرداخت'}
       </Button>
-      <ul className="mt-6 flex-1 space-y-3 border-t pt-5">
-        {planFeatureRows(p).map((f) => (
-          <li key={f} className="flex items-start gap-2 text-[12.5px] leading-6 lg:text-[13.5px]">
-            <Check size={16} className="mt-1 shrink-0 text-emerald-600" />
-            {f}
-          </li>
-        ))}
-        <li className="flex items-start gap-2 text-[12.5px] leading-6 lg:text-[13.5px]">
-          <InfinityIcon size={16} className="mt-1 shrink-0 text-emerald-600" />
-          تمدید خودکار اعتبار با خرید مجدد (امتداد از انقضای فعلی)
-        </li>
-      </ul>
+
+      <PackageFeatures rows={planFeatureRows(p).map((label) => ({ label }))} />
     </div>
   );
 }
@@ -421,11 +478,7 @@ function ActivePackageCard({ pkg, plan }: { pkg: MyPackage; plan?: MembershipPla
   const rows = plan ? planFeatureRows(plan) : [...PAID_PLAN_FEATURES];
 
   return (
-    <section className="relative overflow-hidden rounded-xl border border-amber-300/80 bg-card p-5 shadow-md sm:p-6">
-      {/* لهجه دکور */}
-      <span className="pointer-events-none absolute -left-10 -top-14 size-44 rounded-full bg-amber-400/15 blur-2xl" aria-hidden />
-      <span className="pointer-events-none absolute -bottom-16 -right-8 size-40 rounded-full bg-amber-300/15 blur-2xl" aria-hidden />
-
+    <section className="relative overflow-hidden rounded-xl border border-amber-300/80 bg-card p-5 shadow-sm sm:p-6">
       <div className="relative flex flex-wrap items-center justify-between gap-x-5 gap-y-4">
         <div className="flex min-w-0 flex-1 items-center gap-4">
           <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-amber-400 text-white shadow-md ring-1 ring-amber-500/50">
@@ -468,15 +521,13 @@ function ActivePackageCard({ pkg, plan }: { pkg: MyPackage; plan?: MembershipPla
         )}
       </div>
 
-      {/* امکانات بستهٔ فعلی — همان ردیف‌های کارت فروش (یادآوری ارزش بسته) */}
-      <ul className="relative mt-5 grid gap-x-6 gap-y-3 border-t pt-5 sm:grid-cols-2">
-        {rows.map((f) => (
-          <li key={f} className="flex items-start gap-2 text-[12.5px] leading-6 lg:text-[13.5px]">
-            <Check size={16} className="mt-1 shrink-0 text-emerald-600" />
-            {f}
-          </li>
-        ))}
-      </ul>
+      {/* امکانات بستهٔ فعلی — همان ردیف‌های کارت فروش (یادآوری ارزش بسته)؛
+          حداکثر ۷ ردیف و در موبایل جمع‌شونده مثل کارت‌های فروش (۹-۱۱) */}
+      <PackageFeatures
+        rows={rows.map((label) => ({ label }))}
+        desktopTwoCols
+        className="mt-5 border-t pt-5"
+      />
     </section>
   );
 }
@@ -688,27 +739,18 @@ export default function PricingPage() {
               style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))' }}
             >
               {/* ── رایگان ── */}
-              <div className="relative flex flex-col rounded-xl border bg-card p-6">
+              <div className="relative flex flex-col rounded-xl border bg-card p-5 sm:p-6">
                 <p className="text-center text-[15px] font-extrabold">{FREE_PACKAGE.title}</p>
-                <p className="mt-4 text-center">
-                  <span className="font-num text-[26px] font-black text-primary">رایگان</span>
-                  <span className="ms-1.5 text-xs text-muted-foreground">برای همیشه</span>
-                </p>
+                <div className="mt-3 flex min-h-[46px] flex-col items-center justify-center">
+                  <p className="flex items-baseline gap-1.5">
+                    <span className="font-num text-[24px] font-black leading-none sm:text-[26px]">رایگان</span>
+                    <span className="text-xs text-muted-foreground">برای همیشه</span>
+                  </p>
+                </div>
                 <Button asChild variant="outline" size="sm" className="mx-auto mt-5 w-full rounded-md text-xs">
                   <Link href="/panel">بسته فعلی شما</Link>
                 </Button>
-                <ul className="mt-6 flex-1 space-y-3 border-t pt-5">
-                  {FREE_ROWS.map((f) => (
-                    <li key={f.label} className="flex items-start gap-2 text-[12.5px] leading-6 lg:text-[13.5px]">
-                      {f.included ? (
-                        <Check size={16} className="mt-1 shrink-0 text-emerald-600" />
-                      ) : (
-                        <X size={16} className="mt-1 shrink-0 text-red-400" />
-                      )}
-                      <span className={cn(!f.included && 'text-muted-foreground/80')}>{f.label}</span>
-                    </li>
-                  ))}
-                </ul>
+                <PackageFeatures rows={FREE_ROWS.map(({ label, included }) => ({ label, included }))} />
               </div>
 
               {/* ── پولی‌ها ── */}
