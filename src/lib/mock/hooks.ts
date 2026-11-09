@@ -8,10 +8,11 @@ import { ensureChatSocket, onChatEvent } from '@/lib/api/socket';
 import { useBaseData } from '@/lib/base-data';
 import * as api from './api';
 import type { Paged, ChatFileMeta, ChatMessage } from './api';
-import type { BuyRequest, FollowFolder, FollowFolderKind, FollowItem, FollowPriority, FollowStatus, FollowTargetType, Product, ProductQuery } from '@/lib/types';
+import type { BuyRequest, CityMarketQuery, FollowFolder, FollowFolderKind, FollowItem, FollowPriority, FollowStatus, FollowTargetType, Product, ProductQuery } from '@/lib/types';
 
 const qk = {
   products: (q: ProductQuery) => ['products', q] as const,
+  cityMarket: (q: CityMarketQuery) => ['city-market', q] as const,
   product: (id: number) => ['product', id] as const,
   related: (id: number) => ['related', id] as const,
   categoryTree: ['category-tree'] as const,
@@ -29,6 +30,21 @@ export function useProducts(query: ProductQuery, initialData?: Paged<Product>) {
     queryFn: () => api.getProducts(query),
     ...(initialData ? { initialData } : {}),
     placeholderData: keepPreviousData, // صفحه‌بندی نرم بدون پرش اسکلتون
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * لیست چندشهری «بازار عمدهٔ شهری» — سرویس جداگانهٔ /cityMarket/getProducts
+ * (خواستهٔ مالک ۹-۱۱). شهر خود صفحه همیشه در cityIds هست؛ تیک شهرهای دیگر
+ * استان فقط کلید را عوض می‌کند — با keepPreviousData گرید نرم رفرش می‌شود.
+ */
+export function useCityMarketProducts(query: CityMarketQuery, initialData?: Paged<Product>) {
+  return useQuery({
+    queryKey: qk.cityMarket(query),
+    queryFn: () => api.getCityMarketProducts(query),
+    ...(initialData ? { initialData } : {}),
+    placeholderData: keepPreviousData, // تیک/صفحه‌بندی نرم بدون پرش اسکلتون
     staleTime: 60_000,
   });
 }

@@ -41,13 +41,17 @@ function cityKey(name: string): string {
 }
 
 /** همهٔ شهرها — کش دادهٔ نکست (۱ ساعت) + memo پروسه */
+let allCitiesCache: RawCity[] | null = null;
+
 async function getAllCities(): Promise<RawCity[]> {
+  if (allCitiesCache) return allCitiesCache;
   try {
     const raw = await serverPost<RawCity[]>('/locations/getCitiesByProvince', {}, 3600);
-    return Array.isArray(raw) ? raw.filter((c) => c && c.id && c.city_name) : [];
+    allCitiesCache = Array.isArray(raw) ? raw.filter((c) => c && c.id && c.city_name) : [];
   } catch {
-    return []; // بک‌اند در دسترس نیست → 404 آرام
+    allCitiesCache = []; // بک‌اند در دسترس نیست → 404 آرام
   }
+  return allCitiesCache;
 }
 
 /** رزولور memo-شده — کلید → شهر */
@@ -70,4 +74,16 @@ export async function resolveCityByName(name: string): Promise<ResolvedCity | nu
     }
   }
   return cityIndex.get(key) ?? null;
+}
+
+/**
+ * همهٔ شهرهای یک استان — از همان لیست memo-شدهٔ پروسه (بدون فراخوانی اضافه).
+ * برای «شهرهای استان» بازار شهری (تیک‌های چندشهری — خواستهٔ مالک ۹-۱۱):
+ * سایدبار دسکتاپ و بات‌شیت موبایل هر دو از همین دیتا تغذیه می‌شوند.
+ */
+export async function listCitiesOfProvince(provinceId: number): Promise<ResolvedCity[]> {
+  const list = await getAllCities();
+  return list
+    .filter((c) => c.province_id === provinceId)
+    .map((c) => ({ id: c.id, name: c.city_name, provinceId: c.province_id! }));
 }

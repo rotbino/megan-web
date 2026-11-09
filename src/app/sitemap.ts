@@ -22,7 +22,6 @@ interface RawCategoryNode {
   score: number;
   children?: RawCategoryNode[];
 }
-
 /** دیتای زنده از بک‌اند — فقط دیتابیس واقعی، هیچ ماکی در کار نیست (SEO) */
 export const revalidate = 3600;
 
@@ -47,7 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // سه منبع واقعی — هر کدام مستقل؛ خرابی یکی بقیه را نمی‌اندازد
-  const [categoryNodes, productItems, universe, majorCities] = await Promise.all([
+  const [categoryData, productItems, universe, majorCities] = await Promise.all([
     fetch(joinUrl(apiBase(), '/categories/getAllCategories'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -55,8 +54,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       next: { revalidate: 3600 },
     })
       .then((r) => r.json() as Promise<{ status: boolean; data?: RawCategoryNode[] }>)
-      .then((j) => (j?.status && j.data ? flattenCategories(j.data) : []))
-      .catch(() => [] as RawCategoryNode[]),
+      .then((j) => (j?.status && j.data ? { flat: flattenCategories(j.data), roots: j.data } : { flat: [], roots: [] }))
+      .catch(() => ({ flat: [] as RawCategoryNode[], roots: [] as RawCategoryNode[] })),
     fetch(joinUrl(apiBase(), '/products/getProductList'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -70,6 +69,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // بازارهای عمدهٔ شهری (خواستهٔ مالک ۹-۱۱) — فقط شهرهای بزرگ موجود در دیتابیس
     listMajorCities().catch(() => []),
   ]);
+
+  const { flat: categoryNodes, roots: rootCategoryNodes } = categoryData;
 
   // فروشندگانِ دارای آگهی — از همان لیست واقعی محصولات (یکتا)
   const sellerNames = [...new Set(productItems.map((p) => p.seller?.userName).filter((x): x is string => Boolean(x)))];
@@ -100,6 +101,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
+  // دسته‌های داخل بازار شهری — شهر بزرگ × دستهٔ ریشه (خواستهٔ مالک ۹-۱۱):
+  // «خرید عمده برنج در تهران»، «قیمت سیب در همدان» و… فقط سطح ریشه تا
+  // سایت‌مپ سبک بماند (شهرهای کوچک از شبکهٔ لینک‌های صفحات کشف می‌شوند)
+  const cityCategoryPages: MetadataRoute.Sitemap = majorCities.flatMap((c) =>
+    rootCategoryNodes.map((cat) => ({
+      url: `${BASE}/city/${c.slug}/category/${encodeURIComponent(cat.slug)}`,
+      changeFrequency: 'daily' as const,
+      priority: 0.7,
+    })),
+  );
+
   // صفحات جستجوی ورودی‌های گوگل — هر کالا (و هر کالا+نوع) یک URL ایندکس‌پذیر
   // اختصاصی (long-tail سئو). عنوان‌های گوگلی (مثل «خرید سیب زمینی عمده در
   // تهران» یا «فروش عمده برنج هاشمی در همدان») همه به همین آدرس‌های هسته‌ای
@@ -118,5 +130,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...searchPages, ...cityMarketPages, ...categoryPages, ...productPages, ...profilePages];
+  return [...staticPages, ...searchPages, ...cityMarketPages, ...cityCategoryPages, ...categoryPages, ...productPages, ...profilePages];
 }

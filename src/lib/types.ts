@@ -144,6 +144,21 @@ export interface ProductQuery {
   pageSize?: number;
 }
 
+/**
+ * کوئری «بازار عمدهٔ شهری» — سرویس جداگانهٔ /cityMarket/getProducts
+ * (خواستهٔ مالک ۹-۱۱): فیلتر شهرِ صفحه ثابت است و کاربر می‌تواند شهرهای
+ * دیگر همان استان را هم تیک بزند → cityIds همیشه ≥ ۱ عضو دارد (شهر خود
+ * صفحه همیشه اول است؛ سرویس بدون cityIds نتیجهٔ خالی برمی‌گرداند).
+ */
+export interface CityMarketQuery {
+  cityIds: number[];
+  categorySlug?: string;
+  s?: string;
+  sort?: SortKey;
+  page?: number;
+  pageSize?: number;
+}
+
 // ─────────────────────────────────────────────────────────────
 // پنل فروشنده — منطبق بر پاسخ‌های واقعی باسکول که فرستاده شد
 // (get_profile، get_category_list، saved lists، relatedByAdd)

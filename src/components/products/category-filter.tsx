@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { ArrowRight, ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toFa } from '@/lib/format';
 import type { Category } from '@/lib/types';
 
 /**
@@ -16,14 +15,35 @@ import type { Category } from '@/lib/types';
  * - صفحه دسته (path) → ساختار درختی (خواسته مالک ۴-۱۱): لینک «همه دسته ها»
  *   با فلش بازگشت و رنگ برندِ بولد؛ سرشاخه با فونت بولد و غلیظ هم‌اندازهٔ
  *   زیردسته‌ها؛ زیردسته‌ها غیربولد و یک تَب جلوتر (تورفتگی) تا درخت دیده شود.
+ *
+ * بازار شهری (خواستهٔ مالک ۹-۱۱): با hrefBase/categoryBase لینک‌ها به
+ * /city/{شهر}/category/… می‌روند و query تیک‌های پایدار (?cities=…) را
+ * حمل می‌کنند — بدون این props رفتار لیست ملی عیناً حفظ می‌شود.
  */
 
-/** سطح اول گروه‌بندی — «همه دسته‌ها» + ۱۰ دسته ریشه (خواسته مالک: بدون درخت کامل) */
-function RootList({ tree, activeSlug }: { tree: Category[]; activeSlug?: string }) {
+interface CategoryFilterProps {
+  tree: Category[];
+  path?: Category[];
+  /** مقصد «همه دسته‌ها» — پیش‌فرض لیست ملی؛ بازار شهری: /city/{شهر} */
+  hrefBase?: string;
+  /** پیشوند لینک دسته‌ها — پیش‌فرض /product-list/category؛ بازار شهری: /city/{شهر}/category */
+  categoryBase?: string;
+  /** کوئری الحاقی به همهٔ لینک‌ها (بدون «؟») — تیک‌های پایدار بازار شهری: cities=102,103 */
+  query?: string;
+}
+
+/** سطح اول گروه‌بندی — «همه دسته‌ها» + دسته‌های ریشه (خواسته مالک: بدون درخت کامل) */
+function RootList({ tree, activeSlug, hrefBase, categoryBase, qs }: {
+  tree: Category[];
+  activeSlug?: string;
+  hrefBase: string;
+  categoryBase: string;
+  qs: string;
+}) {
   return (
     <nav className="space-y-0.5 text-sm">
       <Link
-        href="/product-list"
+        href={`${hrefBase}${qs}`}
         className={cn('block rounded-md px-2.5 py-1.5', !activeSlug ? 'font-bold text-primary' : 'text-muted-foreground hover:bg-secondary')}
       >
         همه دسته‌ها
@@ -33,7 +53,7 @@ function RootList({ tree, activeSlug }: { tree: Category[]; activeSlug?: string 
         return (
           <Link
             key={root.id}
-            href={`/product-list/category/${root.slug}`}
+            href={`${categoryBase}/${encodeURIComponent(root.slug)}${qs}`}
             aria-current={active ? 'page' : undefined}
             className={cn(
               'flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5',
@@ -51,9 +71,13 @@ function RootList({ tree, activeSlug }: { tree: Category[]; activeSlug?: string 
   );
 }
 
-export function CategoryFilter({ tree, path }: { tree: Category[]; path?: Category[] }) {
+export function CategoryFilter({ tree, path, hrefBase, categoryBase, query }: CategoryFilterProps) {
+  const base = hrefBase ?? '/product-list';
+  const cats = categoryBase ?? '/product-list/category';
+  const qs = query ? `?${query}` : '';
+
   // لیست اصلی — بدون دسته فعال: فقط سطح اول گروه‌بندی
-  if (!path || path.length === 0) return <RootList tree={tree} />;
+  if (!path || path.length === 0) return <RootList tree={tree} hrefBase={base} categoryBase={cats} qs={qs} />;
 
   const current = path[path.length - 1];
   const parent = path.length > 1 ? path[path.length - 2] : undefined;
@@ -62,14 +86,14 @@ export function CategoryFilter({ tree, path }: { tree: Category[]; path?: Catego
   const focus = current.children?.length ? current : parent;
 
   // ریشه‌ی بدون زیردسته → سطح اول با هایلایت دسته فعال (fallback امن)
-  if (!focus) return <RootList tree={tree} activeSlug={current.slug} />;
+  if (!focus) return <RootList tree={tree} activeSlug={current.slug} hrefBase={base} categoryBase={cats} qs={qs} />;
 
   // مقصد دکمه بازگشت: والدِ سطحِ درحال‌نمایش (یا لیست اصلی اگر ریشه است)
   const focusIndex = path.indexOf(focus);
   const backTarget = focusIndex > 0 ? path[focusIndex - 1] : undefined;
   const backHref = backTarget
-    ? `/product-list/category/${encodeURIComponent(backTarget.slug)}`
-    : '/product-list';
+    ? `${cats}/${encodeURIComponent(backTarget.slug)}${qs}`
+    : `${base}${qs}`;
 
   return (
     <nav aria-label="زیردسته‌ها">
@@ -92,7 +116,7 @@ export function CategoryFilter({ tree, path }: { tree: Category[]; path?: Catego
           return (
             <li key={c.id}>
               <Link
-                href={`/product-list/category/${encodeURIComponent(c.slug)}`}
+                href={`${cats}/${encodeURIComponent(c.slug)}${qs}`}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'flex items-center justify-between gap-2 rounded-md ps-7 pe-2.5 py-1.5 text-sm',

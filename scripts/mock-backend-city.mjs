@@ -7,11 +7,13 @@
  * اجرا:  node scripts/mock-backend-city.mjs   → http://127.0.0.1:4000
  *
  * سناریوهای تست پوشش‌داده‌شده:
- *  · شهر پرمخاطب (تهران): آگهی + ۴ فروشنده ویژه → ریل VIP کامل؛
+ *  · شهر پرمخاطب (تهران): ۱۰ آگهی + چندشهری با شهریار/ورامین (تیک استان)؛
  *  · شهر با آگهی ولی بدون ویژه (مشهد/شیراز/تبریز/رشت) → بدون ریل VIP؛
- *  · شهر خالی (ملایر) → fallback آگهی‌های استان همدان؛
+ *  · شهر خالی (ملایر) → حالت خالی + تیک شهرهای دیگر استان (تویسرکان/همدان)؛
  *  · شهرهای غیر بزرگ با URL فارسی (/city/ملایر)؛
- *  · سورت related = نردبان ← ویژه ← آپدیت (مثل توضیح getRelatedProducts).
+ *  · سورت related = نردبان ← ویژه ← آپدیت (مثل توضیح getRelatedProducts)؛
+ *  · سرویس جداگانۀ بازار شهری /cityMarket/getProducts — چندشهری با Set
+ *    (سرویس اصلی /products/getProductList دست‌نخورده می‌ماند — خواستهٔ مالک).
  */
 import http from 'node:http';
 
@@ -116,6 +118,10 @@ const PRODUCT_ROWS = [
   ['برنج هاشمی صدری', 'berenge', 101, 'akbar-hassani', false, 155_000, 4_400],
   ['خرمای کبکاب ممتاز', 'khorma', 101, 'parviz-karimi', false, 98_000, 7_700],
   ['سیب گلاب سمنان', 'sib', 101, 'akbar-hassani', true, 35_000, 6_000],
+  // چندشهری استان تهران — شهریار/ورامین (تیک‌های «شهرهای استان»)
+  ['پیاز قرمز شهریار', 'piyaz', 102, 'parviz-karimi', false, 15_200, 28_000],
+  ['سیب زمینی ورامین', 'sib-zamini', 103, 'reza-mohammadi', false, 18_700, 41_000],
+  ['روغن کارتنی شهریار', 'roghan', 102, 'akbar-hassani', true, 91_000, 6_400],
   ['روغن سرخ کردنی کارتنی', 'roghan', 104, 'akbar-hassani', false, 94_000, 8_800],
   ['سیب قرمز ارومیه', 'sib', 109, 'hosein-razavi', false, 32_000, 15_000],
   ['سیب زمینی مراکز', 'sib-zamini', 109, 'hosein-razavi', false, 18_500, 60_000],
@@ -131,6 +137,9 @@ const PRODUCT_ROWS = [
   ['پیاز زرد آذر', 'piyaz', 113, 'kaveh-tabrizi', true, 14_800, 70_000],
   ['برنج هاشمی اسانلو', 'berenge', 115, 'javad-hamedani', true, 146_000, 9_000],
   ['سیب قرمز همدان', 'sib', 115, 'javad-hamedani', false, 29_000, 14_000],
+  // چندشهری استان همدان — ملایر عمداً خالی (حالت خالی + تیک شهرهای استان)
+  ['سیب قرمز تویسرکان', 'sib', 117, 'javad-hamedani', false, 27_800, 11_000],
+  ['پیاز زرد تویسرکان', 'piyaz', 117, 'javad-hamedani', false, 14_100, 33_000],
   ['خرمای خاص اهواز', 'khorma', 118, 'mahmud-ahvazi', false, 105_000, 5_500],
   ['سیب زمینی دزفول', 'sib-zamini', 118, 'mahmud-ahvazi', true, 16_900, 66_000],
   ['برنج هاشمی رشت', 'berenge', 122, 'naser-rashti', false, 138_000, 7_200],
@@ -224,6 +233,40 @@ const routes = {
     return ok({ items: items.slice(start, start + pageSize), total, page, pageCount });
   },
   '/api/v1/products/searchSuggestions': () => ok(['برنج هاشمی', 'خرمای مضافتی']),
+  /**
+   * سرویس جداگانۀ «بازار عمدهٔ شهری» — چندشهری (خواستهٔ مالک ۹-۱۱):
+   *   · cityIds الزامی است (تیک شهر صفحه + شهرهای دیگر استان)؛ بدون آن
+   *     نتیجهٔ خالی برمی‌گردد (fail-closed — این سرویس هرگز لیست سراسری نمی‌دهد)؛
+   *   · عضویت با Set — O(1) به‌ازای هر آگهی؛ سرعتِ چندشهری عین تک‌شهری
+   *     (پیاده‌سازی سرور واقعی: WHERE city_id IN (…) با ایندکس city_id)؛
+   *   · بقیهٔ قرارداد (s/categorySlug/sort/page/pageSize و سورت
+   *     related = نردبان ← ویژه ← آپدیت) عین سرویس اصلی — کاربر ویژه و
+   *     نردبان اینجا هم بالاتر دیده می‌شوند (خواستهٔ مالک).
+   */
+  '/api/v1/cityMarket/getProducts': (body) => {
+    const b = body ?? {};
+    const cityIds = Array.isArray(b.cityIds) ? b.cityIds.map(Number).filter((n) => Number.isFinite(n)) : [];
+    if (cityIds.length === 0) return ok({ items: [], total: 0, page: 1, pageCount: 0 });
+    const citySet = new Set(cityIds); // جستجوی چندشهری — همان سرعت تک‌شهری
+    let items = PRODUCTS.filter(
+      (p) =>
+        citySet.has(p.cityId) &&
+        (!b.s || p.productName.includes(b.s) || p.subCategoryName.includes(b.s)),
+    );
+    if (b.categorySlug) {
+      items = items.filter((p) => {
+        const leaf = LEAVES.find((l) => l.id === p.subCategoryId);
+        return leaf.slug === b.categorySlug || leaf.root.slug === b.categorySlug;
+      });
+    }
+    items = [...items].sort(b.sort === 'newest' ? sortNewest : sortRelated);
+    const pageSize = b.pageSize || 20;
+    const page = Math.max(1, b.page || 1);
+    const total = items.length;
+    const pageCount = Math.max(1, Math.ceil(total / pageSize));
+    const start = (page - 1) * pageSize;
+    return ok({ items: items.slice(start, start + pageSize), total, page, pageCount });
+  },
   '/api/v1/products/getProductById': (body) =>
     ok(PRODUCTS.find((p) => p.id === body?.id) ?? PRODUCTS[0]),
   '/api/v1/products/getSeller': (body) => {

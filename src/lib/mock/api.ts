@@ -7,7 +7,7 @@
  */
 
 import { apiFetch, serverPost, setTokens, clearTokens, getTokens, ApiError, uploadImage as clientUploadImage, uploadChatFile as clientUploadChatFile, uploadSupportFile as clientUploadSupportFile } from '@/lib/api/client';
-import type { BuyRequest, Category, City, PackageType, Product, ProductQuery, Province, SessionUser } from '@/lib/types';
+import type { BuyRequest, Category, City, CityMarketQuery, PackageType, Product, ProductQuery, Province, SessionUser } from '@/lib/types';
 
 export interface Paged<T> {
   items: T[];
@@ -229,6 +229,54 @@ export async function getProductsSSR(
         s: query.s,
         provinceId: query.provinceId,
         cityId: query.cityId,
+        sort: query.sort,
+        page: query.page,
+        pageSize: query.pageSize,
+      },
+      revalidate,
+    );
+    return { ...raw, items: raw.items.map(toProduct) };
+  } catch {
+    return null; // بک‌اند خاموش/خطا → صفحه با رندر کلاینت ادامه می‌دهد
+  }
+}
+
+// ─── بازار عمدهٔ شهری — سرویس جداگانه (خواستهٔ مالک ۹-۱۱) ────────────────────
+// چندشهری: شهر خودِ صفحه (ثابت) + شهرهای تیک‌خوردهٔ همان استان. اندپوینت
+// مستقل /cityMarket/getProducts است تا سرویس عمومی getProductList ساده و
+// سریع بماند؛ جستجوی چندشهری هم با عضویت Set سمت بک‌اند عین تک‌شهری است.
+
+/** لیست چندشهری بازار شهری — کلاینت (تیک شهر، صفحه‌بندی، مرتب‌سازی) */
+export async function getCityMarketProducts(query: CityMarketQuery): Promise<Paged<Product>> {
+  const raw = await apiFetch<{ items: RawProduct[]; total: number; page: number; pageCount: number }>(
+    '/cityMarket/getProducts',
+    {
+      cityIds: query.cityIds,
+      categorySlug: query.categorySlug,
+      s: query.s,
+      sort: query.sort,
+      page: query.page,
+      pageSize: query.pageSize,
+    },
+    { auth: false },
+  );
+  return { ...raw, items: raw.items.map(toProduct) };
+}
+
+/** دیتای اولیهٔ SSR بازار شهری — فقط کوئری پیش‌فرض (شهر خود صفحه، related، صفحه ۱) */
+export async function getCityMarketProductsSSR(
+  query: CityMarketQuery,
+  revalidate = 60,
+): Promise<Paged<Product> | null> {
+  try {
+    const raw = await serverPost<
+      { items: RawProduct[]; total: number; page: number; pageCount: number }
+    >(
+      '/cityMarket/getProducts',
+      {
+        cityIds: query.cityIds,
+        categorySlug: query.categorySlug,
+        s: query.s,
         sort: query.sort,
         page: query.page,
         pageSize: query.pageSize,
