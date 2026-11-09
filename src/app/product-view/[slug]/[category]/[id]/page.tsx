@@ -62,7 +62,7 @@ async function getProduct(id: number): Promise<Product | null> {
       stock: number; minSalePrice: number; minSaleAmount: number; unit: string;
       categoryId: number; categoryName: string; subCategoryId: number; subCategoryName: string;
       provinceId: number; provinceName: string; cityId: number; cityName: string;
-      myuserId: string; seller: { id: string; userName: string; firstName: string; lastName: string; activePakageType: number; isVerified: boolean; catalog?: { pageId: string } | null };
+      myuserId: string; seller: { id: string; userName: string; firstName: string; lastName: string; activePakageType: number; isVerified: boolean };
       isLadder: boolean; isElevated?: boolean; hasVideo: boolean; isOld: boolean; viewCount: number;
       createdAt: string; updatedAt: string; photos: string[]; photoThumbs?: string[];
     };
@@ -338,31 +338,14 @@ export default async function ProductViewPage({ params }: Props) {
                   className="h-11 w-full rounded-md text-sm font-medium"
                 />
               </div>
-              {/* پروفایل فروشنده + کاتالوگ محصول (خواسته مالک ۱۰-۱۱) —
-                  کاتالوگ فقط اگر فروشنده ساخته باشد؛ دو دکمه کنار هم */}
-              {product.seller.catalog ? (
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <Button asChild variant="outline" className="h-11 rounded-md px-2 text-[13px] font-medium">
-                    <Link href={`/profile/${product.seller.userName}`}>
-                      <Store size={15} />
-                      پروفایل فروشنده
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" className="h-11 rounded-md px-2 text-[13px] font-medium">
-                    <Link href={`/catalog/${product.seller.catalog.pageId}`}>
-                      <BookOpen size={15} />
-                      کاتالوگ محصول
-                    </Link>
-                  </Button>
-                </div>
-              ) : (
-                <Button asChild variant="outline" className="mt-2 h-11 w-full rounded-md">
-                  <Link href={`/profile/${product.seller.userName}`}>
-                    <Store size={16} />
-                    مشاهده پروفایل فروشنده
-                  </Link>
-                </Button>
-              )}
+              {/* کاتالوگ کاربر (خواسته مالک ۱۰-۱۱ + بازنگری) — کاتالوگ همان
+                  صفحهٔ پروفایل فروشنده است؛ صفحهٔ جداگانه‌ای وجود ندارد */}
+              <Button asChild variant="outline" className="mt-2 h-11 w-full rounded-md">
+                <Link href={`/profile/${product.seller.userName}`}>
+                  <BookOpen size={16} />
+                  کاتالوگ کاربر
+                </Link>
+              </Button>
               <p className="mt-3 text-[11px] leading-5 text-muted-foreground">
                 عضویت از {new Intl.DateTimeFormat('fa-IR', { year: 'numeric', month: 'long' }).format(new Date(product.createdAt))}
               </p>

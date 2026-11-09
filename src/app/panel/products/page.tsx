@@ -35,7 +35,7 @@ import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
 import { LadderPayDialog } from '@/components/panel/ladder-pay-dialog';
 import { DeleteProductDialog } from '@/components/panel/delete-product-dialog';
 import { QuickPriceModal } from '@/components/panel/quick-price-modal';
-import { CatalogManageButton } from '@/components/panel/catalog/catalog-manage-button';
+import { CatalogSettingsButton } from '@/components/panel/catalog/catalog-settings-button';
 import { REJECTION_REASONS } from '@/lib/mock/data';
 import { priceFa, stockFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -185,8 +185,9 @@ function MyProductsPageInner() {
               </Link>
             </Button>
           )}
-          {/* کاتالوگ محصول (خواسته مالک ۱۰-۱۱) — صفحهٔ مستقل برای مشتری‌های خود فروشنده */}
-          <CatalogManageButton />
+          {/* تنظیمات کاتالوگ (خواسته مالک ۱۰-۱۱ + بازنگری) — کاتالوگ همان
+              پروفایل است؛ لینک/ذخیره‌کنندگان، بدون ساخت صفحهٔ جداگانه */}
+          <CatalogSettingsButton />
           <Button asChild size="sm" className="rounded-md text-xs h-9">
             <Link href="/panel/products/new">
               <Plus size={16} />

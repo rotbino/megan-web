@@ -40,7 +40,7 @@ export function ProfileScrollNav({ productCount }: { productCount?: number }) {
   }, []);
 
   return (
-    <nav aria-label="بخش‌های پروفایل" className="border-t border-border px-2 pt-0.5 sm:px-4">
+    <nav aria-label="بخش‌های کاتالوگ" className="border-t border-border px-2 pt-0.5 sm:px-4">
       <ul className="flex items-center gap-1 overflow-x-auto">
         {SECTIONS.map(({ id, label }) => (
           <li key={id} className="shrink-0">

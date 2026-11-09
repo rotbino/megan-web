@@ -17,11 +17,11 @@
  * «سفید روی سفید» می‌شد.
  */
 
-import { BadgeCheck, BookOpen, Crown, MapPin, Phone, Share2 } from 'lucide-react';
-import Link from 'next/link';
+import { BadgeCheck, Crown, MapPin, Phone, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { ChatDialog } from '@/components/products/chat-dialog';
+import { CatalogSaveButton } from '@/components/products/catalog-save-button';
 import { PresenceDot } from '@/components/shared/presence-dot';
 import { RatingStars } from '@/components/shared/rating-stars';
 import { ArrowRightIcon } from '@/components/shared/buskool-icons';
@@ -48,28 +48,25 @@ export interface ProfileHeroUser {
   reviewSummary?: { avg: number; count: number } | null;
 }
 
-/** مدت عضویت به سبک باسکول — «۵ سال ۳ ماه در باسکول» → «… در ایمچ» */
+/** مدت عضویت به سبک باسکول — «۵ سال ۳ ماه در باسکول»؛ در کاتالوگ کاربر
+ *  بدون ذکر ایمچ: «۵ سال ۳ ماه فعالیت» (بازنگری خواستهٔ ۱۰-۱۱) */
 function membershipLabel(days: number): string {
   const years = Math.floor(days / 365);
   const months = Math.floor((days % 365) / 30);
-  if (years > 0 && months > 0) return `${toFa(years)} سال ${toFa(months)} ماه در ایمچ`;
-  if (years > 0) return `${toFa(years)} سال در ایمچ`;
-  if (months > 0) return `${toFa(months)} ماه در ایمچ`;
-  return `${toFa(Math.max(days, 1))} روز در ایمچ`;
+  if (years > 0 && months > 0) return `${toFa(years)} سال ${toFa(months)} ماه فعالیت`;
+  if (years > 0) return `${toFa(years)} سال فعالیت`;
+  if (months > 0) return `${toFa(months)} ماه فعالیت`;
+  return `${toFa(Math.max(days, 1))} روز فعالیت`;
 }
 
 export function ProfileHero({
   user,
   shareUrl,
-  catalogPageId,
 }: {
   user: ProfileHeroUser;
   shareUrl?: string;
-  /** آیدی کاتالوگ محصول فروشنده — اگر ساخته باشد دکمهٔ «کاتالوگ محصول»
-   *  کنار دکمه‌های تماس می‌نشیند (خواسته مالک ۱۰-۱۱) */
-  catalogPageId?: string | null;
 }) {
-  const name = `${user.firstName} ${user.lastName}`.trim() || 'فروشنده ایمچ';
+  const name = `${user.firstName} ${user.lastName}`.trim() || 'فروشنده';
   const location = [user.provinceName, user.cityName].filter(Boolean).join('، ');
   const special = user.activePakageType > 0;
   const { toast } = useToast();
@@ -228,20 +225,13 @@ export function ProfileHero({
               buttonVariant="outline"
               className="h-11 w-full rounded-lg px-5 text-sm font-bold lg:h-10 lg:w-[142px]"
             />
-            {/* کاتالوگ محصول (خواسته مالک ۱۰-۱۱) — لینک به صفحهٔ مستقل
-                فروشنده برای فرستادن به مشتری‌های خودش؛ فقط اگر ساخته باشد */}
-            {catalogPageId && (
-              <Button
-                asChild
-                variant="outline"
-                className="h-11 w-full rounded-lg px-5 text-sm font-bold lg:h-10 lg:w-[142px]"
-              >
-                <Link href={`/catalog/${catalogPageId}`}>
-                  <BookOpen size={18} />
-                  کاتالوگ محصول
-                </Link>
-              </Button>
-            )}
+            {/* ذخیرهٔ کاتالوگ (خواسته مالک ۱۰-۱۱ + بازنگری) — کاتالوگ همان
+                پروفایل است؛ موبایل تمام‌عرض زیر دو دکمهٔ بالا، دسکتاپ کنار هم.
+                برای خودِ فروشنده رندر نمی‌شود */}
+            <CatalogSaveButton
+              sellerUserName={user.userName}
+              className="col-span-2 lg:col-span-1"
+            />
           </div>
         </div>
       </div>

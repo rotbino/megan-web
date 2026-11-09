@@ -1899,114 +1899,39 @@ export async function getMyUrgentChats(q: { categoryId?: number }): Promise<Urge
   });
 }
 
-/* ─── کاتالوگ محصول (خواسته مالک ۱۰-۱۱) ────────────────────────────────────
- * صفحهٔ عمومی مستقل فروشنده در /catalog/{pageId}. قرارداد REST همان بقیه:
- * POST JSON به /catalog/*؛ پاسخ { status, data }. تا وقتی بک‌اند مگان
- * اندپوینت‌ها را نساخته، فرانت بی‌صدا تحمل می‌کند (null/empty برمی‌گرداند)
- * تا هیچ صفحه‌ای نشکند؛ فقط ساخت/ویرایش خطایش به کاربر می‌رسد. */
+/* ─── کاتالوگ کاربر (خواسته مالک ۱۰-۱۱ + بازنگری) ────────────────────────────
+ * کاتالوگ فروشنده همان صفحهٔ پروفایل عمومی اوست (/profile/{userName}) —
+ * صفحهٔ مستقل جداگانه‌ای ساخته نمی‌شود و «ساختن/ویرایش/آیدی پیج» ندارد؛
+ * با ثبت اولین محصول، کاتالوگ خودبه‌خود هست. آنچه از بک‌اند می‌ماند فقط
+ * ذخیره/ذخیره‌کنندگان است و کلید همه‌جا userName فروشنده است.
+ * قرارداد REST همان بقیه: POST JSON به /catalog/*؛ پاسخ { status, data }.
+ * تا وقتی بک‌اند مگان اندپوینت‌ها را نساخته، فرانت بی‌صدا تحمل می‌کند
+ * (false/[] برمی‌گرداند) تا هیچ صفحه‌ای نشکند؛ فقط toggle پیام روشن می‌دهد. */
 
-import type { CatalogSaverRow, SavedCatalogRow, UserCatalog } from '@/lib/types';
-import { CATALOG_DEFAULT_COLOR } from '@/lib/catalog';
+import type { CatalogSaverRow, SavedCatalogRow } from '@/lib/types';
 
-/** پاسخ عمومی catalog/getByPageId — کاتالوگ + صاحبش + تعداد ذخیره‌کنندگان */
-export interface CatalogByPageId {
-  catalog: UserCatalog;
-  userName: string;
-  saversCount: number;
-}
-
-/** وضعیت کاتالوگ من — سه حالت با معنی:
- *  supported:false → بک‌اند به getMine پاسخ نداد (خطای شبکه/اندپوینت) —
- *  دکمهٔ ساخت با این حالت هم نمایش داده می‌شود (گزارش مالک ۱۰-۱۱:
- *  «هیچ دکمه‌ای نمی‌بینم») و دیالوگ هشدار روشن می‌دهد؛
- *  supported:true + catalog:null → پشتیبانی هست، کاربر هنوز نساخته (دکمهٔ
- *  «ساخت کاتالوگ محصول» نمایش داده می‌شود)؛
- *  catalog — تنظیمات کاتالوگ موجود (دکمهٔ «کاتالوگ من»). */
-export interface MyCatalogState {
-  supported: boolean;
-  catalog: UserCatalog | null;
-}
-
-/** کاتالوگ من (پنل) — خطای شبکه/اندپوینت = unsupported تا UX نشکند */
-export async function getMyCatalog(): Promise<MyCatalogState> {
+/** آیا من این کاتالوگ (پروفایل فروشنده) را ذخیره کرده‌ام؟ — مهمان/false در خطا */
+export async function isCatalogSaved(userName: string): Promise<boolean> {
   try {
-    const catalog = await apiFetch<UserCatalog | null>('/catalog/getMine', {});
-    // data:null → پشتیبانی هست، هنوز نساخته؛ data:undefined یا شکل نامعتبر =
-    // بک‌اند اندپوینت را ندارد (۴۰۴ِ JSON بدون status آرایه/شیء بی‌قرارداد
-    // می‌دهد) → unsupported تا دیالوگ هشدار روشن بدهد، نه سکوت (مالک ۱۰-۱۱)
-    if (catalog === null) return { supported: true, catalog: null };
-    if (typeof catalog !== 'object' || typeof catalog.pageId !== 'string' || typeof catalog.brandColor !== 'string') {
-      return { supported: false, catalog: null };
-    }
-    return { supported: true, catalog };
-  } catch {
-    return { supported: false, catalog: null };
-  }
-}
-
-/** بررسی یکتایی آیدی پیج — null یعنی بک‌اند جواب نداد (فرم باز می‌ماند) */
-export async function checkCatalogPageId(pageId: string): Promise<boolean | null> {
-  try {
-    const d = await apiFetch<{ available: boolean }>('/catalog/checkPageId', { pageId }, { auth: false });
-    return d.available;
-  } catch {
-    return null;
-  }
-}
-
-/** پیام روشن «بک‌اند اندپوینت ندارد» — بک‌اند بدون اندپوینتِ catalog/create
- *  ممکن است ۴۰۴ِ JSON بدون status بدهد که data را undefined می‌کند؛ نباید
- *  به پیام مبهم شبکه یا موفقیتِ کاذب ختم شود (گزارش مالک ۱۰-۱۱) */
-const CATALOG_UNSUPPORTED_MSG =
-  'بک‌اند متصل شما هنوز اندپوینت‌های کاتالوگ (catalog/*) را ندارد؛ پس از افزودن آن‌ها به بک‌اند، ساخت کاتالوگ فعال می‌شود.';
-
-/** پاسخ باید کاتالوگ واقعی باشد وگرنه «بک‌اند پشتیبانی نمی‌کند» پرتاب می‌شود */
-function requireCatalog(d: UserCatalog | null | undefined): UserCatalog {
-  if (!d || typeof d.pageId !== 'string' || typeof d.brandColor !== 'string') {
-    throw new ApiError(CATALOG_UNSUPPORTED_MSG, 404, 'CATALOG_UNSUPPORTED');
-  }
-  return d;
-}
-
-/** ساخت کاتالوگ — خطا (آیدی تکراری/نامعتبر) پیام فارسی سرور را می‌دهد */
-export async function createMyCatalog(input: {
-  pageId: string;
-  brandColor?: string;
-  instagramId?: string | null;
-  whatsappNumber?: string | null;
-}): Promise<UserCatalog> {
-  const d = await apiFetch<UserCatalog>('/catalog/create', {
-    pageId: input.pageId,
-    brandColor: input.brandColor ?? CATALOG_DEFAULT_COLOR,
-    instagramId: input.instagramId ?? null,
-    whatsappNumber: input.whatsappNumber ?? null,
-  });
-  return requireCatalog(d);
-}
-
-/** ویرایش تنظیمات کاتالوگ (آیدی/رنگ/اینستاگرام/واتساپ) */
-export async function updateMyCatalog(input: {
-  pageId?: string;
-  brandColor?: string;
-  instagramId?: string | null;
-  whatsappNumber?: string | null;
-}): Promise<UserCatalog> {
-  return requireCatalog(await apiFetch<UserCatalog>('/catalog/update', input));
-}
-
-/** آیا من این کاتالوگ را ذخیره کرده‌ام؟ — مهمان/false در خطا */
-export async function isCatalogSaved(pageId: string): Promise<boolean> {
-  try {
-    const d = await apiFetch<{ saved: boolean }>('/catalog/isSaved', { pageId });
-    return d.saved;
+    const d = await apiFetch<{ saved: boolean }>('/catalog/isSaved', { userName });
+    return typeof d?.saved === 'boolean' ? d.saved : false;
   } catch {
     return false;
   }
 }
 
-/** ذخیره/حذف ذخیرهٔ کاتالوگ (toggle) — جواب: وضعیت تازه */
-export async function toggleCatalogSave(pageId: string): Promise<boolean> {
-  const d = await apiFetch<{ saved: boolean }>('/catalog/toggleSave', { pageId });
+/** ذخیره/حذف ذخیرهٔ کاتالوگ (toggle) — جواب: وضعیت تازه. بک‌اندِ بدون
+ *  اندپوینت ۴۰۴ِ JSON بدون status می‌دهد که data را undefined می‌کند؛
+ *  نباید به موفقیت کاذب یا خطای مبهم شبکه ختم شود (درس گزارش مالک ۱۰-۱۱) */
+export async function toggleCatalogSave(userName: string): Promise<boolean> {
+  const d = await apiFetch<{ saved: boolean }>('/catalog/toggleSave', { userName });
+  if (!d || typeof d.saved !== 'boolean') {
+    throw new ApiError(
+      'ذخیرهٔ کاتالوگ روی بک‌اند متصل فعال نیست؛ اندپوینت‌های catalog/* (با کلید userName) را به بک‌اند اضافه کنید.',
+      404,
+      'CATALOG_UNSUPPORTED',
+    );
+  }
   return d.saved;
 }
 
@@ -2014,32 +1939,25 @@ export async function toggleCatalogSave(pageId: string): Promise<boolean> {
 export async function getMySavedCatalogs(): Promise<SavedCatalogRow[]> {
   try {
     const d = await apiFetch<{ items: SavedCatalogRow[] } | SavedCatalogRow[]>('/catalog/getMySaved', {});
-    return Array.isArray(d) ? d : (d.items ?? []);
+    return Array.isArray(d) ? d : (d?.items ?? []);
   } catch {
     return [];
   }
 }
 
-/** ذخیره‌کنندگان یک کاتالوگ — لیست برای همه؛ تماس/چت فقط صاحب پیج (سمت فرانت) */
+/** ذخیره‌کنندگان یک کاتالوگ (پروفایل فروشنده) — لیست برای همه؛
+ *  تماس/چت فقط صاحب کاتالوگ (سمت فرانت) */
 export async function getCatalogSavers(
-  pageId: string,
+  userName: string,
 ): Promise<{ count: number; items: CatalogSaverRow[] }> {
   try {
-    return await apiFetch<{ count: number; items: CatalogSaverRow[] }>(
+    const d = await apiFetch<{ count: number; items: CatalogSaverRow[] }>(
       '/catalog/getSavers',
-      { pageId },
+      { userName },
       { auth: false },
     );
+    return d && Array.isArray(d.items) ? d : { count: 0, items: [] };
   } catch {
     return { count: 0, items: [] };
-  }
-}
-
-/** SSR صفحهٔ عمومی کاتالوگ — کش ۶۰ثانیه‌ای مثل صفحهٔ پروفایل؛ null → 404 */
-export async function getCatalogByPageIdSSR(pageId: string): Promise<CatalogByPageId | null> {
-  try {
-    return await serverPost<CatalogByPageId | null>('/catalog/getByPageId', { pageId }, 60);
-  } catch {
-    return null;
   }
 }

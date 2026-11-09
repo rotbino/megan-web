@@ -227,7 +227,6 @@ for (const pr of PRODUCTS) {
       responseRate: 92,
       productCount: 0,
       totalStock: 0,
-      catalog: null,
       products: [],
     });
   }
@@ -246,36 +245,20 @@ const BUYER_USERS = [
 const findUser = (userName) =>
   SELLERS.get(userName) ?? BUYER_USERS.find((u) => u.userName === userName) ?? (userName === ME.userName ? ME : null);
 
-// ─── کاتالوگ محصول (خواسته مالک ۱۰-۱۱) — حافظهٔ درون‌برنامه‌ای ───
-const sqlNow = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
-const strOrNull = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
-const CATALOGS = new Map(); // pageId -> catalog
-const CATALOG_SAVES = new Map(); // `${userName}:${pageId}` -> savedAt
-const countSavers = (pageId) => {
+// ─── کاتالوگ کاربر (خواسته مالک ۱۰-۱۱ + بازنگری) — کاتالوگ همان پروفایل
+// است؛ صفحهٔ جداگانه‌ای ساخته نمی‌شود و فقط ذخیره‌ها دیتای اختصاصی دارند.
+// کلید همه‌جا userName فروشنده است: `${buyerUserName}:${sellerUserName}` ───
+const CATALOG_SAVES = new Map(); // `${buyerUserName}:${sellerUserName}` -> savedAt
+const countSavers = (sellerUserName) => {
   let n = 0;
-  for (const key of CATALOG_SAVES.keys()) if (key.endsWith(`:${pageId}`)) n += 1;
+  for (const key of CATALOG_SAVES.keys()) if (key.endsWith(`:${sellerUserName}`)) n += 1;
   return n;
 };
 
-// کاتالوگ نمونه برای seller1 — تا دکمهٔ کاتالوگ روی پروفایل/آگهی و صفحهٔ
-// عمومی /catalog/chitoos-hamadan از اول در پیش‌نمایش دیده شود
-CATALOGS.set('chitoos-hamadan', {
-  pageId: 'chitoos-hamadan',
-  userName: 'seller1',
-  brandColor: '#0891b2',
-  instagramId: 'chitoos.hamadan',
-  whatsappNumber: '09121112233',
-  createdAt: '2026-09-01 10:00:00',
-  updatedAt: null,
-});
-SELLERS.get('seller1').catalog = { pageId: 'chitoos-hamadan' };
-for (const pr of PRODUCTS) {
-  const c = [...CATALOGS.values()].find((x) => x.userName === pr.seller.userName);
-  pr.seller.catalog = c ? { pageId: c.pageId } : null;
-}
-// ذخیره‌شده‌های نمونه: کاربر پنل استاب (seller0) + دو خریدار — تا مودال
-// «ذخیره کنندگان» و پنل «کاتالوگهای ذخیره شده» از اول پُر باشند
-for (const u of ['seller0', 'buyer1', 'buyer2']) CATALOG_SAVES.set(`${u}:chitoos-hamadan`, '2026-11-01T10:00:00.000Z');
+// ذخیره‌شده‌های نمونه: کاربر پنل استاب (seller0) + دو خریدار کاتالوگ (پروفایل)
+// seller1 را ذخیره کرده‌اند — تا جعبهٔ «ذخیره کنندگان» و پنل «کاتالوگهای
+// ذخیره شده» از اول پُر باشند
+for (const u of ['seller0', 'buyer1', 'buyer2']) CATALOG_SAVES.set(`${u}:seller1`, '2026-11-01T10:00:00.000Z');
 
 // ─── نظرات نمونه — تا ستاره/توزیع/کارت‌های نظر در کاتالوگ دیده شود ───
 const REVIEWS = {
@@ -375,11 +358,6 @@ const server = createServer(async (req, res) => {
     case 'products/getProductList': data = paged(body); break;
     case 'products/getProductById': {
       const pr = PRODUCTS.find((x) => x.id === Number(body.id)) ?? null;
-      // کاتالوگ فروشنده پویا جستجو شود — آگهی‌های قدیمی snapshot دارند
-      if (pr) {
-        const c = [...CATALOGS.values()].find((x) => x.userName === pr.seller.userName);
-        pr.seller.catalog = c ? { pageId: c.pageId } : null;
-      }
       data = pr;
       break;
     }
@@ -426,83 +404,13 @@ const server = createServer(async (req, res) => {
       };
       break;
     case 'users/getProfile': data = { user: PROFILE }; break;
-    // ─── کاتالوگ محصول (خواسته مالک ۱۰-۱۱) ───
-    case 'catalog/checkPageId': {
-      const pid = String(body.pageId ?? '').trim().toLowerCase();
-      data = { available: /^[a-z0-9][a-z0-9-]{2,29}$/.test(pid) && !CATALOGS.has(pid) };
-      break;
-    }
-    case 'catalog/create': {
-      const pid = String(body.pageId ?? '').trim().toLowerCase();
-      if (!/^[a-z0-9][a-z0-9-]{2,29}$/.test(pid)) {
-        data = new Fail('آیدی پیج باید ۳ تا ۳۰ نویسه باشد: حروف لاتین کوچک، عدد و خط تیره.');
-        break;
-      }
-      if (CATALOGS.has(pid)) {
-        data = new Fail('این آیدی قبلاً گرفته شده است؛ آیدی دیگری انتخاب کنید.');
-        break;
-      }
-      if ([...CATALOGS.values()].some((c) => c.userName === ME.userName)) {
-        data = new Fail('شما قبلاً کاتالوگ ساخته‌اید؛ از همان ویرایش کنید.');
-        break;
-      }
-      const catalog = {
-        pageId: pid,
-        userName: ME.userName,
-        brandColor: typeof body.brandColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(body.brandColor) ? body.brandColor : '#0f766e',
-        instagramId: strOrNull(body.instagramId),
-        whatsappNumber: strOrNull(body.whatsappNumber),
-        createdAt: sqlNow(),
-        updatedAt: null,
-      };
-      CATALOGS.set(pid, catalog);
-      const s0 = SELLERS.get(ME.userName);
-      if (s0) s0.catalog = { pageId: pid };
-      data = catalog;
-      break;
-    }
-    case 'catalog/update': {
-      const mine = [...CATALOGS.values()].find((c) => c.userName === ME.userName);
-      if (!mine) {
-        data = new Fail('کاتالوگی برای ویرایش پیدا نشد.');
-        break;
-      }
-      const pid = body.pageId != null ? String(body.pageId).trim().toLowerCase() : mine.pageId;
-      if (!/^[a-z0-9][a-z0-9-]{2,29}$/.test(pid)) {
-        data = new Fail('آیدی پیج باید ۳ تا ۳۰ نویسه باشد: حروف لاتین کوچک، عدد و خط تیره.');
-        break;
-      }
-      if (pid !== mine.pageId) {
-        if (CATALOGS.has(pid)) {
-          data = new Fail('این آیدی قبلاً گرفته شده است؛ آیدی دیگری انتخاب کنید.');
-          break;
-        }
-        CATALOGS.delete(mine.pageId);
-        mine.pageId = pid;
-        CATALOGS.set(pid, mine);
-        const s0 = SELLERS.get(ME.userName);
-        if (s0) s0.catalog = { pageId: pid };
-      }
-      if (typeof body.brandColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(body.brandColor)) mine.brandColor = body.brandColor;
-      if ('instagramId' in body) mine.instagramId = strOrNull(body.instagramId);
-      if ('whatsappNumber' in body) mine.whatsappNumber = strOrNull(body.whatsappNumber);
-      mine.updatedAt = sqlNow();
-      data = mine;
-      break;
-    }
-    case 'catalog/getMine':
-      data = [...CATALOGS.values()].find((c) => c.userName === ME.userName) ?? null;
-      break;
-    case 'catalog/getByPageId': {
-      const c = CATALOGS.get(String(body.pageId ?? ''));
-      data = c ? { catalog: c, userName: c.userName, saversCount: countSavers(c.pageId) } : null;
-      break;
-    }
+    // ─── کاتالوگ کاربر (خواسته مالک ۱۰-۱۱ + بازنگری) — کاتالوگ همان
+    // پروفایل فروشنده است؛ کلید همهٔ اندپوینت‌ها userName اوست ───
     case 'catalog/isSaved':
-      data = { saved: CATALOG_SAVES.has(`${ME.userName}:${body.pageId}`) };
+      data = { saved: CATALOG_SAVES.has(`${ME.userName}:${body.userName}`) };
       break;
     case 'catalog/toggleSave': {
-      const key = `${ME.userName}:${body.pageId}`;
+      const key = `${ME.userName}:${body.userName}`;
       if (CATALOG_SAVES.has(key)) {
         CATALOG_SAVES.delete(key);
         data = { saved: false };
@@ -516,18 +424,16 @@ const server = createServer(async (req, res) => {
       const items = [];
       for (const [key, savedAt] of CATALOG_SAVES) {
         if (!key.startsWith(`${ME.userName}:`)) continue;
-        const pageId = key.slice(ME.userName.length + 1);
-        const c = CATALOGS.get(pageId);
-        const u = c && findUser(c.userName);
-        if (!c || !u) continue;
+        const sellerUserName = key.slice(ME.userName.length + 1);
+        const u = findUser(sellerUserName);
+        if (!u) continue;
         items.push({
-          pageId,
-          sellerUserName: c.userName,
+          sellerUserName,
           sellerId: u.id,
           sellerName: `${u.firstName} ${u.lastName}`.trim(),
           avatarUrl: u.avatarUrl ?? null,
           cityName: u.cityName ?? null,
-          productCount: (SELLERS.get(c.userName)?.products ?? []).length,
+          productCount: (SELLERS.get(sellerUserName)?.products ?? []).length,
           savedAt,
         });
       }
@@ -535,11 +441,11 @@ const server = createServer(async (req, res) => {
       break;
     }
     case 'catalog/getSavers': {
-      const pid = String(body.pageId ?? '');
+      const sun = String(body.userName ?? '');
       const items = [];
       for (const [key, savedAt] of CATALOG_SAVES) {
-        if (!key.endsWith(`:${pid}`)) continue;
-        const userName = key.slice(0, -(pid.length + 1));
+        if (!key.endsWith(`:${sun}`)) continue;
+        const userName = key.slice(0, -(sun.length + 1));
         const u = findUser(userName);
         if (u) {
           items.push({

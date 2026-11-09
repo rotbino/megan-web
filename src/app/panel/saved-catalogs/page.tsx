@@ -1,10 +1,11 @@
 'use client';
 
 /**
- * کاتالوگ های ذخیره شده (خواسته مالک ۱۰-۱۱) — پنل خریدار.
- * دفترچهٔ تلفن کاتالوگ‌ها: هر کاتالوگی که کاربر روی صفحهٔ عمومیش ذخیره
- * کرده این‌جاست؛ از همین لیست می‌تواند کاتالوگ را ببیند، تماس بگیرد یا
- * چت شروع کند (همان فرم‌های استاندارد ایمچ) و هر وقت خواست حذفش کند.
+ * کاتالوگ های ذخیره شده (خواسته مالک ۱۰-۱۱ + بازنگری) — پنل خریدار.
+ * دفترچهٔ تلفن کاتالوگ‌ها: «کاتالوگ» یعنی همان صفحهٔ پروفایل فروشنده؛
+ * هر کاتالوگی که کاربر روی صفحه‌اش ذخیره کرده این‌جاست — از همین لیست
+ * می‌تواند کاتالوگ را ببیند، تماس بگیرد یا چت شروع کند و هر وقت خواست
+ * حذفش کند.
  */
 
 import Link from 'next/link';
@@ -34,7 +35,7 @@ function SavedCatalogCard({ row }: { row: SavedCatalogRow }) {
   const toggle = useToggleCatalogSave();
 
   const remove = () => {
-    toggle.mutate(row.pageId, {
+    toggle.mutate(row.sellerUserName, {
       onSuccess: () => toast({ description: 'کاتالوگ از لیست حذف شد.' }),
       onError: () => toast({ description: 'حذف موقتاً ممکن نشد؛ دوباره تلاش کنید.', variant: 'destructive' }),
     });
@@ -75,9 +76,9 @@ function SavedCatalogCard({ row }: { row: SavedCatalogRow }) {
       </div>
 
       <div className="mt-3 grid grid-cols-[1fr_auto_auto_auto] items-center gap-1.5 border-t border-border/70 pt-3">
-        {/* مشاهدهٔ کاتالوگ — لینک مستقیم به صفحهٔ عمومی */}
+        {/* مشاهدهٔ کاتالوگ — لینک مستقیم به صفحهٔ پروفایل فروشنده */}
         <Button asChild size="sm" className="h-9 rounded-md text-xs">
-          <Link href={`/catalog/${row.pageId}`} target="_blank">
+          <Link href={`/profile/${row.sellerUserName}`} target="_blank">
             <ExternalLink size={14} />
             مشاهده کاتالوگ
           </Link>
@@ -135,7 +136,8 @@ export default function SavedCatalogsPage() {
       <div>
         <h1 className="text-base font-extrabold sm:text-lg">کاتالوگ های ذخیره شده</h1>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          کاتالوگ‌هایی که ذخیره کرده‌اید — مثل دفترچهٔ تلفن؛ هر وقت خواستید کاتالوگ را ببینید، تماس بگیرید یا چت کنید.
+          کاتالوگ‌هایی که ذخیره کرده‌اید — مثل دفترچهٔ تلفن؛ کاتالوگ هر فروشنده همان
+          صفحهٔ پروفایل اوست. هر وقت خواستید ببینید، تماس بگیرید یا چت کنید.
         </p>
       </div>
 
@@ -149,12 +151,12 @@ export default function SavedCatalogsPage() {
         <PanelEmptyState
           icon={BookMarked}
           title="هنوز کاتالوگی ذخیره نکرده‌اید."
-          hint="روی هر کاتالوگ که برایتان فرستاده شد، دکمهٔ «ذخیره کاتالوگ» را بزنید تا این‌جا در دسترس باشد."
+          hint="روی هر کاتالوگ (پروفایل فروشنده) که رسیدید، دکمهٔ «ذخیره کاتالوگ» را بزنید تا این‌جا در دسترس باشد."
         />
       ) : (
         <div className="space-y-3">
           {items.map((row) => (
-            <SavedCatalogCard key={`${row.sellerUserName}-${row.pageId}`} row={row} />
+            <SavedCatalogCard key={row.sellerUserName} row={row} />
           ))}
         </div>
       )}
@@ -162,7 +164,7 @@ export default function SavedCatalogsPage() {
       {/* سرنخ تک‌خطی برای کشف — آیکون چت ایمچ در متن راهنما */}
       <p className="flex items-center justify-center gap-1.5 pt-1 text-[10.5px] text-muted-foreground">
         <MessageSquareText size={12} className="text-primary/60" />
-        ذخیره‌کردن کاتالوگ رایگان است؛ فروشنده‌ها لینک کاتالوگشان را از «محصولات من» می‌سازند.
+        ذخیره‌کردن کاتالوگ رایگان است؛ کاتالوگ هر فروشنده همان صفحهٔ پروفایل اوست.
       </p>
     </div>
   );

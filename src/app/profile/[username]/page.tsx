@@ -11,15 +11,17 @@ import {
   ShieldAlert,
   Store,
   Timer,
+  Zap,
 } from 'lucide-react';
+import Link from 'next/link';
 import { Header } from '@/components/layout/header';
-import { Footer } from '@/components/layout/footer';
 import { ProfileHero } from '@/components/products/profile-hero';
 import { ProfileScrollNav } from '@/components/products/profile-scroll-nav';
 import { SellerReviews } from '@/components/products/seller-reviews';
 import { ProductCard } from '@/components/products/product-card';
 import { ShareBox } from '@/components/shared/share-box';
 import { RatingStars } from '@/components/shared/rating-stars';
+import { CatalogSaversBox } from '@/components/products/catalog-savers';
 import { apiBase } from '@/lib/api/client';
 import { SITE_URL } from '@/lib/site';
 import { stockFa, toFa } from '@/lib/format';
@@ -49,9 +51,6 @@ interface SellerData {
     responseRate?: number | null;
     productCount?: number;
     totalStock?: number;
-    // کاتالوگ محصول (خواسته مالک ۱۰-۱۱) — اگر فروشنده ساخته باشد دکمهٔ لینک
-    // به صفحهٔ مستقلش روی هدر پروفایل می‌نشیند
-    catalog?: { pageId: string } | null;
     // فیلدهای کسب‌وکار — از فرم ویرایش پروفایل (embedded myuser_profiles)
     address?: string | null;
     isCompany?: boolean;
@@ -102,12 +101,15 @@ async function getSeller(userName: string): Promise<SellerData | null> {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
   const seller = await getSeller(decodeURIComponent(username));
-  if (!seller) return { title: 'پروفایل یافت نشد' };
+  if (!seller) return { title: 'کاتالوگ یافت نشد' };
   const name = `${seller.user.firstName} ${seller.user.lastName}`.trim();
   const location = [seller.user.provinceName, seller.user.cityName].filter(Boolean).join('، ');
   return {
-    title: `فروشگاه ${name} | پروفایل فروشنده ایمچ`,
-    description: `${name}${location ? ` — ${location}` : ''} — ${(seller.user.businessDesc ?? '').slice(0, 120)}`,
+    // کاتالوگ کاربر = همین صفحهٔ پروفایل (بازنگری ۱۰-۱۱) — عنوان بدون
+    // پسوند «| ایمچ»؛ این صفحه سند بازاریابی فروشنده برای مشتری‌های خودش است
+    title: { absolute: `کاتالوگ محصولات ${name}` },
+    description:
+      `${name}${location ? ` — ${location}` : ''} — کاتالوگ آنلاین محصولات، قیمت و موجودی روز؛ تماس مستقیم و گفتگو با فروشنده.`,
     alternates: { canonical: `/profile/${seller.user.userName}` },
   };
 }
@@ -153,7 +155,6 @@ export default async function ProfilePage({ params }: Props) {
             <ProfileHero
               user={user as unknown as Parameters<typeof ProfileHero>[0]['user']}
               shareUrl={`${SITE_URL}/profile/${user.userName}`}
-              catalogPageId={user.catalog?.pageId ?? null}
             />
             <ProfileScrollNav productCount={user.productCount ?? products.length} />
           </div>
@@ -166,7 +167,7 @@ export default async function ProfilePage({ params }: Props) {
             <section id="about" aria-labelledby="about-title" className="scroll-mt-24">
               <h2 id="about-title" className="mb-3 text-base font-extrabold">درباره فروشنده</h2>
               <div className="space-y-3">
-                <div className="grid grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                   {stats.map(({ icon: Icon, label, value }) => (
                     <div key={label} className="rounded-md border bg-card p-3 text-center sm:p-4">
                       <Icon size={18} className="mx-auto text-primary" />
@@ -174,6 +175,9 @@ export default async function ProfilePage({ params }: Props) {
                       <p className="mt-0.5 text-[10.5px] text-muted-foreground">{label}</p>
                     </div>
                   ))}
+                  {/* ذخیره‌کنندگان کاتالوگ (خواسته مالک ۱۰-۱۱ + بازنگری) —
+                      آمار کلیک‌پذیر → مودال لیست؛ تماس/چت فقط برای صاحب کاتالوگ */}
+                  <CatalogSaversBox sellerUserName={user.userName} />
                 </div>
 
                 <div className="rounded-md border bg-card p-5">
@@ -213,8 +217,8 @@ export default async function ProfilePage({ params }: Props) {
                     )}
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Timer size={13} className="shrink-0 text-primary/70" />
-                      <dt className="shrink-0">عضویت:</dt>
-                      <dd className="font-bold text-foreground">{toFa(user.daysInImach ?? 1)} روز در ایمچ</dd>
+                      <dt className="shrink-0">سابقه فعالیت:</dt>
+                      <dd className="font-bold text-foreground">{toFa(user.daysInImach ?? 1)} روز فعالیت</dd>
                     </div>
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Send size={13} className="shrink-0 text-primary/70" />
@@ -321,7 +325,7 @@ export default async function ProfilePage({ params }: Props) {
                 </div>
               )}
               <p className="mt-3 line-clamp-4 text-xs leading-6 text-muted-foreground">
-                {user.businessDesc?.trim() || 'فروشنده عمده در بازارگاه ایمچ.'}
+                {user.businessDesc?.trim() || 'فروشنده عمده در بازار آنلاین.'}
               </p>
               <p className="mt-3 border-t pt-3 text-[11px] leading-5 text-muted-foreground">
                 عضویت از{' '}
@@ -334,7 +338,7 @@ export default async function ProfilePage({ params }: Props) {
             <div className="space-y-2 rounded-md border bg-secondary/50 p-5">
               <p className="flex items-center gap-2 text-sm font-bold">
                 <ShieldAlert size={16} />
-                توصیه ایمچ
+                نکتهٔ خرید امن
               </p>
               <p className="text-[11px] leading-6 text-muted-foreground">
                 همواره به انجام معاملات حضوری است.
@@ -343,7 +347,24 @@ export default async function ProfilePage({ params }: Props) {
           </aside>
         </div>
       </main>
-      <Footer />
+      {/* ─── امضای iMach (خواسته مالک ۱۰-۱۱ + بازنگری) — تنها اثر ایمچ در
+          صفحهٔ کاتالوگ کاربر: فوتر بزرگ ایمچ حذف شد و فقط «ساخته شده با
+          ایمچ» ماند که به صفحهٔ ایمچ لینک می‌شود (جذب کاربر جدید) ─── */}
+      <footer className="border-t bg-card/60 py-8 text-center">
+        <Link
+          href="/"
+          className="group inline-flex flex-col items-center gap-1.5"
+          aria-label="ساخته شده با iMach — فروشگاه و کاتالوگ آنلاین رایگان"
+        >
+          <span className="inline-flex items-center gap-1.5 rounded-full border bg-card px-4 py-2 text-xs font-bold shadow-sm transition-colors group-hover:border-primary/40 group-hover:text-primary">
+            <Zap size={13} className="text-primary" />
+            ساخته شده با iMach
+          </span>
+          <span className="text-[10.5px] text-muted-foreground">
+            کاتالوگ آنلاین رایگان برای کسب‌وکار شما — iMach.ir
+          </span>
+        </Link>
+      </footer>
     </>
   );
 }

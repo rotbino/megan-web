@@ -1,15 +1,16 @@
 'use client';
 
 /**
- * باکس «ذخیره کنندگان» کاتالوگ (خواسته مالک ۱۰-۱۱ + ۹-۱۱):
- * آمار کلیک‌پذیر در ردیف آمار صفحهٔ کاتالوگ → مودال لیست ذخیره‌کنندگان.
+ * جعبهٔ «ذخیره کنندگان» کاتالوگ کاربر (خواسته مالک ۱۰-۱۱ + بازنگری):
+ * آمار کلیک‌پذیر در ردیف آمار صفحهٔ پروفایل → مودال لیست ذخیره‌کنندگان.
+ * کاتالوگ همان پروفایل است، پس کلید اندپوینت userName فروشنده است.
  * قانون دسترسی: همهٔ بازدیدکنندگان لیست را می‌بینند، اما چت و تماس
  * فقط برای صاحب کاتالوگ (او با مشتری‌های علاقه‌مندش تماس می‌گیرد —
  * دفترچهٔ تلفن معکوس). سایرین فقط اسامی/شهر را می‌بینند.
  */
 
 import { useState } from 'react';
-import { Bookmark, Loader2, MessageSquareText, Phone, UserRound } from 'lucide-react';
+import { Bookmark, Loader2, Phone, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -27,7 +28,7 @@ import { useCatalogSavers } from '@/lib/mock/hooks';
 import { toFa } from '@/lib/format';
 import type { CatalogSaverRow } from '@/lib/types';
 
-/** یک ذخیره‌کننده — ردیف لیست؛ دکمه‌های تماس/چت فقط برای صاحب پیج */
+/** یک ذخیره‌کننده — ردیف لیست؛ دکمه‌های تماس/چت فقط برای صاحب کاتالوگ */
 function SaverRow({ saver, canContact }: { saver: CatalogSaverRow; canContact: boolean }) {
   const name = `${saver.firstName} ${saver.lastName}`.trim() || 'کاربر ایمچ';
   return (
@@ -76,20 +77,12 @@ function SaverRow({ saver, canContact }: { saver: CatalogSaverRow; canContact: b
   );
 }
 
-export function CatalogSaversBox({
-  pageId,
-  ownerUserName,
-  initialCount,
-}: {
-  pageId: string;
-  ownerUserName: string;
-  initialCount: number;
-}) {
+export function CatalogSaversBox({ sellerUserName }: { sellerUserName: string }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const { data, isLoading } = useCatalogSavers(pageId, open);
-  const isOwner = !!user && user.userName === ownerUserName;
-  const count = data?.count ?? initialCount;
+  const { data, isLoading } = useCatalogSavers(sellerUserName);
+  const isOwner = !!user && user.userName === sellerUserName;
+  const count = data?.count ?? 0;
 
   return (
     <>
@@ -98,10 +91,12 @@ export function CatalogSaversBox({
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         title="چه کسانی این کاتالوگ را ذخیره کرده‌اند"
-        className="group rounded-lg border bg-card p-3 text-center transition-colors hover:border-primary/40 sm:p-4"
+        className="group rounded-md border bg-card p-3 text-center transition-colors hover:border-primary/40 sm:p-4"
       >
         <Bookmark size={18} className="mx-auto text-primary" />
-        <p className="mt-1.5 font-num text-sm font-extrabold leading-6 sm:text-base">{toFa(count)}</p>
+        <p className="mt-1.5 font-num text-sm font-extrabold leading-6 sm:text-base">
+          {isLoading ? '…' : toFa(count)}
+        </p>
         <p className="mt-0.5 text-[10.5px] text-muted-foreground group-hover:text-primary">ذخیره کنندگان</p>
       </button>
 

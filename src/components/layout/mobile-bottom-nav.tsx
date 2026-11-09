@@ -94,10 +94,8 @@ export function MobileBottomNav() {
   const { data: unread } = useUnreadMessagesCount(Boolean(user));
   const unreadCount = unread?.count ?? 0;
 
-  // پنل ادمین پوسته و ناوبری خودش را دارد — نوار پایین اپ عمومی آنجا نیست؛
-  // کاتالوگ محصول هم صفحهٔ مستقل برند فروشنده است — نوار ایمچ آنجا نیست
-  // (خواسته مالک ۱۰-۱۱: «خیلی خبری از لینک‌های ایمچ نیست»)
-  if (pathname.startsWith('/admin') || pathname.startsWith('/catalog')) return null;
+  // پنل ادمین پوسته و ناوبری خودش را دارد — نوار پایین اپ عمومی آنجا نیست
+  if (pathname.startsWith('/admin')) return null;
   const items = !user ? loggedOutItems : user.role === 'buyer' ? buyerItems : sellerItems;
   // فروشندهٔ واردشده → خریدارانِ پنل (با سورت تطابق)؛ لاگین‌نشده → صفحهٔ عمومی
   const resolveHref = (href: string) => (user && user.role !== 'buyer' && href === '/buyers' ? '/panel/buyers' : href);
