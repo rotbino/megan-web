@@ -1,38 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { History, MapPin, Package, Share2, ShoppingCart, Video } from 'lucide-react';
+import { History, MapPin, Package, ShoppingCart, Video } from 'lucide-react';
 import { LadderBadge, VerifiedBadge } from '@/components/shared/badges';
 import { ProductImage } from '@/components/shared/product-image';
 import { ProductPrice } from '@/components/shared/product-price';
 import { RelativeTime } from '@/components/shared/relative-time';
-import { SaveFollowButton } from '@/components/panel/follow/save-follow-button';
-import { useToast } from '@/hooks/use-toast';
 import { parseServerDate, stockFa } from '@/lib/format';
 import type { Product } from '@/lib/types';
 
 export function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
-  const { toast } = useToast();
   const href = `/product-view/${product.slug}/${product.categoryName}/${product.id}`;
   const updated = parseServerDate(product.updatedAt);
-
-  const share = async () => {
-    const url = `${window.location.origin}${href}`;
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share({ title: product.productName, url });
-      } catch {
-        /* کاربر شیت سیستمی را بست */
-      }
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      toast({ description: 'لینک آگهی کپی شد.' });
-    } catch {
-      toast({ description: 'کپی لینک ممکن نشد.' });
-    }
-  };
 
   return (
       <article className="group flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-lg">
@@ -49,17 +28,19 @@ export function ProductCard({ product, priority = false }: { product: Product; p
                   iconSize={48}
                   priority={priority}
               />
-              {/* روی عکس: فروشنده ویژه (سمت چپ-بالا) + نردبان بدون متن (سمت راست-بالا) + ویدیو */}
+              {/* فروشنده ویژه — گوشهٔ بالا-چپ عکس */}
               {product.isElevated && (
                   <span className="absolute left-0 top-0 rounded-br-[6px] bg-amber-400 px-2 py-1 text-[10px] font-bold leading-none text-white shadow-sm ring-1 ring-amber-500/50">
                 فروشنده ویژه
               </span>
               )}
+              {/* نردبان بدون بکگراند — گوشهٔ پایین-چپ عکس (جای قبلی شهر) */}
               {product.isLadder && (
-                  <div className="absolute start-2 top-2">
+                  <div className="absolute bottom-2 start-2">
                     <LadderBadge compact />
                   </div>
               )}
+              {/* ویدیو — گوشهٔ بالا-راست عکس */}
               {product.hasVideo && (
                   <span
                       className="absolute end-2 top-2 grid size-7 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm"
@@ -69,18 +50,10 @@ export function ProductCard({ product, priority = false }: { product: Product; p
               </span>
               )}
             </Link>
-            {/* ذخیره — دسکتاپ روی عکس، پایین-راست */}
-            <SaveFollowButton
-                variant="icon"
-                targetType="product"
-                targetId={product.id}
-                suggestedFolderName={product.subCategoryName || product.productName}
-                className="absolute bottom-2 end-2 hidden size-10 rounded-full bg-white/90 text-foreground shadow-sm backdrop-blur transition-colors hover:bg-white md:grid"
-            />
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col gap-2 p-3 md:p-3.5">
-            {/* ردیف عنوان + شهر (شهر نارنجی روبروی عنوان — در موبایل هم نمایش داده می‌شود) */}
+            {/* ردیف عنوان + شهر (شهر نارنجی روبروی عنوان) */}
             <div className="flex min-w-0 items-start gap-2">
               <Link
                   href={href}
@@ -127,34 +100,16 @@ export function ProductCard({ product, priority = false }: { product: Product; p
           </div>
         </div>
 
-        {/* ─── نوار اقدام موبایل ─── */}
-        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-border/70 px-3 py-2 md:hidden">
+        {/* ─── نوار اقدام موبایل (بدون ذخیره و بدون اشتراک‌گذاری) ─── */}
+        <div className="flex items-center justify-between gap-x-2 border-t border-border/70 px-3 py-2 md:hidden">
           <ProductPrice product={product} />
-          <div className="flex shrink-0 items-center gap-0.5">
           <span
-              className="me-1 flex items-center gap-1 text-[10.5px] text-muted-foreground"
+              className="flex shrink-0 items-center gap-1 text-[10.5px] text-muted-foreground"
               title="آخرین به‌روزرسانی قیمت"
           >
-            <History size={11} className="shrink-0 text-primary/60" />
-            <RelativeTime date={updated} />
-          </span>
-            <SaveFollowButton
-                variant="icon"
-                targetType="product"
-                targetId={product.id}
-                suggestedFolderName={product.subCategoryName || product.productName}
-                className="size-8 shadow-none backdrop-blur-none"
-            />
-            <button
-                type="button"
-                onClick={share}
-                aria-label={`اشتراک‌گذاری ${product.productName}`}
-                title="اشتراک‌گذاری آگهی"
-                className="grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
-            >
-              <Share2 size={15} />
-            </button>
-          </div>
+          <History size={11} className="shrink-0 text-primary/60" />
+          <RelativeTime date={updated} />
+        </span>
         </div>
       </article>
   );
