@@ -51,7 +51,8 @@ export async function ProductReviews({
   } catch {
     return null; // بک‌اند در دسترس نیست — بخش حذف، صفحه سالم
   }
-  if (!data || data.items.length === 0) return null;
+  // دیتای خالی/ناهم‌شکل → بخش حذف، صفحه سالم (raw.items ?? [] هم در سرویس)
+  if (!data?.items || data.items.length === 0) return null;
 
   return (
     <section aria-labelledby="reviews-preview" className="mx-auto max-w-7xl px-4 lg:px-6">

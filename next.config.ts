@@ -81,6 +81,8 @@ const nextConfig: NextConfig = {
 // مالک وجود ندارد) و پورت ۴000 خالی باشد (بک‌اند واقعی مگان زنده است)،
 // استاب با همین nodeِ پروسه detached بالا می‌آید. در بیلد/پروداکشن و
 // ماشین مالک کاملاً بی‌اثر است.
+// استاب endpoints شهر/دسته/لیست + صفحهٔ کالا + چت (بازبینی بصری) را پاسخ
+// می‌دهد — scripts/stub-backend.mjs را ببینید.
 function sandboxStubBackend(): void {
   if (process.env.NODE_ENV !== "development") return;
   if (!existsSync("./.sandbox-preview") || !existsSync("./scripts/stub-backend.mjs")) return;

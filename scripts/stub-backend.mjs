@@ -205,6 +205,24 @@ const PROFILE = {
   city_id: 102,
 };
 
+// ─── چت و صفحهٔ کالا — برای بازبینی بصری ویجت/پیام‌ها در سندباکس ───
+const nowIso = () => new Date().toISOString();
+const CHAT = {
+  thread: {
+    id: 't1',
+    productId: 1000,
+    productName: 'پفک مزمز تند چیتوز',
+    myId: '50',
+    myRole: 'buyer',
+    counterpart: { id: '51', firstName: 'کاربر', lastName: 'تستی 1', userName: 'seller1' },
+    lastMessage: null,
+    unreadCount: 0,
+    updatedAt: nowIso(),
+  },
+  messages: [],
+  seq: 1,
+};
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://127.0.0.1');
   if (!url.pathname.startsWith('/api/v1/')) {
@@ -235,8 +253,56 @@ const server = createServer(async (req, res) => {
     case 'categories/getAllCategories': data = CATS; break;
     case 'cityMarket/getProducts': data = paged({ cityIds: body.cityIds }); break;
     case 'products/getProductList': data = paged(body); break;
+    case 'products/getProductById':
+      data = PRODUCTS.find((x) => x.id === Number(body.id)) ?? null;
+      break;
     case 'products/searchSuggestions': data = []; break;
+    case 'products/getSellerProducts': data = { items: PRODUCTS.slice(0, 6), total: 6 }; break;
+    case 'reviews/getSellerReviews':
+      data = {
+        summary: { avg: 0, count: 0, distribution: [] },
+        items: [],
+        total: 0,
+        page: 1,
+        perPage: 5,
+      };
+      break;
     case 'users/getProfile': data = { user: PROFILE }; break;
+    // ─── چت — حالت حداقلی برای بازبینی بصری کامپوزر/مودال پیوست ───
+    case 'chat/startThread': data = CHAT.thread; break;
+    case 'chat/getConversations': data = [CHAT.thread]; break;
+    case 'chat/getThreadMessages': data = CHAT.messages; break;
+    case 'chat/markThreadRead': data = { read: 0 }; break;
+    case 'chat/uploadFile':
+      // multipart خوانده نمی‌شود — پاسخ ثابت برای تست جریان مودال پیوست
+      data = {
+        url: '/images/categories/food.webp',
+        key: 'stub-' + Date.now(),
+        name: 'stub.webp',
+        size: 12345,
+        mime: 'image/webp',
+        kind: 'image',
+      };
+      break;
+    case 'chat/sendMessage': {
+      const msg = {
+        id: 'm' + CHAT.seq++,
+        threadId: body.threadId ?? 't1',
+        senderId: '50',
+        text: body.text ?? '',
+        readAt: null,
+        createdAt: nowIso(),
+        kind: body.kind ?? 'text',
+        file: body.fileUrl
+          ? { url: body.fileUrl, key: body.fileKey, name: body.fileName, size: body.fileSize, mime: body.fileMime }
+          : null,
+        editedAt: null,
+      };
+      CHAT.messages.push(msg);
+      CHAT.thread.lastMessage = { text: msg.text || (msg.file ? msg.file.name : ''), at: msg.createdAt, senderId: '50' };
+      data = msg;
+      break;
+    }
     case 'chat/unreadCount': data = { count: 0 }; break;
     case 'follow/isFollowing': data = { following: false, item: null }; break;
     case 'follow/getFollowingMap': data = []; break;
