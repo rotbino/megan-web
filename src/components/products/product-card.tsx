@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { History, MapPin, Package, Share2, ShoppingCart } from 'lucide-react';
+import { History, MapPin, Package, Share2, ShoppingCart, Video } from 'lucide-react';
 import { LadderBadge, VerifiedBadge } from '@/components/shared/badges';
 import { ProductImage } from '@/components/shared/product-image';
 import { ProductPrice } from '@/components/shared/product-price';
@@ -11,34 +11,18 @@ import { useToast } from '@/hooks/use-toast';
 import { parseServerDate, stockFa } from '@/lib/format';
 import type { Product } from '@/lib/types';
 
-/**
- * کارت آگهی محصول — همان اطلاعات باسکول (نام، مکان، موجودی، قیمت).
- *
- * موبایل (بازطراحی اختصاصی، خواستهٔ مالک ۹-۱۱): کارت افقی دوطبقه —
- *  · طبقهٔ بالا: عکس (راست) + عنوان/مشخصات (چپ)؛
- *  · طبقهٔ پایین «نوار اقدام» زیر عکس: قیمت (متن ساده — فقط CTA مهمان
- *    دکمه است)، زمان به‌روزرسانی و دکمه‌های ذخیره/اشتراک‌گذاری؛
- * دسکتاپ: کارت عمودی گرید — عکس بالا (ذخیره روی عکس)، قیمت پایین کارت.
- * روی عکس (خواستهٔ مالک ۹-۱۱): بچ شهر گوشهٔ پایین-راست (تیره و خوانا)،
- * نشان نردبان گوشهٔ بالا-رایت (از کنار عنوان به عکس برگشت) و «ویدیو دارد»
- * کنار همان — گوشه‌ها دیگر با «فروشنده ویژه» (بالا-چپ) تداخل ندارند.
- * بدنه: موجودی و حداقل سفارش «با لیبل» — عدد بی‌لیبل معلوم نبود چیست.
- * قیمت فقط برای اعضا: مهمان دکمهٔ «مشاهده قیمت» می‌بیند (ProductPrice).
- */
 export function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
   const { toast } = useToast();
   const href = `/product-view/${product.slug}/${product.categoryName}/${product.id}`;
-  // تاریخ بک‌اند «YYYY-MM-DD HH:mm:ss» بدون منطقهٔ زمانی است — UTC خوانده شود
   const updated = parseServerDate(product.updatedAt);
 
-  // اشتراک‌گذاری — موبایل: شیت اشتراک سیستمی؛ دسکتاپ: کپی لینک + توست
   const share = async () => {
     const url = `${window.location.origin}${href}`;
     if (typeof navigator.share === 'function') {
       try {
         await navigator.share({ title: product.productName, url });
       } catch {
-        /* کاربر شیت سیستمی را بست — کاری نکن */
+        /* کاربر شیت سیستمی را بست */
       }
       return;
     }
@@ -51,141 +35,127 @@ export function ProductCard({ product, priority = false }: { product: Product; p
   };
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-md border bg-card transition-shadow hover:shadow-md">
-      {/* ─── بدنهٔ بالا — موبایل: عکس+مشخصات افقی / دسکتاپ: عکس سپس مشخصات ─── */}
-      <div className="flex flex-1 md:block">
-        {/* جعبهٔ عکس — دسکتاپ aspect-[4/3] روی «والد» است؛ والد باید ارتفاع واقعی
-            داشته باشد چون ProductImage با fill مطلق رندر می‌شود (والد h-auto →
-            ارتفاع ۰ → عکس ناپدید — باگ ۹-۱۱ که برگشت) */}
-        <div className="relative h-28 w-28 shrink-0 md:aspect-[4/3] md:h-auto md:w-full">
-          {/* relative برای والدِ درست تصویر fill (آیکون‌های absolute هم همین‌جا لنگر می‌شوند) */}
-          <Link href={href} className="relative block h-full w-full" aria-label={product.productName}>
-            <ProductImage
-              photos={product.photos}
-              thumbs={product.photoThumbs}
-              alt={product.productName}
-              className="h-full w-full object-cover"
-              iconSize={48}
-              priority={priority}
-            />
-            {/* «فروشنده ویژه» — مستطیل طلایی چسبیده به گوشهٔ بالا-چپ عکس (خواسته مالک
-                ۲-۱۱: طلایی = رنگ ثابت این نشان)؛ فقط گوشهٔ آخر (پایین-راست) کمی گرد است */}
-            {product.isElevated && (
-              <span className="absolute left-0 top-0 rounded-br-[6px] bg-amber-400 px-2 py-1 text-[10px] font-bold leading-none text-white shadow-sm ring-1 ring-amber-500/50">
+      <article className="group flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-lg">
+        {/* ─── بدنهٔ بالا ─── */}
+        <div className="flex flex-1 md:block">
+          {/* جعبهٔ عکس */}
+          <div className="relative h-28 w-28 shrink-0 overflow-hidden md:aspect-[4/3] md:h-auto md:w-full">
+            <Link href={href} className="relative block h-full w-full" aria-label={product.productName}>
+              <ProductImage
+                  photos={product.photos}
+                  thumbs={product.photoThumbs}
+                  alt={product.productName}
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                  iconSize={48}
+                  priority={priority}
+              />
+              {/* روی عکس: فروشنده ویژه (سمت چپ-بالا) + نردبان بدون متن (سمت راست-بالا) + ویدیو */}
+              {product.isElevated && (
+                  <span className="absolute left-0 top-0 rounded-br-[6px] bg-amber-400 px-2 py-1 text-[10px] font-bold leading-none text-white shadow-sm ring-1 ring-amber-500/50">
                 فروشنده ویژه
               </span>
-            )}
-          </Link>
-          {/* نردبان + ویدیو — گروه گوشهٔ بالا-راست عکس (خواستهٔ مالک ۹-۱۱:
-              نردبان روی عکس برگشت)؛ نردبان دسکتاپ با متن، موبایل فقط آیکون */}
-          {(product.isLadder || product.hasVideo) && (
-            <div className="absolute start-1.5 top-1.5 flex items-center gap-1">
+              )}
               {product.isLadder && (
-                <>
-                  <LadderBadge className="hidden md:inline-flex" />
-                  <LadderBadge compact className="md:hidden" />
-                </>
+                  <div className="absolute start-2 top-2">
+                    <LadderBadge compact />
+                  </div>
               )}
               {product.hasVideo && (
-                <span className="rounded-sm bg-black/55 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur">
-                  ویدیو دارد
-                </span>
+                  <span
+                      className="absolute end-2 top-2 grid size-7 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm"
+                      title="ویدیو دارد"
+                  >
+                <Video size={13} />
+              </span>
               )}
+            </Link>
+            {/* ذخیره — دسکتاپ روی عکس، پایین-راست */}
+            <SaveFollowButton
+                variant="icon"
+                targetType="product"
+                targetId={product.id}
+                suggestedFolderName={product.subCategoryName || product.productName}
+                className="absolute bottom-2 end-2 hidden size-10 rounded-full bg-white/90 text-foreground shadow-sm backdrop-blur transition-colors hover:bg-white md:grid"
+            />
+          </div>
+
+          <div className="flex min-w-0 flex-1 flex-col gap-2 p-3 md:p-3.5">
+            {/* ردیف عنوان + شهر (شهر نارنجی روبروی عنوان — در موبایل هم نمایش داده می‌شود) */}
+            <div className="flex min-w-0 items-start gap-2">
+              <Link
+                  href={href}
+                  className="line-clamp-2 min-h-10 min-w-0 flex-1 text-sm font-bold leading-5 text-foreground transition-colors hover:text-primary md:text-[13.5px]"
+              >
+                {product.productName}
+              </Link>
+              <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-orange-500">
+              <MapPin size={11} className="shrink-0" />
+              <span className="max-w-[80px] truncate">{product.cityName.trim()}</span>
+            </span>
             </div>
-          )}
-          {/* بچ شهر — گوشهٔ پایین-راست عکس؛ تیره و خوانا روی هر عکسی
-              (خواستهٔ مالک ۹-۱۱: «تابلوتر» ولی هم‌اندازهٔ فونت قبل) */}
-          <span className="absolute bottom-1.5 start-1.5 inline-flex max-w-[85%] items-center gap-0.5 rounded-sm bg-black/55 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
-            <MapPin size={11} className="shrink-0" />
-            <span className="truncate">{product.cityName.trim()}</span>
-          </span>
-          {/* ذخیره در پیگیری‌ها — دسکتاپ: روی عکس (موبایل: نوار پایین)؛
-              بیرون از لینک تا کلیکِ آگهی را باز نکند؛ ۴۴px (RULES §۱) */}
-          <SaveFollowButton
-            variant="icon"
-            targetType="product"
-            targetId={product.id}
-            suggestedFolderName={product.subCategoryName || product.productName}
-            className="absolute bottom-2 end-2 hidden size-11 md:block"
-          />
-        </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-3 md:gap-2">
-          {/* عنوان — تمام عرض کارت؛ نردبان روی عکس رفت (خواستهٔ مالک ۹-۱۱)؛
-              همیشه دو خط رزرو می‌کند تا کارت‌ها هم‌قد بمانند */}
-          <Link href={href} className="line-clamp-2 min-h-10 text-sm font-bold leading-5 hover:text-primary">
-            {product.productName}
-          </Link>
-
-          {/* موجودی و حداقل سفارش — با لیبل (خواستهٔ مالک ۹-۱۱: عدد بی‌لیبل
-              معلوم نبود موجودی است یا حداقل سفارش)؛ شهر روی عکس است */}
-          <div className="flex flex-col gap-1 text-xs">
+            {/* موجودی و حداقل سفارش */}
+            <div className="flex flex-col gap-1 text-xs">
             <span className="inline-flex items-center gap-1.5">
               <Package size={13} className="shrink-0 text-primary/70" />
               <span className="shrink-0 text-muted-foreground">موجودی:</span>
               <span className="min-w-0 truncate font-num font-semibold">{stockFa(product.stock, product.unit)}</span>
             </span>
-            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1.5">
               <ShoppingCart size={13} className="shrink-0 text-primary/70" />
               <span className="shrink-0 text-muted-foreground">حداقل سفارش:</span>
               <span className="min-w-0 truncate font-num font-semibold">{stockFa(product.minSaleAmount, product.unit)}</span>
             </span>
-          </div>
+            </div>
 
-          {/* احراز هویت — فقط برای تأییدشده‌ها نوشته می‌شود؛ ارتفاع ردیف ثابت است
-              تا کارت‌های بدون احراز هویت کوتاه‌تر و ناهماهنگ نشوند (خواسته مالک ۱-۱۱) */}
-          <div className="flex h-5 items-center">
-            {product.seller.isVerified && <VerifiedBadge />}
-          </div>
+            {/* احراز هویت */}
+            <div className="flex h-5 items-center">
+              {product.seller.isVerified && <VerifiedBadge />}
+            </div>
 
-          {/* قیمت — دسکتاپ: انتهای ستون مشخصات (موبایل: نوار پایین) */}
-          <div className="mt-auto hidden pt-1 md:block">
-            <ProductPrice product={product} />
-            {/* زمان به‌روزرسانی — دسکتاپ زیر قیمت (موبایل: نوار پایین) */}
-            <p
-              className="mt-1 flex h-4 items-center justify-center gap-1 text-[10.5px] text-muted-foreground"
-              title="آخرین به‌روزرسانی قیمت"
-            >
-              <History size={11} className="shrink-0 text-primary/60" />
-              <RelativeTime date={updated} />
-            </p>
+            {/* قیمت — دسکتاپ */}
+            <div className="mt-auto hidden border-t border-border/60 pt-2.5 md:block">
+              <ProductPrice product={product} />
+              <p
+                  className="mt-1 flex h-4 items-center justify-center gap-1 text-[10.5px] text-muted-foreground"
+                  title="آخرین به‌روزرسانی قیمت"
+              >
+                <History size={11} className="shrink-0 text-primary/60" />
+                <RelativeTime date={updated} />
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ─── نوار اقدام (موبایل) — زیر عکس: قیمت + زمان + ذخیره/اشتراک ───
-          توازن کارت: آیکون‌ها از روی عکس به اینجا آمدند تا عکس تمیز و کارت
-          هم‌وزن بماند (خواستهٔ مالک ۹-۱۱) */}
-      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-border/70 px-3 py-2 md:hidden">
-        <ProductPrice product={product} />
-        <div className="flex shrink-0 items-center gap-0.5">
+        {/* ─── نوار اقدام موبایل ─── */}
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-border/70 px-3 py-2 md:hidden">
+          <ProductPrice product={product} />
+          <div className="flex shrink-0 items-center gap-0.5">
           <span
-            className="me-1 flex items-center gap-1 text-[10.5px] text-muted-foreground"
-            title="آخرین به‌روزرسانی قیمت"
+              className="me-1 flex items-center gap-1 text-[10.5px] text-muted-foreground"
+              title="آخرین به‌روزرسانی قیمت"
           >
             <History size={11} className="shrink-0 text-primary/60" />
             <RelativeTime date={updated} />
           </span>
-          {/* ذخیره در پیگیری‌ها — بیرون از لینک تا کلیکِ آگهی را باز نکند؛
-              فشرده (۳۲px) چون کنار قیمت است، نه روی بندانگشتی */}
-          <SaveFollowButton
-            variant="icon"
-            targetType="product"
-            targetId={product.id}
-            suggestedFolderName={product.subCategoryName || product.productName}
-            className="size-8 shadow-none backdrop-blur-none"
-          />
-          <button
-            type="button"
-            onClick={share}
-            aria-label={`اشتراک‌گذاری ${product.productName}`}
-            title="اشتراک‌گذاری آگهی"
-            className="grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
-          >
-            <Share2 size={15} />
-          </button>
+            <SaveFollowButton
+                variant="icon"
+                targetType="product"
+                targetId={product.id}
+                suggestedFolderName={product.subCategoryName || product.productName}
+                className="size-8 shadow-none backdrop-blur-none"
+            />
+            <button
+                type="button"
+                onClick={share}
+                aria-label={`اشتراک‌گذاری ${product.productName}`}
+                title="اشتراک‌گذاری آگهی"
+                className="grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+            >
+              <Share2 size={15} />
+            </button>
+          </div>
         </div>
-      </div>
-    </article>
+      </article>
   );
 }

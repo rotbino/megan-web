@@ -347,7 +347,7 @@ export function CityMarketListing({
         <div className="hidden flex-wrap items-center justify-between gap-3 rounded-md border bg-card p-3 lg:flex">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-sm">{chips}</div>
           <div className="flex items-center gap-1.5 text-sm">
-            <span className="text-muted-foreground">مرتب سازی بر اساس:</span>
+
             {SORTS.map((opt) => (
               <button
                 key={opt.key}

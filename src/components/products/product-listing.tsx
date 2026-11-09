@@ -330,7 +330,7 @@ function ProductListingInner({
             {chips}
           </div>
           <div className="flex items-center gap-1.5 text-sm">
-            <span className="text-muted-foreground">مرتب سازی بر اساس:</span>
+
             {SORTS.map((opt) => (
               <button
                 key={opt.key}
