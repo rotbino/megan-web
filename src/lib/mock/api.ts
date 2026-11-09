@@ -1916,7 +1916,9 @@ export interface CatalogByPageId {
 }
 
 /** وضعیت کاتالوگ من — سه حالت با معنی:
- *  supported:false → بک‌اند هنوز اندپوینت ندارد (دکمهٔ ساخت مخفی می‌ماند)؛
+ *  supported:false → بک‌اند به getMine پاسخ نداد (خطای شبکه/اندپوینت) —
+ *  دکمهٔ ساخت با این حالت هم نمایش داده می‌شود (گزارش مالک ۱۰-۱۱:
+ *  «هیچ دکمه‌ای نمی‌بینم») و دیالوگ هشدار روشن می‌دهد؛
  *  supported:true + catalog:null → پشتیبانی هست، کاربر هنوز نساخته (دکمهٔ
  *  «ساخت کاتالوگ محصول» نمایش داده می‌شود)؛
  *  catalog — تنظیمات کاتالوگ موجود (دکمهٔ «کاتالوگ من»). */
@@ -1929,6 +1931,13 @@ export interface MyCatalogState {
 export async function getMyCatalog(): Promise<MyCatalogState> {
   try {
     const catalog = await apiFetch<UserCatalog | null>('/catalog/getMine', {});
+    // data:null → پشتیبانی هست، هنوز نساخته؛ data:undefined یا شکل نامعتبر =
+    // بک‌اند اندپوینت را ندارد (۴۰۴ِ JSON بدون status آرایه/شیء بی‌قرارداد
+    // می‌دهد) → unsupported تا دیالوگ هشدار روشن بدهد، نه سکوت (مالک ۱۰-۱۱)
+    if (catalog === null) return { supported: true, catalog: null };
+    if (typeof catalog !== 'object' || typeof catalog.pageId !== 'string' || typeof catalog.brandColor !== 'string') {
+      return { supported: false, catalog: null };
+    }
     return { supported: true, catalog };
   } catch {
     return { supported: false, catalog: null };
@@ -1945,6 +1954,20 @@ export async function checkCatalogPageId(pageId: string): Promise<boolean | null
   }
 }
 
+/** پیام روشن «بک‌اند اندپوینت ندارد» — بک‌اند بدون اندپوینتِ catalog/create
+ *  ممکن است ۴۰۴ِ JSON بدون status بدهد که data را undefined می‌کند؛ نباید
+ *  به پیام مبهم شبکه یا موفقیتِ کاذب ختم شود (گزارش مالک ۱۰-۱۱) */
+const CATALOG_UNSUPPORTED_MSG =
+  'بک‌اند متصل شما هنوز اندپوینت‌های کاتالوگ (catalog/*) را ندارد؛ پس از افزودن آن‌ها به بک‌اند، ساخت کاتالوگ فعال می‌شود.';
+
+/** پاسخ باید کاتالوگ واقعی باشد وگرنه «بک‌اند پشتیبانی نمی‌کند» پرتاب می‌شود */
+function requireCatalog(d: UserCatalog | null | undefined): UserCatalog {
+  if (!d || typeof d.pageId !== 'string' || typeof d.brandColor !== 'string') {
+    throw new ApiError(CATALOG_UNSUPPORTED_MSG, 404, 'CATALOG_UNSUPPORTED');
+  }
+  return d;
+}
+
 /** ساخت کاتالوگ — خطا (آیدی تکراری/نامعتبر) پیام فارسی سرور را می‌دهد */
 export async function createMyCatalog(input: {
   pageId: string;
@@ -1952,12 +1975,13 @@ export async function createMyCatalog(input: {
   instagramId?: string | null;
   whatsappNumber?: string | null;
 }): Promise<UserCatalog> {
-  return apiFetch<UserCatalog>('/catalog/create', {
+  const d = await apiFetch<UserCatalog>('/catalog/create', {
     pageId: input.pageId,
     brandColor: input.brandColor ?? CATALOG_DEFAULT_COLOR,
     instagramId: input.instagramId ?? null,
     whatsappNumber: input.whatsappNumber ?? null,
   });
+  return requireCatalog(d);
 }
 
 /** ویرایش تنظیمات کاتالوگ (آیدی/رنگ/اینستاگرام/واتساپ) */
@@ -1967,7 +1991,7 @@ export async function updateMyCatalog(input: {
   instagramId?: string | null;
   whatsappNumber?: string | null;
 }): Promise<UserCatalog> {
-  return apiFetch<UserCatalog>('/catalog/update', input);
+  return requireCatalog(await apiFetch<UserCatalog>('/catalog/update', input));
 }
 
 /** آیا من این کاتالوگ را ذخیره کرده‌ام؟ — مهمان/false در خطا */

@@ -5,13 +5,15 @@
  * «محصولات من». فروشنده با یک آیدی پیج یکتا، رنگ برند و راه‌های تماس
  * (اینستاگرام/واتساپ اختیاری) کاتالوگ مستقل خودش را می‌سازد و بعداً از
  * همین دیالوگ تنظیماتش را عوض می‌کند. موفقیت: لینک کاتالوگ + کپی +
- * «مشاهده کاتالوگ». تا وقتی بک‌اند اندپوینت ندارد، دکمه مخفی می‌ماند
- * (getMyCatalog → null در خطا) تا پنل تمیز بماند.
+ * «مشاهده کاتالوگ». دکمه همیشه دیده می‌شود (گزارش مالک ۱۰-۱۱:
+ * «هیچ دکمه‌ای نمی‌بینم» وقتی بک‌اند اندپوینت‌ها را ندارد) — در آن
+ * حالت دیالوگ هشدار کهربایی روشن می‌کند که مشکل از بک‌اند است، نه فرانت.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
+  AlertTriangle,
   BookOpen,
   Check,
   Copy,
@@ -150,11 +152,10 @@ export function CatalogManageButton({ className }: { className?: string }) {
     }
   };
 
-  // بک‌اند اندپوینت ندارد (supported:false در خطا) → دکمهٔ ساخت مخفی می‌ماند
-  // تا پنل تمیز بماند؛ اگر پشتیبانی هست و هنوز نساخته‌ایم، دکمهٔ «ساخت» می‌آید
-  if (!isLoading && state && !state.supported && !open) {
-    return null;
-  }
+  // دکمهٔ ساخت همیشه پیدا است (گزارش مالک ۱۰-۱۱) — حتی با بک‌اندی که
+  // هنوز اندپوینت‌های catalog/* را ندارد؛ در آن حالت دیالوگ هشدار می‌دهد
+  // تا معلوم شود مشکل از بک‌اند است، نه گم‌شدن دکمه
+  const unsupported = !isLoading && !!state && !state.supported;
 
   return (
     <>
@@ -175,6 +176,21 @@ export function CatalogManageButton({ className }: { className?: string }) {
               مشتری‌های خودتان می‌فرستید؛ محصولاتش همان‌ها هستند که این‌جا ثبت کرده‌اید.
             </DialogDescription>
           </DialogHeader>
+
+          {/* بک‌اند متصل اندپوینت‌های کاتالوگ را ندارد (مثلاً مگانِ محلی
+              هنوز به‌روز نشده) — هشدار صریح به‌جای دکمهٔ مخفی (گزارش مالک ۱۰-۱۱) */}
+          {unsupported && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3.5 py-3 text-[11.5px] leading-5 text-amber-800"
+            >
+              <AlertTriangle size={15} className="mt-0.5 shrink-0" />
+              <p>
+                بک‌اند متصل شما هنوز اندپوینت‌های کاتالوگ (<span dir="ltr" className="font-mono">catalog/*</span>) را
+                ندارد؛ تا بک‌اند به‌روز شود، ساخت یا ذخیرهٔ کاتالوگ ممکن نیست.
+              </p>
+            </div>
+          )}
 
           {/* نمای موفقیت — کاتالوگ ساخته/ذخیره شد؛ لینک + کپی + مشاهده */}
           {myCatalog && !error ? (
