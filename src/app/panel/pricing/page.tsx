@@ -41,7 +41,6 @@ import {
   ShieldCheck,
   ShoppingBag,
   Sparkles,
-  Users,
   X,
   XCircle,
 } from 'lucide-react';
@@ -125,95 +124,79 @@ function displayTiers(campaign: SalesCampaignInfo): CampaignTier[] {
 const hoursLabel = (h: number) =>
   h % 24 === 0 ? `${toFa(h)} ساعت (${toFa(h / 24)} روز)` : `${toFa(h)} ساعت`;
 
-/** بنر کمپین فعال — عنوان + شعار + درصد + پایان + پیشرفت تعدادی (خواسته مالک ۳۱-۱۰) */
+/** بنر کمپین فعال — مینیمال (بازطراحی ۹-۱۱): کارت سادهٔ هم‌سبک بقیهٔ صفحه؛
+ *  عنوان + درصد در یک ردیف، گزارش تعدادی در یک خط + نوار پیشرفت نازک،
+ *  پله‌ها به‌جای چیپ‌های رنگی فقط یک خط کم‌رنگ. */
 function CampaignBanner({ campaign }: { campaign: SalesCampaignInfo }) {
   const daysLeft = campaign.endsAt
     ? Math.max(0, Math.ceil((new Date(campaign.endsAt).getTime() - Date.now()) / 86_400_000))
     : null;
+  const tiers = displayTiers(campaign);
 
   return (
-    <section
-      aria-label="کمپین فروش فعال"
-      className="relative overflow-hidden rounded-xl border border-red-200 bg-gradient-to-l from-red-50 via-amber-50/70 to-red-50 p-5 sm:p-6"
-    >
-      {/* لهجه دکور */}
-      <span className="pointer-events-none absolute -left-8 -top-10 size-36 rounded-full bg-red-500/10 blur-2xl" aria-hidden />
-      <span className="pointer-events-none absolute -bottom-12 -right-6 size-32 rounded-full bg-amber-400/15 blur-2xl" aria-hidden />
-
-      <div className="relative flex flex-wrap items-start gap-4">
-        <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-red-600 text-white shadow-md">
-          <Megaphone size={22} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-base font-extrabold text-red-700 sm:text-lg">{campaign.title}</h2>
-            <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-1 text-[12px] font-extrabold text-white shadow-sm">
-              <Percent size={12} strokeWidth={2.6} /> {toFa(campaign.discountPercent)}٪ تخفیف
+    <section aria-label="کمپین فروش فعال" className="rounded-xl border bg-card p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
+        <h2 className="flex min-w-0 items-center gap-2 text-sm font-extrabold sm:text-[15px]">
+          <Megaphone size={16} className="shrink-0 text-muted-foreground" />
+          <span className="truncate">{campaign.title}</span>
+        </h2>
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="font-num text-sm font-black text-red-600">
+            {toFa(campaign.discountPercent)}٪ تخفیف
+          </span>
+          {daysLeft !== null && (
+            <span className="text-[11px] text-muted-foreground">
+              {daysLeft > 0 ? `${toFa(daysLeft)} روز مانده` : 'آخرین روز'}
             </span>
-            {daysLeft !== null && (
-              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">
-                {daysLeft > 0 ? `تنها ${toFa(daysLeft)} روز مانده` : 'آخرین روز!'}
-              </span>
-            )}
-          </div>
-          {campaign.description && (
-            <p className="mt-2 max-w-2xl text-xs leading-6 text-red-900/75 sm:text-[13px]">
-              {campaign.description}
-            </p>
-          )}
-
-          {/* کمپین تعدادی — گزارش زنده: چند نفر خریدن + چند جا مانده (خواسته مالک ۳۱-۱۰) */}
-          {campaign.type === 'quantity' && campaign.currentTier && (
-            <div className="mt-3 max-w-xl">
-              {campaign.currentTier.to != null ? (
-                <>
-                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[12.5px] font-extrabold text-red-800">
-                    <span className="flex items-center gap-1.5">
-                      <Users size={15} className="text-red-600" />
-                      {toFa(campaign.purchaseCount)} نفر خریدند
-                    </span>
-                    <span>
-                      تخفیف {toFa(campaign.currentTier.percent)}٪ فقط برای{' '}
-                      <span className="text-red-600">{toFa(campaign.currentTier.spotsLeft ?? 0)} نفر دیگر</span>
-                      مانده
-                    </span>
-                  </div>
-                  <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white">
-                    <div
-                      className="h-full rounded-full bg-red-500 transition-all"
-                      style={{ width: `${tierProgress(campaign)}%` }}
-                    />
-                  </div>
-                </>
-              ) : (
-                <p className="flex items-center gap-1.5 text-[12.5px] font-extrabold text-red-800">
-                  <Users size={15} className="text-red-600" />
-                  {toFa(campaign.purchaseCount)} نفر خریدند — از نفر{' '}
-                  {toFa(campaign.currentTier.from)} به بعد تا پایان کمپین:{' '}
-                  <span className="text-red-600">{toFa(campaign.currentTier.percent)}٪ تخفیف</span>
-                </p>
-              )}
-              <div className="mt-2.5 flex flex-wrap gap-1.5">
-                {displayTiers(campaign).map((t, i) => (
-                  <span
-                    key={i}
-                    className={cn(
-                      'rounded-full px-2.5 py-1 text-[11px] font-bold',
-                      campaign.currentTier && t.from === campaign.currentTier.from
-                        ? 'bg-red-600 text-white'
-                        : 'bg-card text-red-700/80 ring-1 ring-red-200',
-                    )}
-                  >
-                    {t.to == null
-                      ? `بعد از نفر ${toFa(t.from - 1)}: ${toFa(t.percent)}٪ تا پایان کمپین`
-                      : `نفر ${toFa(t.from)}${t.from === t.to ? '' : ` تا ${toFa(t.to)}`}: ${toFa(t.percent)}٪`}
-                  </span>
-                ))}
-              </div>
-            </div>
           )}
         </div>
       </div>
+
+      {campaign.description && (
+        <p className="mt-2 text-xs leading-6 text-muted-foreground">{campaign.description}</p>
+      )}
+
+      {/* کمپین تعدادی — گزارش زنده در یک خط + نوار پیشرفت نازک */}
+      {campaign.type === 'quantity' && campaign.currentTier && (
+        <div className="mt-3 max-w-xl">
+          {campaign.currentTier.to != null ? (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[12px] text-muted-foreground">
+                <span>{toFa(campaign.purchaseCount)} نفر خریدند</span>
+                <span>
+                  تخفیف {toFa(campaign.currentTier.percent)}٪ برای{' '}
+                  <b className="font-num text-foreground">
+                    {toFa(campaign.currentTier.spotsLeft ?? 0)} نفر دیگر
+                  </b>{' '}
+                  مانده
+                </span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+                <div
+                  className="h-full rounded-full bg-primary transition-all"
+                  style={{ width: `${tierProgress(campaign)}%` }}
+                />
+              </div>
+            </>
+          ) : (
+            <p className="text-[12px] leading-6 text-muted-foreground">
+              {toFa(campaign.purchaseCount)} نفر خریدند — از نفر {toFa(campaign.currentTier.from)} به بعد تا
+              پایان کمپین <b className="font-num text-foreground">{toFa(campaign.currentTier.percent)}٪ تخفیف</b>
+            </p>
+          )}
+          {tiers.length > 1 && (
+            <p className="mt-2 text-[11px] leading-5 text-muted-foreground/80">
+              {tiers
+                .map((t) =>
+                  t.to == null
+                    ? `بعد از نفر ${toFa(t.from - 1)}: ${toFa(t.percent)}٪`
+                    : `نفر ${toFa(t.from)}${t.from === t.to ? '' : ` تا ${toFa(t.to)}`}: ${toFa(t.percent)}٪`,
+                )
+                .join(' · ')}
+            </p>
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -247,27 +230,9 @@ function useCountdown(deadlineIso: string | null, onExpire?: () => void) {
   return remaining;
 }
 
-/** خانهٔ شمارشگر — عدد بزرگ فارسی + برچسب زیرش */
-function CountdownBox({ value, label, pulse }: { value: string; label: string; pulse?: boolean }) {
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <span
-        dir="ltr"
-        className={cn(
-          'grid min-w-12 place-items-center rounded-lg bg-white px-2.5 py-1.5 font-num text-xl font-black text-red-700 shadow-sm tabular-nums ring-1 ring-white/60 sm:text-[22px]',
-          pulse && 'animate-pulse',
-        )}
-      >
-        {value}
-      </span>
-      <span className="text-[10px] font-extrabold text-white/85">{label}</span>
-    </div>
-  );
-}
-
-/** بنر کمپین کاربران جدید — هدیه خوش‌آمدگویی با شمارشگر معکوس شخصی و سقف
- *  خرید (خواسته مالک ۹-۱۱). پایان مهلت = رفرش خودکار و حذف تخفیف.
- *  مهمان (بدون مهلت شخصی) نسخهٔ تبلیغاتی می‌بیند. */
+/** بنر کمپین کاربران جدید — مینیمال (بازطراحی ۹-۱۱): همان کارت سادهٔ بقیهٔ
+ *  صفحه؛ شمارشگر معکوس به‌جای چهار باکس فقط یک خط «۶ روز و ۲۳:۵۹:۰۰».
+ *  پایان مهلت = رفرش خودکار و حذف تخفیف؛ مهمان نسخهٔ تبلیغاتی می‌بیند. */
 function NewUserCampaignBanner({ campaign }: { campaign: SalesCampaignInfo }) {
   const queryClient = useQueryClient();
   const remaining = useCountdown(campaign.userDeadline, () => {
@@ -275,32 +240,26 @@ function NewUserCampaignBanner({ campaign }: { campaign: SalesCampaignInfo }) {
     void queryClient.invalidateQueries({ queryKey: ['membership-plans'] });
   });
   const pad = (n: number) => String(n).padStart(2, '0');
+  // toFa رشته را دست‌نخورده برمی‌گرداند — ارقام پد‌شده را دستی فارسی می‌کنیم
+  const faPad = (n: number) => pad(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]);
 
   // ── مهمان (بدون مهلت شخصی) — دعوت به ثبت‌نام ──
   if (!campaign.userDeadline) {
     return (
-      <section
-        aria-label="کمپین کاربران جدید"
-        className="relative overflow-hidden rounded-xl border border-red-200 bg-gradient-to-l from-red-50 via-amber-50/70 to-red-50 p-5 sm:p-6"
-      >
-        <div className="flex flex-wrap items-start gap-4">
-          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-red-600 text-white shadow-md">
-            <Gift size={22} />
+      <section aria-label="کمپین کاربران جدید" className="rounded-xl border bg-card p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
+          <h2 className="flex min-w-0 items-center gap-2 text-sm font-extrabold sm:text-[15px]">
+            <Gift size={16} className="shrink-0 text-muted-foreground" />
+            <span className="truncate">{campaign.title}</span>
+          </h2>
+          <span className="font-num shrink-0 text-sm font-black text-red-600">
+            {toFa(campaign.discountPercent)}٪ تخفیف
           </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base font-extrabold text-red-700 sm:text-lg">{campaign.title}</h2>
-              <span className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-1 text-[12px] font-extrabold text-white shadow-sm">
-                <Percent size={12} strokeWidth={2.6} /> {toFa(campaign.discountPercent)}٪ تخفیف
-              </span>
-            </div>
-            <p className="mt-2 max-w-2xl text-xs leading-6 text-red-900/75 sm:text-[13px]">
-              ثبت‌نام کن و تا {hoursLabel(campaign.newUserHours ?? 168)} اول، تا{' '}
-              {toFa(campaign.newUserMaxPurchases ?? 1)} بسته اشتراک را با{' '}
-              {toFa(campaign.discountPercent)}٪ تخفیف بخر.
-            </p>
-          </div>
         </div>
+        <p className="mt-2 text-xs leading-6 text-muted-foreground">
+          ثبت‌نام کن و تا {hoursLabel(campaign.newUserHours ?? 168)} اول، تا{' '}
+          {toFa(campaign.newUserMaxPurchases ?? 1)} بسته اشتراک را با {toFa(campaign.discountPercent)}٪ تخفیف بخر.
+        </p>
       </section>
     );
   }
@@ -309,61 +268,48 @@ function NewUserCampaignBanner({ campaign }: { campaign: SalesCampaignInfo }) {
   const hours = Math.floor((remaining % 86_400_000) / 3_600_000);
   const minutes = Math.floor((remaining % 3_600_000) / 60_000);
   const seconds = Math.floor((remaining % 60_000) / 1000);
-  const urgent = remaining < 86_400_000; // کمتر از یک روز — تیک ثانیه برجسته‌تر
+  const urgent = remaining < 86_400_000; // کمتر از یک روز — زمان قرمز می‌شود
 
   return (
-    <section
-      aria-label="کمپین کاربران جدید"
-      className="relative overflow-hidden rounded-xl border border-red-300 bg-gradient-to-l from-red-600 via-red-500 to-amber-500 p-5 text-white shadow-lg sm:p-6"
-    >
-      {/* لهجه دکور */}
-      <span className="pointer-events-none absolute -left-10 -top-12 size-40 rounded-full bg-white/15 blur-2xl" aria-hidden />
-      <span className="pointer-events-none absolute -bottom-14 -right-8 size-36 rounded-full bg-amber-300/30 blur-2xl" aria-hidden />
-
-      <div className="relative flex flex-wrap items-start gap-4">
-        <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-white/20 shadow-md backdrop-blur">
-          <Gift size={22} />
+    <section aria-label="کمپین کاربران جدید" className="rounded-xl border bg-card p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
+        <h2 className="flex min-w-0 items-center gap-2 text-sm font-extrabold sm:text-[15px]">
+          <Gift size={16} className="shrink-0 text-muted-foreground" />
+          <span className="truncate">{campaign.title}</span>
+        </h2>
+        <span className="font-num shrink-0 text-sm font-black text-red-600">
+          {toFa(campaign.discountPercent)}٪ تخفیف
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-base font-extrabold sm:text-lg">{campaign.title}</h2>
-            <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[12px] font-extrabold text-red-600 shadow-sm">
-              <Percent size={12} strokeWidth={2.6} /> {toFa(campaign.discountPercent)}٪ تخفیف
-            </span>
-          </div>
-
-          {/* شمارشگر معکوس شخصی — قلب کمپین کاربران جدید */}
-          <p className="mt-2.5 text-[12.5px] font-extrabold text-white/95 sm:text-[13px]">
-            فرصت باقی‌مانده هدیه خوش‌آمدگویی شما:
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2" dir="rtl">
-            {days > 0 && <CountdownBox value={toFa(days)} label="روز" />}
-            <CountdownBox value={toFa(pad(hours))} label="ساعت" />
-            <CountdownBox value={toFa(pad(minutes))} label="دقیقه" />
-            <CountdownBox value={toFa(pad(seconds))} label="ثانیه" pulse={urgent} />
-          </div>
-
-          {/* سقف خرید باقی‌مانده + توضیح کمپین از ادمین */}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {campaign.userPurchasesLeft != null && campaign.userPurchasesLeft > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-[12px] font-extrabold text-white ring-1 ring-white/30 backdrop-blur">
-                <ShoppingBag size={13} />
-                {toFa(campaign.userPurchasesLeft)} خرید بسته با این تخفیف برایت باقی مانده
-              </span>
-            )}
-            {urgent && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-3 py-1.5 text-[12px] font-extrabold text-amber-950 shadow-sm">
-                <Sparkles size={13} /> آخرین ساعات! بعد از این، دیگر تکرار نمی‌شود
-              </span>
-            )}
-          </div>
-          {campaign.description && (
-            <p className="mt-2.5 max-w-2xl text-[11.5px] leading-6 text-white/85 sm:text-xs">
-              {campaign.description}
-            </p>
-          )}
-        </div>
       </div>
+
+      {/* شمارشگر معکوس شخصی — یک خط ساده؛ پایان مهلت خودکار تخفیف را برمی‌دارد */}
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
+        <span className="flex flex-wrap items-center gap-1.5">
+          <Hourglass size={14} className="shrink-0" />
+          <span>فرصت باقی‌مانده هدیه خوش‌آمدگویی:</span>
+          {days > 0 && <b className="font-num text-foreground">{toFa(days)} روز و</b>}
+          <b
+            dir="ltr"
+            className={cn(
+              'font-num text-[15px] font-black tabular-nums',
+              urgent ? 'text-red-600' : 'text-foreground',
+            )}
+          >
+            {faPad(hours)}:{faPad(minutes)}:{faPad(seconds)}
+          </b>
+        </span>
+        {campaign.userPurchasesLeft != null && campaign.userPurchasesLeft > 0 && (
+          <span className="flex items-center gap-1.5">
+            <ShoppingBag size={14} className="shrink-0" />
+            <b className="font-num text-foreground">{toFa(campaign.userPurchasesLeft)}</b> خرید بسته با این
+            تخفیف باقی مانده
+          </span>
+        )}
+      </div>
+
+      {campaign.description && (
+        <p className="mt-2 text-xs leading-6 text-muted-foreground">{campaign.description}</p>
+      )}
     </section>
   );
 }
