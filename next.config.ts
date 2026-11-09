@@ -50,7 +50,11 @@ const nextConfig: NextConfig = {
   // توربوپک نباید آن را watch کند — سقف inotify پر می‌شود و کل سرور می‌میرد.
   // فقط وقتی پوشه وجود دارد فعال می‌شود (در استقرار واقعی بی‌اثر است).
   ...(existsSync("./megan-back")
-    ? { turbopack: { watchOptions: { ignored: ["**/megan-back/**", "megan-back/**"] } } }
+    ? ({
+        // watchOptions در تایپ رسمی TurbopackOptions نسخهٔ ۱۶.۴ نیست؛ رفتار
+        // درست است و توربوپک اجرایی می‌شناسدش — فقط cast موضعی برای تایپ
+        turbopack: { watchOptions: { ignored: ["**/megan-back/**", "megan-back/**"] } },
+      } as NextConfig)
     : {}),
   // ── پروکسی API — بدون CORS، هم‌مبدأ ─────────────────────────────────────
   // درخواست‌های /api/** فرانت به بک‌اند مگان (NestJS :4000/api/v1) می‌روند.
