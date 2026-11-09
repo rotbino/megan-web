@@ -51,13 +51,16 @@ export function ProductCard({ product, priority = false }: { product: Product; p
     <article className="group flex flex-col overflow-hidden rounded-md border bg-card transition-shadow hover:shadow-md">
       {/* ─── بدنهٔ بالا — موبایل: عکس+مشخصات افقی / دسکتاپ: عکس سپس مشخصات ─── */}
       <div className="flex flex-1 md:block">
-        <div className="relative h-28 w-28 shrink-0 md:h-auto md:w-full">
+        {/* جعبهٔ عکس — دسکتاپ aspect-[4/3] روی «والد» است؛ والد باید ارتفاع واقعی
+            داشته باشد چون ProductImage با fill مطلق رندر می‌شود (والد h-auto →
+            ارتفاع ۰ → عکس ناپدید — باگ ۹-۱۱ که برگشت) */}
+        <div className="relative h-28 w-28 shrink-0 md:aspect-[4/3] md:h-auto md:w-full">
           <Link href={href} className="block h-full w-full" aria-label={product.productName}>
             <ProductImage
               photos={product.photos}
               thumbs={product.photoThumbs}
               alt={product.productName}
-              className="h-full w-full object-cover md:aspect-[4/3] md:h-auto"
+              className="h-full w-full object-cover"
               iconSize={48}
               priority={priority}
             />
@@ -102,7 +105,8 @@ export function ProductCard({ product, priority = false }: { product: Product; p
           <div className="flex flex-col gap-1 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <MapPin size={13} className="shrink-0 text-primary/70" />
-              <span className="truncate">{product.provinceName}، {product.cityName.trim()}</span>
+              {/* فقط شهر — استان حذف شد (خواستهٔ مالک ۹-۱۱: «همان اسم شهر کافیه») */}
+              <span className="truncate">{product.cityName.trim()}</span>
             </span>
             <span className="inline-flex items-center gap-1">
               <Package size={13} className="shrink-0 text-primary/70" />

@@ -215,9 +215,7 @@ function ProductHead({ item }: { item: FollowItem }) {
           </li>
           <li className="flex items-center gap-2">
             <MapPin size={13} className="shrink-0 text-primary/70" />
-            <span className="font-bold">
-              {p.provinceName}، {p.cityName.trim()}
-            </span>
+            <span className="font-bold">{p.cityName.trim()}</span>
           </li>
           <li className="flex items-center gap-2">
             <CalendarDays size={13} className="shrink-0 text-primary/70" />
