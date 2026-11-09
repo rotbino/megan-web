@@ -69,39 +69,32 @@ export function ProductPrice({
     );
   }
 
-  // ─── کارت لیست — قیمت (یا دکمهٔ مهمان) + ردیف ریز زمان ───
-  return (
-    <div className="w-full">
-      {user ? (
-        <div className="font-num flex h-10 w-full items-center justify-center gap-1 rounded-md bg-secondary font-extrabold text-primary">
-          {product.minSalePrice ? (
-            <>
-              <span className="text-base">{priceFa(product.minSalePrice).replace(' تومان', '')}</span>
-              <span className="text-[11px] font-medium text-muted-foreground">تومان / {product.unit}</span>
-            </>
-          ) : (
-            <span className="text-sm">تماس بگیرید</span>
-          )}
-        </div>
-      ) : (
-        <Button
-          variant="outline"
-          onClick={() => requireAuth('price')}
-          className="h-10 w-full rounded-md font-medium"
-          aria-label={`مشاهده قیمت ${product.productName}`}
-        >
-          مشاهده قیمت
-        </Button>
-      )}
-      {/* زمان آخرین به‌روزرسانی — همهٔ کارت‌ها (مهمان/عضو) یک ردیف ثابت h-4 دارند
-          تا ارتفاع کارت‌های هم‌گرید برابر بماند (قانون تناسب RULES.md §۱) */}
-      <p
-        className="mt-1 flex h-4 items-center justify-center gap-1 text-[10.5px] text-muted-foreground"
-        title="آخرین به‌روزرسانی قیمت"
-      >
-        <History size={11} className="shrink-0 text-primary/60" />
-        <RelativeTime date={updated} />
-      </p>
-    </div>
+  // ─── کارت لیست — قیمت؛ دکمه فقط برای CTA مهمان ───
+  // خواستهٔ مالک ۹-۱۱: «مشاهده قیمت» دکمه است، اما وقتی قیمت پیدا شد دیگر
+  // شکل دکمه ندارد — متن پررنگ ساده بدون قاب/بکگراند (کادر خاکستری قبلی
+  // شبیه دکمه بود). ردیف زمان به‌روزرسانی هم از اینجا به خود کارت رفت
+  // (زیر قیمت جای خوبی نبود — خواستهٔ مالک ۹-۱۱).
+  return user ? (
+    product.minSalePrice ? (
+      <div className="font-num flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+        <span className="text-[15px] font-extrabold leading-6 text-primary md:text-base">
+          {priceFa(product.minSalePrice).replace(' تومان', '')}
+        </span>
+        <span className="text-[11px] font-medium text-muted-foreground">
+          تومان / {product.unit}
+        </span>
+      </div>
+    ) : (
+      <p className="text-sm font-extrabold leading-6 text-foreground">تماس بگیرید</p>
+    )
+  ) : (
+    <Button
+      variant="outline"
+      onClick={() => requireAuth('price')}
+      className="h-8 shrink-0 rounded-md px-3 text-xs font-medium md:h-10 md:w-full md:text-sm"
+      aria-label={`مشاهده قیمت ${product.productName}`}
+    >
+      مشاهده قیمت
+    </Button>
   );
 }
