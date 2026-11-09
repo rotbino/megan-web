@@ -542,7 +542,7 @@ export default function MyRequestsPage() {
         }}
       />
 
-      {/* ویرایش کالا — فقط حداقل خرید و دوره */}
+      {/* ویرایش کالا — فقط حداقل سفارش و دوره */}
       <EditItemDialog
         item={editing}
         onClose={() => setEditing(null)}

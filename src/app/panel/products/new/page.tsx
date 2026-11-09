@@ -161,8 +161,8 @@ export default function RegisterProductPage() {
     }
     if (s === 2) {
       if (num(draft.stock) < 1) return 'میزان موجودی محصول را وارد کنید.';
-      if (num(draft.minSaleAmount) < 1) return 'حداقل میزان فروش را وارد کنید.';
-      if (num(draft.minSaleAmount) > num(draft.stock)) return 'حداقل میزان فروش نمی‌تواند از موجودی بیشتر باشد.';
+      if (num(draft.minSaleAmount) < 1) return 'حداقل سفارش را وارد کنید.';
+      if (num(draft.minSaleAmount) > num(draft.stock)) return 'حداقل سفارش نمی‌تواند از موجودی بیشتر باشد.';
       if (num(draft.minSalePrice) < 1000) return 'قیمت صحیح را وارد کنید.';
     }
     if (s === 3 && draft.photos.length === 0) return 'حداقل یک تصویر برای محصول بارگذاری کنید.';

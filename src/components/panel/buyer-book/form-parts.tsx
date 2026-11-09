@@ -2,7 +2,7 @@
 
 /**
  * قطعات مشترک فرم‌های دفتر خرید — انتخاب دوره (پنج‌گزینه ثابت به‌ترتیب:
- * روزانه، هفتگی، ماهیانه، سالیانه، موردی) و ورودی حداقل خرید با واحد ثابت دسته
+ * روزانه، هفتگی، ماهیانه، سالیانه، موردی) و ورودی حداقل سفارش با واحد ثابت دسته
  * و راهنمای تبدیل واحد (مثل ۱۰۰۰ کیلوگرم ≈ ۱ تن).
  */
 
@@ -47,7 +47,7 @@ export function PeriodPicker({
   );
 }
 
-/** ورودی حداقل خرید — فقط عدد؛ واحد دسته ثابت و غیرقابل تغییر است */
+/** ورودی حداقل سفارش — فقط عدد؛ واحد دسته ثابت و غیرقابل تغییر است */
 export function AmountInput({
   value,
   onChange,
@@ -71,7 +71,7 @@ export function AmountInput({
           value={value}
           onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, ''))}
           placeholder={placeholder}
-          aria-label={`حداقل خرید (${unit})`}
+          aria-label={`حداقل سفارش (${unit})`}
           className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm shadow-xs transition-colors placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary pe-14"
         />
         <span className="pointer-events-none absolute inset-y-0 end-3 flex items-center text-xs font-medium text-muted-foreground">

@@ -211,11 +211,11 @@ export function ProductDetailDialog({
                 )}
               </div>
 
-              {/* تاریخچهٔ تغییرات قیمت/موجودی/حداقل فروش (خواسته مالک ۳-۱۱) —
+              {/* تاریخچهٔ تغییرات قیمت/موجودی/حداقل سفارش (خواسته مالک ۳-۱۱) —
                   رجوع در موارد اختلاف؛ حذفِ نرم هم اینجا دیده می‌شود */}
               <div className="rounded-lg border bg-card p-3">
                 <p className="mb-1.5 text-[11px] font-bold text-muted-foreground">
-                  تاریخچهٔ قیمت، موجودی و حداقل فروش ({toFa(p.edit_history?.length ?? 0)})
+                  تاریخچهٔ قیمت، موجودی و حداقل سفارش ({toFa(p.edit_history?.length ?? 0)})
                 </p>
                 {(p.edit_history?.length ?? 0) === 0 ? (
                   <p className="text-[12px] text-muted-foreground">

@@ -600,7 +600,7 @@ export interface AdminProductDetail extends Omit<AdminProductRow, 'seller'> {
   photos: string[];
   seller: AdminProductSellerDetail | null;
   ladder_orders: AdminLadderOrder[];
-  /** تاریخچهٔ تغییرات قیمت/موجودی/حداقل فروش (خواسته مالک ۳-۱۱) — رجوع در اختلاف‌ها */
+  /** تاریخچهٔ تغییرات قیمت/موجودی/حداقل سفارش (خواسته مالک ۳-۱۱) — رجوع در اختلاف‌ها */
   edit_history: AdminProductEditHistory[];
 }
 

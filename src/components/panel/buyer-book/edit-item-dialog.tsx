@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * ویرایش کالای دفتر خرید — حداقل خرید، نوع کالا (اختیاری، خواستهٔ مالک ۹-۱۱
+ * ویرایش کالای دفتر خرید — حداقل سفارش، نوع کالا (اختیاری، خواستهٔ مالک ۹-۱۱
  * عین درخواست فوری) و دوره قابل ویرایش است؛ خود کالا و واحدش از دسته‌بندی
  * می‌آید و تغییر نمی‌کند.
  */
@@ -81,7 +81,7 @@ export function EditItemDialog({
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-bold text-muted-foreground">حداقل خرید</label>
+            <label className="mb-1.5 block text-xs font-bold text-muted-foreground">حداقل سفارش</label>
             {item && (
               <AmountInput
                 value={amount}

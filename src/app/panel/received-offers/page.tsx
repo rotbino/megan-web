@@ -113,7 +113,7 @@ function OfferCard({ offer }: { offer: ReceivedOffer }) {
           {offer.productType && <Chip tone="sky">نوع: {offer.productType}</Chip>}
           {offer.minOrderAmount != null && (
             <Chip tone="amber">
-              حداقل خرید: {toFa(offer.minOrderAmount)} {offer.unit}
+              حداقل سفارش: {toFa(offer.minOrderAmount)} {offer.unit}
             </Chip>
           )}
           {offer.checkAccepted && offer.checkPercent != null && offer.checkMaxDays != null && (

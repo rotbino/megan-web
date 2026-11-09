@@ -3,7 +3,7 @@
 /**
  * رکورد کارت دفتر خرید — تمام‌عرض با نوار اقدام پایین کارت (خواستهٔ مالک ۸-۱۱):
  *  • سربرگ: کاشی آیکون دسته + نام + چیپ دوره + چیپ وضعیت بازبینی
- *    (تایید شده/در انتظار تایید/رد شده) + مسیر + حداقل خرید.
+ *    (تایید شده/در انتظار تایید/رد شده) + مسیر + حداقل سفارش.
  *  • دلایل رد — فقط ردشده، زیر شرح.
  *  • نوار اقدام: دکمهٔ مهم «پیشنهادها» (پیشنهادهای تامین همین کالا — کوتاه‌شده
  *    از «پیشنهادهای تامین این کالا») + ویرایش + سه‌نقطه (حذف) کنار هم؛
@@ -89,7 +89,7 @@ export function BookRecordCard({
             {[item.rootName, item.parentName].filter(Boolean).join(' / ')}
           </p>
           <p className="mt-2 text-[13px] leading-6">
-            حداقل خرید: <b className="font-extrabold">{toFa(item.minAmount)}</b> {item.unit}
+            حداقل سفارش: <b className="font-extrabold">{toFa(item.minAmount)}</b> {item.unit}
             {hint && <span className="text-muted-foreground"> ({hint})</span>}
           </p>
           {item.status === 'rejected' && item.rejectionReasons.length > 0 && (

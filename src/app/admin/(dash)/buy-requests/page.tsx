@@ -629,7 +629,7 @@ function BuyRequestsPageInner() {
                   <tr className="border-b bg-secondary/40 text-[11px] text-muted-foreground">
                     <th className="px-3 py-2.5 text-start font-bold">کالا</th>
                     <th className="px-3 py-2.5 text-start font-bold">خریدار</th>
-                    <th className="px-3 py-2.5 text-start font-bold">حداقل خرید</th>
+                    <th className="px-3 py-2.5 text-start font-bold">حداقل سفارش</th>
                     <th className="px-3 py-2.5 text-start font-bold">دوره</th>
                     <th className="px-3 py-2.5 text-start font-bold">وضعیت</th>
                     <th className="px-3 py-2.5 text-start font-bold">ثبت</th>

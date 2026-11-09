@@ -5,7 +5,7 @@
  *  • دکمهٔ ارسال روی کارت «همیشه» فعال است — هر نیاز خرید از ابتدا به یک
  *    دستهٔ آخر (برگ) وصل است؛ دستهٔ کالا از خود کارت می‌آید و بالای مودال
  *    خیلی واضح می‌آید: «پیشنهاد تامین برنج».
- *  • «نوع {دسته}» با مثالِ خود دسته (اختیاری) و «حداقل خرید» با واحدِ
+ *  • «نوع {دسته}» با مثالِ خود دسته (اختیاری) و «حداقل سفارش» با واحدِ
  *    همان دسته.
  *  • فیلد توضیحات مهم‌ترین فیلد است — متن آزاد + «نمونهٔ پارامتریک» زیر فیلد.
  *  • شرایط تامین ساختاریافته: سوییچ «پرداخت با چک» فقط با روشن‌شدنش
@@ -200,7 +200,7 @@ export function SupplyOfferForm({
   targets: BuyerDirectoryItem[];
   /** آگهی‌های خود فروشنده — برای پرکردن پارامترهای نمونه (کالا/واحد/قیمت) */
   products?: Product[];
-  /** دستهٔ آخرِ هدف — نوع/حداقل خرید از آن */
+  /** دستهٔ آخرِ هدف — نوع/حداقل سفارش از آن */
   category: Category | null;
   /** پس از ارسال موفق — شناسهٔ خریدارانی که پیام گرفتند */
   onSent?: (buyerIds: string[]) => void;
@@ -388,7 +388,7 @@ export function SupplyOfferForm({
 
   return (
     <>
-      {/* ─── نوع کالا + حداقل خرید — از دستهٔ هدف ─── */}
+      {/* ─── نوع کالا + حداقل سفارش — از دستهٔ هدف ─── */}
       {category && (
         <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
           <div>
@@ -413,13 +413,13 @@ export function SupplyOfferForm({
           </div>
           <div>
             <label htmlFor="offer-min-order" className="mb-1 block text-[11px] font-bold text-muted-foreground">
-              حداقل خرید <span className="font-normal">(اختیاری)</span>
+              حداقل سفارش <span className="font-normal">(اختیاری)</span>
             </label>
             <NumField
               value={minOrder}
               onChange={setMinOrder}
               suffix={category.unit}
-              ariaLabel="حداقل خرید"
+              ariaLabel="حداقل سفارش"
               placeholder="مثلا : 500"
             />
           </div>

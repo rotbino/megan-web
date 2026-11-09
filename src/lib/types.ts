@@ -56,7 +56,7 @@ export interface Product {
   description: string;
   stock: number; // موجودی آماده فروش
   minSalePrice: number | null; // کف قیمت هر واحد (تومان)
-  minSaleAmount: number; // حداقل میزان فروش در هر معامله
+  minSaleAmount: number; // حداقل سفارش در هر معامله
   unit: string;
 
   categoryId: number; // دسته پدر (مثل خشکبار)
@@ -532,7 +532,7 @@ export const PERIOD_LABELS: Record<PurchasePeriod, string> = {
   occasional: 'موردی',
 };
 
-/** ردیف دفتر خرید من — دسته برگ + حداقل خرید + دوره + نوع کالای اختیاری؛ واحد از خود دسته (ثابت).
+/** ردیف دفتر خرید من — دسته برگ + حداقل سفارش + دوره + نوع کالای اختیاری؛ واحد از خود دسته (ثابت).
  *  وضعیت بازبینی ادمین (خواستهٔ مالک ۸-۱۱): درخواست‌های خرید دوره‌ای هم
  *  مثل فوری تایید/رد می‌شوند — دایرکتوری خریداران فقط تاییدشده‌ها را می‌بیند.
  *  نوع کالا (خواستهٔ مالک ۹-۱۱): عین درخواست فوری «سیب از نوع قرمز» —
@@ -543,7 +543,7 @@ export interface BuyerBookItem {
   rootName: string; // کشاورزی
   parentName: string; // میوه
   unit: string; // واحد دسته — کیلوگرم | تن | عدد | بسته | لیتر
-  minAmount: number; // حداقل خرید در هر دوره
+  minAmount: number; // حداقل سفارش در هر دوره
   period: PurchasePeriod;
   productType: string | null; // نوع کالا — «قرمز» (اختیاری)
   example: string | null; // مثال نوع از دسته — پلیس‌هولدر فرم ویرایش
@@ -621,7 +621,7 @@ export interface GroupSendResult {
 }
 
 /** شرایط ساختاریافتهٔ پیشنهاد تامین (خواستهٔ مالک) — دستهٔ آخر + نوع کالا +
- *  سوییچ چک (درصد/سرسید) + سوییچ ارسال به محل (پرداخت‌کنندهٔ حمل) + حداقل خرید.
+ *  سوییچ چک (درصد/سرسید) + سوییچ ارسال به محل (پرداخت‌کنندهٔ حمل) + حداقل سفارش.
  *  ساختاری ذخیره می‌شود تا خریدار بتواند پیشنهادها را فیلتر و مقایسه کند. */
 export interface SupplyOfferTerms {
   categoryId?: number;
@@ -680,7 +680,7 @@ export interface ReceivedOffersPage {
 /** پیشنهاد تامین ارسالی من — کارت پنل فروشنده (خواسته مالک ۴-۱۱):
  *  چه کالایی، به چه کسی، چه شد — آخرین پیام گفتگوی مرتبط برای پیگیری.
  *  (خواسته مالک ۸-۱۱) مشخصات ساختاریافتهٔ پیشنهاد هم می‌آید تا عین فرم
- *  ارسال روی کارت دیده شود: حداقل خرید + واحد، چک (درصد/سرسید)، ارسال */
+ *  ارسال روی کارت دیده شود: حداقل سفارش + واحد، چک (درصد/سرسید)، ارسال */
 export interface SentOffer {
   id: string;
   buyerId: string;
@@ -700,7 +700,7 @@ export interface SentOffer {
   lastMessage: { text: string; at: string; mine: boolean } | null;
   /** حداقل مقدار خرید این پیشنهاد (به واحد دسته) */
   minOrderAmount: number | null;
-  /** واحد دستهٔ کالا — کنار حداقل خرید */
+  /** واحد دستهٔ کالا — کنار حداقل سفارش */
   unit: string;
   /** پرداخت با چک پذیرفته می‌شود (درصد/سرسید فقط وقتی true) */
   checkAccepted: boolean;

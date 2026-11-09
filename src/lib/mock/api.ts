@@ -1806,7 +1806,7 @@ export async function getBillingConfig(): Promise<BillingConfig> {
   return apiFetch<BillingConfig>('/site-settings/getBillingConfig', {}, { auth: false });
 }
 
-/** دفتر خرید من — دسته‌های برگ + حداقل خرید + دوره */
+/** دفتر خرید من — دسته‌های برگ + حداقل سفارش + دوره */
 export async function getMyBuyerBook(): Promise<MyBuyerBook> {
   return apiFetch<MyBuyerBook>('/buyers/getMyBook', {});
 }
@@ -1848,7 +1848,7 @@ export async function getMyOfferQuota(): Promise<OfferQuota> {
 }
 
 /** ارسال پیشنهاد تامین تکی — بدون سهمیه (خواسته مالک ۶-۱۱)؛ terms = شرایط
- *  ساختاریافته (دستهٔ آخر/نوع کالا/چک/ارسال/حداقل خرید) برای فیلتر خریدار */
+ *  ساختاریافته (دستهٔ آخر/نوع کالا/چک/ارسال/حداقل سفارش) برای فیلتر خریدار */
 export async function sendSupplyOffer(input: {
   buyerId: string;
   message: string;

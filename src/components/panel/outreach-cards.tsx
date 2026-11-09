@@ -108,7 +108,7 @@ export function SupplyOfferCard({ offer }: { offer: SentOffer }) {
       <Term
         key="min"
         icon={<Package size={11} />}
-        label={`حداقل خرید: ${toFa(offer.minOrderAmount.toLocaleString('en-US'))} ${offer.unit}`.trim()}
+        label={`حداقل سفارش: ${toFa(offer.minOrderAmount.toLocaleString('en-US'))} ${offer.unit}`.trim()}
       />,
     );
   if (offer.checkAccepted)
