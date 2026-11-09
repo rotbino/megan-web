@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { MapPin } from 'lucide-react';
+import { MapPin, Store } from 'lucide-react';
 import { CityMarketListing, type ProvinceCityOption } from '@/components/city/city-market-listing';
 import { CategoryFilter } from '@/components/products/category-filter';
 import { JsonLd } from '@/components/shared/json-ld';
@@ -89,9 +89,20 @@ export async function CityMarketView({ city, categoryPath, requestedCityIds }: C
 
   const others = majors.filter((m) => m.id !== city.id && m.name !== city.name);
   const total = initial?.total ?? 0;
-  const h1 = category
-    ? `${category.categoryName} عمده در ${city.name}`
-    : `بازار عمده ${city.name}`;
+
+  // ─── هیرو مینیمال — h1 سئو + یک جمله + آمار واقعی همین بازار ───
+  const heroTitle = category ? (
+    <>
+      {category.categoryName} عمده در <span className="text-primary">{city.name}</span>
+    </>
+  ) : (
+    <>
+      بازار عمده <span className="text-primary">{city.name}</span>
+    </>
+  );
+  const heroLine = category
+    ? `مستقیم با فروشندگان و تولیدکنندگان ${category.categoryName} در ${city.name} ارتباط بگیر؛ بی‌واسطه و با قیمت روز.`
+    : `مستقیم با تامین‌کنندگان و شرکت‌های پخش ${city.name} ارتباط بگیر؛ بی‌واسطه و با قیمت روز.`;
 
   const breadcrumbLd = category && {
     '@context': 'https://schema.org',
@@ -116,6 +127,36 @@ export async function CityMarketView({ city, categoryPath, requestedCityIds }: C
   return (
     <>
 
+      {/* ---------- هیرو مینیمال: هویت بازار + جملهٔ کوتاه + آمار واقعی ----------
+          اینجا رندر می‌شود چون total واقعی همین‌جاست؛ ریشه و دسته هر دو h1 دارند */}
+      <div className="mx-auto max-w-7xl px-4 pt-4 lg:px-6 lg:pt-6">
+        <div className="relative overflow-hidden rounded-lg border border-border/70 bg-card p-4 shadow-sm lg:p-5">
+          {/* خط رنگی ظریف لبهٔ راست — تنها تزیین */}
+          <span
+            aria-hidden
+            className="absolute inset-y-0 right-0 w-1 bg-gradient-to-b from-primary via-primary/50 to-transparent"
+          />
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5">
+            <div className="flex min-w-0 items-center gap-3 lg:gap-3.5">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary lg:size-11">
+                <Store className="size-5 lg:size-6" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-lg font-extrabold lg:text-2xl">{heroTitle}</h1>
+                <p className="mt-1 text-xs leading-6 text-muted-foreground lg:text-sm">
+                  {heroLine}
+                </p>
+              </div>
+            </div>
+            {total > 0 && (
+              <span className="font-num flex shrink-0 items-center gap-1.5 rounded-full border border-primary/25 bg-primary/5 px-3 py-1.5 text-xs font-bold text-primary lg:text-[13px]">
+                <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-primary" />
+                {toFa(total)} آگهی فعال
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* ---------- لیست چندشهری — ساختار عین صفحهٔ فیلتر ملی ---------- */}
       <CityMarketListing
