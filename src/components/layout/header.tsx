@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, LayoutGrid, Search } from 'lucide-react';
+import { ArrowRight, ChevronDown, LayoutGrid, Search } from 'lucide-react';
 import { BrandLogo } from '@/components/shared/brand';
 import { HeaderUserMenu } from '@/components/layout/header-user-menu';
 import {
@@ -45,7 +45,7 @@ import type { Category } from '@/lib/types';
  *         ۸-۱۱ دور ۲۳) — عین دسکتاپ، بعد از جستجو در نوار فیلتر صفحهٔ
  *         لیست/جستجو انتخاب می‌شود (product-listing)؛ جعبهٔ جستجو فقط جستجوست.
  */
-export function Header() {
+export function Header({ backButton = false }: { backButton?: boolean }) {
   const router = useRouter();
   const { user } = useAuth();
   const [q, setQ] = useState('');
@@ -129,6 +129,36 @@ export function Header() {
     };
   }, [setBar]);
 
+  /**
+   * بازگشت هوشمند (خواسته مالک ۹-۱۱ — صفحه جزئیات کالا): ناوبری داخلی در
+   * همین تب بوده → صفحهٔ قبلی سایت؛ ورود مستقیم از گوگل/لینک (صفحهٔ نخستِ
+ * تب) → صفحه اول. نکست ۱۶ idx تاریخچه را در state نمی‌گذارد، پس علامت
+   * نشست: هر مونت هدر، اگر مسیس ذخیره‌شده با مسیر فعلی فرق دارد یعنی
+   * کاربر داخل سایت جابه‌جا شده است.
+   */
+  useEffect(() => {
+    try {
+      const last = sessionStorage.getItem('imach:lastPath');
+      if (last && last !== window.location.pathname) {
+        sessionStorage.setItem('imach:internalNav', '1');
+      }
+      sessionStorage.setItem('imach:lastPath', window.location.pathname);
+    } catch {
+      /* حالت خصوصی مرورگر — بازگشت به صفحه اول بی‌خطر است */
+    }
+  }, []);
+
+  const goBack = () => {
+    let internal = false;
+    try {
+      internal = sessionStorage.getItem('imach:internalNav') === '1';
+    } catch {
+      /* خواندن نشست ممکن نشد */
+    }
+    if (internal) router.back();
+    else router.push('/');
+  };
+
   const isSeller = user?.role === 'seller';
 
   // بج پیام‌های خوانده‌نشده — کنار آیکون پیام‌ها (کاربر واردشده)
@@ -185,9 +215,23 @@ export function Header() {
       <div className="flex items-center gap-2.5 px-3 py-2.5 nav-desktop:gap-4 nav-desktop:px-6 nav-desktop:py-3">
         {/* گروه راست — لوگو + جستجو؛ جستجو با ۱۶px به لوگو چسبیده */}
         <div className="flex min-w-0 flex-1 items-center gap-2.5 nav-desktop:gap-4">
-          <Link href="/" aria-label="ایمچ — صفحه اصلی" className="shrink-0">
-            <BrandLogo size="sm" className="h-7" />
-          </Link>
+          {/* صفحه جزئیات کالا: به‌جای لوگو دکمهٔ بازگشت (خواسته مالک ۹-۱۱) —
+              ورود مستقیم از گوگل → خانه؛ در غیر این‌صورت صفحهٔ قبلی سایت */}
+          {backButton ? (
+            <button
+              type="button"
+              onClick={goBack}
+              aria-label="بازگشت به صفحه قبل"
+              title="بازگشت"
+              className="grid size-9 shrink-0 place-items-center rounded-full text-foreground transition-colors hover:bg-secondary"
+            >
+              <ArrowRight size={22} />
+            </button>
+          ) : (
+            <Link href="/" aria-label="ایمچ — صفحه اصلی" className="shrink-0">
+              <BrandLogo size="sm" className="h-7" />
+            </Link>
+          )}
 
           {/* جستجوی دسکتاپ — تپل (h-12)، بدون بکگراند، بوردر طوسی کمرنگ؛
               چسبیده به لوگو (۱۶px) و کشسان تا خود نوار کاربر (مثل باسکول) */}

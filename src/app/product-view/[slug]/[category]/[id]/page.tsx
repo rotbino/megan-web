@@ -100,7 +100,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = `فروش عمده ${product.productName} در ${city} | قیمت عمده ${product.subCategoryName}`;
   const description =
     `خرید عمده ${product.productName} از ${sellerName} در ${city}، ${product.provinceName}؛ ` +
-    `موجودی ${stockFa(product.stock, product.unit)}، حداقل فروش ${stockFa(product.minSaleAmount, product.unit)}. ` +
+    `موجودی ${stockFa(product.stock, product.unit)}، حداقل سفارش ${stockFa(product.minSaleAmount, product.unit)}. ` +
     `قیمت روز ${product.subCategoryName} و تماس مستقیم با فروشنده در بازار عمده ایمچ.`;
 
   return {
@@ -144,7 +144,7 @@ export default async function ProductViewPage({ params }: Props) {
     { icon: User, label: 'نام فروشنده', value: sellerName },
     { icon: MapPin, label: 'آدرس', value: `${product.provinceName} — ${city}` },
     { icon: Package, label: 'میزان موجودی', value: stockFa(product.stock, product.unit) },
-    { icon: BadgeCheck, label: 'حداقل میزان فروش', value: stockFa(product.minSaleAmount, product.unit) },
+    { icon: BadgeCheck, label: 'حداقل سفارش', value: stockFa(product.minSaleAmount, product.unit) },
   ] as const;
 
   // پرسش‌های متداول — فقط از دیتای واقعی همین آگهی (سئو + شفافیت خریدار)
@@ -156,8 +156,8 @@ export default async function ProductViewPage({ params }: Props) {
         : `قیمت توافقی است؛ برای اطلاع از قیمت روز ${product.productName} با ${sellerName} در ${city} تماس بگیرید.`,
     },
     {
-      q: `حداقل میزان خرید عمده چقدر است؟`,
-      a: `حداقل فروش این فروشنده در هر معامله ${stockFa(product.minSaleAmount, product.unit)} است و در حال حاضر ${stockFa(product.stock, product.unit)} موجودی آمادهٔ فروش دارد.`,
+      q: `حداقل سفارش چقدر است؟`,
+      a: `حداقل سفارش این فروشنده در هر معامله ${stockFa(product.minSaleAmount, product.unit)} است و در حال حاضر ${stockFa(product.stock, product.unit)} موجودی آمادهٔ فروش دارد.`,
     },
     {
       q: `فروشنده کجاست و چطور با او در تماس شوم؟`,
@@ -171,7 +171,7 @@ export default async function ProductViewPage({ params }: Props) {
 
   return (
     <>
-      <Header />
+      <Header backButton />
       <ProductViewPing productId={product.id} />
       <main className="flex-1">
         <div className="mx-auto max-w-7xl px-4 pt-4 lg:px-6">
