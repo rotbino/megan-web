@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, LayoutGrid, Search } from 'lucide-react';
@@ -53,6 +53,13 @@ export function Header() {
   const [megaOpen, setMegaOpen] = useState(false);
   const [activeRoot, setActiveRoot] = useState<number | null>(null);
   const [barHidden, setBarHidden] = useState(false);
+  /** آینهٔ وضعیت نوار — تشخیص «تغییر واقعی» بدون وابستگی به رندر */
+  const barHiddenRef = useRef(false);
+  /** پایان پنجرهٔ قفل پس از هر تغییر واقعی وضعیت نوار — رویدادهای اسکرولِ
+   *  ناشی از تغییر ارتفاع خود نوار (scroll anchoring) در این پنجره نادیده
+   *  گرفته می‌شوند و فقط بیس مقایسه تازه می‌شود */
+  const barLockUntilRef = useRef(0);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const searchWrap = useRef<HTMLDivElement>(null);
   const megaWrap = useRef<HTMLDivElement>(null);
 
@@ -61,8 +68,35 @@ export function Header() {
   // هم‌ان لحظه روی صفحهٔ اول می‌نشیند، بدون انتظار برای polling ۳۰s.
   useChatSocketEvents();
 
+  /**
+   * تغییر وضعیت نوار — فقط هنگام تغییر واقعی؛ هر تغییر واقعی پنجرهٔ قفل ~۴۰۰ms
+   * باز می‌کند (کمی بیشتر از ترنزیشن ۳۰۰ms).
+   *
+   * ریشهٔ باگ نوسان/لرزش نوار (خواستهٔ مالک ۹-۱۱): جمع‌شدن نوار ارتفاع سند را
+   * کم می‌کند، scroll anchoring مرورگر برای ثابت‌نگه‌داشتن محتوا scrollY را
+   * برمی‌گرداند و دلتای برگشتی نوار را دوباره تغییر وضعیت می‌داد → حلقهٔ
+   * بی‌نهایت «مخفی ← انکور −H ← نمایش ← انکور +H ← مخفی …» (بخصوص با تیک
+   * شهرها که ارتفاع لیست عوض می‌شود). در پنجرهٔ قفل دلتاها فقط در lastY
+   * جذب می‌شوند و اقدامی نمی‌گیرند؛ پس از پایان قفل هم اگر اسکرول نزدیک
+   * بالای صفحه آمده باشد نوار دوباره باز می‌گردد (تضمین «بالا همیشه باز»).
+   */
+  const setBar = useCallback((hidden: boolean) => {
+    if (barHiddenRef.current === hidden) return; // بدون تغییر واقعی → بدون قفل/رندر
+    barHiddenRef.current = hidden;
+    barLockUntilRef.current = performance.now() + 400;
+    setBarHidden(hidden);
+    clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = setTimeout(() => {
+      if (window.scrollY <= 64) setBar(false);
+    }, 440);
+  }, []);
+
+  useEffect(() => () => clearTimeout(settleTimerRef.current), []);
+
   // ─── نوار زیر هدر: با اسکرول به پایین جمع، با اسکرول به بالا باز ───
-  // جهش‌های ریز (کمتر از ۴px) نادیده گرفته می‌شوند؛ بالای صفحه همیشه باز است.
+  // جهش‌های ریز (کمتر از ۴px) نادیده گرفته می‌شوند؛ نزدیک بالای صفحه همیشه
+  // باز است (آستانه ۱۰۰ ≈ ارتفاع هدر + نوار — پایین‌تر از این، جمع‌شدن نوار
+  // با انکورینگ دوباره به بالای صفحه برمی‌گردد و چشمک می‌زند).
   // مگامنوی باز هم همراهِ جمع‌شدن نوار بسته می‌شود (بدون افکت — همان رویداد).
   useEffect(() => {
     let raf = 0;
@@ -74,15 +108,17 @@ export function Header() {
         const y = window.scrollY;
         const dy = y - lastY;
         lastY = y;
-        if (y <= 64) {
-          setBarHidden(false);
+        // دلتای برگشتیِ خود نوار (انکورینگ) — فقط بیس تازه شود، اقدام نه
+        if (performance.now() < barLockUntilRef.current) return;
+        if (y <= 100) {
+          setBar(false);
           return;
         }
         if (dy > 4) {
-          setBarHidden(true);
+          setBar(true);
           setMegaOpen(false);
         } else if (dy < -4) {
-          setBarHidden(false);
+          setBar(false);
         }
       });
     };
@@ -91,7 +127,7 @@ export function Header() {
       window.removeEventListener('scroll', onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [setBar]);
 
   const isSeller = user?.role === 'seller';
 
@@ -135,7 +171,7 @@ export function Header() {
   };
 
   const openMega = () => {
-    setBarHidden(false);
+    setBar(false); // قفل هم باز می‌شود → انکورینگِ بلندشدن نوار جذب می‌شود
     setMegaOpen(true);
   };
 
