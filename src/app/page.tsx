@@ -1,6 +1,7 @@
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Hero } from '@/components/home/hero';
+import { CityBar } from '@/components/home/city-bar';
 import { CategoryCards } from '@/components/home/category-cards';
 import { LatestProducts } from '@/components/home/latest-products';
 import { LatestBuyRequests, LatestPeriodicBuyRequests } from '@/components/home/latest-buy-requests';
@@ -20,6 +21,7 @@ export default function HomePage() {
       <Header />
       <main className="flex-1">
         <Hero />
+        <CityBar />
         <CategoryCards />
         <LatestProducts />
         <LatestBuyRequests />

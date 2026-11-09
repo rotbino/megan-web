@@ -140,6 +140,8 @@ export interface ProductQuery {
   cityId?: number;
   sort?: SortKey;
   page?: number;
+  /** اندازه صفحه — بک‌اند می‌فهمد (پیش‌فرض خودش)؛ فقط برای اسکن‌های سمت سرور (بازار شهری) */
+  pageSize?: number;
 }
 
 // ─────────────────────────────────────────────────────────────

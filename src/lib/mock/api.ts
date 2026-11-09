@@ -142,6 +142,7 @@ export async function getProducts(query: ProductQuery = {}): Promise<Paged<Produ
       cityId: query.cityId,
       sort: query.sort,
       page: query.page,
+      pageSize: query.pageSize,
     },
     { auth: false },
   );
@@ -230,6 +231,7 @@ export async function getProductsSSR(
         cityId: query.cityId,
         sort: query.sort,
         page: query.page,
+        pageSize: query.pageSize,
       },
       revalidate,
     );

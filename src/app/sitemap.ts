@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { apiBase, joinUrl } from '@/lib/api/client';
 import { GOOGLE_ENTRY_QS } from '@/lib/popular-searches';
 import { getSearchUniverse } from '@/lib/search-universe';
+import { listMajorCities } from '@/lib/city-markets';
 import { SITE_URL } from '@/lib/site';
 
 const BASE = SITE_URL;
@@ -46,7 +47,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // سه منبع واقعی — هر کدام مستقل؛ خرابی یکی بقیه را نمی‌اندازد
-  const [categoryNodes, productItems, universe] = await Promise.all([
+  const [categoryNodes, productItems, universe, majorCities] = await Promise.all([
     fetch(joinUrl(apiBase(), '/categories/getAllCategories'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -66,6 +67,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .then((j) => (j?.status && j.data?.items ? j.data.items : []))
       .catch(() => [] as SitemapProduct[]),
     getSearchUniverse().catch(() => []),
+    // بازارهای عمدهٔ شهری (خواستهٔ مالک ۹-۱۱) — فقط شهرهای بزرگ موجود در دیتابیس
+    listMajorCities().catch(() => []),
   ]);
 
   // فروشندگانِ دارای آگهی — از همان لیست واقعی محصولات (یکتا)
@@ -89,6 +92,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.4,
   }));
 
+  // بازارهای عمدهٔ شهری — /city/tehran و… (فقط شهرهای بزرگ؛ بقیه با نام فارسی
+  // کشف‌شان از دایرکتوری /city و شبکهٔ لینک‌های صفحات شهری انجام می‌شود)
+  const cityMarketPages: MetadataRoute.Sitemap = majorCities.map((c) => ({
+    url: `${BASE}/city/${c.slug}`,
+    changeFrequency: 'daily' as const,
+    priority: 0.8,
+  }));
+
   // صفحات جستجوی ورودی‌های گوگل — هر کالا (و هر کالا+نوع) یک URL ایندکس‌پذیر
   // اختصاصی (long-tail سئو). عنوان‌های گوگلی (مثل «خرید سیب زمینی عمده در
   // تهران» یا «فروش عمده برنج هاشمی در همدان») همه به همین آدرس‌های هسته‌ای
@@ -107,5 +118,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...searchPages, ...categoryPages, ...productPages, ...profilePages];
+  return [...staticPages, ...searchPages, ...cityMarketPages, ...categoryPages, ...productPages, ...profilePages];
 }
