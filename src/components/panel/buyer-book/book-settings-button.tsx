@@ -438,18 +438,22 @@ export function BookSettingsButton({ className }: { className?: string }) {
                         {toFaCount(bannerDraft.length, BANNER_TITLE_MAX)}
                       </span>
                     </div>
-                    <Input
+                    {/* تکست‌ایریای چندخطی (خواستهٔ مالک ۱۱-۱۱): توضیح دفتر
+                        چندجمله‌ای است — Enter می‌افتد و بنر هم همان‌طور نشان می‌دهد */}
+                    <Textarea
                       id="book-banner-title"
                       value={bannerDraft}
                       onChange={(e) => setBannerDraft(e.target.value.slice(0, BANNER_TITLE_MAX))}
-                      placeholder="خریدهای دوره‌ای شرکت آرمان؛ لطفا پیشنهادهای تامین خود را ارسال کنید."
-                      className="h-10 rounded-md text-xs"
-                      aria-label="عنوان دفتر روی بنر"
-                      autoComplete="off"
+                      placeholder={'خریدهای دوره‌ای شرکت آرمان؛\nلطفا پیشنهادهای تامین خود را ارسال کنید.'}
+                      rows={3}
+                      dir="rtl"
+                      className="resize-none rounded-md text-xs leading-6"
+                      aria-label="عنوان دفتر روی بنر (چندخطی)"
                     />
                     <p className="text-[10.5px] leading-5 text-muted-foreground">
-                      روی جلد دفتر، بزرگ و با رنگ برندتان دیده می‌شود؛ خالی بماند = جملهٔ
-                      پیش‌فرض («خریدهای دوره‌ای …؛ لطفا پیشنهادهای تامین خود را ارسال کنید.»).
+                      روی جلد دفتر، بزرگ و با رنگ برندتان دیده می‌شود؛ می‌توانید چند خط بنویسید
+                      (Enter = خط جدید). خالی بماند = جملهٔ پیش‌فرض («خریدهای دوره‌ای …؛ لطفا
+                      پیشنهادهای تامین خود را ارسال کنید.»).
                     </p>
                   </div>
 

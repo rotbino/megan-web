@@ -80,7 +80,7 @@ function LockedCard({
   return (
     <div className="mx-auto max-w-xl rounded-xl border bg-card p-8 text-center shadow-[0_1px_8px_rgba(0,0,0,0.06)]">
       {bannerTitle?.trim() && (
-        <p className="mx-auto mb-4 max-w-md rounded-lg bg-(--catalog-accent)/10 px-4 py-3 text-[13px] font-bold leading-6 text-(--catalog-accent)">
+        <p className="mx-auto mb-4 max-w-md whitespace-pre-line rounded-lg bg-(--catalog-accent)/10 px-4 py-3 text-[13px] font-bold leading-6 text-(--catalog-accent)">
           {bannerTitle.trim()}
         </p>
       )}
@@ -470,8 +470,10 @@ export function BookPublicContent({
           </div>
 
           {/* عنوان بنر — از تنظیمات دفتر (خواستهٔ مالک ۱۱-۱۱)؛ فاصلهٔ پایینش
-              از لبه، بالای ناحیهٔ آواتار می‌ماند تا متن کامل دیده شود */}
-          <h2 className="relative mb-12 max-w-2xl text-start text-[15px] font-extrabold leading-7 text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.25)] sm:mb-14 sm:text-lg sm:leading-8 lg:text-xl">
+              از لبه، بالای ناحیهٔ آواتار می‌ماند تا متن کامل دیده شود.
+              whitespace-pre-line (خواستهٔ مالک ۱۱-۱۱): Enterهای فیلد چندخطی
+              تنظیمات، همین‌جا خطِ جدید می‌شوند */}
+          <h2 className="relative mb-12 max-w-2xl whitespace-pre-line text-start text-[15px] font-extrabold leading-7 text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.25)] sm:mb-14 sm:text-lg sm:leading-8 lg:text-xl">
             {bannerTitle}
           </h2>
         </div>
