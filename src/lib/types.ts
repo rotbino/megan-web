@@ -823,7 +823,8 @@ export interface SavedCatalogRow {
 // ─────────────────────────────────────────────────────────────
 
 /** تنظیمات شخصی‌سازی دفتر خرید — آیدی لینک (/b/{bookId}؛ پیش‌فرض تصادفی)،
- *  رنگ برند و لوگو. مقادیر رزولو‌شده از بک‌اند می‌آیند. */
+ *  رنگ برند و لوگو + متن‌های دفتر (خواستهٔ مالک ۱۱-۱۱): عنوان بنر، سمت مسئول
+ *  خرید و شرایط تامین. مقادیر رزولو‌شده از بک‌اند می‌آیند. */
 export interface BuyerBookSettings {
   /** بخش آخر لینک عمومی دفتر — پیش‌فرض تصادفی (مثل b7k2m9x) */
   bookId: string | null;
@@ -831,6 +832,14 @@ export interface BuyerBookSettings {
   brandColor: string | null;
   /** URL لوگوی آپلودی — null = آواتار/حرف اول نام خریدار */
   logo: string | null;
+  /** عنوان بزرگ روی بنر دفتر (مثل «خریدهای دوره‌ای شرکت آرمان؛ لطفا پیشنهادهای
+   *  تامین خود را ارسال کنید.») — null = متن پیش‌فرض (خواستهٔ مالک ۱۱-۱۱) */
+  bannerTitle: string | null;
+  /** سمت مسئول خرید کنار نام او (مثل «مسوول خرید») — null = پنهان */
+  managerTitle: string | null;
+  /** شرایط و توضیحاتی که تامین‌کنندگان باید بدانند — بخش «شرایط تامین»؛
+   *  اختیاری، null = بخش نمایش داده نمی‌شود (خواستهٔ مالک ۱۱-۱۱) */
+  supplyTerms: string | null;
 }
 
 /** نتیجهٔ رزولو آیدی عمومی دفتر خرید — صفحهٔ /b/{id} (SSR پوستهٔ برند) */
@@ -855,6 +864,21 @@ export interface BuyerBookBuyerInfo {
   daysInImach: number;
   lastActiveAt: string | null;
   activeRecently: boolean;
+  // ── مشخصات کسب‌وکار (خواستهٔ مالک ۱۱-۱۱) — عین کاتالوگ فروشنده؛ هر
+  //    اطلاعاتی از خریدار که برای تامین‌کننده مهم است همین‌جا می‌آید ──
+  /** گواهی اعتماد ایمچ — هویت و مدارک تایید شده */
+  isVerified: boolean;
+  /** کسب‌وکار حقوقی است؟ (شرکت) */
+  isCompany: boolean;
+  companyName: string | null;
+  /** صنف کسب‌وکار (مثل هایپرمارکت/قنادی) */
+  businessCategory: string | null;
+  businessDesc: string | null;
+  address: string | null;
+  /** تصاویر کسب‌وکار (فروشگاه/انبار/…) */
+  gallery: Array<{ url: string; thumbUrl: string }>;
+  /** مجوزها و گواهی‌ها */
+  certificates: Array<{ url: string; thumbUrl: string }>;
 }
 
 /** دیتای کامل صفحهٔ عمومی دفتر خرید — /b/{id}؛ گیت بستهٔ فعال

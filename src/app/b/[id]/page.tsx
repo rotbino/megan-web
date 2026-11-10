@@ -30,10 +30,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const book = await resolveBook(id);
   if (!book) return { title: 'دفتر خرید یافت نشد' };
+  // عنوان بنر دفتر (خواستهٔ مالک ۱۱-۱۱) — متن معرفی خودِ خریدار؛ اگر نوشته
+  // باشد توضیح متادیتا و پیش‌نمایش اشتراک‌گذاری همان می‌شود
+  const bannerTitle = book.settings.bannerTitle?.trim() || null;
   return {
     // دفتر خرید سند شخصی خریدار است — عنوان بدون پسوند «| ایمچ» (عین کاتالوگ)
     title: { absolute: `دفتر خرید ${book.name}` },
-    description:
+    description: bannerTitle ??
       `دفتر خرید دوره‌ای ${book.name} — کالاهایی که به‌طور مستمر می‌خرد، ` +
       'حجم و دورهٔ خرید هر کالا؛ دیدن دفتر ویژهٔ فروشندگان دارندهٔ بستهٔ ایمچ.',
     alternates: { canonical: `/b/${book.settings.bookId ?? id}` },

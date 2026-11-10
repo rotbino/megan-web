@@ -255,7 +255,9 @@ for (const [name, s] of SELLERS) {
 
 /** خریدارهای نمونه + کاربر نشست استاب — همه با قالب یکسان برای لیست‌ها.
  *  فیلد های اضافه (role/lastActiveAt/…) فقط برای دفتر خرید (۱۰-۱۱ دور ۵)
- *  خوانده می‌شوند؛ بقیهٔ مصرف‌کننده‌ها به آن‌ها کاری ندارند. */
+ *  خوانده می‌شوند؛ بقیهٔ مصرف‌کننده‌ها به آن‌ها کاری ندارند. مشخصات کسب‌وکار
+ *  (توضیحات/مجوزها/گالری/احراز) هم عین کاتالوگ در دفتر خرید دیده می‌شود
+ *  (خواستهٔ مالک ۱۱-۱۱): هر اطلاعاتی از خریدار که برای فروشنده مهم است. */
 const ME = { id: '50', userName: 'seller0', firstName: 'کاربر', lastName: 'تستی', avatarUrl: null, cityName: 'همدان' };
 const BUYER_USERS = [
   {
@@ -263,12 +265,37 @@ const BUYER_USERS = [
     provinceName: 'تهران', cityName: 'تهران', role: 'عمده‌خریدار',
     createdAt: '2024-03-10 09:00:00', lastActiveAt: '2026-11-08T10:00:00.000Z',
     activeRecently: true, stale: false,
+    // مشخصات کسب‌وکار (خواستهٔ مالک ۱۱-۱۱) — عین فیلدهای کاتالوگ فروشنده
+    isVerified: true,
+    isCompany: true,
+    companyName: 'شرکت آرمان',
+    businessCategory: 'هایپرمارکت و زنجیره فروشی',
+    businessDesc:
+      'زنجیره‌ فروشی آرمان با ۱۲ شعبه فعال در تهران؛ خرید دوره‌ای میوه، تنقلات و مواد غذایی برای فروشگاه‌ها. پرداخت نقدی و به‌موقع، تحویل از باربری همکار.',
+    address: 'تهران، خیابان ولیعصر، نبش کوچه بهار، پلاک ۱۲',
+    gallery: [
+      { url: '/images/online-store2.jpg', thumbUrl: '/images/online-store2.jpg' },
+      { url: '/images/hero.webp', thumbUrl: '/images/hero.webp' },
+      { url: '/images/categories/food.webp', thumbUrl: '/images/categories/food.webp' },
+    ],
+    certificates: [
+      { url: '/help-img/verify/sample-card.jpg', thumbUrl: '/help-img/verify/sample-card.jpg' },
+      { url: '/help-img/verify/form-step1.jpg', thumbUrl: '/help-img/verify/form-step1.jpg' },
+    ],
   },
   {
     id: '91', userName: 'buyer2', firstName: 'زهرا', lastName: 'کریمی', avatarUrl: null,
     provinceName: 'همدان', cityName: 'ملایر', role: 'خرده‌خریدار',
     createdAt: '2025-01-20 09:00:00', lastActiveAt: '2026-05-01T10:00:00.000Z',
     activeRecently: false, stale: true,
+    isVerified: false,
+    isCompany: false,
+    companyName: null,
+    businessCategory: null,
+    businessDesc: 'مغازه مواد غذایی محلی؛ خرید هفتگی تنقلات و نوشیدنی برای فروش در ملایر.',
+    address: null,
+    gallery: [],
+    certificates: [],
   },
 ];
 const findUser = (userName) =>
@@ -365,15 +392,37 @@ const freshBookId = (userName) => {
   while (bookIdOwner(id, userName)) id = randomBookId();
   return id;
 };
-// seed — buyer1 آیدی سفارشی مثال مالک (phaksh-seyyed)؛ بقیه تصادفی
-BUYER_BOOK_SETTINGS.set('buyer1', { bookId: 'phaksh-seyyed', brandColor: '#0891b2', logo: null });
-BUYER_BOOK_SETTINGS.set('buyer2', { brandColor: '#7c3aed', logo: null });
-BUYER_BOOK_SETTINGS.set(ME.userName, {});
+// seed — buyer1 آیدی سفارشی مثال مالک (phaksh-seyyed)؛ بقیه تصادفی.
+// فیلدهای متن (خواستهٔ مالک ۱۱-۱۱): عنوان بنر دفتر، سمت مسئول خرید و
+// شرایط تامین — دفترِ خریدار با متنی که خودش در تنظیمات نوشته معرفی می‌شود
+BUYER_BOOK_SETTINGS.set('buyer1', {
+  bookId: 'phaksh-seyyed', brandColor: '#0891b2', logo: null,
+  bannerTitle: 'خریدهای دوره‌ای شرکت آرمان؛ لطفا پیشنهادهای تامین خود را ارسال کنید.',
+  managerTitle: 'مسوول خرید',
+  supplyTerms:
+    'فقط تولیدکنندگان پیشنهاد تامین ارسال کنند.\nهزینه حمل بر عهده تامین‌کننده است.\nپرداخت نقدی در لحظه تحویل کالا انجام می‌شود.',
+});
+BUYER_BOOK_SETTINGS.set('buyer2', {
+  brandColor: '#7c3aed', logo: null,
+  bannerTitle: 'تامین هفتگی مغازه مواد غذایی کریمی — منتظر پیشنهاد قیمت شما هستیم.',
+  managerTitle: 'مدیر مغازه',
+});
+BUYER_BOOK_SETTINGS.set(ME.userName, {
+  bannerTitle: 'خریدهای دوره‌ای فروشگاه من — لطفا پیشنهادهای تامین خود را ارسال کنید.',
+});
 
-/** خواندن تنظیمات رزولو‌شدهٔ دفتر (بدون ساخت — فقط خواندن) */
+/** خواندن تنظیمات رزولو‌شدهٔ دفتر (بدون ساخت — فقط خواندن) — متن‌های دفتر
+ *  (عنوان بنر/سمت/شرایط تامین) هم همین‌جا برمی‌گردند (خواستهٔ مالک ۱۱-۱۱) */
 const resolvedBookSettings = (userName) => {
   const s = BUYER_BOOK_SETTINGS.get(userName) ?? {};
-  return { bookId: s.bookId ?? null, brandColor: s.brandColor ?? null, logo: s.logo ?? null };
+  return {
+    bookId: s.bookId ?? null,
+    brandColor: s.brandColor ?? null,
+    logo: s.logo ?? null,
+    bannerTitle: s.bannerTitle ?? null,
+    managerTitle: s.managerTitle ?? null,
+    supplyTerms: s.supplyTerms ?? null,
+  };
 };
 /** تنظیمات دفتر هر کاربر — با اولین خواندن، آیدی تصادفیِ پیش‌فرض ساخته می‌شود
  *  (خواستهٔ مالک ۱۰-۱۱ دور ۵: پیش‌فرض بصورت تصادفی؛ برای همهٔ صاحبان دفتر،
@@ -520,46 +569,63 @@ const VERIFICATION = {
   docs: {},
 };
 
-// ─── نظرات نمونه — تا ستاره/توزیع/کارت‌های نظر در کاتالوگ دیده شود ───
-const REVIEWS = {
-  summary: {
-    avg: 4.3,
-    count: 3,
-    distribution: [
-      { rating: 5, count: 2 },
-      { rating: 4, count: 0 },
-      { rating: 3, count: 1 },
-      { rating: 2, count: 0 },
-      { rating: 1, count: 0 },
-    ],
+// ─── نظرات نمونه — تا ستاره/توزیع/کارت‌های نظر دیده شود. جداسازی نقش‌ها
+// (خواستهٔ مالک ۱۱-۱۱): نظر درباره کاربر «به‌عنوان فروشنده» جدا از نظر درباره
+// او «به‌عنوان خریدار» است — ممکن است خریدار خوبی باشد ولی فروشنده خوبی نه.
+// subject: 'seller' (نویسنده=خریدار) | 'buyer' (نویسنده=فروشنده) ───
+const distFrom = (rows) =>
+  [5, 4, 3, 2, 1].map((r) => ({ rating: r, count: rows.filter((x) => x.rating === r).length }));
+const summarize = (rows) => ({
+  avg: rows.length ? Math.round((rows.reduce((a, x) => a + x.rating, 0) / rows.length) * 10) / 10 : 0,
+  count: rows.length,
+  distribution: distFrom(rows),
+});
+const SELLER_REVIEWS_SEED = [
+  {
+    id: 'r1', rating: 5, status: 'approved',
+    text: 'کیفیت عالی و ارسال سریع؛ تقریباً یک ساله هر ماه از این فروشنده می‌خرم و همیشه همون چیزی می‌رسه که توافق کردیم.',
+    createdAt: '2026-10-12 10:00:00',
+    author: { id: '90', userName: 'buyer1', firstName: 'علی', lastName: 'محمدی', avatarUrl: null },
   },
-  items: [
-    {
-      id: 'r1',
-      rating: 5,
-      text: 'کیفیت عالی و ارسال سریع؛ تقریباً یک ساله هر ماه از این فروشنده می‌خرم و همیشه همون چیزی می‌رسه که توافق کردیم.',
-      createdAt: '2026-10-12 10:00:00',
-      status: 'approved',
-      author: { id: '90', userName: 'buyer1', firstName: 'علی', lastName: 'محمدی', avatarUrl: null },
-    },
-    {
-      id: 'r2',
-      rating: 5,
-      text: 'قیمت مناسب و بسته‌بندی مرتب. برای سوپرمارکت ما عالی بود.',
-      createdAt: '2026-10-05 12:30:00',
-      status: 'approved',
-      author: { id: '91', userName: 'buyer2', firstName: 'زهرا', lastName: 'کریمی', avatarUrl: null },
-    },
-    {
-      id: 'r3',
-      rating: 3,
-      text: 'کالا خوب بود ولی ارسال یک روز دیرتر شد.',
-      createdAt: '2026-09-18 09:15:00',
-      status: 'approved',
-      author: { ...ME },
-    },
-  ],
+  {
+    id: 'r2', rating: 5, status: 'approved',
+    text: 'قیمت مناسب و بسته‌بندی مرتب. برای سوپرمارکت ما عالی بود.',
+    createdAt: '2026-10-05 12:30:00',
+    author: { id: '91', userName: 'buyer2', firstName: 'زهرا', lastName: 'کریمی', avatarUrl: null },
+  },
+  {
+    id: 'r3', rating: 3, status: 'approved',
+    text: 'کالا خوب بود ولی ارسال یک روز دیرتر شد.',
+    createdAt: '2026-09-18 09:15:00',
+    author: { ...ME },
+  },
+];
+const BUYER_REVIEWS_SEED = [
+  {
+    id: 'br1', rating: 5, status: 'approved',
+    text: 'پرداخت به‌موقع و بدون چونه؛ سفارش و تحویل هم دقیق همان چیزی بود که توافق شد. خریدار قابل اعتماد.',
+    createdAt: '2026-10-20 16:00:00',
+    author: { id: '51', userName: 'seller1', firstName: 'کاربر', lastName: 'تستی 1', avatarUrl: null },
+  },
+  {
+    id: 'br2', rating: 4, status: 'approved',
+    text: 'هماهنگی خوب و تسویه نقدی در لحظه تحویل. فقط ساعت دریافت بارها کمی تغییر می‌کند.',
+    createdAt: '2026-10-02 11:20:00',
+    author: { id: '52', userName: 'seller2', firstName: 'کاربر', lastName: 'تستی 2', avatarUrl: null },
+  },
+  {
+    id: 'br3', rating: 5, status: 'approved',
+    text: 'سفارش‌های ماهانه‌شان مشخص و منظم است؛ بارگیری سریع و بدون معطلی. یکی از بهترین مشتری‌های ما.',
+    createdAt: '2026-09-25 09:40:00',
+    author: { ...ME },
+  },
+];
+const REVIEWS = {
+  seller: { summary: summarize(SELLER_REVIEWS_SEED), items: SELLER_REVIEWS_SEED },
+  buyer: { summary: summarize(BUYER_REVIEWS_SEED), items: BUYER_REVIEWS_SEED },
 };
+// نظر خودم — upsert واقعی per (هدف، نقش)؛ تا پیش‌نمایش «در انتظار تایید» کار کند
+const MY_REVIEWS = new Map(); // `${ME.userName}:${targetUserName}:${subject}` -> row
 
 /** پاسخ خطای قراردادی — { status:false, message } مثل بک‌اند واقعی */
 class Fail {
@@ -693,17 +759,53 @@ const server = createServer(async (req, res) => {
         : null;
       break;
     }
-    case 'reviews/getSellerReviews':
+    // نظرات — subject جدا می‌کند «درباره فروشنده» از «درباره خریدار» (مالک ۱۱-۱۱)
+    case 'reviews/getSellerReviews': {
+      const subject = body.subject === 'buyer' ? 'buyer' : 'seller';
+      const R = REVIEWS[subject];
+      const target = String(body.userName ?? '');
+      const my = MY_REVIEWS.get(`${ME.userName}:${target}:${subject}`) ?? null;
       data = {
-        summary: REVIEWS.summary,
-        items: REVIEWS.items,
-        myReview: null,
-        total: REVIEWS.items.length,
+        summary: R.summary,
+        items: R.items,
+        myReview: my,
+        total: R.items.length,
         page: 1,
         perPage: 5,
         pageCount: 1,
       };
       break;
+    }
+    // ثبت/ویرایش نظر من — upsert per (هدف، نقش)؛ قانون انتشار: pending تا تایید ادمین
+    case 'reviews/addSellerReview': {
+      const subject = body.subject === 'buyer' ? 'buyer' : 'seller';
+      const rating = Math.min(5, Math.max(1, Number(body.rating) || 0));
+      const text = String(body.text ?? '').trim();
+      if (text.length < 3) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: false,
+          message: subject === 'buyer'
+            ? 'متن نظر درباره این خریدار خیلی کوتاه است (حداقل ۳ نویسه).'
+            : 'متن نظر خیلی کوتاه است (حداقل ۳ نویسه).',
+        }));
+        return;
+      }
+      const key = `${ME.userName}:${String(body.userName ?? '')}:${subject}`;
+      const prev = MY_REVIEWS.get(key);
+      const row = {
+        id: prev?.id ?? 'my' + Date.now().toString(36),
+        rating,
+        text,
+        status: 'pending',
+        author: { ...ME },
+        createdAt: prev?.createdAt ?? new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      MY_REVIEWS.set(key, row);
+      data = row;
+      break;
+    }
     case 'users/getProfile': data = { user: PROFILE }; break;
     // ─── دفتر خرید (خواستهٔ مالک ۱۰-۱۱ دور ۵) — خریدار کالاهای دوره‌ای خود ───
     case 'buyers/getMyBook': {
@@ -880,6 +982,16 @@ const server = createServer(async (req, res) => {
           daysInImach: days,
           lastActiveAt: u.lastActiveAt ?? null,
           activeRecently: u.activeRecently ?? false,
+          // مشخصات کسب‌وکار (خواستهٔ مالک ۱۱-۱۱) — عین کاتالوگ: توضیحات،
+          // احراز هویت، مجوزها و تصاویر + هر اطلاعاتی که برای فروشنده مهم است
+          isVerified: u.isVerified ?? false,
+          isCompany: u.isCompany ?? false,
+          companyName: u.companyName ?? null,
+          businessCategory: u.businessCategory ?? null,
+          businessDesc: u.businessDesc ?? null,
+          address: u.address ?? null,
+          gallery: u.gallery ?? [],
+          certificates: u.certificates ?? [],
         },
         items,
         saversCount: countBookSavers(userName),
@@ -934,6 +1046,36 @@ const server = createServer(async (req, res) => {
           return;
         }
         out.logo = lg || null;
+      }
+      // عنوان بنر دفتر (خواستهٔ مالک ۱۱-۱۱) — متن معرفی دفتر روی جلد برند
+      if (body.bannerTitle !== undefined) {
+        const t = String(body.bannerTitle ?? '').trim();
+        if (t.length > 120) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: false, message: 'عنوان بنر دفتر حداکثر ۱۲۰ نویسه است.' }));
+          return;
+        }
+        out.bannerTitle = t || null;
+      }
+      // سمت مسئول خرید (خواستهٔ مالک ۱۱-۱۱) — کنار نام خریدار روی جلد دفتر
+      if (body.managerTitle !== undefined) {
+        const t = String(body.managerTitle ?? '').trim();
+        if (t.length > 40) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: false, message: 'عنوان سمت حداکثر ۴۰ نویسه است.' }));
+          return;
+        }
+        out.managerTitle = t || null;
+      }
+      // شرایط تامین (خواستهٔ مالک ۱۱-۱۱) — متنی که تامین‌کنندگان در دفتر می‌بینند
+      if (body.supplyTerms !== undefined) {
+        const t = String(body.supplyTerms ?? '').trim();
+        if (t.length > 600) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: false, message: 'شرایط تامین حداکثر ۶۰۰ نویسه است.' }));
+          return;
+        }
+        out.supplyTerms = t || null;
       }
       BUYER_BOOK_SETTINGS.set(ME.userName, out);
       data = { settings: resolvedBookSettings(ME.userName) };

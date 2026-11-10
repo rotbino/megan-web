@@ -1665,13 +1665,26 @@ export interface SellerReviewsPage {
 /** نظرات فروشنده + خلاصه امتیاز — عمومی (مهمان هم)
  *  توکن «اختیاری» پیوست می‌شود: بک‌اند OptionalJwtAuthGuard دارد و توکن خراب
  *  را مثل مهمان ادامه می‌دهد. با توکن، نظر خودِ کاربر (pending/rejected —
- *  قانون انتشار مالک ۲-۱۱) هم برمی‌گردد تا کارت سنجاق‌شده را ببیند. */
-export async function getSellerReviews(userName: string, page = 1, perPage = 10): Promise<SellerReviewsPage> {
-  return apiFetch<SellerReviewsPage>('/reviews/getSellerReviews', { userName, page, perPage });
+ *  قانون انتشار مالک ۲-۱۱) هم برمی‌گردد تا کارت سنجاق‌شده را ببیند.
+ *  subject (خواستهٔ مالک ۱۱-۱۱): 'seller' = نظر درباره کاربر به‌عنوان فروشنده
+ *  (در کاتالوگ)؛ 'buyer' = نظر درباره او به‌عنوان خریدار (در دفتر خرید) —
+ *  امتیاز دو نقش جدا می‌ماند؛ ممکن است خریدار خوبی باشد ولی فروشنده خوبی نه. */
+export async function getSellerReviews(
+  userName: string,
+  page = 1,
+  perPage = 10,
+  subject: 'seller' | 'buyer' = 'seller',
+): Promise<SellerReviewsPage> {
+  return apiFetch<SellerReviewsPage>('/reviews/getSellerReviews', { userName, page, perPage, subject });
 }
 
-/** ثبت/ویرایش نظر من درباره فروشنده (upsert) */
-export async function addSellerReview(input: { userName: string; rating: number; text: string }): Promise<SellerReviewRow> {
+/** ثبت/ویرایش نظر من (upsert) — subject همان بُعد نقش هدف است ('seller'|'buyer') */
+export async function addSellerReview(input: {
+  userName: string;
+  rating: number;
+  text: string;
+  subject?: 'seller' | 'buyer';
+}): Promise<SellerReviewRow> {
   return apiFetch<SellerReviewRow>('/reviews/addSellerReview', input);
 }
 
@@ -2055,9 +2068,12 @@ export async function getMyBuyerBookSettings(): Promise<BuyerBookSettings | null
 }
 
 /** ذخیرهٔ تنظیمات دفتر — فقط فیلدهای ارسالی عوض می‌شوند؛ خطای
- *  ولیدیشن/تکراری‌بودن آیدی با پیام بک‌اند برمی‌گردد. */
+ *  ولیدیشن/تکراری‌بودن آیدی با پیام بک‌اند برمی‌گردد. متن‌های دفتر
+ *  (عنوان بنر/سمت/شرایط تامین) هم همین‌جا ذخیره می‌شوند (مالک ۱۱-۱۱). */
 export async function updateMyBuyerBookSettings(
-  patch: Partial<Pick<BuyerBookSettings, 'bookId' | 'brandColor' | 'logo'>>,
+  patch: Partial<
+    Pick<BuyerBookSettings, 'bookId' | 'brandColor' | 'logo' | 'bannerTitle' | 'managerTitle' | 'supplyTerms'>
+  >,
 ): Promise<BuyerBookSettings> {
   let d: { settings: BuyerBookSettings } | null;
   try {

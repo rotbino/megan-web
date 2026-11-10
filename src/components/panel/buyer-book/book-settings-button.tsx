@@ -1,11 +1,14 @@
 'use client';
 
 /**
- * دکمه + دیالوگ «تنظیمات دفتر خرید» (خواستهٔ مالک ۱۰-۱۱ دور ۵) — تب «درخواست‌های
- * خرید دوره‌ای» پنل. دفتر خرید همان کالاهای دوره‌ای کاربر است که فروشندگان
- * می‌بینند و ذخیره می‌کنند؛ این دیالوگ شخصی‌سازی آن است:
+ * دکمه + دیالوگ «تنظیمات دفتر خرید» (خواستهٔ مالک ۱۰-۱۱ دور ۵ + ۱۱-۱۱) — تب
+ * «درخواست‌های خرید دوره‌ای» پنل. دفتر خرید همان کالاهای دوره‌ای کاربر است که
+ * فروشندگان می‌بینند و ذخیره می‌کنند؛ این دیالوگ شخصی‌سازی آن است:
  *  • آیدی لینک (/b/{bookId}) — پیش‌فرض تصادفی؛ با بررسی زندهٔ آزاد بودن
- *  • رنگ برند + لوگوی دلخواه (آپلود) — با پیش‌نمایش زندهٔ هدر دفتر
+ *  • متن‌های دفتر (خواستهٔ مالک ۱۱-۱۱): عنوان بنر معرفی دفتر، سمت مسئول خرید
+ *    (مثل «مسوول خرید») و شرایط تامین — هر شرطی که تامین‌کنندگان باید بدانند
+ *    (مثل «فقط تولیدکنندگان پیشنهاد بدهند» یا «حمل بر عهده فروشنده»)؛ اختیاری
+ *  • رنگ برند + لوگوی دلخواه (آپلود) — با پیش‌نمایش زندهٔ جلد دفتر
  * ذخیره: buyerBook/updateSettings (سرور منبع حقیقت ولیدیشن است).
  * چیدمان عین مودال تنظیمات کاتالوگ: بدنهٔ اسکرول‌شوندهٔ عمودی + فوتر فیکس.
  */
@@ -21,11 +24,14 @@ import {
   ImagePlus,
   Loader2,
   Palette,
+  ScrollText,
   Trash2,
+  Type,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -41,6 +47,7 @@ import { uploadImage } from '@/lib/api/client';
 import { compressImage } from '@/lib/image-compress';
 import { useOrigin } from '@/lib/use-origin';
 import { CATALOG_COLORS, catalogIdError, isValidBrandColor } from '@/lib/catalog-brand';
+import { toFa } from '@/lib/format';
 import type { BuyerBookSettings } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -50,6 +57,11 @@ type IdStatus =
   | { kind: 'free' }
   | { kind: 'taken'; by: string }
   | { kind: 'error'; message: string };
+
+/** سقف نویسه‌های متن‌های دفتر — همان ولیدیشن بک‌اند (stub + مگان) */
+const BANNER_TITLE_MAX = 120;
+const MANAGER_TITLE_MAX = 40;
+const SUPPLY_TERMS_MAX = 600;
 
 /** جعبهٔ لوگو — کلیک = انتخاب فایل → فشرده‌سازی → آپلود واقعی؛ حذف جدا */
 function LogoBox({
@@ -134,13 +146,21 @@ export function BookSettingsButton({ className }: { className?: string }) {
   const settledEmpty =
     !settingsQuery.isLoading && settingsQuery.isFetched && !fetched && !!userName;
   const settings: BuyerBookSettings | null = fetched ??
-    (settledEmpty ? { bookId: null, brandColor: null, logo: null } : null);
+    (settledEmpty
+      ? {
+          bookId: null, brandColor: null, logo: null,
+          bannerTitle: null, managerTitle: null, supplyTerms: null,
+        }
+      : null);
   const updateSettings = useUpdateBuyerBookSettings();
 
   // ── پیش‌نویس فیلدها ── seed با دیتای سرور ──
   const [idDraft, setIdDraft] = useState('');
   const [colorDraft, setColorDraft] = useState('');
   const [logoDraft, setLogoDraft] = useState<string | null>(null);
+  const [bannerDraft, setBannerDraft] = useState('');
+  const [managerDraft, setManagerDraft] = useState('');
+  const [termsDraft, setTermsDraft] = useState('');
   const [logoUploading, setLogoUploading] = useState(false);
   const [seeded, setSeeded] = useState(false);
 
@@ -149,6 +169,9 @@ export function BookSettingsButton({ className }: { className?: string }) {
     setIdDraft(settings.bookId ?? '');
     setColorDraft(settings.brandColor ?? '');
     setLogoDraft(settings.logo ?? null);
+    setBannerDraft(settings.bannerTitle ?? '');
+    setManagerDraft(settings.managerTitle ?? '');
+    setTermsDraft(settings.supplyTerms ?? '');
     setSeeded(true);
   }, [settings, seeded]);
 
@@ -196,7 +219,10 @@ export function BookSettingsButton({ className }: { className?: string }) {
     !!settings &&
     (idDraft !== currentBookId ||
       (colorDraft || null) !== (settings.brandColor ?? null) ||
-      (logoDraft ?? null) !== (settings.logo ?? null));
+      (logoDraft ?? null) !== (settings.logo ?? null) ||
+      (bannerDraft.trim() || null) !== (settings.bannerTitle ?? null) ||
+      (managerDraft.trim() || null) !== (settings.managerTitle ?? null) ||
+      (termsDraft.trim() || null) !== (settings.supplyTerms ?? null));
 
   const idBlocked =
     (!!idDraft && !!formatError) || idStatus.kind === 'taken' || idStatus.kind === 'checking';
@@ -252,6 +278,15 @@ export function BookSettingsButton({ className }: { className?: string }) {
         ...(idDraft !== currentBookId ? { bookId: idDraft } : {}),
         ...(colorDraft !== (settings?.brandColor ?? '') ? { brandColor: colorDraft } : {}),
         ...(logoDraft !== (settings?.logo ?? null) ? { logo: logoDraft } : {}),
+        ...((bannerDraft.trim() || null) !== (settings?.bannerTitle ?? null)
+          ? { bannerTitle: bannerDraft.trim() }
+          : {}),
+        ...((managerDraft.trim() || null) !== (settings?.managerTitle ?? null)
+          ? { managerTitle: managerDraft.trim() }
+          : {}),
+        ...((termsDraft.trim() || null) !== (settings?.supplyTerms ?? null)
+          ? { supplyTerms: termsDraft.trim() }
+          : {}),
       });
       toast({ description: 'تنظیمات دفتر خرید ذخیره شد.' });
     } catch (e) {
@@ -284,7 +319,7 @@ export function BookSettingsButton({ className }: { className?: string }) {
             </DialogTitle>
             <DialogDescription className="text-start leading-5">
               دفتر خرید شما همان کالاهای دوره‌ای‌تان است؛ فروشندگان آن را می‌بینند و
-              ذخیره می‌کنند. این‌جا آیدی لینک، رنگ برند و لوگوی آن را شخصی کنید.
+              ذخیره می‌کنند. این‌جا آیدی لینک، متن‌ها، رنگ برند و لوگوی آن را شخصی کنید.
             </DialogDescription>
           </DialogHeader>
 
@@ -386,6 +421,92 @@ export function BookSettingsButton({ className }: { className?: string }) {
                   )}
                 </div>
 
+                {/* ── متن‌های دفتر (خواستهٔ مالک ۱۱-۱۱) — عنوان بنر، سمت و شرایط تامین ── */}
+                <div className="space-y-3.5 rounded-md border bg-card p-4">
+                  <p className="flex items-center gap-2 text-sm font-bold">
+                    <Type size={15} className="text-primary" />
+                    متن‌های دفتر
+                  </p>
+
+                  {/* عنوان بنر — معرفی دفتر روی جلد برند */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <label htmlFor="book-banner-title" className="text-xs font-bold">
+                        عنوان دفتر روی بنر
+                      </label>
+                      <span className="font-num text-[10px] text-muted-foreground">
+                        {toFaCount(bannerDraft.length, BANNER_TITLE_MAX)}
+                      </span>
+                    </div>
+                    <Input
+                      id="book-banner-title"
+                      value={bannerDraft}
+                      onChange={(e) => setBannerDraft(e.target.value.slice(0, BANNER_TITLE_MAX))}
+                      placeholder="خریدهای دوره‌ای شرکت آرمان؛ لطفا پیشنهادهای تامین خود را ارسال کنید."
+                      className="h-10 rounded-md text-xs"
+                      aria-label="عنوان دفتر روی بنر"
+                      autoComplete="off"
+                    />
+                    <p className="text-[10.5px] leading-5 text-muted-foreground">
+                      روی جلد دفتر، بزرگ و با رنگ برندتان دیده می‌شود؛ خالی بماند = جملهٔ
+                      پیش‌فرض («خریدهای دوره‌ای …؛ لطفا پیشنهادهای تامین خود را ارسال کنید.»).
+                    </p>
+                  </div>
+
+                  {/* سمت مسئول خرید — کنار نام */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <label htmlFor="book-manager-title" className="text-xs font-bold">
+                        سمت شما (کنار نام)
+                      </label>
+                      <span className="font-num text-[10px] text-muted-foreground">
+                        {toFaCount(managerDraft.length, MANAGER_TITLE_MAX)}
+                      </span>
+                    </div>
+                    <Input
+                      id="book-manager-title"
+                      value={managerDraft}
+                      onChange={(e) => setManagerDraft(e.target.value.slice(0, MANAGER_TITLE_MAX))}
+                      placeholder="مسوول خرید"
+                      className="h-10 rounded-md text-xs"
+                      aria-label="سمت شما، مثل مسوول خرید"
+                      autoComplete="off"
+                    />
+                    <p className="text-[10.5px] leading-5 text-muted-foreground">
+                      بالای نام شما روی جلد دفتر و کنار نام در هدر می‌نشیند؛ مثل «مسوول
+                      خرید» یا «مدیر تامین». خالی بماند = نمایش داده نمی‌شود.
+                    </p>
+                  </div>
+
+                  {/* شرایط تامین — متن دلخواه برای تامین‌کنندگان (اختیاری) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <label htmlFor="book-supply-terms" className="flex items-center gap-1.5 text-xs font-bold">
+                        <ScrollText size={13} className="text-primary/80" />
+                        شرایط تامین (اختیاری)
+                      </label>
+                      <span className="font-num text-[10px] text-muted-foreground">
+                        {toFaCount(termsDraft.length, SUPPLY_TERMS_MAX)}
+                      </span>
+                    </div>
+                    <Textarea
+                      id="book-supply-terms"
+                      value={termsDraft}
+                      onChange={(e) => setTermsDraft(e.target.value.slice(0, SUPPLY_TERMS_MAX))}
+                      placeholder={
+                        'مثال:\nفقط تولیدکنندگان پیشنهاد تامین ارسال کنند.\nهزینه حمل بر عهده تامین‌کننده است.\nپرداخت نقدی در لحظه تحویل انجام می‌شود.'
+                      }
+                      rows={4}
+                      className="rounded-md text-xs leading-6"
+                      aria-label="شرایط تامین برای تامین‌کنندگان"
+                    />
+                    <p className="text-[10.5px] leading-5 text-muted-foreground">
+                      هر شرط یا توضیحی که تامین‌کنندگان باید پیش از ارسال پیشنهاد بدانند؛
+                      در دفتر شما بخش «شرایط تامین» می‌شود. خالی بماند = این بخش نمایش داده نمی‌شود.
+                    </p>
+                  </div>
+                </div>
+
                 {/* ── برند و ظاهر ── */}
                 <div className="space-y-3 rounded-md border bg-card p-4">
                   <p className="flex items-center gap-2 text-sm font-bold">
@@ -467,44 +588,58 @@ export function BookSettingsButton({ className }: { className?: string }) {
                     </div>
                   </div>
 
-                  {/* پیش‌نمایش زندهٔ هدر — حسِ مالکیت */}
+                  {/* پیش‌نمایش زندهٔ جلد دفتر — بنر عنوان‌دار + لوگو + سمت + نام */}
                   <div className="space-y-1.5">
                     <p className="text-xs font-bold">پیش‌نمایش</p>
-                    <div
-                      className="flex items-center gap-2.5 rounded-lg border px-3 py-2.5"
-                      style={{ borderColor: colorDraft ? `${colorDraft}55` : undefined }}
-                    >
-                      {logoDraft ? (
-                        <img
-                          src={logoDraft}
-                          alt="لوگو"
-                          className="size-9 shrink-0 rounded-lg border object-cover"
-                        />
-                      ) : (
-                        <span
-                          className="grid size-9 shrink-0 place-items-center rounded-lg text-base font-black text-white shadow-sm"
-                          style={{ backgroundColor: previewAccent }}
-                        >
-                          {previewName.charAt(0) || 'د'}
-                        </span>
-                      )}
-                      <div className="min-w-0 leading-tight">
-                        <p className="truncate text-sm font-extrabold">{previewName}</p>
-                        <p
-                          className="mt-0.5 flex items-center gap-1 text-[10.5px] font-medium text-muted-foreground"
-                          style={colorDraft ? { color: colorDraft } : undefined}
-                        >
-                          <BookOpen size={10} />
+                    <div className="overflow-hidden rounded-lg border">
+                      {/* بنر — همان جلد واقعی دفتر */}
+                      <div
+                        className="flex flex-col gap-1.5 px-3 py-2.5"
+                        style={{
+                          background: `linear-gradient(135deg, ${previewAccent} 0%, color-mix(in srgb, ${previewAccent} 72%, black) 100%)`,
+                        }}
+                      >
+                        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[9px] font-extrabold text-white">
+                          <BookOpen size={9} strokeWidth={2.4} />
                           دفتر خرید
+                        </span>
+                        <p className="line-clamp-2 text-[11px] font-extrabold leading-5 text-white">
+                          {bannerDraft.trim() ||
+                            `خریدهای دوره‌ای ${previewName}؛ لطفا پیشنهادهای تامین خود را ارسال کنید.`}
                         </p>
                       </div>
-                      <span
-                        className="ms-auto flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[11px] font-bold text-white shadow-sm"
-                        style={{ backgroundColor: previewAccent }}
-                      >
-                        <Bookmark size={12} />
-                        ذخیره دفتر
-                      </span>
+                      {/* ردیف هویت — لوگو + سمت + نام */}
+                      <div className="flex items-center gap-2.5 bg-card px-3 py-2.5">
+                        {logoDraft ? (
+                          <img
+                            src={logoDraft}
+                            alt="لوگو"
+                            className="size-9 shrink-0 rounded-lg border object-cover"
+                          />
+                        ) : (
+                          <span
+                            className="grid size-9 shrink-0 place-items-center rounded-lg text-base font-black text-white shadow-sm"
+                            style={{ backgroundColor: previewAccent }}
+                          >
+                            {previewName.charAt(0) || 'د'}
+                          </span>
+                        )}
+                        <div className="min-w-0 leading-tight">
+                          {managerDraft.trim() && (
+                            <p className="text-[9.5px] font-extrabold" style={{ color: colorDraft || 'var(--primary)' }}>
+                              {managerDraft.trim()}
+                            </p>
+                          )}
+                          <p className="truncate text-[13px] font-extrabold">{previewName}</p>
+                        </div>
+                        <span
+                          className="ms-auto flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[11px] font-bold text-white shadow-sm"
+                          style={{ backgroundColor: previewAccent }}
+                        >
+                          <Bookmark size={12} />
+                          ذخیره دفتر
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -541,4 +676,9 @@ export function BookSettingsButton({ className }: { className?: string }) {
       </Dialog>
     </>
   );
+}
+
+/** شمارندهٔ نویسهٔ فارسی — «۱۲/۱۲۰» */
+function toFaCount(n: number, max: number): string {
+  return `${toFa(n)}/${toFa(max)}`;
 }

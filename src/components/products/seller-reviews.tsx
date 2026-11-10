@@ -1,16 +1,20 @@
 'use client';
 
 /**
- * نظرات کاربران درباره فروشنده — عین ساختار باسکول در کاتالوگ:
- * خلاصه امتیاز (میانگین + ستاره + توزیع ۵..۱) + لیست نظرات + فرم
- * ثبت/ویرایش نظر خودم (لاگین لازم). مهمان‌ها لیست را می‌بینند، برای نوشتن
- * مودال ورود باز می‌شود.
+ * نظرات کاربران — عین ساختار باسکول: خلاصه امتیاز (میانگین + ستاره + توزیع
+ * ۵..۱) + لیست نظرات + فرم ثبت/ویرایش نظر خودم (لاگین لازم). مهمان‌ها لیست
+ * را می‌بینند، برای نوشتن مودال ورود باز می‌شود.
+ *
+ * بُعد نقش (خواستهٔ مالک ۱۱-۱۱): subject='seller' (پیش‌فرض — نظر درباره این
+ * کاربر به‌عنوان فروشنده، در کاتالوگ) از subject='buyer' (نظر درباره او
+ * به‌عنوان خریدار، در دفتر خرید) جدا است — ممکن است خریدار خوبی باشد ولی
+ * فروشنده خوبی نباشد؛ امتیاز دو نقش مستقل می‌مانند.
  *
  * قانون انتشار (خواسته مالک ۲-۱۱): نظر فقط پس از «تحقیق و تأیید» ادمین
  * عمومی می‌شود؛ بلافاصله بعد از ثبت فقط خودِ نویسنده آن را (به‌صورت سنجاق‌شده
  * بالای لیست) می‌بیند و زیرش نوشته «نظر شما بعد از تحقیق و تایید منتشر
- * می‌شود». ثبت نظر هم فقط با حداقل یک تماس یا چت با فروشنده ممکن است —
- * پیام دقیق از بک‌اند (REVIEW_NEEDS_CONTACT) زیر فرم نمایش داده می‌شود.
+ * می‌شود». ثبت نظر هم فقط با حداقل یک تماس یا چت ممکن است — پیام دقیق از
+ * بک‌اند (REVIEW_NEEDS_CONTACT) زیر فرم نمایش داده می‌شود.
  */
 
 import { useState } from 'react';
@@ -84,7 +88,16 @@ function ReviewCard({ review, mine = false }: { review: SellerReviewRow; mine?: 
   );
 }
 
-export function SellerReviews({ userName, sellerName }: { userName: string; sellerName: string }) {
+export function SellerReviews({
+  userName,
+  sellerName,
+  subject = 'seller',
+}: {
+  userName: string;
+  sellerName: string;
+  /** نقش هدف نظر — 'seller' کاتالوگ فروشنده؛ 'buyer' دفتر خرید (مالک ۱۱-۱۱) */
+  subject?: 'seller' | 'buyer';
+}) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [page, setPage] = useState(1);
@@ -94,8 +107,19 @@ export function SellerReviews({ userName, sellerName }: { userName: string; sell
   const [text, setText] = useState('');
   const [error, setError] = useState('');
 
-  const { data, isLoading } = useSellerReviews(userName, page);
+  const { data, isLoading } = useSellerReviews(userName, page, subject);
   const add = useAddSellerReview();
+
+  // برچسب‌های نقش‌محور — خریدار و فروشنده هرکدام لحن خودشان را دارند
+  const isBuyer = subject === 'buyer';
+  const roleLabel = isBuyer ? 'این خریدار' : 'این فروشنده';
+  const heading = isBuyer ? 'نظر فروشندگان درباره این خریدار' : 'نظرات کاربران';
+  const placeholder = isBuyer
+    ? 'تجربه‌تان از همکاری با این خریدار را بنویسید (پرداخت به‌موقع، هماهنگی، حجم خرید…)'
+    : 'تجربه‌تان از معامله با این فروشنده را بنویسید (کیفیت کالا، خوش‌قولی، پاسخگویی…)';
+  const contactNote = isBuyer
+    ? 'فقط فروشنده‌هایی که با این خریدار تماس یا همکاری داشته‌اند می‌توانند نظر ثبت کنند.'
+    : 'فقط کاربرانی که با فروشنده تماس یا چت داشته‌اند می‌توانند نظر ثبت کنند.';
 
   const summary = data?.summary;
   const items = data?.items ?? [];
@@ -125,7 +149,7 @@ export function SellerReviews({ userName, sellerName }: { userName: string; sell
       return;
     }
     add.mutate(
-      { userName, rating, text: text.trim() },
+      { userName, rating, text: text.trim(), subject },
       {
         onSuccess: () => {
           setFormOpen(false);
@@ -141,8 +165,15 @@ export function SellerReviews({ userName, sellerName }: { userName: string; sell
   return (
     <section id="reviews" aria-labelledby="reviews-title" className="scroll-mt-24">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 id="reviews-title" className="text-base font-extrabold">نظرات کاربران</h2>
-        <Button size="sm" className="h-8 rounded-[10px] px-3 text-[11.5px]" onClick={openForm} disabled={isLoading}>
+        <div className="min-w-0">
+          <h2 id="reviews-title" className="text-base font-extrabold">{heading}</h2>
+          {isBuyer && (
+            <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+              امتیاز {sellerName} به‌عنوان خریدار، جدا از امتیاز او به‌عنوان فروشنده ثبت می‌شود.
+            </p>
+          )}
+        </div>
+        <Button size="sm" className="h-8 shrink-0 rounded-[10px] px-3 text-[11.5px]" onClick={openForm} disabled={isLoading}>
           {myReview ? <PencilLine size={13} /> : <MessageSquarePlus size={13} />}
           {myReview ? 'ویرایش نظر من' : 'ثبت نظر'}
         </Button>
@@ -164,7 +195,7 @@ export function SellerReviews({ userName, sellerName }: { userName: string; sell
               <span className="text-3xl font-extrabold leading-none text-(--catalog-accent)">{toFa(summary.avg)}</span>
               <div className="space-y-1">
                 <RatingStars value={summary.avg} size={14} />
-                <p className="text-[11px] text-muted-foreground">{toFa(summary.count)} نظر درباره این فروشنده</p>
+                <p className="text-[11px] text-muted-foreground">{toFa(summary.count)} نظر درباره {roleLabel}</p>
               </div>
             </div>
             {/* توزیع — میله‌های ۵..۱ مثل باسکول */}
@@ -246,7 +277,7 @@ export function SellerReviews({ userName, sellerName }: { userName: string; sell
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="تجربه‌تان از معامله با این فروشنده را بنویسید (کیفیت کالا، خوش‌قولی، پاسخگویی…)"
+            placeholder={placeholder}
             rows={4}
             maxLength={1000}
             aria-label="متن نظر"
@@ -265,7 +296,7 @@ export function SellerReviews({ userName, sellerName }: { userName: string; sell
           {/* قانون انتشار — انتظار درست از همان لحظهٔ ثبت */}
           <p className="flex items-center gap-1.5 border-t border-border/70 pt-2.5 text-[10.5px] text-muted-foreground">
             <Clock size={12} className="shrink-0 text-(--catalog-accent)/70" />
-            نظر شما پس از تحقیق و تأیید منتشر می‌شود؛ فقط کاربرانی که با فروشنده تماس یا چت داشته‌اند می‌توانند نظر ثبت کنند.
+            نظر شما پس از تحقیق و تأیید منتشر می‌شود؛ {contactNote}
           </p>
         </form>
       )}

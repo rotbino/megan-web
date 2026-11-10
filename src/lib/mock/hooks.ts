@@ -789,12 +789,16 @@ export function useSubmitVerification() {
   });
 }
 
-// ─── نظرات فروشنده ──────────────────────────────────────────────────────────
+// ─── نظرات کاربران ──────────────────────────────────────────────────────────
 
-export function useSellerReviews(userName: string, page = 1) {
+/** کلید کش نظرات با بُعد نقش (خواستهٔ مالک ۱۱-۱۱) — 'seller' (کاتالوگ) از
+ *  'buyer' (دفتر خرید) جدا کش می‌شود؛ یک نقطهٔ حقیقت برای query و mutation */
+const reviewsKey = (userName: string, subject: string) => ['user-reviews', userName, subject] as const;
+
+export function useSellerReviews(userName: string, page = 1, subject: 'seller' | 'buyer' = 'seller') {
   return useQuery({
-    queryKey: ['seller-reviews', userName, page] as const,
-    queryFn: () => api.getSellerReviews(userName, page),
+    queryKey: [...reviewsKey(userName, subject), page] as const,
+    queryFn: () => api.getSellerReviews(userName, page, 10, subject),
     enabled: Boolean(userName),
     staleTime: 60_000,
   });
@@ -803,9 +807,10 @@ export function useSellerReviews(userName: string, page = 1) {
 export function useAddSellerReview() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { userName: string; rating: number; text: string }) => api.addSellerReview(input),
+    mutationFn: (input: { userName: string; rating: number; text: string; subject?: 'seller' | 'buyer' }) =>
+      api.addSellerReview(input),
     onSuccess: (_d, input) => {
-      void queryClient.invalidateQueries({ queryKey: ['seller-reviews', input.userName] });
+      void queryClient.invalidateQueries({ queryKey: reviewsKey(input.userName, input.subject ?? 'seller') });
       void queryClient.invalidateQueries({ queryKey: ['seller', input.userName] });
     },
   });
