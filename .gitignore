@@ -57,6 +57,8 @@ server.log
 # دادهٔ زمان اجرای لاگ جستجو/گوگل — محلی است، وارد گیت نمی‌شود
 /.data/
 megan-back/
+# کلون‌های محلی (مثل repos/megan-back برای کار هم‌زمان بک‌اند/فرانت) — وارد گیت نمی‌شوند
+/repos/
 .local-mongo-data/
 .zscripts/
 
