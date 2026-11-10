@@ -2017,3 +2017,99 @@ export async function resolveCatalogPublicId(id: string): Promise<CatalogPublicR
     return null;
   }
 }
+
+/* ─── دفتر خرید عمومی (خواستهٔ مالک ۱۰-۱۱ دور ۵) — قرینهٔ کاتالوگ برای
+ *  خریداران: صفحهٔ /b/{bookId} با رنگ/لوگوی دلخواه، ذخیره توسط فروشنده ─── */
+
+import type {
+  BuyerBookPublicData,
+  BuyerBookPublicResolve,
+  BuyerBookSettings,
+  SavedBuyerBookRow,
+} from '@/lib/types';
+
+/** رزولو آیدی عمومی دفتر خرید — SSR پوستهٔ برند /b/{id}؛ نبود = null (۴۰۴) */
+export async function resolveBuyerBookPublicId(id: string): Promise<BuyerBookPublicResolve | null> {
+  try {
+    const d = await apiFetch<BuyerBookPublicResolve | null>('/buyerBook/resolvePublicId', { id }, { auth: false });
+    return d && d.userName && d.settings ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+/** دیتای کامل دفتر عمومی — با توکن (گیت: مالک یا دارندهٔ بستهٔ فعال).
+ *  خطای NEED_PACKAGE = نمایش قفل و دعوت به خرید بسته. */
+export async function getBuyerBookPublic(id: string): Promise<BuyerBookPublicData | null> {
+  return apiFetch<BuyerBookPublicData | null>('/buyerBook/getPublic', { id });
+}
+
+/** تنظیمات دفتر خرید خودم (پنل خریدار → مودال تنظیمات) — خطا = null */
+export async function getMyBuyerBookSettings(): Promise<BuyerBookSettings | null> {
+  try {
+    const d = await apiFetch<{ settings: BuyerBookSettings }>('/buyerBook/getMySettings', {});
+    return d?.settings ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** ذخیرهٔ تنظیمات دفتر — فقط فیلدهای ارسالی عوض می‌شوند؛ خطای
+ *  ولیدیشن/تکراری‌بودن آیدی با پیام بک‌اند برمی‌گردد. */
+export async function updateMyBuyerBookSettings(
+  patch: Partial<Pick<BuyerBookSettings, 'bookId' | 'brandColor' | 'logo'>>,
+): Promise<BuyerBookSettings> {
+  let d: { settings: BuyerBookSettings } | null;
+  try {
+    d = await apiFetch<{ settings: BuyerBookSettings }>('/buyerBook/updateSettings', patch);
+  } catch (e) {
+    if (
+      e instanceof ApiError &&
+      (e.status === 404 || e.code === 'NOT_FOUND' || /^Cannot\s+(POST|GET)/i.test(e.message))
+    ) {
+      throw new ApiError(
+        'بک‌اند متصل هنوز اندپوینت تنظیمات دفتر خرید (buyerBook/updateSettings) را ندارد؛ پس از افزودن اندپوینت‌های buyerBook/* به بک‌اند مگان، ذخیره فعال می‌شود.',
+        404,
+        'BUYERBOOK_UNSUPPORTED',
+      );
+    }
+    throw e; // ولیدیشن/تکراری‌بودن آیدی — پیام خود بک‌اند
+  }
+  if (!d?.settings) {
+    throw new ApiError('ذخیرهٔ تنظیمات دفتر خرید ممکن نشد؛ دوباره تلاش کنید.', 0, 'BUYERBOOK_SETTINGS_FAIL');
+  }
+  return d.settings;
+}
+
+/** آیا من این دفتر خرید را ذخیره کرده‌ام؟ — فقط کاربر واردشده */
+export async function isBuyerBookSaved(buyerUserName: string): Promise<boolean> {
+  try {
+    const d = await apiFetch<{ saved: boolean }>('/buyerBook/isSaved', { userName: buyerUserName });
+    return typeof d?.saved === 'boolean' ? d.saved : false;
+  } catch {
+    return false;
+  }
+}
+
+/** ذخیره/حذف ذخیرهٔ دفتر خرید (toggle) — جواب: وضعیت تازه */
+export async function toggleBuyerBookSave(buyerUserName: string): Promise<boolean> {
+  const d = await apiFetch<{ saved: boolean }>('/buyerBook/toggleSave', { userName: buyerUserName });
+  if (!d || typeof d.saved !== 'boolean') {
+    throw new ApiError(
+      'ذخیرهٔ دفتر خرید روی بک‌اند متصل فعال نیست؛ اندپوینت‌های buyerBook/* را به بک‌اند اضافه کنید.',
+      404,
+      'BUYERBOOK_UNSUPPORTED',
+    );
+  }
+  return d.saved;
+}
+
+/** دفاتر خرید ذخیره‌شدهٔ من — پنل فروشنده، تب «دفاتر ذخیره شده» */
+export async function getMySavedBuyerBooks(): Promise<SavedBuyerBookRow[]> {
+  try {
+    const d = await apiFetch<{ items: SavedBuyerBookRow[] } | SavedBuyerBookRow[]>('/buyerBook/getMySaved', {});
+    return Array.isArray(d) ? d : (d?.items ?? []);
+  } catch {
+    return [];
+  }
+}

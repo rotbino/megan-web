@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button';
 import { PanelCard } from '@/components/panel/panel-parts';
 import { useMyVerification, usePanelProfile, useSubmitVerification } from '@/lib/mock/hooks';
 import type { VerificationDocKey } from '@/lib/mock/api';
+import { compressImage } from '@/lib/image-compress';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -43,7 +44,6 @@ function validateImage(file: File): string | null {
   if (file.size < MIN_BYTES) return 'حجم تصویر بسیار کم است — تصویر واضح‌تری انتخاب کنید.';
   return null;
 }
-
 /** برچسب فارسی اسلات‌های مدرک — مشترک با نمای وضعیت */
 const DOC_SLOTS: Array<{ key: VerificationDocKey; label: string }> = [
   { key: 'nationalCardFront', label: 'روی کارت ملی' },
@@ -201,18 +201,21 @@ export default function VerificationPage() {
     [urls],
   );
 
-  const pick = (key: VerificationDocKey, file: File) => {
+  const pick = async (key: VerificationDocKey, file: File) => {
     const problem = validateImage(file);
     if (problem) {
       setError(problem);
       return;
     }
     setError(null);
+    // بازفشرده‌سازی سمت کلاینت (رفع باگ ۱۰-۱۱: آپلود ناقص/MULTIPART_TRUNCATED —
+    // عکس‌های ۵-۸MB موبایل به ~۱MB می‌رسند؛ متن کارت با ۱۸۰۰px/کیفیت ۰.۸۵ خواناست)
+    const optimized = await compressImage(file);
     setUrls((prev) => {
       if (prev[key]) URL.revokeObjectURL(prev[key]!);
-      return { ...prev, [key]: URL.createObjectURL(file) };
+      return { ...prev, [key]: URL.createObjectURL(optimized) };
     });
-    setFiles((prev) => ({ ...prev, [key]: file }));
+    setFiles((prev) => ({ ...prev, [key]: optimized }));
   };
 
   const clear = (key: VerificationDocKey) => {

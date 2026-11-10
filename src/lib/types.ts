@@ -577,6 +577,9 @@ export interface BuyerDirectoryItem {
   lastActiveAt: string;
   activeRecently: boolean; // فعال در ۷ روز اخیر
   stale: boolean; // غایب بیش از ۹۰ روز — کم‌رنگ
+  /** آیدی عمومی دفتر خرید این خریدار — لینک ظریف فوتر کارت → /b/{bookId}
+   *  (خواستهٔ مالک ۱۰-۱۱ دور ۵)؛ نبود = دفتر عمومی ندارد */
+  bookId?: string | null;
 }
 
 /** فیلتر دایرکتوری خریداران */
@@ -813,4 +816,68 @@ export interface SavedCatalogRow {
   cityName: string | null;
   productCount: number;
   savedAt: string;
+}
+
+// ─────────────────────────────────────────────────────────────
+// دفتر خرید عمومی — قرینهٔ کاتالوگ برای خریداران (خواستهٔ مالک ۱۰-۱۱ دور ۵)
+// ─────────────────────────────────────────────────────────────
+
+/** تنظیمات شخصی‌سازی دفتر خرید — آیدی لینک (/b/{bookId}؛ پیش‌فرض تصادفی)،
+ *  رنگ برند و لوگو. مقادیر رزولو‌شده از بک‌اند می‌آیند. */
+export interface BuyerBookSettings {
+  /** بخش آخر لینک عمومی دفتر — پیش‌فرض تصادفی (مثل b7k2m9x) */
+  bookId: string | null;
+  /** رنگ برند hex (مثل #0891b2) — null = رنگ پیش‌فرض ایمچ */
+  brandColor: string | null;
+  /** URL لوگوی آپلودی — null = آواتار/حرف اول نام خریدار */
+  logo: string | null;
+}
+
+/** نتیجهٔ رزولو آیدی عمومی دفتر خرید — صفحهٔ /b/{id} (SSR پوستهٔ برند) */
+export interface BuyerBookPublicResolve {
+  userName: string;
+  /** نام نمایشی خریدار — برای متادیتا و پوستهٔ SSR */
+  name: string;
+  settings: BuyerBookSettings;
+}
+
+/** مشخصات خریدار در دفتر عمومی */
+export interface BuyerBookBuyerInfo {
+  userName: string;
+  id: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+  role: 'عمده‌خریدار' | 'خرده‌خریدار';
+  provinceName: string | null;
+  cityName: string | null;
+  createdAt: string;
+  daysInImach: number;
+  lastActiveAt: string | null;
+  activeRecently: boolean;
+}
+
+/** دیتای کامل صفحهٔ عمومی دفتر خرید — /b/{id}؛ گیت بستهٔ فعال
+ *  (خواستهٔ مالک: فقط بسته‌داران و خودِ مالک دفتر را می‌بینند) */
+export interface BuyerBookPublicData {
+  buyer: BuyerBookBuyerInfo;
+  /** فقط کالاهای تاییدشده — درخواست‌های دوره‌ای pending/hidden عمومی نیستند */
+  items: BuyerBookItem[];
+  /** تعداد فروشنده‌هایی که این دفتر را ذخیره کرده‌اند (خواستهٔ مالک) */
+  saversCount: number;
+  settings: BuyerBookSettings;
+}
+
+/** دفتر خرید ذخیره‌شده در پنل فروشنده — لیست مشتری بالقوه؛
+ *  تب «دفاتر ذخیره شده» صفحهٔ خریداران */
+export interface SavedBuyerBookRow {
+  buyerUserName: string;
+  buyerId: string;
+  buyerName: string;
+  avatarUrl: string | null;
+  cityName: string | null;
+  itemCount: number;
+  bookId: string | null;
+  savedAt: string;
+  lastActiveAt: string | null;
 }

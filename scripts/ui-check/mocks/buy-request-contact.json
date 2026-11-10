@@ -1,0 +1,10 @@
+{
+ "status": true,
+ "data": {
+  "phone": "09121234567",
+  "firstName": "مریم",
+  "lastName": "احمدی",
+  "isVerified": true,
+  "isSelf": false
+ }
+}

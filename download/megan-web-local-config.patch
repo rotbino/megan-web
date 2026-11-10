@@ -1,0 +1,142 @@
+diff --git a/.env.example b/.env.example
+new file mode 100644
+index 0000000..16a3575
+--- /dev/null
++++ b/.env.example
+@@ -0,0 +1,27 @@
++# ─────────────────────────────────────────────────────────────────────────────
++# نمونهٔ تنظیمات محیط فرانت (ایمچ/megan-web) — این فایل را به .env کپی کنید.
++# .env واقعی هرگز کامیت نشود (شامل کلید است).
++# ─────────────────────────────────────────────────────────────────────────────
++
++# ── آدرس بک‌اند (کلید اصلی — هم برای پروکسی /api و هم fetchهای SSR) ──
++# لوکال/توسعه: پیش‌فرض کافی است. استقرار ابری: آدرس سرور پروداکشن.
++# (BACKEND_ORIGIN کلید قدیمی است و هنوز پشتیبانی می‌شود؛ BACKEND_URL اولویت دارد)
++BACKEND_URL=http://127.0.0.1:4000
++
++# ── آدرس سایت (canonical/sitemap/SEO) ──
++# لوکال: http://localhost:3000 | پروداکشن: https://imach.ir
++NEXT_PUBLIC_SITE_URL=http://localhost:3000
++
++# ── آدرس وب‌سوکت چت (socket.io روی بک‌اند) ──
++# در لوکال پیش‌فرض کافی است؛ در پروداکشن دامنهٔ wss واقعی را بگذارید.
++NEXT_PUBLIC_WS_URL=http://localhost:4000
++
++# ── میزبان‌های اضافهٔ تصاویر برای next/image (اختیاری) ──
++# فقط hostname، جدا با کاما. بک‌اند لوکال (localhost:4000/uploads) و باکت‌های
++# آروان به‌صورت پیش‌فرض مجازند؛ اگر CDN/دامنهٔ جدیدی اضافه شد این‌جا معرفی کنید.
++# NEXT_IMAGE_HOSTS=img.example.com,cdn.example.net
++
++# ── یادآوری پروفایل بک‌اند ──
++# سوییچ لوکال/ابر در بک‌اند است (megan-back/.env → APP_PROFILE=local|cloud).
++# فرانت به‌جز BACKEND_URL نیازی به تغییر ندارد — تصاویر لوکال خودکار از
++# localhost:4000/uploads لود می‌شوند.
+diff --git a/.gitignore b/.gitignore
+index d6df824..9387a58 100755
+--- a/.gitignore
++++ b/.gitignore
+@@ -31,7 +31,9 @@ yarn-error.log*
+ .pnpm-debug.log*
+ 
+ # env files (can opt-in for committing if needed)
++# .env.example استثناست — قالب مستندات تنظیمات است و باید کامیت شود
+ .env*
++!.env.example
+ 
+ # vercel
+ .vercel
+diff --git a/next.config.ts b/next.config.ts
+index 8f37024..6b7ecea 100755
+--- a/next.config.ts
++++ b/next.config.ts
+@@ -1,25 +1,60 @@
+ import type { NextConfig } from "next";
+ 
++/**
++ * ── آدرس بک‌اند — یک کلید برای همه ────────────────────────────────────────
++ * BACKEND_URL جایگزین اصلی است (هم برای rewrites این‌جا، هم برای fetchهای SSR
++ * در client.ts). BACKEND_ORIGIN برای سازگاری با .envهای قبلی پشتیبانی می‌شود.
++ * در پروفایل لوکال نیازی به تغییر نیست — پیش‌فرض 127.0.0.1:4000 همان است.
++ * برای استقرار ابری فقط همین یک متغیر را در .env عوض کنید.
++ */
++const BACKEND_URL =
++  process.env.BACKEND_URL ?? process.env.BACKEND_ORIGIN ?? "http://127.0.0.1:4000";
++
++/**
++ * ── تصاویر remote ────────────────────────────────────────────────────────────
++ * سه منبع:
++ *  1. ArvanCloud ما + CDN باسکول (دیتای seed و پروداکشن ابری)
++ *  2. بک‌اند لوکال (APP_PROFILE=local بک‌اند → تصاویر از
++ *     http://localhost:4000/uploads/... سرو می‌شوند) — پورت آزاد تا با تغییر
++ *     PORT بک‌اند هم کار کند
++ *  3. میزبان‌های اضافه از .env با کلید NEXT_IMAGE_HOSTS (با کاما جدا کنید؛
++ *     فقط hostname نوشته شود، مثل: img.example.com,cdn.example.net)
++ */
++/** تایپ رسمی الگوی تصویر remote نکست — protocol فقط «http» | «https» است */
++type RemotePattern = NonNullable<NonNullable<NextConfig["images"]>["remotePatterns"]>[number];
++
++function imageRemotePatterns(): RemotePattern[] {
++  const patterns: RemotePattern[] = [
++    { protocol: "https", hostname: "daymatfilles.s3.ir-thr-at1.arvanstorage.ir" },
++    { protocol: "https", hostname: "product-thumbnails.s3.ir-thr-at1.arvanstorage.ir" },
++    // بک‌اند لوکال — پروفایل local (پورت آزاد تا با تغییر PORT بک‌اند هم کار کند)
++    { protocol: "http", hostname: "localhost" },
++    { protocol: "http", hostname: "127.0.0.1" },
++  ];
++  const extra = (process.env.NEXT_IMAGE_HOSTS ?? "")
++    .split(",")
++    .map((h) => h.trim())
++    .filter(Boolean);
++  for (const hostname of extra) {
++    patterns.push({ hostname });
++  }
++  return patterns;
++}
++
+ const nextConfig: NextConfig = {
+   reactStrictMode: false,
+   // ── پروکسی API — بدون CORS، هم‌مبدأ ─────────────────────────────────────
+   // درخواست‌های /api/** فرانت به بک‌اند مگان (NestJS :4000/api/v1) می‌روند.
+-  // در استقرار پروداکشن فقط BACKEND_ORIGIN در .env عوض می‌شود.
+   async rewrites() {
+-    const backend = process.env.BACKEND_ORIGIN ?? "http://127.0.0.1:4000";
+     return [
+       {
+         source: "/api/:path*",
+-        destination: `${backend}/api/v1/:path*`,
++        destination: `${BACKEND_URL}/api/v1/:path*`,
+       },
+     ];
+   },
+-  // ── تصاویر remote — ArvanCloud ما + CDN باسکول (دیتای seed) ──────────────
+   images: {
+-    remotePatterns: [
+-      { protocol: "https", hostname: "daymatfilles.s3.ir-thr-at1.arvanstorage.ir" },
+-      { protocol: "https", hostname: "product-thumbnails.s3.ir-thr-at1.arvanstorage.ir" },
+-    ],
++    remotePatterns: imageRemotePatterns(),
+   },
+ };
+ 
+diff --git a/src/lib/api/client.ts b/src/lib/api/client.ts
+index f1ce910..49e297f 100644
+--- a/src/lib/api/client.ts
++++ b/src/lib/api/client.ts
+@@ -32,11 +32,13 @@ function isServer(): boolean {
+   return typeof window === 'undefined';
+ }
+ 
+-/** آدرس پایه — کلاینت از پروکسی هم‌مبدأ، سرور مستقیم به بک */
++/** آدرس پایه — کلاینت از پروکسی هم‌مبدأ، سرور مستقیم به بک
++ *  (BACKEND_URL کلید اصلی؛ BACKEND_ORIGIN برای سازگاری با next.config.ts قدیمی) */
+ export function apiBase(): string {
+-  return isServer()
+-    ? `${process.env.BACKEND_URL ?? 'http://127.0.0.1:4000'}/api/v1`
+-    : '/api';
++  if (!isServer()) return '/api';
++  const backend =
++    process.env.BACKEND_URL ?? process.env.BACKEND_ORIGIN ?? 'http://127.0.0.1:4000';
++  return `${backend}/api/v1`;
+ }
+ 
+ // ─── توکن‌ها ──────────────────────────────────────────────────────────────────

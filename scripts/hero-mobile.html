@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<style>
+  @font-face {
+    font-family: "IRANSans";
+    src: url("../megan-web/src/fonts/IRANSansWeb_Bold.woff2") format("woff2"),
+         url("../megan-web/src/fonts/IRANSansWeb_Bold.woff") format("woff");
+    font-weight: 700;
+  }
+  @font-face {
+    font-family: "IRANSans";
+    src: url("../megan-web/src/fonts/IRANSansWeb.woff") format("woff");
+    font-weight: 400;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 780px; height: 820px; overflow: hidden; }
+  body {
+    font-family: "IRANSans", "Vazirmatn", Tahoma, sans-serif;
+    position: relative;
+    background: #1f4d68;
+  }
+  .bg {
+    position: absolute; inset: 0;
+    background-image: url("../megan-web/public/images/hero.webp");
+    background-size: cover;
+    background-position: 62% 68%;
+  }
+  /* گرادیان تیره هم‌خانوادهٔ primary-deep سایت */
+  .veil {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg,
+      rgba(17, 42, 58, 0.82) 0%,
+      rgba(23, 52, 70, 0.60) 34%,
+      rgba(23, 52, 70, 0.62) 56%,
+      rgba(15, 37, 52, 0.88) 84%,
+      rgba(12, 31, 44, 0.96) 100%);
+  }
+  .content {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center; color: #fff;
+    padding: 64px 56px 0;
+  }
+  .brand { display: flex; align-items: center; gap: 20px; }
+  .brand svg { height: 86px; width: auto; display: block; }
+  .brand .name {
+    font-size: 88px; font-weight: 700; line-height: 1;
+    letter-spacing: -1px;
+  }
+  .divider {
+    width: 76px; height: 4px; border-radius: 999px;
+    background: rgba(255,255,255,0.85); margin: 36px 0 30px;
+  }
+  .slogan {
+    font-size: 44px; font-weight: 700; line-height: 1.55;
+    text-shadow: 0 2px 16px rgba(8, 22, 33, 0.65);
+  }
+  .sub {
+    margin-top: 16px;
+    font-size: 27px; font-weight: 400; line-height: 1.75;
+    color: rgba(255,255,255,0.92);
+    max-width: 620px;
+    text-shadow: 0 2px 14px rgba(8, 22, 33, 0.7);
+  }
+  /* پایین تصویر خلوت و تیره می‌ماند تا دکمهٔ CTA فرانت رویش بنشیند */
+  .bottom { position: absolute; bottom: 0; left: 0; right: 0; height: 150px; }
+</style>
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="veil"></div>
+  <div class="content">
+    <div class="brand">
+      <!-- نشان سفید M با نقطه (نسخهٔ سفید لوگوی برند — عین واترمارک) -->
+      <svg viewBox="0 0 32 33" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="6" cy="6" r="5.5" fill="#ffffff"/>
+        <circle cx="4.4" cy="4.2" r="1.5" fill="#1f4d68" opacity="0.35"/>
+        <path d="M5 30 V19 L16 23 L27 11 V28" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="name">ایمچ</span>
+    </div>
+    <div class="divider"></div>
+    <div class="slogan">بازار خرید و فروش عمده</div>
+    <div class="sub">ارتباط مستقیم با خریداران و فروشندگان عمده</div>
+  </div>
+  <div class="bottom"></div>
+</body>
+</html>

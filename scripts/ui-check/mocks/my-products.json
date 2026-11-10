@@ -1,0 +1,50 @@
+{
+ "status": true,
+ "data": {
+  "items": [
+   {
+    "id": 7001,
+    "productName": "پسته اکبری ممتاز",
+    "slug": "pistachio-akbari-premium",
+    "description": "پسته اکبری ممتاز امسال",
+    "stock": 3000,
+    "minSalePrice": 900000,
+    "minSaleAmount": 50,
+    "unit": "کیلوگرم",
+    "categoryId": 1,
+    "categoryName": "کشاورزی",
+    "subCategoryId": 11,
+    "subCategoryName": "پسته",
+    "provinceId": 8,
+    "provinceName": "تهران",
+    "cityId": 801,
+    "cityName": "تهران",
+    "myuserId": "u-seller-01",
+    "seller": {
+     "id": "u-seller-01",
+     "userName": "aliakhondi",
+     "firstName": "علی",
+     "lastName": "آخوندی",
+     "activePakageType": 1,
+     "isVerified": true
+    },
+    "isLadder": true,
+    "isElevated": false,
+    "hasVideo": false,
+    "isOld": false,
+    "viewCount": 540,
+    "createdAt": "2026-08-10 17:29:04",
+    "updatedAt": "2026-11-05 17:29:04",
+    "photos": [],
+    "status": "confirmed"
+   }
+  ],
+  "counts": {
+   "confirmed": 1,
+   "pending": 0,
+   "rejected": 0,
+   "deleted": 0
+  },
+  "capacity": 10
+ }
+}

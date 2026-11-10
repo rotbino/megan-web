@@ -17,7 +17,7 @@
  * «سفید روی سفید» می‌شد.
  */
 
-import { BadgeCheck, Crown, MapPin, Phone, Share2 } from 'lucide-react';
+import { BadgeCheck, Crown, MapPin, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { ChatDialog } from '@/components/products/chat-dialog';
@@ -26,11 +26,9 @@ import { PresenceDot } from '@/components/shared/presence-dot';
 import { RatingStars } from '@/components/shared/rating-stars';
 import { ArrowRightIcon } from '@/components/shared/buskool-icons';
 import { findPresence, usePresenceStatus } from '@/lib/api/presence';
-import { useToast } from '@/hooks/use-toast';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
-import { absoluteUrl } from '@/lib/use-origin';
 
 export interface ProfileHeroUser {
   id: string;
@@ -62,17 +60,12 @@ function membershipLabel(days: number): string {
 
 export function ProfileHero({
   user,
-  sharePath,
 }: {
   user: ProfileHeroUser;
-  /** مسیر نسبی کاتالوگ (مثل /c/{id}) — موقع اشتراک‌گذاری با
-   *  location صفحهٔ فعلی مطلق می‌شود (خواستهٔ مالک ۱۰-۱۱ دور ۴) */
-  sharePath?: string;
 }) {
   const name = `${user.firstName} ${user.lastName}`.trim() || 'فروشنده';
   const location = [user.provinceName, user.cityName].filter(Boolean).join('، ');
   const special = user.activePakageType > 0;
-  const { toast } = useToast();
   const router = useRouter();
 
   // وضعیت زنده — SSR مقدار اولیه دارد (online/lastSeenAt)؛ این polling تازه نگه می‌دارد
@@ -80,24 +73,6 @@ export function ProfileHero({
   const live = findPresence(presenceItems, { userName: user.userName });
   const online = live?.online ?? user.online ?? null;
   const lastSeenAt = live?.lastSeenAt ?? user.lastSeenAt ?? null;
-
-  /** اشتراک‌گذاری کاتالوگ — عین باسکول: Web Share (موبایل) و در غیر این صورت کپی لینک */
-  const share = async () => {
-    // لینک از location میزبانیِ فعلی ساخته می‌شود — نه دامنهٔ کانفیگ
-    const url = sharePath ? absoluteUrl(sharePath) : (typeof window !== 'undefined' ? window.location.href : '');
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({ title: `کاتالوگ ${name}`, url });
-        return;
-      } catch {
-        return; // کاربر لغو کرد
-      }
-    }
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(url).catch(() => {});
-      toast({ description: 'لینک کاتالوگ کپی شد.' });
-    }
-  };
 
   /** بازگشت — فلش راست‌گرد (قانون RTL)؛ ورود مستقیم → همه آگهی‌ها */
   const goBack = () => {
@@ -128,14 +103,9 @@ export function ProfileHero({
           >
             <ArrowRightIcon size={20} />
           </button>
-          <button
-            type="button"
-            onClick={share}
-            className="flex h-10 items-center gap-2 rounded-full bg-card px-4 text-sm font-medium text-card-foreground shadow-[0_2px_8px_rgba(0,0,0,0.14)] transition hover:brightness-95"
-          >
-            <Share2 size={17} />
-            اشتراک گذاری
-          </button>
+          {/* دکمهٔ بنر = ذخیرهٔ کاتالوگ (خواستهٔ مالک ۱۰-۱۱ دور ۵) —
+              اشتراک‌گذاری به هدر کاتالوگ منتقل شد؛ خودِ فروشنده دکمه ندارد */}
+          <CatalogSaveButton sellerUserName={user.userName} variant="banner" />
         </div>
       </div>
 
@@ -176,15 +146,21 @@ export function ProfileHero({
 
           {/* نام + متا */}
           <div className="min-w-0 flex-1 space-y-1.5 pt-4 lg:pt-0 lg:pb-2">
-            <div className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <h1 className="truncate text-xl font-extrabold leading-8 lg:text-[32px] lg:leading-10">
                 {name}
               </h1>
+              {/* نشان گواهی اعتماد آیمچ (خواستهٔ مالک ۱۰-۱۱ دور ۵) — تایید
+                  هویت و مدارک در ایمچ؛ بهانهٔ برند شدن آیمچ به‌عنوان ثبت‌کنندهٔ
+                  گواهی اعتماد و مزیت اعتماد برای خود فروشنده */}
               {user.isVerified && (
-                <BadgeCheck
-                  className="size-5 shrink-0 text-(--catalog-accent) lg:size-6"
-                  aria-label="احراز هویت شده"
-                />
+                <span
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-(--catalog-accent)/30 bg-(--catalog-accent)/10 px-2.5 py-1 text-[10.5px] font-extrabold text-(--catalog-accent)"
+                  title="هویت و مدارک این فروشنده در آیمچ تایید شده است"
+                >
+                  <BadgeCheck size={13} strokeWidth={2.4} />
+                  احراز هویت شده در آیمچ
+                </span>
               )}
               <PresenceDot online={online} lastSeenAt={lastSeenAt} size="md" />
             </div>
@@ -229,12 +205,11 @@ export function ProfileHero({
               buttonVariant="outline"
               className="h-11 w-full rounded-lg px-5 text-sm font-bold lg:h-10 lg:w-[142px]"
             />
-            {/* ذخیرهٔ کاتالوگ (خواسته مالک ۱۰-۱۱ + بازنگری) — کاتالوگ همان
-                کاتالوگ است؛ موبایل تمام‌عرض زیر دو دکمهٔ بالا، دسکتاپ کنار هم.
-                برای خودِ فروشنده رندر نمی‌شود */}
+            {/* ذخیرهٔ کاتالوگ (خواستهٔ مالک ۱۰-۱۱ دور ۵) — موبایل تمام‌عرض زیر
+                دو دکمه؛ دسکتاپ به قرص روی بنر منتقل شد (variant=banner بالا) */}
             <CatalogSaveButton
               sellerUserName={user.userName}
-              className="col-span-2 lg:col-span-1"
+              className="col-span-2 lg:hidden"
             />
           </div>
         </div>

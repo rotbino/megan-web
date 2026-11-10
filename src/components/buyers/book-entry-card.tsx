@@ -13,7 +13,8 @@
  *  • نقطهٔ سبز روی آواتار = فعال در ۷ روز گذشته؛ غایبِ بیش از ۹۰ روز کم‌رنگ.
  */
 
-import { CalendarDays, MapPin, Send } from 'lucide-react';
+import { BookOpen, CalendarDays, ChevronLeft, MapPin, Send } from 'lucide-react';
+import Link from 'next/link';
 import { dateFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { PERIOD_LABELS, type BuyerDirectoryItem } from '@/lib/types';
@@ -109,6 +110,27 @@ export function BookEntryCard({
           </button>
         </div>
       </div>
+
+      {/* فوتر کارت — لینک‌های ظریف (خواستهٔ مالک ۱۰-۱۱ دور ۵): دفتر خرید
+          خریدار کنار دکمه‌های اقدام نمی‌آید که شلوغ شود؛ به‌عنوان لینک ظریف
+          پایین کارت می‌آید تا زیباتر دیده شود. گیت دیدن دفتر در خود صفحهٔ /b
+          است (فقط دارندگان بستهٔ فعال) */}
+      {entry.bookId && (
+        <div className="mt-3 border-t border-border/60 pt-2.5">
+          <Link
+            href={`/b/${entry.bookId}`}
+            title={`دفتر خرید و همهٔ خریدهای دوره‌ای ${entry.buyerName}`}
+            className="group inline-flex items-center gap-1.5 text-[11.5px] font-bold text-primary transition-colors hover:text-primary/80"
+          >
+            <BookOpen size={13} />
+            دفتر خرید و سایر خریدهای دوره‌ای
+            <ChevronLeft
+              size={13}
+              className="text-muted-foreground/60 transition-transform group-hover:-translate-x-0.5"
+            />
+          </Link>
+        </div>
+      )}
     </li>
   );
 }

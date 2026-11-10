@@ -1,0 +1,36 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Conversation {
+  id            String    @id @default(cuid())
+  contactName   String
+  contactStatus String    @default("آخرین بازدید به‌تازگی")
+  listingTitle  String
+  listingPrice  String
+  listingIcon   String    @default("home")
+  lastMessage   String?
+  lastSender    String? // "user" | "contact"
+  lastMessageAt DateTime  @default(now())
+  unread        Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  messages      Message[]
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  content        String
+  sender         String // "user" | "contact"
+  createdAt      DateTime     @default(now())
+  isRead         Boolean      @default(false)
+
+  @@index([conversationId, createdAt])
+}

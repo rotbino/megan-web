@@ -26,6 +26,7 @@
 import { Suspense, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
+  BookMarked,
   CalendarClock,
   ChevronLeft,
   ChevronRight,
@@ -42,6 +43,7 @@ import {
   useCategoryTree,
   useMyOfferQuota,
   useMyProducts,
+  useMySavedBuyerBooks,
   useMySentOffers,
   useMyUrgentChats,
   useProvinces,
@@ -55,6 +57,7 @@ import { BookEntryCard } from '@/components/buyers/book-entry-card';
 import { SupplyOfferModal } from '@/components/buyers/supply-offer-modal';
 import { GroupOfferWizard } from '@/components/buyers/group-offer-wizard';
 import { SentOffersList } from '@/components/panel/sent-offers-list';
+import { SavedBuyerBooksList } from '@/components/panel/saved-buyer-books';
 import { NeedPackageModal } from '@/components/shared/need-package-modal';
 import { matchForBuyRequest, matchForDirectoryItem, sortByMatch } from '@/lib/buyer-match';
 import { findCategoryPathById } from '@/lib/categories';
@@ -62,7 +65,7 @@ import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { BuyerDirectoryItem, Category } from '@/lib/types';
 
-type PanelBuyersTab = 'requests' | 'periodic' | 'sent';
+type PanelBuyersTab = 'requests' | 'periodic' | 'sent' | 'saved';
 const REQ_BATCH = 10;
 
 export default function PanelBuyersPage() {
@@ -78,7 +81,13 @@ function PanelBuyersInner() {
   // «درخواست‌های خرید فوری/دوره‌ای» صفحهٔ اول، تبِ متناسب را باز می‌کند
   const tabParam = useSearchParams().get('tab');
   const initialTab: PanelBuyersTab =
-    tabParam === 'periodic' ? 'periodic' : tabParam === 'sent' ? 'sent' : 'requests';
+    tabParam === 'periodic'
+      ? 'periodic'
+      : tabParam === 'sent'
+        ? 'sent'
+        : tabParam === 'saved'
+          ? 'saved'
+          : 'requests';
   const { data: tree } = useCategoryTree();
   const { data: provinces = [] } = useProvinces();
 
@@ -147,6 +156,11 @@ function PanelBuyersInner() {
   const sentQuery = useMySentOffers({ perPage: 1 });
   const urgentBadgeQuery = useMyUrgentChats(undefined);
   const sentCount = (sentQuery.data?.total ?? 0) + (urgentBadgeQuery.data?.items.length ?? 0);
+
+  // ── تب چهارم (خواستهٔ مالک ۱۰-۱۱ دور ۵): «دفاتر ذخیره شده» — دفترهای
+  //    خرید خریدارانی که فروشنده ذخیره کرده؛ لیست مشتری بالقوه ──
+  const savedBooksQuery = useMySavedBuyerBooks(tab === 'saved');
+  const savedBooksCount = savedBooksQuery.data?.length ?? 0;
 
   /** دروازهٔ پیشنهاد تامین (خواستهٔ مالک ۷-۱۱): اول گیت ثبت کالا — فروشندهٔ
    *  بدون آگهی مودال «ثبت کالا لازم است» را می‌بیند؛ بعد گیت بستهٔ فعال */
@@ -280,10 +294,17 @@ function PanelBuyersInner() {
           'پیشنهادها',
           sentQuery.isLoading || urgentBadgeQuery.isLoading ? 0 : sentCount,
         )}
+        {tabButton(
+          'saved',
+          <BookMarked size={14} className="shrink-0" />,
+          'دفاتر ذخیره شده',
+          'دفاتر',
+          tab === 'saved' || savedBooksQuery.isFetched ? savedBooksCount : 0,
+        )}
       </div>
 
-      {/* جستجو + فیلترها — مشترک دو تب خریداران؛ تب «ارسال شده» فیلتر خودش را دارد */}
-      {tab !== 'sent' && (
+      {/* جستجو + فیلترها — مشترک دو تب خریداران؛ تب «ارسال شده/دفاتر» فیلتر خودش را دارد */}
+      {tab !== 'sent' && tab !== 'saved' && (
         <PanelCard>
           <div className="grid gap-2 sm:grid-cols-[1fr_190px_170px_150px]">
             <div className="relative">
@@ -477,6 +498,14 @@ function PanelBuyersInner() {
       {/* ── تب سوم (خواسته مالک ۸-۱۱): «پیشنهادهای من» — تایم‌لاین واحد عین
           صفحهٔ خریدارانِ هر کالا؛ دکمهٔ حالت خالی به تب دوره‌ای برمی‌گردد ── */}
       {tab === 'sent' && <SentOffersList onGoBuyers={() => setTab('periodic')} />}
+
+      {/* ── تب چهارم (خواستهٔ مالک ۱۰-۱۱ دور ۵): «دفاتر ذخیره شده» — کارت‌های
+          مشتری بالقوه؛ مشاهدهٔ دفتر + گفتگو + حذف ── */}
+      {tab === 'saved' && (
+        <div role="tabpanel" aria-label="دفاتر ذخیره شده">
+          <SavedBuyerBooksList />
+        </div>
+      )}
 
       {/* مودال پیشنهاد تکی — عنوان با نام دستهٔ کالا */}
       <SupplyOfferModal

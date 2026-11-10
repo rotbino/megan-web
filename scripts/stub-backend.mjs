@@ -236,11 +236,40 @@ for (const pr of PRODUCTS) {
   s.totalStock += pr.stock;
 }
 
-/** خریدارهای نمونه + کاربر نشست استاب — همه با قالب یکسان برای لیست‌ها */
+// ─── گالری و گواهی‌های کسب‌وکار (خواستهٔ مالک ۱۰-۱۱ دور ۵) — بخش «تصاویر و
+// گواهی‌های کسب و کار» که در کاتالوگ زیر لیست کالاها می‌نشیند؛ برای همهٔ
+// فروشندگان seed می‌شود تا در پیش‌نمایش دیده شود (عکس فروشگاه/انبار + مدارک) ───
+const GALLERY_SEED = [
+  { url: '/images/online-store2.jpg', thumbUrl: '/images/online-store2.jpg' },
+  { url: '/images/hero.webp', thumbUrl: '/images/hero.webp' },
+  { url: '/images/categories/food.webp', thumbUrl: '/images/categories/food.webp' },
+];
+const CERTIFICATES_SEED = [
+  { url: '/help-img/verify/sample-card.jpg', thumbUrl: '/help-img/verify/sample-card.jpg' },
+  { url: '/help-img/verify/form-step1.jpg', thumbUrl: '/help-img/verify/form-step1.jpg' },
+];
+for (const [name, s] of SELLERS) {
+  s.gallery = name === 'seller0' ? GALLERY_SEED.slice(0, 2) : GALLERY_SEED;
+  s.certificates = name === 'seller0' ? CERTIFICATES_SEED.slice(0, 1) : CERTIFICATES_SEED;
+}
+
+/** خریدارهای نمونه + کاربر نشست استاب — همه با قالب یکسان برای لیست‌ها.
+ *  فیلد های اضافه (role/lastActiveAt/…) فقط برای دفتر خرید (۱۰-۱۱ دور ۵)
+ *  خوانده می‌شوند؛ بقیهٔ مصرف‌کننده‌ها به آن‌ها کاری ندارند. */
 const ME = { id: '50', userName: 'seller0', firstName: 'کاربر', lastName: 'تستی', avatarUrl: null, cityName: 'همدان' };
 const BUYER_USERS = [
-  { id: '90', userName: 'buyer1', firstName: 'علی', lastName: 'محمدی', avatarUrl: null, cityName: 'تهران' },
-  { id: '91', userName: 'buyer2', firstName: 'زهرا', lastName: 'کریمی', avatarUrl: null, cityName: 'ملایر' },
+  {
+    id: '90', userName: 'buyer1', firstName: 'علی', lastName: 'محمدی', avatarUrl: null,
+    provinceName: 'تهران', cityName: 'تهران', role: 'عمده‌خریدار',
+    createdAt: '2024-03-10 09:00:00', lastActiveAt: '2026-11-08T10:00:00.000Z',
+    activeRecently: true, stale: false,
+  },
+  {
+    id: '91', userName: 'buyer2', firstName: 'زهرا', lastName: 'کریمی', avatarUrl: null,
+    provinceName: 'همدان', cityName: 'ملایر', role: 'خرده‌خریدار',
+    createdAt: '2025-01-20 09:00:00', lastActiveAt: '2026-05-01T10:00:00.000Z',
+    activeRecently: false, stale: true,
+  },
 ];
 const findUser = (userName) =>
   SELLERS.get(userName) ?? BUYER_USERS.find((u) => u.userName === userName) ?? (userName === ME.userName ? ME : null);
@@ -289,6 +318,206 @@ const catalogIdOwner = (id, exceptUserName) => {
   const u = findUser(id);
   if (u && u.userName !== exceptUserName) return u.userName;
   return null;
+};
+
+// ─── دفتر خرید (خواستهٔ مالک ۱۰-۱۱ دور ۵) — قرینهٔ کاتالوگ ────────────────
+// فروشنده کاتالوگ دارد که خریدار ذخیره می‌کند؛ خریدار دفتر خرید دارد که
+// فروشنده ذخیره می‌کند. دفتر = کالاهای خرید دوره‌ایِ confirmed کاربر؛
+// ذخیره‌ها: `${sellerUserName}:${buyerUserName}` (خریدار با userName).
+const mkBookItem = (
+  categoryId, name, rootName, parentName, unit, minAmount, period, productType,
+  status = 'confirmed',
+) => ({
+  categoryId, name, rootName, parentName, unit, minAmount, period, productType,
+  example: null, status, rejectionReasons: [],
+});
+
+const BUYER_BOOK_ITEMS = new Map(); // userName -> BuyerBookItem[]
+// seed — دفتر خریداران نمونه (confirmed = عمومی؛ pending فقط خود خریدار می‌بیند)
+BUYER_BOOK_ITEMS.set('buyer1', [
+  mkBookItem(500, 'سیب', 'محصولات کشاورزی', 'میوه', 'کیلوگرم', 2000, 'monthly', 'قرمز'),
+  mkBookItem(600, 'گردو', 'محصولات کشاورزی', 'میوه', 'کیلوگرم', 300, 'monthly', null),
+]);
+BUYER_BOOK_ITEMS.set('buyer2', [
+  mkBookItem(300, 'پفک و چیپس', 'مواد غذایی', 'تنقلات', 'کیلوگرم', 500, 'weekly', 'تند'),
+  // pending → در دفتر عمومی و دایرکتوری نمی‌آید (تا جریان تایید ادمین دیده شود)
+  mkBookItem(200, 'تنقلات', 'مواد غذایی', 'تنقلات', 'کیلوگرم', 150, 'occasional', null, 'pending'),
+]);
+// کاربر نشست استاب هم دفتر دارد — پیش‌نمایش «تنظیمات دفتر خرید» و دفتر خودم
+BUYER_BOOK_ITEMS.set(ME.userName, [
+  mkBookItem(500, 'سیب', 'محصولات کشاورزی', 'میوه', 'کیلوگرم', 800, 'weekly', 'زرد'),
+  mkBookItem(200, 'تنقلات', 'مواد غذایی', 'تنقلات', 'کیلوگرم', 120, 'monthly', null),
+]);
+
+/** تنظیمات دفتر — bookId (پیش‌فرض تصادفی)، رنگ برند و لوگو */
+const BUYER_BOOK_SETTINGS = new Map(); // userName -> { bookId?, brandColor?, logo? }
+const randomBookId = () => 'b' + Math.random().toString(36).slice(2, 9);
+const bookIdOwner = (id, exceptUserName) => {
+  for (const [owner, s] of BUYER_BOOK_SETTINGS) {
+    if (owner !== exceptUserName && s.bookId && s.bookId === id) return owner;
+  }
+  const u = findUser(id);
+  if (u && u.userName !== exceptUserName) return u.userName;
+  return null;
+};
+const freshBookId = (userName) => {
+  let id = randomBookId();
+  while (bookIdOwner(id, userName)) id = randomBookId();
+  return id;
+};
+// seed — buyer1 آیدی سفارشی مثال مالک (phaksh-seyyed)؛ بقیه تصادفی
+BUYER_BOOK_SETTINGS.set('buyer1', { bookId: 'phaksh-seyyed', brandColor: '#0891b2', logo: null });
+BUYER_BOOK_SETTINGS.set('buyer2', { brandColor: '#7c3aed', logo: null });
+BUYER_BOOK_SETTINGS.set(ME.userName, {});
+
+/** خواندن تنظیمات رزولو‌شدهٔ دفتر (بدون ساخت — فقط خواندن) */
+const resolvedBookSettings = (userName) => {
+  const s = BUYER_BOOK_SETTINGS.get(userName) ?? {};
+  return { bookId: s.bookId ?? null, brandColor: s.brandColor ?? null, logo: s.logo ?? null };
+};
+/** تنظیمات دفتر هر کاربر — با اولین خواندن، آیدی تصادفیِ پیش‌فرض ساخته می‌شود
+ *  (خواستهٔ مالک ۱۰-۱۱ دور ۵: پیش‌فرض بصورت تصادفی؛ برای همهٔ صاحبان دفتر،
+ *  نه فقط کاربر نشست — دایرکتوری/لیست ذخیره‌شده‌ها هم لینک سالم بدهند) */
+const ensureBookSettings = (userName) => {
+  let s = BUYER_BOOK_SETTINGS.get(userName);
+  if (!s) { s = {}; BUYER_BOOK_SETTINGS.set(userName, s); }
+  if (!s.bookId) s.bookId = freshBookId(userName);
+  return s;
+};
+const ensureMyBookSettings = () => ensureBookSettings(ME.userName);
+
+/** ذخیره‌های دفتر — فروشنده‌ای که دفترِ خریدار را ذخیره کرده */
+const BOOK_SAVES = new Map(); // `${sellerUserName}:${buyerUserName}` -> savedAt
+// seed — کاربر نشست دفتر buyer1 را ذخیره کرده؛ فروشندهٔ دیگری دفتر buyer2 را
+BOOK_SAVES.set(`${ME.userName}:buyer1`, '2026-11-02T09:00:00.000Z');
+BOOK_SAVES.set(`seller2:buyer2`, '2026-10-18T12:00:00.000Z');
+
+const countBookSavers = (buyerUserName) => {
+  let n = 0;
+  for (const key of BOOK_SAVES.keys()) if (key.endsWith(`:${buyerUserName}`)) n += 1;
+  return n;
+};
+
+/** رزولو آیدی عمومی دفتر — آیدی سفارشی یا userName خریدار */
+const resolveBookUserName = (id) => {
+  const key = String(id ?? '').trim().toLowerCase();
+  if (!key) return null;
+  for (const [owner, s] of BUYER_BOOK_SETTINGS) {
+    if (s.bookId && s.bookId === key) return owner;
+  }
+  if (findUser(key)) return key;
+  return null;
+};
+
+/** مسیر دسته از id — برای فیلتر دایرکتوری بر اساس زیردرخت */
+function subtreeIdsById(id) {
+  const flat = [];
+  const walk = (nodes) => {
+    for (const n of nodes) {
+      flat.push(n);
+      if (n.children) walk(n.children);
+    }
+  };
+  walk(CATS);
+  const target = flat.find((n) => n.id === Number(id));
+  if (!target) return new Set();
+  const ids = new Set([target.id]);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const n of flat) {
+      if (!ids.has(n.id) && n.parent_id != null && ids.has(n.parent_id)) {
+        ids.add(n.id);
+        grew = true;
+      }
+    }
+  }
+  return ids;
+}
+
+/** نام/واحد دسته از درخت — saveMyBook فقط categoryId می‌گیرد */
+function catById(id) {
+  const flat = [];
+  const walk = (nodes) => {
+    for (const n of nodes) {
+      flat.push(n);
+      if (n.children) walk(n.children);
+    }
+  };
+  walk(CATS);
+  return flat.find((n) => n.id === Number(id)) ?? null;
+}
+
+// کاربر نشست استاب بستهٔ یک‌سالهٔ فعال دارد — گیت‌های پنل (canSeeBuyers و
+// isFeatured) در پیش‌نمایش باز باشند
+const ME_HAS_PACKAGE = true;
+
+// ─── آپلود فایل (multipart) — لوگوی دفتر خرید، آواتار، مدارک احراز ─────────
+// حافظه‌ای (استاب فقط برای پیش‌نمایش است)؛ فایل‌ها با GET /api/v1/uploads/*
+// سرو می‌شوند که از طریق پروکسی نکست به‌صورت /api/uploads/* در دسترس‌اند.
+const UPLOADS = new Map(); // name -> { buf, mime }
+
+/** پارس سادهٔ multipart/form-data — برای فایل‌های کوچک (≤۵MB) کافی است */
+function parseMultipart(buffer, contentTypeHeader) {
+  const m = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(String(contentTypeHeader || ''));
+  if (!m) return null;
+  const bBoundary = Buffer.from('--' + (m[1] || m[2]).trim());
+  const parts = [];
+  let pos = buffer.indexOf(bBoundary);
+  while (pos !== -1) {
+    const start = pos + bBoundary.length;
+    if (buffer.slice(start, start + 2).toString() === '--') break; // پایان نهایی
+    const next = buffer.indexOf(bBoundary, start);
+    if (next === -1) break;
+    let seg = buffer.slice(start, next);
+    if (seg[0] === 13 && seg[1] === 10) seg = seg.slice(2); // \r\n ابتدای بخش
+    if (seg.length >= 2 && seg[seg.length - 2] === 13 && seg[seg.length - 1] === 10) {
+      seg = seg.slice(0, -2); // \r\n انتهای بخش
+    }
+    const headerEnd = seg.indexOf('\r\n\r\n');
+    if (headerEnd !== -1) {
+      const headerStr = seg.slice(0, headerEnd).toString('utf8');
+      const nameM = /name="([^"]*)"/.exec(headerStr);
+      const fileM = /filename="([^"]*)"/.exec(headerStr);
+      const typeM = /content-type:\s*([^\r\n]+)/i.exec(headerStr);
+      parts.push({
+        name: nameM?.[1] ?? '',
+        filename: fileM?.[1] ?? '',
+        contentType: typeM?.[1]?.trim() ?? '',
+        content: seg.slice(headerEnd + 4),
+      });
+    }
+    pos = next;
+  }
+  return parts;
+}
+
+/** ذخیرهٔ فایل در حافظه و ساخت رکورد پاسخ آپلود */
+function storeUpload(file, fieldKey) {
+  const ext = (file.filename.match(/\.(png|jpe?g|webp|gif)$/i)?.[1] ?? 'png').toLowerCase();
+  const name = `u${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+  const mime = file.contentType || `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+  UPLOADS.set(name, { buf: file.content, mime });
+  return {
+    id: name,
+    fieldKey,
+    url: `/api/uploads/${name}`,
+    thumbUrl: null,
+    description: null,
+    size: file.content.length,
+    mimeType: mime,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+// وضعیت احراز هویت کاربر نشست — پیش‌نمایش جریان ارسال/بررسی مدارک
+const VERIFICATION = {
+  status: 'none', // none | pending | approved | rejected
+  accountType: 'personal',
+  submittedAt: null,
+  reviewedAt: null,
+  rejectionReason: null,
+  docs: {},
 };
 
 // ─── نظرات نمونه — تا ستاره/توزیع/کارت‌های نظر در کاتالوگ دیده شود ───
@@ -363,25 +592,66 @@ const server = createServer(async (req, res) => {
     res.writeHead(200).end('ok');
     return;
   }
+  // ── سرو فایل آپلودی (GET) — پیش از سوئیچ JSON؛ آدرس نسبی /api/uploads/*
+  //    از طریق پروکسی نکست از هر میزبانی بارگذاری می‌شود ──
+  if (req.method === 'GET' && url.pathname.startsWith('/api/v1/uploads/')) {
+    const name = url.pathname.slice('/api/v1/uploads/'.length);
+    const f = UPLOADS.get(name);
+    if (!f) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: false, message: 'فایل یافت نشد.' }));
+      return;
+    }
+    res.writeHead(200, {
+      'Content-Type': f.mime,
+      'Content-Length': f.buf.length,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    });
+    res.end(f.buf);
+    return;
+  }
   const path = url.pathname.replace('/api/v1/', '');
+  // ── بدنه — Buffer (فایل‌های باینری سالم می‌مانند؛ multipart جداگانه) ──
+  const rawBody = await new Promise((resolve) => {
+    let buf = Buffer.alloc(0);
+    req.on('data', (c) => {
+      buf = Buffer.concat([buf, c]);
+    });
+    req.on('end', () => resolve(buf));
+    req.on('error', () => resolve(buf));
+  });
   let body = {};
   try {
-    body = await new Promise((resolve) => {
-      let raw = '';
-      req.on('data', (c) => (raw += c));
-      req.on('end', () => {
-        try {
-          resolve(JSON.parse(raw || '{}'));
-        } catch {
-          resolve({});
-        }
-      });
-    });
+    body = JSON.parse(rawBody.toString('utf8') || '{}');
   } catch {
     body = {};
   }
+  /** فایل multipart درخواست جاری — فقط برای مسیرهای آپلود */
+  const multipartFile = (fieldName) => {
+    const parts = parseMultipart(rawBody, req.headers['content-type']);
+    if (!parts) return null;
+    return parts.find((p) => p.name === fieldName && p.content.length > 0) ?? null;
+  };
   let data = [];
   switch (path) {
+    // ─── ورود سشن (پیش‌نمایش) — هر شماره‌ای = کاربر نشست استاب ───
+    case 'auth/login':
+      data = {
+        isNewUser: false,
+        hasPassword: false,
+        accessToken: 'stub-token-' + Date.now(),
+        refreshToken: 'stub-refresh-' + Date.now(),
+      };
+      break;
+    case 'auth/refreshToken':
+      data = {
+        accessToken: 'stub-token-' + Date.now(),
+        refreshToken: 'stub-refresh-' + Date.now(),
+      };
+      break;
+    case 'auth/logout':
+      data = { ok: true };
+      break;
     case 'locations/getAllProvinces': data = PROVINCES; break;
     case 'locations/getCitiesByProvince': data = CITIES; break;
     case 'categories/getAllCategories': data = CATS; break;
@@ -435,6 +705,346 @@ const server = createServer(async (req, res) => {
       };
       break;
     case 'users/getProfile': data = { user: PROFILE }; break;
+    // ─── دفتر خرید (خواستهٔ مالک ۱۰-۱۱ دور ۵) — خریدار کالاهای دوره‌ای خود ───
+    case 'buyers/getMyBook': {
+      data = { max: 15, items: BUYER_BOOK_ITEMS.get(ME.userName) ?? [] };
+      break;
+    }
+    case 'buyers/saveMyBook': {
+      const rows = Array.isArray(body.items) ? body.items : [];
+      const clean = rows.slice(0, 15).map((r) => {
+        const cat = catById(r.categoryId);
+        // نام/مسیر/واحد از درخت می‌آید؛ کالای تازه «در انتظار تایید» است
+        return mkBookItem(
+          Number(r.categoryId) || 0,
+          cat?.category_name ?? 'کالا',
+          cat ? (catById(cat.parent_id)?.category_name ?? cat.category_name) : '—',
+          cat?.parent_id != null ? (catById(cat.parent_id)?.category_name ?? '') : '',
+          cat?.unit ?? 'کیلوگرم',
+          Number(r.minAmount) || 0,
+          r.period ?? 'monthly',
+          r.productType?.trim() || null,
+          'pending',
+        );
+      });
+      BUYER_BOOK_ITEMS.set(ME.userName, clean);
+      data = { saved: clean.length };
+      break;
+    }
+    case 'buyers/directory': {
+      const all = [];
+      for (const [userName, rows] of BUYER_BOOK_ITEMS) {
+        const u = findUser(userName);
+        if (!u) continue;
+        const st = ensureBookSettings(userName);
+        for (const it of rows) {
+          if (it.status !== 'confirmed') continue;
+          all.push({
+            id: `${userName}-${it.categoryId}`,
+            buyerId: u.id ?? userName,
+            buyerName: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
+            role: u.role === 'خرده‌خریدار' ? 'خرده‌خریدار' : 'عمده‌خریدار',
+            categoryId: it.categoryId,
+            categoryName: it.name,
+            rootName: it.rootName,
+            categoryPath: [it.rootName, it.parentName].filter(Boolean).join(' / '),
+            unit: it.unit,
+            minAmount: it.minAmount,
+            period: it.period,
+            productType: it.productType,
+            province: u.provinceName ?? null,
+            city: u.cityName ?? null,
+            lastActiveAt: u.lastActiveAt ?? '2026-11-01T10:00:00.000Z',
+            activeRecently: u.activeRecently ?? false,
+            stale: u.stale ?? false,
+            bookId: st.bookId,
+          });
+        }
+      }
+      let filtered = all;
+      if (body.categoryId != null) {
+        const ids = subtreeIdsById(body.categoryId);
+        if (ids.size > 0) filtered = filtered.filter((x) => ids.has(x.categoryId));
+      }
+      if (body.period) filtered = filtered.filter((x) => x.period === body.period);
+      if (body.provinceId != null) {
+        const pv = PROVINCES.find((p) => p.id === Number(body.provinceId));
+        if (pv) filtered = filtered.filter((x) => x.province === pv.province_name);
+      }
+      if (body.cityId != null) {
+        const ct = CITIES.find((c) => c.id === Number(body.cityId));
+        if (ct) filtered = filtered.filter((x) => x.city === ct.city_name);
+      }
+      if (body.s) {
+        const q = String(body.s).trim();
+        filtered = filtered.filter((x) =>
+          [x.categoryName, x.categoryPath, x.productType, x.buyerName].some(
+            (v) => v && String(v).includes(q),
+          ),
+        );
+      }
+      const perPage = Math.max(1, Number(body.perPage) || 12);
+      const page = Math.max(1, Number(body.page) || 1);
+      data = {
+        items: filtered.slice((page - 1) * perPage, page * perPage),
+        total: filtered.length,
+        page,
+        perPage,
+        buyRequestCount: null,
+      };
+      break;
+    }
+    // گیت بستهٔ فعال — پنل خریداران (خواستهٔ مالک ۷-۱۱)
+    case 'buyers/getMyOfferQuota': {
+      data = { isFeatured: ME_HAS_PACKAGE, pakageType: 3, walletBalance: 500000 };
+      break;
+    }
+    // پیشنهادهای تامین ارسالی/دریافتی و گفتگوهای فوری — شکل کامل (items همیشه
+    // هست؛ قبلاً [] برمی‌گشت و صفحهٔ خریداران با TypeError می‌افتاد)
+    case 'buyers/getMySentOffers':
+      data = { items: [], total: 0, page: 1, perPage: Number(body.perPage) || 20, categories: [] };
+      break;
+    case 'buyers/getMyUrgentChats':
+      data = { items: [] };
+      break;
+    case 'buyers/getMyReceivedOffers':
+      data = { items: [], total: 0, page: 1, perPage: 20, categories: [] };
+      break;
+    case 'buy-requests/getMyBuyRequests':
+      data = { items: [], counts: { confirmed: 0, pending: 0, rejected: 0 } };
+      break;
+    case 'packages/getMyPackage': {
+      data = {
+        pakageType: 3,
+        isActive: ME_HAS_PACKAGE,
+        expiresAt: '2027-06-01T00:00:00.000Z',
+        startedAt: '2026-06-01T00:00:00.000Z',
+        totalDays: 365,
+        daysLeft: 203,
+        planTitle: 'اشتراک یک‌ساله',
+        pendingCount: 0,
+        features: { productCapacity: -1, canSeeBuyers: ME_HAS_PACKAGE, unlimitedBuyRequests: true },
+      };
+      break;
+    }
+    // ─── دفتر خرید — صفحهٔ عمومی /b/{id} و ذخیرهٔ فروشنده‌ها ───
+    case 'buyerBook/resolvePublicId': {
+      const userName = resolveBookUserName(body.id);
+      const u = userName ? findUser(userName) : null;
+      if (!userName || !u) {
+        data = null;
+      } else {
+        data = {
+          userName,
+          name: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
+          settings: ensureBookSettings(userName),
+        };
+      }
+      break;
+    }
+    case 'buyerBook/getPublic': {
+      const userName = resolveBookUserName(body.id);
+      const u = userName ? findUser(userName) : null;
+      if (!userName || !u) {
+        data = null;
+        break;
+      }
+      // گیت (خواستهٔ مالک): فقط مالک دفتر یا دارندهٔ بستهٔ فعال
+      if (userName !== ME.userName && !ME_HAS_PACKAGE) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: false,
+          code: 'NEED_PACKAGE',
+          message: 'مشاهدهٔ دفاتر خرید ویژهٔ کاربران دارندهٔ بستهٔ اشتراک فعال ایمچ است.',
+        }));
+        return;
+      }
+      const items = (BUYER_BOOK_ITEMS.get(userName) ?? []).filter((i) => i.status === 'confirmed');
+      const days = Math.max(
+        1,
+        Math.round(
+          (Date.now() - new Date(String(u.createdAt ?? '2025-01-01 09:00:00').replace(' ', 'T') + 'Z').getTime()) / 86_400_000,
+        ),
+      );
+      data = {
+        buyer: {
+          userName,
+          id: u.id ?? userName,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          avatarUrl: u.avatarUrl ?? null,
+          role: u.role === 'خرده‌خریدار' ? 'خرده‌خریدار' : 'عمده‌خریدار',
+          provinceName: u.provinceName ?? null,
+          cityName: u.cityName ?? null,
+          createdAt: u.createdAt ?? '2025-01-01 09:00:00',
+          daysInImach: days,
+          lastActiveAt: u.lastActiveAt ?? null,
+          activeRecently: u.activeRecently ?? false,
+        },
+        items,
+        saversCount: countBookSavers(userName),
+        settings: ensureBookSettings(userName),
+      };
+      break;
+    }
+    case 'buyerBook/getMySettings': {
+      ensureMyBookSettings();
+      data = { settings: resolvedBookSettings(ME.userName) };
+      break;
+    }
+    case 'buyerBook/updateSettings': {
+      ensureMyBookSettings();
+      const cur = BUYER_BOOK_SETTINGS.get(ME.userName) ?? {};
+      const out = { ...cur };
+      if (body.bookId !== undefined) {
+        const id = String(body.bookId ?? '').trim().toLowerCase();
+        if (!/^[a-z0-9-]{3,30}$/.test(id) || /^-|-$/.test(id)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            status: false,
+            message: 'آیدی دفتر خرید باید ۳ تا ۳۰ نویسه باشد؛ فقط حروف کوچک لاتین، رقم و خط تیره (-).',
+          }));
+          return;
+        }
+        const owner = bookIdOwner(id, ME.userName);
+        if (owner) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            status: false,
+            message: 'این آیدی قبلاً گرفته شده است؛ یکی دیگر انتخاب کنید.',
+          }));
+          return;
+        }
+        out.bookId = id;
+      }
+      if (body.brandColor !== undefined) {
+        const bc = String(body.brandColor ?? '').trim();
+        if (bc && !/^#[0-9a-fA-F]{6}$/.test(bc)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: false, message: 'رنگ برند نامعتبر است (مثال: #0891b2).' }));
+          return;
+        }
+        out.brandColor = bc || null;
+      }
+      if (body.logo !== undefined) {
+        const lg = String(body.logo ?? '').trim();
+        if (lg.length > 600) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: false, message: 'آدرس لوگو نامعتبر است.' }));
+          return;
+        }
+        out.logo = lg || null;
+      }
+      BUYER_BOOK_SETTINGS.set(ME.userName, out);
+      data = { settings: resolvedBookSettings(ME.userName) };
+      break;
+    }
+    case 'buyerBook/isSaved':
+      data = { saved: BOOK_SAVES.has(`${ME.userName}:${body.userName}`) };
+      break;
+    case 'buyerBook/toggleSave': {
+      const key = `${ME.userName}:${body.userName}`;
+      if (BOOK_SAVES.has(key)) {
+        BOOK_SAVES.delete(key);
+        data = { saved: false };
+      } else {
+        BOOK_SAVES.set(key, new Date().toISOString());
+        data = { saved: true };
+      }
+      break;
+    }
+    case 'buyerBook/getMySaved': {
+      const items = [];
+      for (const [key, savedAt] of BOOK_SAVES) {
+        if (!key.startsWith(`${ME.userName}:`)) continue;
+        const buyerUserName = key.slice(ME.userName.length + 1);
+        const u = findUser(buyerUserName);
+        if (!u) continue;
+        const itemCount = (BUYER_BOOK_ITEMS.get(buyerUserName) ?? []).filter(
+          (i) => i.status === 'confirmed',
+        ).length;
+        items.push({
+          buyerUserName,
+          buyerId: u.id ?? buyerUserName,
+          buyerName: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
+          avatarUrl: u.avatarUrl ?? null,
+          cityName: u.cityName ?? null,
+          itemCount,
+          bookId: ensureBookSettings(buyerUserName).bookId,
+          savedAt,
+          lastActiveAt: u.lastActiveAt ?? null,
+        });
+      }
+      data = { items };
+      break;
+    }
+    // ─── آپلود تصویر — قرارداد uploads/uploadImage بک‌اند واقعی ───
+    case 'uploads/uploadImage': {
+      const file = multipartFile('file');
+      if (!file) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: false,
+          code: 'MULTIPART_TRUNCATED',
+          message: 'فایلی دریافت نشد — دوباره تلاش کنید.',
+        }));
+        return;
+      }
+      if (file.content.length > 5 * 1024 * 1024) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: false, message: 'حجم فایل باید کمتر از ۵ مگابایت باشد.' }));
+        return;
+      }
+      const key = url.searchParams.get('key') ?? 'file';
+      data = storeUpload(file, key);
+      break;
+    }
+    // ─── احراز هویت — جریان کامل مدارک در پیش‌نمایش ───
+    case 'verification/getMyVerification': {
+      data = {
+        status: VERIFICATION.status,
+        accountType: VERIFICATION.accountType,
+        submittedAt: VERIFICATION.submittedAt,
+        reviewedAt: VERIFICATION.reviewedAt,
+        rejectionReason: VERIFICATION.rejectionReason,
+        docs: VERIFICATION.docs,
+      };
+      break;
+    }
+    case 'verification/submitVerification': {
+      const front = multipartFile('nationalCardFront');
+      const back = multipartFile('nationalCardBack');
+      const selfie = multipartFile('selfieWithCard');
+      if (!front || !back || !selfie) {
+        // همان خطای بک‌اند واقعی وقتی استریم ناقص برسد (گزارش مالک ۱۰-۱۱)
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: false,
+          code: 'MULTIPART_TRUNCATED',
+          message: 'آپلود ناقص بود — دوباره تلاش کنید.',
+        }));
+        return;
+      }
+      const notice = multipartFile('registrationNotice');
+      VERIFICATION.status = 'pending';
+      VERIFICATION.accountType = notice ? 'legal' : 'personal';
+      VERIFICATION.submittedAt = new Date().toISOString();
+      VERIFICATION.docs = {
+        nationalCardFront: storeUpload(front, 'nationalCardFront'),
+        nationalCardBack: storeUpload(back, 'nationalCardBack'),
+        selfieWithCard: storeUpload(selfie, 'selfieWithCard'),
+        registrationNotice: notice ? storeUpload(notice, 'registrationNotice') : null,
+      };
+      data = {
+        status: VERIFICATION.status,
+        accountType: VERIFICATION.accountType,
+        submittedAt: VERIFICATION.submittedAt,
+        reviewedAt: null,
+        rejectionReason: null,
+        docs: VERIFICATION.docs,
+      };
+      break;
+    }
     // ─── کاتالوگ کاربر (خواسته مالک ۱۰-۱۱ + بازنگری) — کاتالوگ همان
     // پروفایل فروشنده است؛ کلید همهٔ اندپوینت‌ها userName اوست ───
     case 'catalog/isSaved':
@@ -574,17 +1184,29 @@ const server = createServer(async (req, res) => {
     case 'chat/getConversations': data = [CHAT.thread]; break;
     case 'chat/getThreadMessages': data = CHAT.messages; break;
     case 'chat/markThreadRead': data = { read: 0 }; break;
-    case 'chat/uploadFile':
-      // multipart خوانده نمی‌شود — پاسخ ثابت برای تست جریان مودال پیوست
+    case 'chat/uploadFile': {
+      // multipart واقعی خوانده می‌شود؛ فایل در حافظه ذخیره و سرو می‌شود
+      const file = multipartFile('file');
+      if (!file) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: false,
+          code: 'MULTIPART_TRUNCATED',
+          message: 'فایلی دریافت نشد — دوباره تلاش کنید.',
+        }));
+        return;
+      }
+      const rec = storeUpload(file, 'chat');
       data = {
-        url: '/images/categories/food.webp',
-        key: 'stub-' + Date.now(),
-        name: 'stub.webp',
-        size: 12345,
-        mime: 'image/webp',
-        kind: 'image',
+        url: rec.url,
+        key: rec.id,
+        name: file.filename || rec.id,
+        size: rec.size,
+        mime: rec.mimeType,
+        kind: rec.mimeType.startsWith('image/') ? 'image' : rec.mimeType.startsWith('video/') ? 'video' : 'file',
       };
       break;
+    }
     case 'chat/sendMessage': {
       const msg = {
         id: 'm' + CHAT.seq++,

@@ -1,0 +1,67 @@
+{
+  "status": true,
+  "data": {
+    "items": [
+      {
+        "id": 101,
+        "subcategoryName": "میوه خشک",
+        "productType": "قیسی",
+        "requirementAmount": 500,
+        "unit": "کیلوگرم",
+        "status": "confirmed",
+        "goal": "price_and_buy",
+        "hasHistory": true,
+        "createdAt": "2026-11-01T09:24:00.000Z"
+      },
+      {
+        "id": 102,
+        "subcategoryName": "بادام",
+        "productType": "اکبری",
+        "requirementAmount": 2000,
+        "unit": "کیلوگرم",
+        "status": "confirmed",
+        "goal": "price_only",
+        "hasHistory": false,
+        "createdAt": "2026-11-05T14:10:00.000Z"
+      },
+      {
+        "id": 103,
+        "subcategoryName": "پسته",
+        "productType": "احمدآقایی",
+        "requirementAmount": 300,
+        "unit": "کیلوگرم",
+        "status": "pending",
+        "goal": "price_and_buy",
+        "hasHistory": false,
+        "createdAt": "2026-11-07T08:45:00.000Z"
+      },
+      {
+        "id": 104,
+        "subcategoryName": "زعفران",
+        "productType": "سرگل",
+        "requirementAmount": 50,
+        "unit": "کیلوگرم",
+        "status": "pending",
+        "goal": "price_only",
+        "hasHistory": false,
+        "createdAt": "2026-11-08T06:20:00.000Z"
+      },
+      {
+        "id": 105,
+        "subcategoryName": "گردو",
+        "productType": "چاندلر",
+        "requirementAmount": 1000,
+        "unit": "کیلوگرم",
+        "status": "rejected",
+        "goal": "price_and_buy",
+        "hasHistory": false,
+        "createdAt": "2026-10-28T11:00:00.000Z",
+        "rejectionReasons": [
+          "قیمت درخواستی شما با قیمت روز بازار تفاوت زیادی دارد.",
+          "توضیحات درخواست شما کامل نیست."
+        ]
+      }
+    ],
+    "counts": { "confirmed": 2, "pending": 2, "rejected": 1 }
+  }
+}

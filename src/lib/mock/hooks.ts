@@ -1049,3 +1049,70 @@ export function useUpdateCatalogSettings() {
     },
   });
 }
+
+/* ─── دفتر خرید عمومی (خواستهٔ مالک ۱۰-۱۱ دور ۵) — قرینهٔ کاتالوگ برای خریداران ─── */
+
+/** دیتای کامل دفتر عمومی — /b/{id}؛ کلاینت (گیت بسته سمت فرانت + NEED_PACKAGE) */
+export function useBuyerBookPublic(id: string | null) {
+  return useQuery({
+    queryKey: ['buyer-book-public', id],
+    queryFn: () => api.getBuyerBookPublic(id!),
+    enabled: !!id,
+    staleTime: 30_000,
+    retry: false, // خطای NEED_PACKAGE/404 نباید سه‌بار تکرار شود
+  });
+}
+
+/** آیا من این دفتر خرید را ذخیره کرده‌ام؟ — فقط کاربر واردشده */
+export function useBuyerBookSaved(buyerUserName: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['buyer-book-saved', buyerUserName],
+    queryFn: () => api.isBuyerBookSaved(buyerUserName),
+    staleTime: 60_000,
+    enabled: enabled && !!buyerUserName,
+  });
+}
+
+/** ذخیره/حذف ذخیرهٔ دفتر خرید (toggle) — کلید: userName خریدار */
+export function useToggleBuyerBookSave() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.toggleBuyerBookSave,
+    onSuccess: (saved, buyerUserName) => {
+      queryClient.setQueryData(['buyer-book-saved', buyerUserName], saved);
+      queryClient.invalidateQueries({ queryKey: ['saved-buyer-books'] });
+      queryClient.invalidateQueries({ queryKey: ['buyer-book-public'] });
+    },
+  });
+}
+
+/** دفاتر خرید ذخیره‌شدهٔ من — تب «دفاتر ذخیره شده» پنل فروشنده */
+export function useMySavedBuyerBooks(enabled = true) {
+  return useQuery({
+    queryKey: ['saved-buyer-books'],
+    queryFn: api.getMySavedBuyerBooks,
+    staleTime: 30_000,
+    enabled,
+  });
+}
+
+/** تنظیمات دفتر خرید خودم — مودال «تنظیمات دفتر خرید» (فقط وقتی باز است) */
+export function useMyBuyerBookSettings(enabled: boolean) {
+  return useQuery({
+    queryKey: ['my-buyer-book-settings'],
+    queryFn: api.getMyBuyerBookSettings,
+    staleTime: 60_000,
+    enabled,
+  });
+}
+
+/** ذخیرهٔ تنظیمات دفتر خرید — کش خودم را تازه می‌کند */
+export function useUpdateBuyerBookSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.updateMyBuyerBookSettings,
+    onSuccess: (settings) => {
+      queryClient.setQueryData(['my-buyer-book-settings'], settings);
+    },
+  });
+}

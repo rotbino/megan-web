@@ -217,9 +217,11 @@ export default async function CatalogPage({ params }: Props) {
           <div className="overflow-hidden rounded-lg bg-card shadow-[0_1px_8px_rgba(0,0,0,0.1)] dark:border dark:border-border">
             <ProfileHero
               user={user as unknown as Parameters<typeof ProfileHero>[0]['user']}
-              sharePath={sharePath}
             />
-            <ProfileScrollNav productCount={user.productCount ?? products.length} />
+            <ProfileScrollNav
+              productCount={user.productCount ?? products.length}
+              hasGallery={gallery.length > 0 || certificates.length > 0}
+            />
           </div>
         </div>
 
@@ -283,6 +285,16 @@ export default async function CatalogPage({ params }: Props) {
                       <dt className="shrink-0">سابقه فعالیت:</dt>
                       <dd className="font-bold text-foreground">{toFa(user.daysInImach ?? 1)} روز فعالیت</dd>
                     </div>
+                    {/* احراز هویت آیمچ (خواستهٔ مالک ۱۰-۱۱ دور ۵) — گواهی اعتماد
+                        ایمچ: تایید هویت و مدارک این فروشنده در ایمچ انجام شده؛
+                        برندسازی ایمچ به‌عنوان ثبت‌کنندهٔ گواهی اعتماد */}
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <BadgeCheck size={13} className="shrink-0 text-(--catalog-accent)/70" />
+                      <dt className="shrink-0">احراز هویت:</dt>
+                      <dd className="font-bold text-foreground">
+                        {user.isVerified ? 'تایید شده در آیمچ' : 'انجام نشده'}
+                      </dd>
+                    </div>
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Send size={13} className="shrink-0 text-(--catalog-accent)/70" />
                       <dt className="shrink-0">احتمال پاسخگویی:</dt>
@@ -292,70 +304,11 @@ export default async function CatalogPage({ params }: Props) {
                     </div>
                   </dl>
                 </div>
-
-                {/* تصاویر مربوطه — عین باسکول (محصولات | شرکت | کارکنان) */}
-                {gallery.length > 0 && (
-                  <div className="rounded-md border bg-card p-5">
-                    <h3 className="flex items-center gap-2 text-sm font-bold">
-                      <Camera size={15} className="text-(--catalog-accent)" />
-                      تصاویر مربوطه
-                    </h3>
-                    <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-                      {gallery.map((g, i) => (
-                        <a
-                          key={`${g.url}-${i}`}
-                          href={g.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group relative block aspect-square overflow-hidden rounded-md border bg-secondary"
-                          title="مشاهده تصویر کامل"
-                        >
-                          { }
-                          <img
-                            src={g.thumbUrl ?? g.url}
-                            alt={`تصویر مربوطه ${i + 1}`}
-                            className="size-full object-cover transition-transform group-hover:scale-105"
-                            loading="lazy"
-                          />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* گواهی‌های مربوطه — ثبت شرکت | استاندارد محصول */}
-                {certificates.length > 0 && (
-                  <div className="rounded-md border bg-card p-5">
-                    <h3 className="flex items-center gap-2 text-sm font-bold">
-                      <FileCheck2 size={15} className="text-(--catalog-accent)" />
-                      گواهی های مربوطه
-                    </h3>
-                    <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-                      {certificates.map((c, i) => (
-                        <a
-                          key={`${c.url}-${i}`}
-                          href={c.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group relative block aspect-square overflow-hidden rounded-md border bg-secondary"
-                          title="مشاهده گواهی کامل"
-                        >
-                          { }
-                          <img
-                            src={c.thumbUrl ?? c.url}
-                            alt={`گواهی ${i + 1}`}
-                            className="size-full object-cover transition-transform group-hover:scale-105"
-                            loading="lazy"
-                          />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </section>
 
-            {/* محصولات */}
+            {/* محصولات — مهم‌ترین بخش کاتالوگ؛ لیست کالاها پیش از گالری/گواهی‌ها
+                می‌آید (خواستهٔ مالک ۱۰-۱۱ دور ۵) */}
             <section id="products" aria-labelledby="products-title" className="scroll-mt-24">
               <h2 id="products-title" className="mb-3 text-base font-extrabold">
                 محصولات ({toFa(user.productCount ?? products.length)})
@@ -370,6 +323,78 @@ export default async function CatalogPage({ params }: Props) {
                 </div>
               )}
             </section>
+
+            {/* ─── تصاویر و گواهی‌های کسب‌وکار — زیر لیست کالاها (خواستهٔ مالک
+                ۱۰-۱۱ دور ۵): کالاها مهم‌ترند و اول دیده می‌شوند؛ گالری و
+                گواهی‌ها پس از آن اعتبار فروشنده را کامل می‌کنند ─── */}
+            {(gallery.length > 0 || certificates.length > 0) && (
+              <section id="gallery" aria-labelledby="gallery-title" className="scroll-mt-24">
+                <h2 id="gallery-title" className="mb-3 text-base font-extrabold">
+                  تصاویر و گواهی‌های کسب و کار
+                </h2>
+                <div className="space-y-3">
+                  {/* تصاویر مربوطه — عین باسکول (محصولات | شرکت | کارکنان) */}
+                  {gallery.length > 0 && (
+                    <div className="rounded-md border bg-card p-5">
+                      <h3 className="flex items-center gap-2 text-sm font-bold">
+                        <Camera size={15} className="text-(--catalog-accent)" />
+                        تصاویر مربوطه
+                      </h3>
+                      <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                        {gallery.map((g, i) => (
+                          <a
+                            key={`${g.url}-${i}`}
+                            href={g.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group relative block aspect-square overflow-hidden rounded-md border bg-secondary"
+                            title="مشاهده تصویر کامل"
+                          >
+                            { }
+                            <img
+                              src={g.thumbUrl ?? g.url}
+                              alt={`تصویر مربوطه ${i + 1}`}
+                              className="size-full object-cover transition-transform group-hover:scale-105"
+                              loading="lazy"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* گواهی‌های مربوطه — ثبت شرکت | استاندارد محصول */}
+                  {certificates.length > 0 && (
+                    <div className="rounded-md border bg-card p-5">
+                      <h3 className="flex items-center gap-2 text-sm font-bold">
+                        <FileCheck2 size={15} className="text-(--catalog-accent)" />
+                        گواهی های مربوطه
+                      </h3>
+                      <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                        {certificates.map((c, i) => (
+                          <a
+                            key={`${c.url}-${i}`}
+                            href={c.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group relative block aspect-square overflow-hidden rounded-md border bg-secondary"
+                            title="مشاهده گواهی کامل"
+                          >
+                            { }
+                            <img
+                              src={c.thumbUrl ?? c.url}
+                              alt={`گواهی ${i + 1}`}
+                              className="size-full object-cover transition-transform group-hover:scale-105"
+                              loading="lazy"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
 
             {/* نظرات کاربران */}
             <SellerReviews userName={user.userName} sellerName={sellerName} />

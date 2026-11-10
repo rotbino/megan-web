@@ -1,0 +1,64 @@
+{
+ "status": true,
+ "data": {
+  "items": [
+   {
+    "id": 601,
+    "name": "اکبری",
+    "categoryId": 1,
+    "subcategoryName": "پسته",
+    "requirementAmount": 800,
+    "unit": "کیلوگرم",
+    "myuserId": "u-b-11",
+    "userName": "ahmadi",
+    "firstName": "مریم",
+    "lastName": "احمدی",
+    "city": "دزفول",
+    "provinceId": 15,
+    "cityId": null,
+    "province": null,
+    "isVerified": true,
+    "createdAt": "2026-11-08 17:29:04"
+   },
+   {
+    "id": 602,
+    "name": "مامایی",
+    "categoryId": 2,
+    "subcategoryName": "بادام",
+    "requirementAmount": 2000,
+    "unit": "کیلوگرم",
+    "myuserId": "u-b-12",
+    "userName": null,
+    "firstName": "کریم",
+    "lastName": "زاده",
+    "city": "سمنان",
+    "provinceId": 20,
+    "cityId": null,
+    "province": null,
+    "isVerified": false,
+    "createdAt": "2026-11-07 15:29:04"
+   },
+   {
+    "id": 603,
+    "name": null,
+    "categoryId": 1,
+    "subcategoryName": "خرما",
+    "requirementAmount": 5000,
+    "unit": "کیلوگرم",
+    "myuserId": "u-b-13",
+    "userName": "salehi",
+    "firstName": "نرگس",
+    "lastName": "صالحی",
+    "city": "بم",
+    "provinceId": 5,
+    "cityId": null,
+    "province": null,
+    "isVerified": true,
+    "createdAt": "2026-11-06 17:29:04"
+   }
+  ],
+  "total": 3,
+  "page": 1,
+  "pageCount": 1
+ }
+}

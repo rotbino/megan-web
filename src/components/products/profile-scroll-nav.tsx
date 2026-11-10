@@ -15,10 +15,18 @@ import { toFa } from '@/lib/format';
 const SECTIONS = [
   { id: 'about', label: 'درباره فروشنده' },
   { id: 'products', label: 'محصولات' },
+  { id: 'gallery', label: 'تصاویر و گواهی‌ها' },
   { id: 'reviews', label: 'نظرات' },
 ] as const;
 
-export function ProfileScrollNav({ productCount }: { productCount?: number }) {
+export function ProfileScrollNav({
+  productCount,
+  hasGallery = false,
+}: {
+  productCount?: number;
+  /** بخش گالری/گواهی‌ها فقط وقتی دیتا دارد نمایش داده شود (خواستهٔ مالک ۱۰-۱۱ دور ۵) */
+  hasGallery?: boolean;
+}) {
   const [active, setActive] = useState<string>('about');
 
   useEffect(() => {
@@ -42,7 +50,7 @@ export function ProfileScrollNav({ productCount }: { productCount?: number }) {
   return (
     <nav aria-label="بخش‌های کاتالوگ" className="border-t border-border px-2 pt-0.5 sm:px-4">
       <ul className="flex items-center gap-1 overflow-x-auto">
-        {SECTIONS.map(({ id, label }) => (
+        {SECTIONS.filter((s) => s.id !== 'gallery' || hasGallery).map(({ id, label }) => (
           <li key={id} className="shrink-0">
             <a
               href={`#${id}`}

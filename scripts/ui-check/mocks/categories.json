@@ -1,0 +1,59 @@
+{
+ "status": true,
+ "data": [
+  {
+   "id": 1,
+   "category_name": "کشاورزی",
+   "slug": "agri",
+   "unit": "کیلوگرم",
+   "min": 100,
+   "example": null,
+   "parent_id": null,
+   "score": 100,
+   "children": [
+    {
+     "id": 11,
+     "category_name": "پسته",
+     "slug": "pistachio",
+     "unit": "کیلوگرم",
+     "min": 50,
+     "example": "اکبری",
+     "parent_id": 1,
+     "score": 90
+    },
+    {
+     "id": 12,
+     "category_name": "خرما",
+     "slug": "date",
+     "unit": "کیلوگرم",
+     "min": 100,
+     "example": "خازنی",
+     "parent_id": 1,
+     "score": 80
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "category_name": "خشکبار",
+   "slug": "nuts",
+   "unit": "کیلوگرم",
+   "min": 30,
+   "example": null,
+   "parent_id": null,
+   "score": 95,
+   "children": [
+    {
+     "id": 21,
+     "category_name": "بادام",
+     "slug": "almond",
+     "unit": "کیلوگرم",
+     "min": 30,
+     "example": "مامایی",
+     "parent_id": 2,
+     "score": 85
+    }
+   ]
+  }
+ ]
+}

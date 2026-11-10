@@ -1,0 +1,18 @@
+{
+ "status": true,
+ "data": {
+  "pakageType": 1,
+  "isActive": true,
+  "expiresAt": "2026-12-18 17:29:04",
+  "startedAt": "2026-10-19 17:29:04",
+  "totalDays": 60,
+  "daysLeft": 40,
+  "planTitle": "بستهٔ دو ماهه",
+  "pendingCount": 0,
+  "features": {
+   "productCapacity": 10,
+   "canSeeBuyers": true,
+   "unlimitedBuyRequests": true
+  }
+ }
+}

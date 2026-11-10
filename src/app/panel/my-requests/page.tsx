@@ -50,6 +50,7 @@ import type { BuyerBookItem, BuyRequestStatus, MyBuyRequest, PurchasePeriod } fr
 import { AddItemFlow, type NewBookItemInput } from '@/components/panel/buyer-book/add-item-flow';
 import { BookRecordCard } from '@/components/panel/buyer-book/book-record-card';
 import { EditItemDialog } from '@/components/panel/buyer-book/edit-item-dialog';
+import { BookSettingsButton } from '@/components/panel/buyer-book/book-settings-button';
 
 const TABS: { key: BuyRequestStatus; label: string; icon: React.ComponentType<{ size?: number | string; className?: string }> }[] = [
   { key: 'confirmed', label: 'تایید شده', icon: CheckCircle2 },
@@ -444,7 +445,8 @@ export default function MyRequestsPage() {
               : 'کالاهایی که به‌طور مستمر می‌خرید — پس از تایید، فروشندگان مناسب پیشنهادشان را می‌فرستند.'}
           </p>
         </div>*/}
-          {/* اقدام متناسب با تب — ثبت درخواست فوری / افزودن کالای دوره‌ای */}
+          {/* اقدام متناسب با تب — ثبت درخواست فوری / افزودن کالای دوره‌ای +
+              تنظیمات دفتر خرید (خواستهٔ مالک ۱۰-۱۱ دور ۵: رنگ، لوگو و آیدی لینک) */}
           {view === 'urgent' ? (
               <Button asChild className="rounded-md bg-orange-600 ">
                 <Link href="/panel/buy-requests/new">
@@ -453,10 +455,13 @@ export default function MyRequestsPage() {
                 </Link>
               </Button>
           ) : (
-              <Button className="rounded-md bg-orange-600 " onClick={() => setAddOpen(true)} disabled={remaining === 0}>
-                <Plus size={16} />
-                ثبت درخواست دوره ای
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <BookSettingsButton />
+                <Button className="rounded-md bg-orange-600 " onClick={() => setAddOpen(true)} disabled={remaining === 0}>
+                  <Plus size={16} />
+                  ثبت درخواست دوره ای
+                </Button>
+              </div>
           )}
         </div>
       </div>

@@ -1,0 +1,24 @@
+{
+ "status": true,
+ "data": [
+  {
+   "id": "f1",
+   "name": "پسته",
+   "itemCount": 3,
+   "statusCounts": {
+    "reviewing": 2,
+    "contacted": 1
+   },
+   "updatedAt": "2026-11-08 17:29:04"
+  },
+  {
+   "id": "f2",
+   "name": "بادام",
+   "itemCount": 1,
+   "statusCounts": {
+    "negotiating": 1
+   },
+   "updatedAt": "2026-11-07 11:29:04"
+  }
+ ]
+}
