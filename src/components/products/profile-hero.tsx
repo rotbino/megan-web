@@ -30,6 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { absoluteUrl } from '@/lib/use-origin';
 
 export interface ProfileHeroUser {
   id: string;
@@ -61,10 +62,12 @@ function membershipLabel(days: number): string {
 
 export function ProfileHero({
   user,
-  shareUrl,
+  sharePath,
 }: {
   user: ProfileHeroUser;
-  shareUrl?: string;
+  /** مسیر نسبی کاتالوگ (مثل /c/{id}) — موقع اشتراک‌گذاری با
+   *  location صفحهٔ فعلی مطلق می‌شود (خواستهٔ مالک ۱۰-۱۱ دور ۴) */
+  sharePath?: string;
 }) {
   const name = `${user.firstName} ${user.lastName}`.trim() || 'فروشنده';
   const location = [user.provinceName, user.cityName].filter(Boolean).join('، ');
@@ -80,7 +83,8 @@ export function ProfileHero({
 
   /** اشتراک‌گذاری کاتالوگ — عین باسکول: Web Share (موبایل) و در غیر این صورت کپی لینک */
   const share = async () => {
-    const url = shareUrl ?? (typeof window !== 'undefined' ? window.location.href : '');
+    // لینک از location میزبانیِ فعلی ساخته می‌شود — نه دامنهٔ کانفیگ
+    const url = sharePath ? absoluteUrl(sharePath) : (typeof window !== 'undefined' ? window.location.href : '');
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({ title: `کاتالوگ ${name}`, url });

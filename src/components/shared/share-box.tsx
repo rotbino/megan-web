@@ -9,9 +9,14 @@ import { Copy, Mail, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { SendToContactsButton } from '@/components/shared/send-to-contacts';
+import { useOrigin } from '@/lib/use-origin';
 
-export function ShareBox({ url, hint }: { url: string; hint?: string }) {
+export function ShareBox({ path, url, hint }: { path?: string; url?: string; hint?: string }) {
   const { toast } = useToast();
+  // لینک کامل از location صفحهٔ فعلی ساخته می‌شود (خواستهٔ مالک ۱۰-۱۱ دور ۴)
+  // — path نسبی مثل /c/{id}؛ url مطلق (سازگاری با مصرف‌کننده‌های قدیمی)
+  const origin = useOrigin();
+  const fullUrl = url ?? (path ? `${origin}${path}` : '');
 
   const btn = 'h-8 flex-1 rounded-md text-[11px]';
 
@@ -41,7 +46,7 @@ export function ShareBox({ url, hint }: { url: string; hint?: string }) {
         type="button"
         onClick={() => {
           if (typeof navigator !== 'undefined' && navigator.clipboard) {
-            navigator.clipboard.writeText(url).catch(() => {});
+            navigator.clipboard.writeText(fullUrl).catch(() => {});
           }
           toast({ description: 'کپی شد.' });
         }}
@@ -49,7 +54,7 @@ export function ShareBox({ url, hint }: { url: string; hint?: string }) {
         className="mt-2.5 flex w-full items-center justify-center gap-1.5 overflow-hidden rounded-md border border-dashed py-2 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
       >
         <Copy size={12} className="shrink-0" />
-        <span className="truncate">{url}</span>
+        <span className="truncate">{fullUrl || '…'}</span>
       </button>
     </div>
   );

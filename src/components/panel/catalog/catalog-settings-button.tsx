@@ -2,7 +2,7 @@
 
 /**
  * دکمه + دیالوگ «تنظیمات کاتالوگ» (خواستهٔ مالک ۱۰-۱۱ دور ۳) — سربرگ
- * «محصولات من». کاتالوگ فروشنده همان صفحهٔ عمومی اوست (/catalog/{id}) که
+ * «محصولات من». کاتالوگ فروشنده همان صفحهٔ عمومی اوست (/c/{id}) که
  * با ثبت اولین محصول خودبه‌خود ساخته می‌شود. این دیالوگ شخصی‌سازی آن است:
  *  • آیدی پیش‌فرض لینک (userName) قابل تغییر به آیدی دلخواه است — با
  *    بررسی زندهٔ آزاد بودن (resolvePublicId) + اعتبارسنجی فرمت
@@ -10,6 +10,9 @@
  *  • آمار ذخیره‌کنندگان
  * ذخیره: catalog/updateSettings (سرور منبع حقیقت ولیدیشن است — خطای
  * تکراری‌بودن آیدی با پیام خودش نمایش داده می‌شود).
+ * چیدمان (خواستهٔ مالک ۱۰-۱۱ دور ۴): بدنهٔ اسکرول‌شونده + فوتر فیکسِ
+ * پایین مودال با دکمه‌های «انصراف» و «ذخیره تغییرات» که با اسکرول
+ * حرکت نمی‌کنند؛ بدون اسکرول افقی.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -39,7 +42,7 @@ import { useAuth } from '@/lib/mock/auth';
 import { useCatalogSavers, useMyCatalogSettings, useUpdateCatalogSettings } from '@/lib/mock/hooks';
 import { resolveCatalogPublicId } from '@/lib/mock/api';
 import { useToast } from '@/hooks/use-toast';
-import { SITE_URL } from '@/lib/site';
+import { useOrigin } from '@/lib/use-origin';
 import { toFa } from '@/lib/format';
 import {
   CATALOG_COLORS,
@@ -145,7 +148,10 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
 
   const previewAccent = colorDraft || 'var(--primary)';
   const previewIcon = catalogIcon(iconDraft);
-  const catalogUrl = settings ? `${SITE_URL}/catalog/${settings.catalogId}` : '';
+  // لینک کاتالوگ از location صفحهٔ فعلی ساخته می‌شود — نه دامنهٔ کانفیگ
+  // (خواستهٔ مالک ۱۰-۱۱ دور ۴؛ قبلاً imach.example.com می‌آمد)
+  const origin = useOrigin();
+  const catalogUrl = settings ? `${origin}/c/${settings.catalogId}` : '';
 
   const copyLink = async () => {
     if (!catalogUrl) return;
@@ -189,8 +195,10 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent dir="rtl" className="max-h-[88dvh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader className="text-start">
+        {/* چیدمان ستونی: هدر ثابت + بدنهٔ اسکرول‌شونده (فقط عمودی — بدون
+            اسکرول افقی) + فوتر فیکس پایین (خواستهٔ مالک ۱۰-۱۱ دور ۴) */}
+        <DialogContent dir="rtl" className="flex max-h-[88dvh] flex-col overflow-hidden sm:max-w-lg">
+          <DialogHeader className="shrink-0 text-start">
             <DialogTitle className="flex items-center gap-2 text-base">
               <BookOpen size={18} className="text-primary" />
               تنظیمات کاتالوگ
@@ -202,12 +210,14 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
           </DialogHeader>
 
           {settingsQuery.isLoading || !settings || !seeded ? (
-            <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+            <div className="flex min-h-24 flex-1 items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
               <Loader2 size={16} className="animate-spin" />
               در حال دریافت تنظیمات…
             </div>
           ) : (
-            <div className="space-y-3">
+            <>
+              {/* ── بدنه — تنها همین بخش اسکرول می‌خورد (عمودی) ── */}
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden pb-1">
               {/* ── آیدی و لینک کاتالوگ ── */}
               <div className="space-y-2.5 rounded-md border border-primary/25 bg-primary/5 p-4">
                 <p className="flex items-center gap-2 text-sm font-extrabold text-primary">
@@ -219,7 +229,7 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
                     dir="ltr"
                     className="shrink-0 rounded-md border bg-card px-2.5 py-2 font-mono text-[11px] text-muted-foreground"
                   >
-                    /catalog/
+                    /c/
                   </span>
                   <Input
                     dir="ltr"
@@ -288,7 +298,7 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
                   </button>
                 </div>
                 <Button asChild size="sm" variant="outline" className="h-9 w-full rounded-md text-xs">
-                  <Link href={`/catalog/${settings.catalogId}`} target="_blank">
+                  <Link href={`/c/${settings.catalogId}`} target="_blank">
                     <ExternalLink size={14} />
                     مشاهده کاتالوگ
                   </Link>
@@ -323,7 +333,9 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
                 {/* آیکون برند */}
                 <div className="space-y-1.5">
                   <p className="text-xs font-bold">آیکون کاتالوگ</p>
-                  <div className="grid grid-cols-8 gap-1.5">
+                  {/* آیکون‌ها — موبایل  ستون کمتر تا دکمه‌ها ریز نشوند و
+                      اسکرول افقی نیفتد (خواستهٔ مالک ۱۰-۱۱ دور ۴) */}
+                  <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-8">
                     {CATALOG_ICONS.map(({ key, label, Icon }) => (
                       <button
                         key={key}
@@ -455,29 +467,41 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
                   نفر
                 </p>
                 <Button asChild size="sm" variant="ghost" className="h-8 rounded-md text-[11px]">
-                  <Link href={`/catalog/${settings.catalogId}#about`} target="_blank">
+                  <Link href={`/c/${settings.catalogId}#about`} target="_blank">
                     مشاهده لیست
                   </Link>
                 </Button>
               </div>
 
-              {/* ذخیره */}
-              <div className="flex items-center justify-end gap-2 pt-1">
-                <Button
-                  onClick={save}
-                  disabled={!canSave}
-                  className="h-10 rounded-md px-6 text-sm font-bold"
-                >
-                  {updateSettings.isPending && <Loader2 size={15} className="animate-spin" />}
-                  ذخیره تغییرات
-                </Button>
+              {/* ── فوتر فیکس — بیرون از ناحیهٔ اسکرول؛ همیشه پایین مودال
+                  دیده می‌شود. انصراف = بستن (پیش‌نویس‌ها با باز شدن بعدی
+                  از نو seed می‌شوند) ── */}
               </div>
-              {!dirty && (
-                <p className="text-center text-[10.5px] text-muted-foreground">
-                  تغییری برای ذخیره نیست.
-                </p>
-              )}
-            </div>
+              <div className="shrink-0 space-y-1.5 border-t pt-3">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setOpen(false)}
+                    className="h-10 flex-1 rounded-md text-sm sm:flex-none sm:px-6"
+                  >
+                    انصراف
+                  </Button>
+                  <Button
+                    onClick={save}
+                    disabled={!canSave}
+                    className="h-10 flex-1 rounded-md text-sm font-bold sm:flex-none sm:px-8"
+                  >
+                    {updateSettings.isPending && <Loader2 size={15} className="animate-spin" />}
+                    ذخیره تغییرات
+                  </Button>
+                </div>
+                {!dirty && (
+                  <p className="text-center text-[10.5px] text-muted-foreground">
+                    تغییری برای ذخیره نیست.
+                  </p>
+                )}
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>

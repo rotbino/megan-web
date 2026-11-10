@@ -90,7 +90,7 @@ function Actions({ threadId, buyerUserName }: { threadId?: string | null; buyerU
       )}
       {buyerUserName && (
         <Button asChild size="sm" variant="ghost" className="rounded-md text-xs">
-          <Link href={`/catalog/${buyerUserName}`}>پروفایل خریدار</Link>
+          <Link href={`/c/${buyerUserName}`}>پروفایل خریدار</Link>
         </Button>
       )}
     </div>

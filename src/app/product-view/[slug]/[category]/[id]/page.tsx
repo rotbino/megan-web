@@ -341,7 +341,7 @@ export default async function ProductViewPage({ params }: Props) {
               {/* کاتالوگ کاربر (خواسته مالک ۱۰-۱۱ + بازنگری) — کاتالوگ همان
                   صفحهٔ پروفایل فروشنده است؛ صفحهٔ جداگانه‌ای وجود ندارد */}
               <Button asChild variant="outline" className="mt-2 h-11 w-full rounded-md">
-                <Link href={`/catalog/${product.seller.userName}`}>
+                <Link href={`/c/${product.seller.userName}`}>
                   <BookOpen size={16} />
                   کاتالوگ کاربر
                 </Link>
@@ -457,7 +457,7 @@ export default async function ProductViewPage({ params }: Props) {
             seller: {
               '@type': 'Organization',
               name: sellerName,
-              url: `${SITE_URL}/catalog/${product.seller.userName}`,
+              url: `${SITE_URL}/c/${product.seller.userName}`,
             },
           },
         }}

@@ -72,6 +72,18 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // ── ریدایرکت مسیر قدیمی کاتالوگ — پوشهٔ مسیر از /catalog به /c تغییر
+  // نام یافت (خواستهٔ مالک ۱۰-۱۱ دور ۴؛ مختصرشدهٔ کاتالوگ)؛ لینک‌های
+  // قبلی و ایندکس‌های موتور جستجو به آدرس تازه هدایت می‌شوند.
+  async redirects() {
+    return [
+      {
+        source: "/catalog/:path*",
+        destination: "/c/:path*",
+        permanent: true,
+      },
+    ];
+  },
   images: {
     remotePatterns: imageRemotePatterns(),
   },
@@ -119,3 +131,4 @@ function sandboxStubBackend(): void {
 sandboxStubBackend();
 
 export default nextConfig;
+

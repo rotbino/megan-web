@@ -1900,7 +1900,7 @@ export async function getMyUrgentChats(q: { categoryId?: number }): Promise<Urge
 }
 
 /* ─── کاتالوگ کاربر (خواسته مالک ۱۰-۱۱ + بازنگری) ────────────────────────────
- * کاتالوگ فروشنده همان صفحهٔ عمومی اوست (/catalog/{catalogId}) —
+ * کاتالوگ فروشنده همان صفحهٔ عمومی اوست (/c/{catalogId}) —
  * صفحهٔ مستقل جداگانه‌ای ساخته نمی‌شود و «ساختن/ویرایش/آیدی پیج» ندارد؛
  * با ثبت اولین محصول، کاتالوگ خودبه‌خود هست. آنچه از بک‌اند می‌ماند فقط
  * ذخیره/ذخیره‌کنندگان است و کلید همه‌جا userName فروشنده است.
@@ -1979,18 +1979,35 @@ export async function getMyCatalogSettings(): Promise<CatalogSettings | null> {
 }
 
 /** ذخیرهٔ تنظیمات کاتالوگ — فقط فیلدهای ارسالی عوض می‌شوند.
- *  خطای ولیدیشن/تکراری‌بودن آیدی را با پیام بک‌اند برمی‌گرداند. */
+ *  خطای ولیدیشن/تکراری‌بودن آیدی را با پیام بک‌اند برمی‌گرداند؛
+ *  ۴۰۴ِ بک‌اندِ بدون اندپوینت را به پیام روشن فارسی ترجمه می‌کند
+ *  (گزارش مالک ۱۰-۱۱ دور ۴: قبلاً «Cannot POST /api/v1/…» خام می‌آمد). */
 export async function updateMyCatalogSettings(
   patch: Partial<Pick<CatalogSettings, 'catalogId' | 'brandName' | 'brandColor' | 'brandIcon'>>,
 ): Promise<CatalogSettings> {
-  const d = await apiFetch<{ settings: CatalogSettings }>('/catalog/updateSettings', patch);
+  let d: { settings: CatalogSettings } | null;
+  try {
+    d = await apiFetch<{ settings: CatalogSettings }>('/catalog/updateSettings', patch);
+  } catch (e) {
+    if (
+      e instanceof ApiError &&
+      (e.status === 404 || e.code === 'NOT_FOUND' || /^Cannot\s+(POST|GET)/i.test(e.message))
+    ) {
+      throw new ApiError(
+        'بک‌اند متصل هنوز اندپوینت تنظیمات کاتالوگ (catalog/updateSettings) را ندارد؛ پس از افزودن اندپوینت‌های catalog/* به بک‌اند مگان، ذخیرهٔ شخصی‌سازی فعال می‌شود.',
+        404,
+        'CATALOG_UNSUPPORTED',
+      );
+    }
+    throw e; // ولیدیشن/تکراری‌بودن آیدی — پیام خود بک‌اند
+  }
   if (!d?.settings) {
     throw new ApiError('ذخیرهٔ تنظیمات کاتالوگ ممکن نشد؛ دوباره تلاش کنید.', 0, 'CATALOG_SETTINGS_FAIL');
   }
   return d.settings;
 }
 
-/** رزولو آیدی عمومی کاتالوگ — صفحهٔ /catalog/{id}؛ id می‌تواند آیدی
+/** رزولو آیدی عمومی کاتالوگ — صفحهٔ /c/{id}؛ id می‌تواند آیدی
  *  سفارشی یا userName فروشنده باشد. نبود = null (صفحه ۴۰۴ می‌دهد). */
 export async function resolveCatalogPublicId(id: string): Promise<CatalogPublicResolve | null> {
   try {

@@ -23,7 +23,6 @@ import { ShareBox } from '@/components/shared/share-box';
 import { RatingStars } from '@/components/shared/rating-stars';
 import { CatalogSaversBox } from '@/components/products/catalog-savers';
 import { apiBase } from '@/lib/api/client';
-import { SITE_URL } from '@/lib/site';
 import { stockFa, toFa } from '@/lib/format';
 import type { CatalogSettings, Product } from '@/lib/types';
 
@@ -119,15 +118,27 @@ async function resolveCatalog(id: string): Promise<{ userName: string; settings:
   }
 }
 
-/** دیتای کامل صفحهٔ کاتالوگ — رزولو آیدی + فروشنده (یک جا برای متادیتا و رندر) */
+/** دیتای کامل صفحهٔ کاتالوگ — رزولو آیدی + فروشنده (یک جا برای متادیتا و رندر).
+ *  fallback (خواستهٔ مالک ۱۰-۱۱ دور ۴): بک‌اندی که اندپوینت‌های catalog/*
+ *  را هنوز نساخته ۴۰۴ می‌دهد؛ در آن حالت خودِ id را userName فرض می‌کنیم و
+ *  با تنظیمات پیش‌فرض رندر می‌کنیم — تا کاتالوگِ مسیر /c/{userName} حتی
+ *  پیش از کامل‌شدن بک‌اند هم بالا بیاید. id ناشناخته = همان ۴۰۴ قبلی. */
 async function getCatalogPageData(
   id: string,
 ): Promise<{ seller: SellerData; settings: CatalogSettings } | null> {
   const resolved = await resolveCatalog(id);
-  if (!resolved) return null;
-  const seller = await getSeller(resolved.userName);
+  if (resolved) {
+    const seller = await getSeller(resolved.userName);
+    if (seller) return { seller, settings: resolved.settings };
+    return null;
+  }
+  // بک‌اند بدون اندپوینت کاتالوگ — خود id می‌تواند userName فروشنده باشد
+  const seller = await getSeller(id);
   if (!seller) return null;
-  return { seller, settings: resolved.settings };
+  return {
+    seller,
+    settings: { catalogId: id, brandName: null, brandColor: null, brandIcon: 'store' },
+  };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -144,7 +155,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: { absolute: `کاتالوگ محصولات ${brandName}` },
     description:
       `${brandName}${location ? ` — ${location}` : ''} — کاتالوگ آنلاین محصولات، قیمت و موجودی روز؛ تماس مستقیم و گفتگو با فروشنده.`,
-    alternates: { canonical: `/catalog/${settings.catalogId}` },
+    alternates: { canonical: `/c/${settings.catalogId}` },
   };
 }
 
@@ -160,8 +171,10 @@ export default async function CatalogPage({ params }: Props) {
   const products = seller.products;
   const totalStock = user.totalStock ?? products.reduce((a, p) => a + p.stock, 0);
   const unit = products[0]?.unit ?? 'کیلوگرم';
-  // لینک عمومی کاتالوگ — همیشه با آیدی رزولو‌شده (سفارشی اگر انتخاب شده)
-  const publicUrl = `${SITE_URL}/catalog/${settings.catalogId}`;
+  // مسیر عمومی کاتالوگ — نسبی؛ کلاینت‌ها (هدر/ShareBox/هیرو) موقع کپی و
+  // اشتراک‌گذاری با window.location.origin مطلقش می‌کنند تا لینک همیشه
+  // با میزبانیِ فعلی ساخته شود، نه دامنهٔ کانفیگ (خواستهٔ مالک ۱۰-۱۱ دور ۴)
+  const sharePath = `/c/${settings.catalogId}`;
 
   /** آمار فروشنده — سه جعبه مثل تب «اصلی» باسکول */
   const stats = [
@@ -194,7 +207,7 @@ export default async function CatalogPage({ params }: Props) {
         brandName={brandName}
         brandIcon={settings.brandIcon}
         brandColor={settings.brandColor}
-        shareUrl={publicUrl}
+        sharePath={sharePath}
       />
       <main className="flex-1">
         {/* ─── کارت یکپارچه هدر کاتالوگ — عین باسکول (cp-header-main-container) ───
@@ -204,7 +217,7 @@ export default async function CatalogPage({ params }: Props) {
           <div className="overflow-hidden rounded-lg bg-card shadow-[0_1px_8px_rgba(0,0,0,0.1)] dark:border dark:border-border">
             <ProfileHero
               user={user as unknown as Parameters<typeof ProfileHero>[0]['user']}
-              shareUrl={publicUrl}
+              sharePath={sharePath}
             />
             <ProfileScrollNav productCount={user.productCount ?? products.length} />
           </div>
@@ -383,7 +396,7 @@ export default async function CatalogPage({ params }: Props) {
               </p>
             </div>
 
-            <ShareBox url={publicUrl} />
+            <ShareBox path={sharePath} />
 
             <div className="space-y-2 rounded-md border bg-secondary/50 p-5">
               <p className="flex items-center gap-2 text-sm font-bold">

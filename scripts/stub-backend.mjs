@@ -261,7 +261,7 @@ const countSavers = (sellerUserName) => {
 for (const u of ['seller0', 'buyer1', 'buyer2']) CATALOG_SAVES.set(`${u}:seller1`, '2026-11-01T10:00:00.000Z');
 
 // ─── تنظیمات شخصی‌سازی کاتالوگ (خواسته مالک ۱۰-۱۱ دور ۳) — هر فروشنده
-// می‌تواند آیدی لینک (/catalog/{catalogId})، نام برند، رنگ و آیکون خودش را
+// می‌تواند آیدی لینک (/c/{catalogId})، نام برند، رنگ و آیکون خودش را
 // بدهد. مقادیر null = پیش‌فرض (آیدی = userName، برند = نام فروشنده،
 // رنگ = رنگ برند ایمچ، آیکون = فروشگاه). کلید Map همان userName است ───
 const CATALOG_SETTINGS = new Map(); // userName -> { catalogId?, brandName?, brandColor?, brandIcon? }
@@ -556,7 +556,7 @@ const server = createServer(async (req, res) => {
       data = { settings: resolvedSettings(ME.userName) };
       break;
     }
-    // صفحهٔ عمومی /catalog/{id} — id می‌تواند آیدی سفارشی یا userName باشد
+    // صفحهٔ عمومی /c/{id} — id می‌تواند آیدی سفارشی یا userName باشد
     case 'catalog/resolvePublicId': {
       const id = String(body.id ?? '').trim().toLowerCase();
       let userName = null;

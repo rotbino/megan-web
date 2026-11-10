@@ -68,7 +68,7 @@ export async function ProductReviews({
           )}
         </h2>
         <Link
-          href={`/catalog/${sellerUserName}#reviews`}
+          href={`/c/${sellerUserName}#reviews`}
           className="shrink-0 text-xs font-bold text-primary transition-colors hover:text-primary-deep"
         >
           مشاهده همهٔ نظرات

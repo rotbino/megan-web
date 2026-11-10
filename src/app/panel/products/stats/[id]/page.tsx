@@ -148,7 +148,7 @@ function UserCell({
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
       {/* هویت — نام + متا */}
       <div className="min-w-0 flex-1 sm:flex-none">
-        <Link href={`/catalog/${user.userName}`} className="font-bold text-primary hover:underline">
+        <Link href={`/c/${user.userName}`} className="font-bold text-primary hover:underline">
           {name}
         </Link>
         <p className="mt-0.5 text-[11px] text-muted-foreground">{meta}</p>

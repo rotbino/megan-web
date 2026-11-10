@@ -15,17 +15,20 @@ import { catalogIcon } from '@/lib/catalog-brand';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Share2 } from 'lucide-react';
+import { absoluteUrl } from '@/lib/use-origin';
 
 export function CatalogHeader({
   brandName,
   brandIcon,
   brandColor,
-  shareUrl,
+  sharePath,
 }: {
   brandName: string;
   brandIcon: string;
   brandColor: string | null;
-  shareUrl: string;
+  /** مسیر نسبی کاتالوگ (مثل /c/{id}) — موقع اشتراک‌گذاری با
+   *  location صفحهٔ فعلی مطلق می‌شود (خواستهٔ مالک ۱۰-۱۱ دور ۴) */
+  sharePath?: string;
 }) {
   const { toast } = useToast();
   const router = useRouter();
@@ -33,7 +36,8 @@ export function CatalogHeader({
   const accent = brandColor || undefined; // CSS var --catalog-accent
 
   const share = async () => {
-    const url = shareUrl || (typeof window !== 'undefined' ? window.location.href : '');
+    // لینک از location میزبانیِ فعلی ساخته می‌شود — نه دامنهٔ کانفیگ
+    const url = sharePath ? absoluteUrl(sharePath) : (typeof window !== 'undefined' ? window.location.href : '');
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({ title: brandName, url });

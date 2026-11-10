@@ -78,7 +78,7 @@ function SavedCatalogCard({ row }: { row: SavedCatalogRow }) {
       <div className="mt-3 grid grid-cols-[1fr_auto_auto_auto] items-center gap-1.5 border-t border-border/70 pt-3">
         {/* مشاهدهٔ کاتالوگ — لینک مستقیم به صفحهٔ عمومی فروشنده */}
         <Button asChild size="sm" className="h-9 rounded-md text-xs">
-          <Link href={`/catalog/${row.sellerUserName}`} target="_blank">
+          <Link href={`/c/${row.sellerUserName}`} target="_blank">
             <ExternalLink size={14} />
             مشاهده کاتالوگ
           </Link>

@@ -117,7 +117,7 @@ export default function PanelProfilePage() {
             </Button>
             {/* پیش‌نمایش کاتالوگ عمومی (همان صفحهٔ پروفایل — /catalog) */}
             <Button asChild variant="outline" className="rounded-md">
-              <Link href={`/catalog/${u.userName}`} target="_blank" rel="noreferrer">
+              <Link href={`/c/${u.userName}`} target="_blank" rel="noreferrer">
                 <Eye size={15} /> مشاهده کاتالوگ من
               </Link>
             </Button>

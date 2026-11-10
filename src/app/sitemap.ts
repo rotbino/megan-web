@@ -88,7 +88,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const profilePages: MetadataRoute.Sitemap = sellerNames.map((userName) => ({
-    url: `${BASE}/catalog/${userName}`,
+    url: `${BASE}/c/${userName}`,
     changeFrequency: 'weekly' as const,
     priority: 0.4,
   }));
