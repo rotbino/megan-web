@@ -20,6 +20,7 @@
  */
 
 import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import {
   BadgeCheck,
@@ -63,6 +64,7 @@ import { ApiError } from '@/lib/api/client';
 import { useToast } from '@/hooks/use-toast';
 import { stockFa, toFa } from '@/lib/format';
 import { PERIOD_LABELS, type BuyerBookItem, type BuyerDirectoryItem, type BuyerBookSettings } from '@/lib/types';
+import { getSeller } from '@/lib/mock/api';
 import { cn } from '@/lib/utils';
 
 /** کارت قفل — پیام واحد مهمان/بی‌بسته با CTA مناسب + تیزر عنوان بنر دفتر */
@@ -272,10 +274,24 @@ export function BookPublicContent({
   const query = useBuyerBookPublic(canFetch ? bookId : null);
   const data = query.data;
 
-  // عنوان بنر (خواستهٔ مالک ۱۱-۱۱) — از تنظیمات دفتر؛ پیش‌فرض معرف دفتر است.
-  // تیزر قفل مهمان/بی‌بسته هم از همین متن ساخته می‌شود.
-  const fallbackBannerTitle = `خریدهای دوره‌ای ${resolvedName}؛ لطفا پیشنهادهای تامین خود را ارسال کنید.`;
+  // عنوان بنر (خواستهٔ مالک ۱۱-۱۱) — پیش‌فرض جدید: «دفتر خرید + نام کسب‌وکار»؛
+  // اگر نام کسب‌وکار نبود «دفتر خرید + نام کاربر» (مثل «دفتر خرید میر علی سید زاده»)
+  const fallbackBannerTitle = `دفتر خرید ${resolvedName}`;
   const bannerTitle = settings.bannerTitle?.trim() || fallbackBannerTitle;
+
+  // ── غنی‌سازی مشخصات کسب‌وکار از products/getSeller (خواستهٔ مالک ۱۱-۱۱:
+  //    تصاویر/مجوزها و هر اطلاعاتی از خریدار که برای فروشنده مهم است) — فقط
+  //    وقتی دفتر خودش گالری/مجوز ندارد؛ همان اندپوینت عمومی کاتالوگ، بدون توکن ──
+  const buyerUserName = data?.buyer.userName ?? null;
+  const needBizFallback =
+    !!data && !(data.buyer.gallery?.length ?? 0) && !(data.buyer.certificates?.length ?? 0);
+  const sellerFallbackQuery = useQuery({
+    queryKey: ['seller', buyerUserName ?? ''],
+    queryFn: () => getSeller(buyerUserName!),
+    enabled: needBizFallback,
+    staleTime: 300_000,
+    retry: false,
+  });
 
   // ── اکشن‌های «پیشنهاد تامین» — همان گیت‌های پنل خریداران ──
   const { data: myProducts } = useMyProducts(!!user);
@@ -409,15 +425,32 @@ export function BookPublicContent({
   }
 
   const { buyer, items, saversCount } = data;
+  // تنظیمات زنده (خواستهٔ مالک ۱۱-۱۱): دفتر عمومی تازه‌ترین تنظیمات را از
+  // buyerBook/getPublic می‌آورد؛ فیلدهای SSR (resolvePublicId) فقط فالبک‌اند —
+  // با این ادغام، ویرایش عنوان/شرایط بدون انتظار برای SSR جدید دیده می‌شود
+  const effSettings: BuyerBookSettings = { ...settings, ...(data.settings ?? {}) };
   const buyerName = `${buyer.firstName} ${buyer.lastName}`.trim() || resolvedName;
+  // مشخصات کسب‌وکار — عین دفتر، و در نبودِ فیلدها از پروفایل عمومی (getSeller)
+  const bizFallback = needBizFallback ? sellerFallbackQuery.data?.user : null;
+  const companyName =
+    buyer.companyName?.trim() || bizFallback?.companyName?.trim() || null;
+  const businessDesc =
+    buyer.businessDesc?.trim() || bizFallback?.businessDesc?.trim() || null;
+  const businessCategory =
+    buyer.businessCategory?.trim() || bizFallback?.businessCategory?.trim() || null;
+  const address = buyer.address?.trim() || bizFallback?.address?.trim() || null;
+  const gallery = buyer.gallery?.length ? buyer.gallery : (bizFallback?.gallery ?? []);
+  const certificates = buyer.certificates?.length
+    ? buyer.certificates
+    : (bizFallback?.certificates ?? []);
+  // عنوان بنر نهایی — متن خودِ خریدار یا پیش‌فرض «دفتر خرید + نام کسب‌وکار/کاربر»
+  const effectiveBannerTitle =
+    effSettings.bannerTitle?.trim() || `دفتر خرید ${companyName ?? buyerName}`;
   const location = [buyer.provinceName, buyer.cityName].filter(Boolean).join('، ');
-  const accent = settings.brandColor;
-  const managerTitle = settings.managerTitle?.trim() || null;
-  const supplyTerms = settings.supplyTerms?.trim() || null;
+  const accent = effSettings.brandColor;
+  const supplyTerms = effSettings.supplyTerms?.trim() || null;
   const companyLabel = buyer.isCompany && buyer.companyName?.trim() ? buyer.companyName.trim() : null;
-  const categoryLabel = buyer.businessCategory?.trim() || null;
-  const gallery = buyer.gallery ?? [];
-  const certificates = buyer.certificates ?? [];
+  const categoryLabel = businessCategory;
 
   const seniority = (() => {
     const days = buyer.daysInImach ?? 1;
@@ -455,12 +488,21 @@ export function BookPublicContent({
           <div className="absolute -start-14 -bottom-20 size-44 rounded-full bg-white/[0.07]" aria-hidden />
           <div className="absolute end-6 top-1/2 size-24 -translate-y-1/2 rounded-full bg-white/[0.06] sm:size-32" aria-hidden />
 
-          {/* ردیف بالا — بج دفتر خرید + فعال بودن */}
+          {/* ردیف بالا — لوگوی کسب‌وکار (تنظیمات) به‌جای بج «دفتر خرید»
+              (خواستهٔ مالک ۱۱-۱۱)؛ بدون لوگو = همان بج متنی + فعال بودن */}
           <div className="relative flex items-start justify-between gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-extrabold text-white backdrop-blur">
-              <BookOpen size={13} strokeWidth={2.4} />
-              دفتر خرید
-            </span>
+            {effSettings.logo ? (
+              <img
+                src={effSettings.logo}
+                alt="لوگوی کسب‌وکار"
+                className="size-11 rounded-xl border-2 border-white/50 bg-white/90 object-cover shadow-sm backdrop-blur sm:size-12"
+              />
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-extrabold text-white backdrop-blur">
+                <BookOpen size={13} strokeWidth={2.4} />
+                دفتر خرید
+              </span>
+            )}
             {buyer.activeRecently && (
               <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1.5 text-[10.5px] font-bold text-white backdrop-blur">
                 <span className="size-2 rounded-full bg-emerald-300" aria-hidden />
@@ -471,24 +513,18 @@ export function BookPublicContent({
 
           {/* عنوان بنر — از تنظیمات دفتر (خواستهٔ مالک ۱۱-۱۱)؛ فاصلهٔ پایینش
               از لبه، بالای ناحیهٔ آواتار می‌ماند تا متن کامل دیده شود.
-              whitespace-pre-line (خواستهٔ مالک ۱۱-۱۱): Enterهای فیلد چندخطی
-              تنظیمات، همین‌جا خطِ جدید می‌شوند */}
+              whitespace-pre-line: Enterهای فیلد چندخطی تنظیمات، همین‌جا خطِ جدید می‌شوند */}
           <h2 className="relative mb-12 max-w-2xl whitespace-pre-line text-start text-[15px] font-extrabold leading-7 text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.25)] sm:mb-14 sm:text-lg sm:leading-8 lg:text-xl">
-            {bannerTitle}
+            {effectiveBannerTitle}
           </h2>
         </div>
 
         <div className="px-4 pb-5 sm:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-5">
-            {/* لوگو (تنظیمات دفتر) یا آواتار — روی جلد افتاده */}
+            {/* تصویر پروفایل کاربر — روی جلد افتاده (خواستهٔ مالک ۱۱-۱۱:
+                به‌جای لوگو، تصویر خود کاربر؛ لوگو رفته بالا روی بنر) */}
             <div className="relative -mt-12 size-24 shrink-0 sm:-mt-14 sm:size-28">
-              {settings.logo ? (
-                <img
-                  src={settings.logo}
-                  alt={`لوگوی ${buyerName}`}
-                  className="size-full rounded-2xl border-4 border-card bg-card object-cover shadow-md"
-                />
-              ) : buyer.avatarUrl ? (
+              {buyer.avatarUrl ? (
                 <img
                   src={buyer.avatarUrl}
                   alt={`تصویر ${buyerName}`}
@@ -504,15 +540,12 @@ export function BookPublicContent({
               )}
             </div>
 
-            {/* سمت + نام + متا */}
+            {/* سمت + نام + متا — «مسوول خرید: نام» در یک خط (خواستهٔ مالک ۱۱-۱۱) */}
             <div className="min-w-0 flex-1 space-y-1.5 pt-1 sm:pb-2">
-              {/* سمت مسئول خرید (خواستهٔ مالک ۱۱-۱۱) — مثل «مسوول خرید» */}
-              {managerTitle && (
-                <p className="text-[12px] font-extrabold text-(--catalog-accent)">
-                  {managerTitle}
-                </p>
-              )}
-              <h1 className="flex min-w-0 flex-wrap items-center gap-2 text-xl font-extrabold leading-8 sm:text-2xl">
+              <h1 className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xl font-extrabold leading-8 sm:text-2xl">
+                <span className="shrink-0 text-[13px] font-bold text-(--catalog-accent) sm:text-[15px]">
+                  مسوول خرید:
+                </span>
                 <span className="truncate">{buyerName}</span>
                 {buyer.isVerified && (
                   <span
@@ -642,7 +675,7 @@ export function BookPublicContent({
               درباره خریدار
             </h2>
             <p className="mt-3 whitespace-pre-line text-[13px] leading-7 text-muted-foreground">
-              {buyer.businessDesc?.trim() || 'این خریدار هنوز توضیحی برای کسب‌وکارش ننوشته است.'}
+              {businessDesc || 'این خریدار هنوز توضیحی برای کسب‌وکارش ننوشته است.'}
             </p>
             <dl className="mt-4 space-y-2.5 border-t pt-4 text-xs">
               {location && (
@@ -652,11 +685,11 @@ export function BookPublicContent({
                   <dd className="font-bold text-foreground">{location}</dd>
                 </div>
               )}
-              {buyer.address?.trim() && (
+              {address && (
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <MapPin size={13} className="shrink-0 text-(--catalog-accent)/70" />
                   <dt className="shrink-0">آدرس:</dt>
-                  <dd className="truncate font-bold text-foreground" title={buyer.address}>{buyer.address}</dd>
+                  <dd className="truncate font-bold text-foreground" title={address}>{address}</dd>
                 </div>
               )}
               {companyLabel && (
@@ -693,70 +726,6 @@ export function BookPublicContent({
             </dl>
           </div>
 
-          {/* تصاویر و مجوزهای کسب‌وکار — عین کاتالوگ */}
-          {(gallery.length > 0 || certificates.length > 0) && (
-            <div className="rounded-xl border bg-card p-5">
-              <h2 className="flex items-center gap-2 text-sm font-bold">
-                <span className="grid size-7 place-items-center rounded-lg bg-(--catalog-accent)/10 text-(--catalog-accent)">
-                  <Camera size={15} />
-                </span>
-                تصاویر و مجوزهای کسب و کار
-              </h2>
-
-              {gallery.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="text-xs font-bold text-muted-foreground">تصاویر کسب و کار</h3>
-                  <div className="mt-2 grid grid-cols-3 gap-2">
-                    {gallery.map((g, i) => (
-                      <a
-                        key={`${g.url}-${i}`}
-                        href={g.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group relative block aspect-square overflow-hidden rounded-md border bg-secondary"
-                        title="مشاهده تصویر کامل"
-                      >
-                        <img
-                          src={g.thumbUrl ?? g.url}
-                          alt={`تصویر کسب‌وکار ${i + 1}`}
-                          className="size-full object-cover transition-transform group-hover:scale-105"
-                          loading="lazy"
-                        />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {certificates.length > 0 && (
-                <div className={gallery.length > 0 ? 'mt-4 border-t pt-4' : 'mt-4'}>
-                  <h3 className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
-                    <FileCheck2 size={13} className="text-(--catalog-accent)/70" />
-                    مجوزها و گواهی‌ها
-                  </h3>
-                  <div className="mt-2 grid grid-cols-3 gap-2">
-                    {certificates.map((c, i) => (
-                      <a
-                        key={`${c.url}-${i}`}
-                        href={c.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group relative block aspect-square overflow-hidden rounded-md border bg-secondary"
-                        title="مشاهده مجوز کامل"
-                      >
-                        <img
-                          src={c.thumbUrl ?? c.url}
-                          alt={`مجوز ${i + 1}`}
-                          className="size-full object-cover transition-transform group-hover:scale-105"
-                          loading="lazy"
-                        />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </aside>
       </div>
 
@@ -765,6 +734,73 @@ export function BookPublicContent({
       <section className="mt-8">
         <SellerReviews userName={buyer.userName} sellerName={buyerName} subject="buyer" />
       </section>
+
+      {/* ─── تصاویر و مجوزهای کسب‌وکار (خواستهٔ مالک ۱۱-۱۱: در انتهای دفتر،
+              تمام‌عرض — هر اطلاعات کامل‌تری از خریدار، تماس فروشنده را آسان‌تر
+              می‌کند؛ در نبودِ فیلدهای دفتر، از پروفایل عمومی getSeller می‌آید) ─── */}
+      {(gallery.length > 0 || certificates.length > 0) && (
+        <section id="buyer-gallery" aria-labelledby="buyer-gallery-title" className="mt-8 scroll-mt-24">
+          <h2 id="buyer-gallery-title" className="mb-3 flex items-center gap-2 text-base font-extrabold">
+            <span className="grid size-7 place-items-center rounded-lg bg-(--catalog-accent)/10 text-(--catalog-accent)">
+              <Camera size={15} />
+            </span>
+            تصاویر و مجوزهای کسب و کار
+          </h2>
+
+          {gallery.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-xs font-bold text-muted-foreground">تصاویر کسب و کار</h3>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                {gallery.map((g, i) => (
+                  <a
+                    key={`${g.url}-${i}`}
+                    href={g.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group relative block aspect-square overflow-hidden rounded-lg border bg-secondary"
+                    title="مشاهده تصویر کامل"
+                  >
+                    <img
+                      src={g.thumbUrl ?? g.url}
+                      alt={`تصویر کسب‌وکار ${i + 1}`}
+                      className="size-full object-cover transition-transform group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {certificates.length > 0 && (
+            <div className={gallery.length > 0 ? 'mt-5 border-t pt-5' : ''}>
+              <h3 className="mb-2 flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
+                <FileCheck2 size={13} className="text-(--catalog-accent)/70" />
+                مجوزها و گواهی‌ها
+              </h3>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                {certificates.map((c, i) => (
+                  <a
+                    key={`${c.url}-${i}`}
+                    href={c.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group relative block aspect-square overflow-hidden rounded-lg border bg-secondary"
+                    title="مشاهده مجوز کامل"
+                  >
+                    <img
+                      src={c.thumbUrl ?? c.url}
+                      alt={`مجوز ${i + 1}`}
+                      className="size-full object-cover transition-transform group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* ─── امضای iMach — عین کاتالوگ ─── */}
       <footer className="mt-8 border-t pt-6 pb-2 text-center">

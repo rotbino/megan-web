@@ -80,9 +80,8 @@ export function BookPublicHeader({
               className="mt-0.5 hidden items-center gap-1 text-[10.5px] font-medium text-muted-foreground sm:inline-flex"
             >
               <BookOpen size={11} style={accent ? { color: accent } : undefined} />
-              {/* سمت مسئول خرید از تنظیمات (خواستهٔ مالک ۱۱-۱۱) — مثل «مسوول خرید»؛
-                  نبود = همان برچسب «دفتر خرید» */}
-              {settings.managerTitle?.trim() || 'دفتر خرید'}
+              {/* سمت ثابت مسئول خرید (خواستهٔ مالک ۱۱-۱۱) — قابل ویرایش نیست */}
+              مسوول خرید
             </p>
           </div>
         </div>

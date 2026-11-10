@@ -227,6 +227,12 @@ for (const pr of PRODUCTS) {
       responseRate: 92,
       productCount: 0,
       totalStock: 0,
+      // کسب‌وکار کاربر نشست (خواستهٔ مالک ۱۱-۱۱) — پیش‌فرض عنوان بنرِ دفترِ
+      // خودش «دفتر خرید تولیدی آریا» می‌شود
+      isCompany: true,
+      companyName: 'تولیدی آریا',
+      businessCategory: 'تولید و پخش مواد غذایی',
+      address: 'همدان، شهرک صنعتی، خیابان سوم',
       products: [],
     });
   }
@@ -397,18 +403,15 @@ const freshBookId = (userName) => {
 // شرایط تامین — دفترِ خریدار با متنی که خودش در تنظیمات نوشته معرفی می‌شود
 BUYER_BOOK_SETTINGS.set('buyer1', {
   bookId: 'phaksh-seyyed', brandColor: '#0891b2', logo: null,
-  bannerTitle: 'خریدهای دوره‌ای شرکت آرمان؛ لطفا پیشنهادهای تامین خود را ارسال کنید.',
-  managerTitle: 'مسوول خرید',
   supplyTerms:
     'فقط تولیدکنندگان پیشنهاد تامین ارسال کنند.\nهزینه حمل بر عهده تامین‌کننده است.\nپرداخت نقدی در لحظه تحویل کالا انجام می‌شود.',
 });
 BUYER_BOOK_SETTINGS.set('buyer2', {
   brandColor: '#7c3aed', logo: null,
   bannerTitle: 'تامین هفتگی مغازه مواد غذایی کریمی — منتظر پیشنهاد قیمت شما هستیم.',
-  managerTitle: 'مدیر مغازه',
 });
 BUYER_BOOK_SETTINGS.set(ME.userName, {
-  bannerTitle: 'خریدهای دوره‌ای فروشگاه من — لطفا پیشنهادهای تامین خود را ارسال کنید.',
+  supplyTerms: 'فقط تولیدکنندگان پیشنهاد تامین ارسال کنند.\nهزینه حمل بر عهده تامین‌کننده است.',
 });
 
 /** خواندن تنظیمات رزولو‌شدهٔ دفتر (بدون ساخت — فقط خواندن) — متن‌های دفتر

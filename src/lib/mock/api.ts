@@ -449,6 +449,14 @@ export async function getSeller(userName: string) {
       responseRate: number | null;
       productCount: number;
       totalStock: number;
+      // فیلدهای کسب‌وکار — عین کاتالوگ (embedded myuser_profiles)؛ برای
+      // غنی‌سازی دفتر خرید وقتی buyerBook/getPublic گالری/مجوز ندارد
+      address?: string | null;
+      isCompany?: boolean;
+      companyName?: string | null;
+      businessCategory?: string | null;
+      gallery?: Array<{ url: string; thumbUrl: string }> | null;
+      certificates?: Array<{ url: string; thumbUrl: string }> | null;
     };
     products: RawProduct[];
   }>('/products/getSeller', { userName }, { auth: false });
