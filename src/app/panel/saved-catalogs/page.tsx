@@ -2,7 +2,7 @@
 
 /**
  * کاتالوگ های ذخیره شده (خواسته مالک ۱۰-۱۱ + بازنگری) — پنل خریدار.
- * دفترچهٔ تلفن کاتالوگ‌ها: «کاتالوگ» یعنی همان صفحهٔ پروفایل فروشنده؛
+ * دفترچهٔ تلفن کاتالوگ‌ها: «کاتالوگ» یعنی همان صفحهٔ عمومی فروشنده؛
  * هر کاتالوگی که کاربر روی صفحه‌اش ذخیره کرده این‌جاست — از همین لیست
  * می‌تواند کاتالوگ را ببیند، تماس بگیرد یا چت شروع کند و هر وقت خواست
  * حذفش کند.
@@ -76,9 +76,9 @@ function SavedCatalogCard({ row }: { row: SavedCatalogRow }) {
       </div>
 
       <div className="mt-3 grid grid-cols-[1fr_auto_auto_auto] items-center gap-1.5 border-t border-border/70 pt-3">
-        {/* مشاهدهٔ کاتالوگ — لینک مستقیم به صفحهٔ پروفایل فروشنده */}
+        {/* مشاهدهٔ کاتالوگ — لینک مستقیم به صفحهٔ عمومی فروشنده */}
         <Button asChild size="sm" className="h-9 rounded-md text-xs">
-          <Link href={`/profile/${row.sellerUserName}`} target="_blank">
+          <Link href={`/catalog/${row.sellerUserName}`} target="_blank">
             <ExternalLink size={14} />
             مشاهده کاتالوگ
           </Link>
@@ -137,7 +137,7 @@ export default function SavedCatalogsPage() {
         <h1 className="text-base font-extrabold sm:text-lg">کاتالوگ های ذخیره شده</h1>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
           کاتالوگ‌هایی که ذخیره کرده‌اید — مثل دفترچهٔ تلفن؛ کاتالوگ هر فروشنده همان
-          صفحهٔ پروفایل اوست. هر وقت خواستید ببینید، تماس بگیرید یا چت کنید.
+          صفحهٔ عمومی اوست. هر وقت خواستید ببینید، تماس بگیرید یا چت کنید.
         </p>
       </div>
 
@@ -151,7 +151,7 @@ export default function SavedCatalogsPage() {
         <PanelEmptyState
           icon={BookMarked}
           title="هنوز کاتالوگی ذخیره نکرده‌اید."
-          hint="روی هر کاتالوگ (پروفایل فروشنده) که رسیدید، دکمهٔ «ذخیره کاتالوگ» را بزنید تا این‌جا در دسترس باشد."
+          hint="روی کاتالوگ هر فروشنده‌ای که رسیدید، دکمهٔ «ذخیره کاتالوگ» را بزنید تا این‌جا در دسترس باشد."
         />
       ) : (
         <div className="space-y-3">
@@ -164,7 +164,7 @@ export default function SavedCatalogsPage() {
       {/* سرنخ تک‌خطی برای کشف — آیکون چت ایمچ در متن راهنما */}
       <p className="flex items-center justify-center gap-1.5 pt-1 text-[10.5px] text-muted-foreground">
         <MessageSquareText size={12} className="text-primary/60" />
-        ذخیره‌کردن کاتالوگ رایگان است؛ کاتالوگ هر فروشنده همان صفحهٔ پروفایل اوست.
+        ذخیره‌کردن کاتالوگ رایگان است؛ کاتالوگ هر فروشنده همان صفحهٔ عمومی اوست.
       </p>
     </div>
   );

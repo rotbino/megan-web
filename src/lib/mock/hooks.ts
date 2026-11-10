@@ -987,7 +987,7 @@ export function useDeletePhoneContact() {
   });
 }
 
-/* ─── کاتالوگ کاربر (خواسته مالک ۱۰-۱۱ + بازنگری) — کاتالوگ همان پروفایل ──── */
+/* ─── کاتالوگ کاربر (خواسته مالک ۱۰-۱۱ + بازنگری) — کاتالوگ همان صفحهٔ عمومی فروشنده ──── */
 
 /** آیا من این کاتالوگ (پروفایل فروشنده) را ذخیره کرده‌ام؟ — فقط کاربر واردشده */
 export function useCatalogSaved(userName: string, enabled: boolean) {
@@ -1023,6 +1023,29 @@ export function useToggleCatalogSave() {
       queryClient.setQueryData(['catalog-saved', userName], saved);
       queryClient.invalidateQueries({ queryKey: ['saved-catalogs'] });
       queryClient.invalidateQueries({ queryKey: ['catalog-savers', userName] });
+    },
+  });
+}
+
+/* ─── شخصی‌سازی کاتالوگ (خواستهٔ مالک ۱۰-۱۱ دور ۳) — آیدی/برند/رنگ/آیکون ─── */
+
+/** تنظیمات کاتالوگ خودم — مودال «تنظیمات کاتالوگ» (فقط وقتی باز است) */
+export function useMyCatalogSettings(enabled: boolean) {
+  return useQuery({
+    queryKey: ['my-catalog-settings'],
+    queryFn: () => api.getMyCatalogSettings(),
+    staleTime: 60_000,
+    enabled,
+  });
+}
+
+/** ذخیرهٔ تنظیمات کاتالوگ — کش خودم را تازه می‌کند */
+export function useUpdateCatalogSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.updateMyCatalogSettings,
+    onSuccess: (settings) => {
+      queryClient.setQueryData(['my-catalog-settings'], settings);
     },
   });
 }

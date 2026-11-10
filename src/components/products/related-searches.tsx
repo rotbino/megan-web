@@ -103,7 +103,7 @@ export async function RelatedSearches({
             <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1.5">
               {/* پروفایل فروشنده — جستجوی نام کاربر در گوگل به اینجا می‌رسد */}
               <Link
-                href={`/profile/${sellerUserName}`}
+                href={`/catalog/${sellerUserName}`}
                 className="rounded px-1.5 py-1 text-[12.5px] font-medium text-primary/90 transition-colors hover:bg-accent/60 hover:text-primary"
                 title={`${sellerName} — فروشنده ${subCategoryName} در ${cityName}`}
               >

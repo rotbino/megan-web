@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * کارت هویت فروشنده — سرصفحه پروفایل (بازطراحی دور ۱۷، عین باسکول cp-header):
+ * کارت هویت فروشنده — سرصفحه کاتالوگ (بازطراحی دور ۱۷، عین باسکول cp-header):
  *  • بنر عریض ۱۳۶px موبایل / ۲۸۰px دسکتاپ با تصویر ۱۹۲۰×۴۴۱ و گوشه‌های
  *    پایین گرد ۱۶px (cp-header-banner-container) — ریشهٔ «نصفه افتادن» بنر
  *    قدیمی، تصویر ۲:۱ در کادرِ کوتاه بود؛ حالا تصویر و نسبت باسکول است.
@@ -78,12 +78,12 @@ export function ProfileHero({
   const online = live?.online ?? user.online ?? null;
   const lastSeenAt = live?.lastSeenAt ?? user.lastSeenAt ?? null;
 
-  /** اشتراک‌گذاری پروفایل — عین باسکول: Web Share (موبایل) و در غیر این صورت کپی لینک */
+  /** اشتراک‌گذاری کاتالوگ — عین باسکول: Web Share (موبایل) و در غیر این صورت کپی لینک */
   const share = async () => {
     const url = shareUrl ?? (typeof window !== 'undefined' ? window.location.href : '');
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
-        await navigator.share({ title: `فروشگاه ${name}`, url });
+        await navigator.share({ title: `کاتالوگ ${name}`, url });
         return;
       } catch {
         return; // کاربر لغو کرد
@@ -91,7 +91,7 @@ export function ProfileHero({
     }
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(url).catch(() => {});
-      toast({ description: 'لینک پروفایل کپی شد.' });
+      toast({ description: 'لینک کاتالوگ کپی شد.' });
     }
   };
 
@@ -152,7 +152,7 @@ export function ProfileHero({
             ) : (
               <span
                 className={cn(
-                  'grid size-full place-items-center rounded-full border-2 bg-primary/10 text-2xl font-black text-primary shadow-[0_2px_10px_rgba(0,0,0,0.08)] lg:border-[5px]',
+                  'grid size-full place-items-center rounded-full border-2 bg-(--catalog-accent)/10 text-2xl font-black text-(--catalog-accent) shadow-[0_2px_10px_rgba(0,0,0,0.08)] lg:border-[5px]',
                   special ? 'border-amber-400' : 'border-card',
                 )}
               >
@@ -178,7 +178,7 @@ export function ProfileHero({
               </h1>
               {user.isVerified && (
                 <BadgeCheck
-                  className="size-5 shrink-0 text-primary lg:size-6"
+                  className="size-5 shrink-0 text-(--catalog-accent) lg:size-6"
                   aria-label="احراز هویت شده"
                 />
               )}
@@ -189,7 +189,7 @@ export function ProfileHero({
               {user.reviewSummary && user.reviewSummary.count > 0 && (
                 <>
                   <RatingStars value={user.reviewSummary.avg} size={14} showValue />
-                  <a href="#reviews" className="font-medium text-primary hover:underline">
+                  <a href="#reviews" className="font-medium text-(--catalog-accent) hover:underline">
                     {toFa(user.reviewSummary.count)} نظر
                   </a>
                 </>
@@ -200,7 +200,7 @@ export function ProfileHero({
                 <>
                   <span className="hidden size-1 rounded-full bg-border sm:inline-block" aria-hidden />
                   <span className="inline-flex items-center gap-1">
-                    <MapPin size={13} className="text-primary/70" />
+                    <MapPin size={13} className="text-(--catalog-accent)/70" />
                     {location}
                   </span>
                 </>
@@ -226,7 +226,7 @@ export function ProfileHero({
               className="h-11 w-full rounded-lg px-5 text-sm font-bold lg:h-10 lg:w-[142px]"
             />
             {/* ذخیرهٔ کاتالوگ (خواسته مالک ۱۰-۱۱ + بازنگری) — کاتالوگ همان
-                پروفایل است؛ موبایل تمام‌عرض زیر دو دکمهٔ بالا، دسکتاپ کنار هم.
+                کاتالوگ است؛ موبایل تمام‌عرض زیر دو دکمهٔ بالا، دسکتاپ کنار هم.
                 برای خودِ فروشنده رندر نمی‌شود */}
             <CatalogSaveButton
               sellerUserName={user.userName}

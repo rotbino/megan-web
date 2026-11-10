@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * نظرات کاربران درباره فروشنده — عین ساختار باسکول در پروفایل:
+ * نظرات کاربران درباره فروشنده — عین ساختار باسکول در کاتالوگ:
  * خلاصه امتیاز (میانگین + ستاره + توزیع ۵..۱) + لیست نظرات + فرم
  * ثبت/ویرایش نظر خودم (لاگین لازم). مهمان‌ها لیست را می‌بینند، برای نوشتن
  * مودال ورود باز می‌شود.
@@ -40,7 +40,7 @@ function MyReviewStatusNote({ status }: { status: SellerReviewRow['status'] }) {
     );
   }
   return (
-    <p className="mt-2.5 flex items-center gap-1.5 rounded-md bg-primary/5 px-2.5 py-2 text-[11.5px] font-medium text-primary">
+    <p className="mt-2.5 flex items-center gap-1.5 rounded-md bg-(--catalog-accent)/5 px-2.5 py-2 text-[11.5px] font-medium text-(--catalog-accent)">
       <Clock size={14} className="shrink-0" />
       نظر شما بعد از تحقیق و تایید منتشر می‌شود.
     </p>
@@ -62,14 +62,14 @@ function ReviewCard({ review, mine = false }: { review: SellerReviewRow; mine?: 
               loading="lazy"
             />
           ) : (
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-(--catalog-accent)/10 text-sm font-bold text-(--catalog-accent)">
               {review.author.firstName?.[0] ?? '؟'}
             </span>
           )}
           <div className="min-w-0">
             <p className="truncate text-[13px] font-bold">
               {name}
-              {mine && <span className="ms-1.5 text-[10.5px] font-medium text-primary">(نظر شما)</span>}
+              {mine && <span className="ms-1.5 text-[10.5px] font-medium text-(--catalog-accent)">(نظر شما)</span>}
             </p>
             <p className="text-[10.5px] text-muted-foreground">
               <RelativeTime date={review.createdAt} /> — شناسه {review.author.userName}
@@ -161,7 +161,7 @@ export function SellerReviews({ userName, sellerName }: { userName: string; sell
         ) : summary && summary.count > 0 ? (
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-md border bg-card p-4">
             <div className="flex items-center gap-3">
-              <span className="text-3xl font-extrabold leading-none text-primary">{toFa(summary.avg)}</span>
+              <span className="text-3xl font-extrabold leading-none text-(--catalog-accent)">{toFa(summary.avg)}</span>
               <div className="space-y-1">
                 <RatingStars value={summary.avg} size={14} />
                 <p className="text-[11px] text-muted-foreground">{toFa(summary.count)} نظر درباره این فروشنده</p>
@@ -264,7 +264,7 @@ export function SellerReviews({ userName, sellerName }: { userName: string; sell
           </div>
           {/* قانون انتشار — انتظار درست از همان لحظهٔ ثبت */}
           <p className="flex items-center gap-1.5 border-t border-border/70 pt-2.5 text-[10.5px] text-muted-foreground">
-            <Clock size={12} className="shrink-0 text-primary/70" />
+            <Clock size={12} className="shrink-0 text-(--catalog-accent)/70" />
             نظر شما پس از تحقیق و تأیید منتشر می‌شود؛ فقط کاربرانی که با فروشنده تماس یا چت داشته‌اند می‌توانند نظر ثبت کنند.
           </p>
         </form>

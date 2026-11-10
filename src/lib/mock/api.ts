@@ -1900,7 +1900,7 @@ export async function getMyUrgentChats(q: { categoryId?: number }): Promise<Urge
 }
 
 /* ─── کاتالوگ کاربر (خواسته مالک ۱۰-۱۱ + بازنگری) ────────────────────────────
- * کاتالوگ فروشنده همان صفحهٔ پروفایل عمومی اوست (/profile/{userName}) —
+ * کاتالوگ فروشنده همان صفحهٔ عمومی اوست (/catalog/{catalogId}) —
  * صفحهٔ مستقل جداگانه‌ای ساخته نمی‌شود و «ساختن/ویرایش/آیدی پیج» ندارد؛
  * با ثبت اولین محصول، کاتالوگ خودبه‌خود هست. آنچه از بک‌اند می‌ماند فقط
  * ذخیره/ذخیره‌کنندگان است و کلید همه‌جا userName فروشنده است.
@@ -1959,5 +1959,44 @@ export async function getCatalogSavers(
     return d && Array.isArray(d.items) ? d : { count: 0, items: [] };
   } catch {
     return { count: 0, items: [] };
+  }
+}
+
+/* ─── شخصی‌سازی کاتالوگ (خواستهٔ مالک ۱۰-۱۱ دور ۳) — آیدی لینک، نام برند،
+ * رنگ و آیکون. قرارداد همان بقیه: POST JSON به /catalog/*. خطای ۴۰۰/۴۰۹
+ * (ولیدیشن/تکراری‌بودن آیدی) با پیام بک‌اند به کاربر نشان داده می‌شود. ─── */
+
+import type { CatalogPublicResolve, CatalogSettings } from '@/lib/types';
+
+/** تنظیمات کاتالوگ خودم (پنل → مودال تنظیمات) — خطا = null (پیش‌فرض‌ها) */
+export async function getMyCatalogSettings(): Promise<CatalogSettings | null> {
+  try {
+    const d = await apiFetch<{ settings: CatalogSettings }>('/catalog/getMySettings', {});
+    return d?.settings ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** ذخیرهٔ تنظیمات کاتالوگ — فقط فیلدهای ارسالی عوض می‌شوند.
+ *  خطای ولیدیشن/تکراری‌بودن آیدی را با پیام بک‌اند برمی‌گرداند. */
+export async function updateMyCatalogSettings(
+  patch: Partial<Pick<CatalogSettings, 'catalogId' | 'brandName' | 'brandColor' | 'brandIcon'>>,
+): Promise<CatalogSettings> {
+  const d = await apiFetch<{ settings: CatalogSettings }>('/catalog/updateSettings', patch);
+  if (!d?.settings) {
+    throw new ApiError('ذخیرهٔ تنظیمات کاتالوگ ممکن نشد؛ دوباره تلاش کنید.', 0, 'CATALOG_SETTINGS_FAIL');
+  }
+  return d.settings;
+}
+
+/** رزولو آیدی عمومی کاتالوگ — صفحهٔ /catalog/{id}؛ id می‌تواند آیدی
+ *  سفارشی یا userName فروشنده باشد. نبود = null (صفحه ۴۰۴ می‌دهد). */
+export async function resolveCatalogPublicId(id: string): Promise<CatalogPublicResolve | null> {
+  try {
+    const d = await apiFetch<CatalogPublicResolve | null>('/catalog/resolvePublicId', { id }, { auth: false });
+    return d && d.userName && d.settings ? d : null;
+  } catch {
+    return null;
   }
 }

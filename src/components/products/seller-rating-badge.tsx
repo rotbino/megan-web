@@ -24,7 +24,7 @@ export function SellerRatingBadge({ userName }: { userName: string }) {
 
   return (
     <Link
-      href={`/profile/${userName}#reviews`}
+      href={`/catalog/${userName}#reviews`}
       className="mt-1 inline-flex items-center rounded-full transition-opacity hover:opacity-80"
       aria-label={`امتیاز فروشنده از ${summary.count} نظر — مشاهده نظرات`}
     >

@@ -185,8 +185,8 @@ function MyProductsPageInner() {
               </Link>
             </Button>
           )}
-          {/* تنظیمات کاتالوگ (خواسته مالک ۱۰-۱۱ + بازنگری) — کاتالوگ همان
-              پروفایل است؛ لینک/ذخیره‌کنندگان، بدون ساخت صفحهٔ جداگانه */}
+          {/* تنظیمات کاتالوگ (خواستهٔ ۱۰-۱۱ دور ۳) — آیدی لینک/برند/رنگ/آیکون
+              کاتالوگ (همان صفحهٔ عمومی فروشنده) */}
           <CatalogSettingsButton />
           <Button asChild size="sm" className="rounded-md text-xs h-9">
             <Link href="/panel/products/new">

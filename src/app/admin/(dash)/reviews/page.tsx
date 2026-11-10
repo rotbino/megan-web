@@ -263,7 +263,7 @@ export default function AdminReviewsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <Link
-                      href={`/profile/${row.seller.userName}`}
+                      href={`/catalog/${row.seller.userName}`}
                       target="_blank"
                       className="block min-w-0 hover:text-primary"
                       title="مشاهده پروفایل فروشنده"

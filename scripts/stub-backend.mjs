@@ -260,6 +260,37 @@ const countSavers = (sellerUserName) => {
 // ذخیره شده» از اول پُر باشند
 for (const u of ['seller0', 'buyer1', 'buyer2']) CATALOG_SAVES.set(`${u}:seller1`, '2026-11-01T10:00:00.000Z');
 
+// ─── تنظیمات شخصی‌سازی کاتالوگ (خواسته مالک ۱۰-۱۱ دور ۳) — هر فروشنده
+// می‌تواند آیدی لینک (/catalog/{catalogId})، نام برند، رنگ و آیکون خودش را
+// بدهد. مقادیر null = پیش‌فرض (آیدی = userName، برند = نام فروشنده،
+// رنگ = رنگ برند ایمچ، آیکون = فروشگاه). کلید Map همان userName است ───
+const CATALOG_SETTINGS = new Map(); // userName -> { catalogId?, brandName?, brandColor?, brandIcon? }
+// نمونهٔ seed (فروشندهٔ دیتای تست) تا شخصی‌سازی از اول در بازبینی بصری دیده شود
+CATALOG_SETTINGS.set('seller1', { brandName: 'هایپر زرین', brandColor: '#0e9f6e', brandIcon: 'shopping-basket' });
+
+/** تنظیمات رزولو‌شدهٔ یک فروشنده — پیش‌فرض‌ها با مقادیر ذخیره‌شده پر می‌شوند */
+const resolvedSettings = (userName) => {
+  const saved = CATALOG_SETTINGS.get(userName) ?? {};
+  const u = findUser(userName);
+  return {
+    catalogId: saved.catalogId ?? userName,
+    brandName: saved.brandName ?? (u ? `${u.firstName} ${u.lastName}`.trim() : null),
+    brandColor: saved.brandColor ?? null,
+    brandIcon: saved.brandIcon ?? 'store',
+  };
+};
+
+/** آیدی عمومی آزاد است؟ — تداخل با userName هیچ کاربری (جز خودِ مالک) و
+ *  آیدی سفارشی دیگران ممنوع. خروجی: null (آزاد) یا userName تصاحب‌کننده */
+const catalogIdOwner = (id, exceptUserName) => {
+  for (const [owner, s] of CATALOG_SETTINGS) {
+    if (owner !== exceptUserName && s.catalogId && s.catalogId === id) return owner;
+  }
+  const u = findUser(id);
+  if (u && u.userName !== exceptUserName) return u.userName;
+  return null;
+};
+
 // ─── نظرات نمونه — تا ستاره/توزیع/کارت‌های نظر در کاتالوگ دیده شود ───
 const REVIEWS = {
   summary: {
@@ -460,6 +491,82 @@ const server = createServer(async (req, res) => {
         }
       }
       data = { count: items.length, items };
+      break;
+    }
+    // ─── شخصی‌سازی کاتالوگ (خواسته مالک ۱۰-۱۱ دور ۳) ───
+    // تنظیمات کاتالوگ خودِ کاربر نشست (پنل → مودال تنظیمات کاتالوگ)
+    case 'catalog/getMySettings':
+      data = { settings: resolvedSettings(ME.userName) };
+      break;
+    // ذخیرهٔ تنظیمات — آیدی: حروف کوچک لاتین/رقم/خط تیره ۳-۳۰ + یکتا؛
+    // رنگ: hex ۶ رقمی؛ نام برند ≤ ۴۰ نویسه؛ آیکون: کلید مجاز (فرانت لیست
+    // رسمی دارد؛ بک‌اند واقعی همین ولیدیشن را در DTO تکرار می‌کند)
+    case 'catalog/updateSettings': {
+      const cur = CATALOG_SETTINGS.get(ME.userName) ?? {};
+      const out = { ...cur };
+      if (body.catalogId !== undefined) {
+        const id = String(body.catalogId ?? '').trim().toLowerCase();
+        if (!/^[a-z0-9-]{3,30}$/.test(id)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            status: false,
+            message: 'آیدی کاتالوگ باید ۳ تا ۳۰ نویسه باشد؛ فقط حروف کوچک لاتین، رقم و خط تیره (-).',
+          }));
+          return;
+        }
+        const owner = catalogIdOwner(id, ME.userName);
+        if (owner) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            status: false,
+            message: 'این آیدی قبلاً گرفته شده است؛ یکی دیگر انتخاب کنید.',
+          }));
+          return;
+        }
+        out.catalogId = id === ME.userName ? null : id;
+      }
+      if (body.brandName !== undefined) {
+        const bn = String(body.brandName ?? '').trim();
+        if (bn.length > 40) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: false, message: 'نام برند حداکثر ۴۰ نویسه است.' }));
+          return;
+        }
+        out.brandName = bn || null;
+      }
+      if (body.brandColor !== undefined) {
+        const bc = String(body.brandColor ?? '').trim();
+        if (bc && !/^#[0-9a-fA-F]{6}$/.test(bc)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: false, message: 'رنگ برند نامعتبر است (مثال: #0e9f6e).' }));
+          return;
+        }
+        out.brandColor = bc || null;
+      }
+      if (body.brandIcon !== undefined) {
+        const bi = String(body.brandIcon ?? '').trim();
+        if (bi && !/^[a-z0-9-]{2,30}$/.test(bi)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: false, message: 'آیکون انتخابی شناخته نشد.' }));
+          return;
+        }
+        out.brandIcon = bi || null;
+      }
+      CATALOG_SETTINGS.set(ME.userName, out);
+      data = { settings: resolvedSettings(ME.userName) };
+      break;
+    }
+    // صفحهٔ عمومی /catalog/{id} — id می‌تواند آیدی سفارشی یا userName باشد
+    case 'catalog/resolvePublicId': {
+      const id = String(body.id ?? '').trim().toLowerCase();
+      let userName = null;
+      if (id) {
+        for (const [owner, s] of CATALOG_SETTINGS) {
+          if (s.catalogId && s.catalogId === id) { userName = owner; break; }
+        }
+        if (!userName && findUser(id)) userName = id;
+      }
+      data = userName ? { userName, settings: resolvedSettings(userName) } : null;
       break;
     }
     // ─── چت — حالت حداقلی برای بازبینی بصری کامپوزر/مودال پیوست ───

@@ -115,10 +115,10 @@ export default function PanelProfilePage() {
                 <Pencil size={15} /> ویرایش پروفایل
               </Link>
             </Button>
-            {/* پیش‌نمایش پروفایل عمومی — به‌جای «ارسال برای دوستان» (دور ۱۶) */}
+            {/* پیش‌نمایش کاتالوگ عمومی (همان صفحهٔ پروفایل — /catalog) */}
             <Button asChild variant="outline" className="rounded-md">
-              <Link href={`/profile/${u.userName}`} target="_blank" rel="noreferrer">
-                <Eye size={15} /> مشاهده پیش نمایش
+              <Link href={`/catalog/${u.userName}`} target="_blank" rel="noreferrer">
+                <Eye size={15} /> مشاهده کاتالوگ من
               </Link>
             </Button>
           </div>

@@ -2,8 +2,8 @@
 
 /**
  * جعبهٔ «ذخیره کنندگان» کاتالوگ کاربر (خواسته مالک ۱۰-۱۱ + بازنگری):
- * آمار کلیک‌پذیر در ردیف آمار صفحهٔ پروفایل → مودال لیست ذخیره‌کنندگان.
- * کاتالوگ همان پروفایل است، پس کلید اندپوینت userName فروشنده است.
+ * آمار کلیک‌پذیر در ردیف آمار صفحهٔ کاتالوگ → مودال لیست ذخیره‌کنندگان.
+ * کاتالوگ همان صفحهٔ عمومی فروشنده است، پس کلید اندپوینت userName فروشنده است.
  * قانون دسترسی: همهٔ بازدیدکنندگان لیست را می‌بینند، اما چت و تماس
  * فقط برای صاحب کاتالوگ (او با مشتری‌های علاقه‌مندش تماس می‌گیرد —
  * دفترچهٔ تلفن معکوس). سایرین فقط اسامی/شهر را می‌بینند.
@@ -36,7 +36,7 @@ function SaverRow({ saver, canContact }: { saver: CatalogSaverRow; canContact: b
       {saver.avatarUrl ? (
         <img src={saver.avatarUrl} alt={name} className="size-10 shrink-0 rounded-full object-cover" loading="lazy" />
       ) : (
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-(--catalog-accent)/10 text-sm font-bold text-(--catalog-accent)">
           {saver.firstName?.[0] ?? '؟'}
         </span>
       )}
@@ -93,18 +93,18 @@ export function CatalogSaversBox({ sellerUserName }: { sellerUserName: string })
         title="چه کسانی این کاتالوگ را ذخیره کرده‌اند"
         className="group rounded-md border bg-card p-3 text-center transition-colors hover:border-primary/40 sm:p-4"
       >
-        <Bookmark size={18} className="mx-auto text-primary" />
+        <Bookmark size={18} className="mx-auto text-(--catalog-accent)" />
         <p className="mt-1.5 font-num text-sm font-extrabold leading-6 sm:text-base">
           {isLoading ? '…' : toFa(count)}
         </p>
-        <p className="mt-0.5 text-[10.5px] text-muted-foreground group-hover:text-primary">ذخیره کنندگان</p>
+        <p className="mt-0.5 text-[10.5px] text-muted-foreground group-hover:text-(--catalog-accent)">ذخیره کنندگان</p>
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent dir="rtl" className="max-h-[85dvh] overflow-y-auto sm:max-w-md">
           <DialogHeader className="text-start">
             <DialogTitle className="flex items-center gap-2 text-base">
-              <Bookmark size={17} className="text-primary" />
+              <Bookmark size={17} className="text-(--catalog-accent)" />
               ذخیره کنندگان کاتالوگ
             </DialogTitle>
             <DialogDescription className="text-start">
@@ -134,7 +134,7 @@ export function CatalogSaversBox({ sellerUserName }: { sellerUserName: string })
 
           {!isOwner && data && data.items.length > 0 && (
             <p className="flex items-start gap-1.5 rounded-lg bg-secondary/60 p-3 text-[11px] leading-5 text-muted-foreground">
-              <UserRound size={14} className="mt-0.5 shrink-0 text-primary/70" />
+              <UserRound size={14} className="mt-0.5 shrink-0 text-(--catalog-accent)/70" />
               مشاهدهٔ لیست برای همه آزاد است؛ تماس و چت با ذخیره‌کنندگان فقط برای صاحب کاتالوگ ممکن است.
             </p>
           )}

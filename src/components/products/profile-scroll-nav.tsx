@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * ناوبری بخش‌های پروفایل — عین باسکول (cp-navigation-container):
+ * ناوبری بخش‌های کاتالوگ — عین باسکول (cp-navigation-container):
  * نوار لینک‌ها با خط جداکننده بالایی ۱px (مثل باسکول) داخل همان کارت
  * یکپارچه هدر؛ تب فعال متن رنگ برند + اندیکاتور خط زیرین ۲px دارد
  * (cp-nav-button-indicator). دسکتاپ هاور پس‌زمینه ملایم می‌گیرد.
@@ -52,7 +52,7 @@ export function ProfileScrollNav({ productCount }: { productCount?: number }) {
                 // عین cp-nav-button: پدینگ ۱۴/۱۶ + اندیکاتور خط زیرین برای تب فعال
                 'relative flex items-center rounded-sm px-4 py-3.5 text-sm transition-colors',
                 active === id
-                  ? 'border-b-2 border-primary font-bold text-primary'
+                  ? 'border-b-2 border-(--catalog-accent) font-bold text-(--catalog-accent)'
                   : 'border-b-2 border-transparent font-normal text-muted-foreground hover:text-foreground lg:hover:bg-muted/60',
               )}
             >
