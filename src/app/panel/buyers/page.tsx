@@ -1,18 +1,20 @@
 'use client';
 
 /**
- * خریداران پنل (بازطراحی مالک ۴-۱۱؛ ۶-۱۱) — عین صفحهٔ عمومی خریداران (/buyers)
- * با سه تب «درخواست‌های خرید فوری»، «درخواست‌های خرید دوره‌ای» و «پیشنهادات
- * ارسال شده»، با این تفاوت که اینجا نتایج بر اساس امتیاز تطابق با آگهی‌های
- * خودِ فروشنده سورت می‌شوند — سیستم با تطابق گروه‌های محصولی و نوع محصول
- * فروشنده با گروه کالاهای دفتر خرید/درخواست‌های خریداران، مطابق‌ترین‌ها را
- * بالاتر می‌آورد (بج «دقت تطابق» روی کارت‌ها).
+ * خریداران پنل (بازطراحی مالک ۴-۱۱؛ ۶-۱۱؛ ۱۱-۱۱) — عین صفحهٔ عمومی خریداران
+ * (/buyers) با چهار تب، با این تفاوت که اینجا نتایج بر اساس امتیاز تطابق با
+ * آگهی‌های خودِ فروشنده سورت می‌شوند — سیستم با تطابق گروه‌های محصولی و نوع
+ * محصول فروشنده با گروه کالاهای دفتر خرید/درخواست‌های خریداران، مطابق‌ترین‌ها
+ * را بالاتر می‌آورد (بج «دقت تطابق» روی کارت‌ها).
+ *  • تب‌بار (خواستهٔ مالک ۱۱-۱۱): چسبیده به زیر هدر پنل، تمام‌عرض، با مرز و
+ *    سایهٔ خودش — از محتوای صفحه جدا می‌شود و با اسکرول سر جایش می‌ماند؛
+ *    تب‌های زیرخط‌دار عین تب‌ویوی واقعی (تب فعال به محتوا وصل است)
  *  • فوری: کارت خریدار با تماس/چت/نشان (عین پنل قبلی)
  *  • دوره‌ای: کارت دفتر خرید با «ارسال پیشنهاد تامین» + ویزار گروهی
  *  • ارسال‌شده → «پیشنهادهای من» (خواسته مالک ۸-۱۱): تایم‌لاین واحدِ عین
  *    صفحهٔ خریدارانِ هر کالا — پیشنهادهای تامین ارسالی به درخواست‌های دوره‌ای
- *    (متن و مشخصات روی کارت) + گفتگوهای خرید فوری؛ تب‌ها همیشه در یک ردیف
- *    کنار هم (موبایل و دسکتاپ)
+ *    (متن و مشخصات روی کارت) + گفتگوهای خرید فوری
+ *  • دفاتر ذخیره‌شده (خواسته مالک ۱۰-۱۱ دور ۵): کارت‌های مشتری بالقوه
  *  • جستجو و فیلتر دسته‌های محصول + استان/شهر همچنان در دسترس است
  *  • فرم مینیمال (خواسته مالک ۶-۱۱): بدون جملهٔ سورت/سهمیه — سهمیه و
  *    محدودیت روزانه حذف شد؛ هزینه گروهی فقط لحظهٔ ارسال از کیف پول کسر می‌شود
@@ -70,7 +72,7 @@ const REQ_BATCH = 10;
 
 export default function PanelBuyersPage() {
   return (
-    <Suspense fallback={<div className="h-40 animate-pulse rounded-lg border bg-card" />}>
+    <Suspense fallback={<div className="mt-3 h-40 animate-pulse rounded-lg border bg-card sm:mt-4" />}>
       <PanelBuyersInner />
     </Suspense>
   );
@@ -226,7 +228,7 @@ function PanelBuyersInner() {
     key: PanelBuyersTab,
     icon: React.ReactNode,
     label: string,
-    /** برچسب کوتاه موبایل — سه تب در یک ردیف ۳۹۰px جا شوند (خواسته مالک:
+    /** برچسب کوتاه موبایل — چهار تب در یک ردیف ۳۹۰px جا شوند (خواسته مالک:
      *  تب‌ها همیشه کنار هم، نه روی هم و نه نیازمند اسکرول) */
     shortLabel: string,
     count: number,
@@ -237,17 +239,16 @@ function PanelBuyersInner() {
       aria-selected={tab === key}
       onClick={() => setTab(key)}
       className={cn(
-        // سگمنت‌بار: دکمه‌های هم‌عرض دسکتاپ؛ موبایل سه تب کوتاه کنار هم
-        'flex flex-1 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2 py-2 text-[11px] font-bold transition-all sm:px-2 sm:text-xs',
-        // تب فعال = کارت روشنِ برآمده از زمینهٔ سگمنت — سایهٔ مشخص تا در موبایل
-        // هم چشم بدون تلاش سه تب را ببیند
+        // تب کلاسیک زیرخط‌دار (خواستهٔ مالک ۱۱-۱۱): خط زیرین ۲px روی مرز خود
+        // نوار می‌نشیند و تب فعال را به محتوا وصل می‌کند — عین تب‌ویوی مرورگر
+        'flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-[11px] font-bold transition-colors sm:px-3 sm:text-[13px]',
         tab === key
-          ? 'bg-card text-primary shadow-[0_1px_4px_rgba(0,0,0,0.14)] font-extrabold'
-          : 'text-muted-foreground hover:bg-card/60 hover:text-foreground',
+          ? 'border-primary font-extrabold text-primary'
+          : 'border-transparent text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
       )}
     >
       {icon}
-      {/* دسکتاپ: عنوان کامل · موبایل: عنوان کوتاه — هر سه تب همیشه هم‌ردیف */}
+      {/* دسکتاپ: عنوان کامل · موبایل: عنوان کوتاه — هر چهار تب همیشه هم‌ردیف */}
       <span className="hidden sm:inline">{label}</span>
       <span className="sm:hidden">{shortLabel}</span>
       <span
@@ -262,46 +263,56 @@ function PanelBuyersInner() {
   );
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4">
-      {/* تب‌ویوی سگمنتی (خواسته مالک ۷-۱۱): زمینهٔ متفاوت از محتوا + دکمهٔ فعال
-          برآمده — دیگر «جزئی از محتوا» به نظر نمی‌رسد؛ سه تب همیشه یک ردیف کنار هم
-          در موبایل (برچسب کوتاه) و دسکتاپ (هم‌عرض، عنوان کامل). دور هفدهم (۷-۱۱):
-          نوار تب اسکرول افقی خودش را دارد — اگر روی گوشی‌های باریک جا نشود، خود
-          نوار می‌لغزد نه اینکه صفحه را به‌هم بریزد (خواستهٔ مالک: موبایل بی‌نقص) */}
-      <div
-        className="flex items-stretch gap-1 overflow-x-auto rounded-lg border border-border bg-secondary/70 p-1"
-        role="tablist"
-        aria-label="بخش‌های خریداران"
-      >
-        {tabButton(
-          'requests',
-          <ClipboardList size={14} className="shrink-0" />,
-          'درخواست‌های خرید فوری',
-          'خرید فوری',
-          reqQuery.isLoading && !reqQuery.data ? 0 : reqItems.length,
-        )}
-        {tabButton(
-          'periodic',
-          <CalendarClock size={14} className="shrink-0" />,
-          'درخواست‌های خرید دوره‌ای',
-          'خرید دوره‌ای',
-          dirQuery.isLoading && !dirQuery.data ? 0 : dirTotal,
-        )}
-        {tabButton(
-          'sent',
-          <Send size={14} className="shrink-0" />,
-          'پیشنهادهای من',
-          'پیشنهادها',
-          sentQuery.isLoading || urgentBadgeQuery.isLoading ? 0 : sentCount,
-        )}
-        {tabButton(
-          'saved',
-          <BookMarked size={14} className="shrink-0" />,
-          'دفاتر ذخیره شده',
-          'دفاتر',
-          tab === 'saved' || savedBooksQuery.isFetched ? savedBooksCount : 0,
-        )}
+    // پوستهٔ پنل برای این صفحه پدینگ بالای main را حذف کرده
+    // (GLUED_TOOLBAR_PAGES) — نوار تب مستقیم زیر هدر می‌نشیند، بدون مارجین
+    // منفی (مارجین منفی + sticky در کروم به لبهٔ پدینگ برمی‌گردد و نوار جدا
+    // می‌افتاد)
+    <div>
+      {/* تب‌بار چسبیده به زیر هدر (خواستهٔ مالک ۱۱-۱۱): تمام‌عرض (پدینگ افقی
+          main با -mx خنثی شده)، با مرز و سایهٔ خودش تا از محتوا جدا دیده شود؛
+          اسکرول که می‌شود سر جایش می‌ماند — موبایل زیر هدر پنل (top-14)،
+          دسکتاپ چون main ظرف اسکرول است top-0 یعنی همان لبهٔ زیر هدر.
+          تب‌های زیرخط‌دار عین تب‌ویوی واقعی؛ ردیف داخلی max-w-5xl هم‌تراز
+          ستون محتواست. نوار خودش می‌لغزد نه اینکه صفحه را به‌هم بریزد */}
+      <div className="sticky top-14 z-10 -mx-3 border-b border-border bg-background shadow-[0_3px_10px_rgba(35,38,43,0.12)] sm:-mx-4 lg:top-0 lg:-mx-6">
+        <div
+          className="mx-auto flex h-12 max-w-5xl items-stretch gap-1 overflow-x-auto px-3 sm:px-4 lg:px-6"
+          role="tablist"
+          aria-label="بخش‌های خریداران"
+        >
+          {tabButton(
+            'requests',
+            <ClipboardList size={14} className="shrink-0" />,
+            'درخواست‌های خرید فوری',
+            'خرید فوری',
+            reqQuery.isLoading && !reqQuery.data ? 0 : reqItems.length,
+          )}
+          {tabButton(
+            'periodic',
+            <CalendarClock size={14} className="shrink-0" />,
+            'درخواست‌های خرید دوره‌ای',
+            'خرید دوره‌ای',
+            dirQuery.isLoading && !dirQuery.data ? 0 : dirTotal,
+          )}
+          {tabButton(
+            'sent',
+            <Send size={14} className="shrink-0" />,
+            'پیشنهادهای من',
+            'پیشنهادها',
+            sentQuery.isLoading || urgentBadgeQuery.isLoading ? 0 : sentCount,
+          )}
+          {tabButton(
+            'saved',
+            <BookMarked size={14} className="shrink-0" />,
+            'دفاتر ذخیره شده',
+            'دفاتر',
+            tab === 'saved' || savedBooksQuery.isFetched ? savedBooksCount : 0,
+          )}
+        </div>
       </div>
+
+      {/* بدنه — ستون همیشگی، فاصلهٔ ثابت زیر تب‌بار */}
+      <div className="mx-auto max-w-5xl space-y-4 pt-4">
 
       {/* جستجو + فیلترها — مشترک دو تب خریداران؛ تب «ارسال شده/دفاتر» فیلتر خودش را دارد */}
       {tab !== 'sent' && tab !== 'saved' && (
@@ -534,6 +545,7 @@ function PanelBuyersInner() {
         kind="package"
         message="ارسال پیشنهاد تامین به خریداران عمده، ویژهٔ فروشندگان دارندهٔ بستهٔ اشتراک فعال است. با فعال‌سازی یکی از بسته‌های ایمچ، از امروز می‌توانید برای خریداران پیشنهاد بفرستید."
       />
+      </div>
     </div>
   );
 }

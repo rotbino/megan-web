@@ -73,6 +73,11 @@ function panelPageTitle(pathname: string): string {
   return best?.label ?? 'پنل کاربری';
 }
 
+/** صفحه‌هایی که خودشان نوار تب چسبانِ چسبیده به زیر هدر دارند (خواستهٔ مالک
+ *  ۱۱-۱۱) — پدینگ بالای main برایشان حذف می‌شود تا نوار دقیقاً به هدر بچسبد؛
+ *  صفحات بدون نوار همان فاصلهٔ همیشگی را می‌بینند. مسیرهای فرعی هم پوشیده‌اند. */
+const GLUED_TOOLBAR_PAGES = ['/panel/buyers'];
+
 export function PanelShell({ children }: { children: React.ReactNode }) {
   // ریل‌تایم سراسری پنل (خواسته مالک ۸-۱۱): رویدادهای WS چت/پشتیبانی
   // شمارنده‌ها و گفتگوها را همان لحظه تازه می‌کنند — بج «پشتیبانی» در
@@ -82,6 +87,10 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   const { data: profile } = usePanelProfile();
   const { data: myPackage } = useMyPackage();
   const pathname = usePathname() ?? '';
+  /** این صفحه نوار تب چسبان دارد؟ — پدینگ بالای main برایش حذف می‌شود */
+  const gluedToolbar = GLUED_TOOLBAR_PAGES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
   const [collapsed, setCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   /** مودال رمز — دست این پوسته است تا با ورود به هر صفحهٔ پنل بدون رمز،
@@ -162,12 +171,16 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
         {/* هدر بالای محتوا (دسکتاپ) — تمام‌عرض با سایه (خواسته مالک ۷-۱۱ دور
             هفدهم): خط زیرینش به دو لبه می‌چسبد و با سایهٔ ظریف از بدنه جدا
             دیده می‌شود. ارتفاع 59px = هم‌تراز هدر سایدبار.
+            ۱۱-۱۱: mb-5 حذف شد تا لبهٔ بالای main دقیقاً به هدر بچسبد — صفحه‌هایی
+            که نوار تب چسبان می‌خواهند (مثل خریداران) با lg:-mt-11 پدینگ بالای
+            main را خنثی می‌کنند و نوارشان زیر هدر می‌نشیند؛ بقیهٔ صفحات با
+            lg:pt-11 همان فاصلهٔ همیشگی (۴۴px) را می‌بینند.
             راست = عنوان صفحهٔ جاری + دکمهٔ طلایی «ارتقا به فروشنده ویژه»؛
             چپ = پروفایل کاربر و خانهٔ سایت (آیکون هوم چپ‌تر از تصویر پروفایل —
             خواسته مالک ۷-۱۱ دور هفدهم). دکمهٔ ارتقا وقتی بستهٔ فعال است حذف
             می‌شود (تکرار ممنوع — وضعیت در باکس اشتراک ایمچ من دیده می‌شود). */}
         {user && (
-          <div className="mb-5 hidden h-[59px] shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-6 shadow-[0_1px_5px_rgba(0,0,0,0.06)] lg:flex">
+          <div className="hidden h-[59px] shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-6 shadow-[0_1px_5px_rgba(0,0,0,0.06)] lg:flex">
             <div className="flex min-w-0 items-center gap-3">
               <h1 className="truncate text-[15px] font-extrabold leading-none">{panelPageTitle(pathname)}</h1>
               {user.role !== 'buyer' && !myPackage?.isActive && (
@@ -210,8 +223,20 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
         {/* main — در دسکتاپ خودش ظرف اسکرول است (flex-1 + overflow) پس هدر
-            بالای آن هرگز از صفحه بیرون نمی‌رود؛ در موبایل اسکرول body می‌ماند */}
-        <main className="min-h-screen min-w-0 p-3 sm:p-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:p-6">{hydrated ? (
+            بالای آن هرگز از صفحه بیرون نمی‌رود؛ در موبایل اسکرول body می‌ماند.
+            lg:pt-11 = ۴۴px = پدینگ ۲۴px + مارجین ۲۰px قبلیِ هدر — فاصلهٔ بصری
+            همهٔ صفحات عین قبل ماند؛ صفحه‌های نوار-تب-چسبان (GLUED_TOOLBAR_PAGES)
+            پدینگ بالا نمی‌گیرند تا نوارشان دقیقاً زیر هدر بچسبد (خواستهٔ مالک
+            ۱۱-۱۱ — بدون مارجین منفی؛ مارجین منفی + sticky در کروم به لبهٔ پدینگ
+            برمی‌گردد و نوار جدا می‌افتاد) */}
+        <main
+          className={cn(
+            'min-h-screen min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:px-6 lg:pb-6',
+            gluedToolbar
+              ? 'px-3 pb-3 sm:px-4 sm:pb-4'
+              : 'px-3 pt-3 pb-3 sm:px-4 sm:pt-4 sm:pb-4 lg:pt-11',
+          )}
+        >{hydrated ? (
           user ? (
             // بدون رمز پنل = قفل محتوا (خواسته مالک — «قبل از هر کاری رمز تعیین کن»)
             needsPassword ? (
