@@ -23,7 +23,6 @@ import {
   MessageSquare,
   Package,
   ShieldCheck,
-  Sparkles,
   UserRound,
   Users,
   Wallet,
@@ -58,16 +57,16 @@ export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel/sell-leads', label: 'سرنخ‌های فروش', icon: Bookmark },
 ];
 
-/** منوی خریدار — ۶ آیتم؛ «کاتالوگ های ذخیره شده» (خواسته مالک ۱۰-۱۱ +
- *  بازنگری): دفترچهٔ تلفن کاتالوگ‌ها — «کاتالوگ» یعنی همان صفحهٔ عمومی
- *  فروشنده؛ از هر کاتالوگ می‌شود مستقیم تماس/چت گرفت. دور ۲۸: «احراز
- *  هویت» حذف شد؛ «دفتر خرید من» تب «درخواست‌های خرید دوره‌ای» است.
- *  دور ۱۶: «آیمچ من» اول از همه */
+/** منوی خریدار — ۵ آیتم (خواستهٔ مالک ۱۱-۱۱ دور ۳): «فروشندگان پیشنهادی»
+ *  حذف شد — دکمهٔ «فروشندگان پیشنهادی» هر ردیفِ «درخواست‌های خرید من»
+ *  مستقیم به لیست محصولات همان دسته با سورت تطابق نیاز می‌رود؛ صفحهٔ میانی
+ *  اضافی بود. «کاتالوگ های ذخیره شده» (خواسته مالک ۱۰-۱۱): دفترچهٔ تلفن
+ *  کاتالوگ‌ها؛ دور ۲۸: «احراز هویت» حذف شد؛ «دفتر خرید من» تب «درخواست‌های
+ *  خرید دوره‌ای» است. دور ۱۶: «آیمچ من» اول از همه */
 export const BUYER_NAV: PanelNavItem[] = [
   { href: '/panel', label: 'آیمچ من', icon: UserRound, exact: true },
   { href: '/panel/my-requests', label: 'درخواست های خرید من', icon: FileText },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
-  { href: '/panel/suggested-sellers', label: 'فروشندگان پیشنهادی', icon: Sparkles },
   { href: '/panel/saved-catalogs', label: 'کاتالوگ های ذخیره شده', icon: BookMarked },
   { href: '/panel/saved', label: 'سرنخ‌های خرید', icon: Bookmark },
 ];

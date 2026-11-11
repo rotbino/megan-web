@@ -18,6 +18,7 @@
 import Link from 'next/link';
 import {
   Bookmark,
+  BookMarked,
   ChevronLeft,
   Crown,
   FileText,
@@ -25,7 +26,6 @@ import {
   MessageSquare,
   Package,
   ShieldCheck,
-  Sparkles,
   Users,
   Wallet,
 } from 'lucide-react';
@@ -108,13 +108,16 @@ export default function PanelDashboard() {
   ];
 
   /** منوی نقش داخل صفحه — فقط موبایل (دسکتاپ: همین آیتم‌ها در سایدبارند).
-   *  سه‌تای افقی + «ثبت درخواست خرید» و «پیشنهادهای تامین» داخلش نیستند (دور ۱۵).
+   *  سه‌تای افقی + «ثبت درخواست خرید» داخلش نیستند (دور ۱۵).
    *  «آیمچ من» هم حذف می‌شود — همین‌جاییم. ارتقای فروشنده فقط بی‌بسته.
-   *  دور ۱۶: برچسب «منوی خریدار/فروشنده» بالای منو حذف شد (خواستهٔ مالک). */
+   *  دور ۱۶: برچسب «منوی خریدار/فروشنده» بالای منو حذف شد (خواستهٔ مالک).
+   *  ۱۱-۱۱ دور ۳: «فروشندگان پیشنهادی» حذف شد (دکمهٔ هر ردیف درخواست‌ها
+   *  مستقیم به لیست همان دسته می‌رود) — جایش «کاتالوگ‌های ذخیره شده» نشست
+   *  تا در موبایل هم (که سایدبار ندارد) قابل دسترسی بماند. */
   const roleMenu = isBuyer
     ? [
         { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare },
-        { href: '/panel/suggested-sellers', label: 'فروشندگان پیشنهادی', icon: Sparkles },
+        { href: '/panel/saved-catalogs', label: 'کاتالوگ های ذخیره شده', icon: BookMarked },
         { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
       ]
     : [

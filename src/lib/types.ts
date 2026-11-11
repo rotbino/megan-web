@@ -130,8 +130,9 @@ export interface BuyRequest {
   createdAt: string;
 }
 
-/** مرتب‌سازی — دقیقاً مثل باسکول: مرتبط‌ترین / جدیدترین */
-export type SortKey = 'related' | 'newest';
+/** مرتب‌سازی — مرتبط‌ترین / جدیدترین مثل باسکول؛ match = «مطابق نیاز من»
+ *  (خواستهٔ مالک ۱۱-۱۱): فقط با زمینهٔ نیاز (ورود از درخواست‌های خرید) */
+export type SortKey = 'related' | 'newest' | 'match';
 
 export interface ProductQuery {
   categorySlug?: string;
@@ -142,6 +143,13 @@ export interface ProductQuery {
   page?: number;
   /** اندازه صفحه — بک‌اند می‌فهمد (پیش‌فرض خودش)؛ فقط برای اسکن‌های سمت سرور (بازار شهری) */
   pageSize?: number;
+  /** زمینهٔ تطابق (sort=match) — نوع/حجم/واحدِ درخواست خریدار */
+  matchType?: string;
+  matchAmount?: number;
+  matchUnit?: string;
+  /** مکان خریدار — امتیاز نزدیگی در سورت تطابق (فیلتر نیست) */
+  nearProvinceId?: number;
+  nearCityId?: number;
 }
 
 /**
@@ -327,11 +335,16 @@ export interface MyBuyRequest {
   id: number;
   /** نام دسته انتخابی — مثل «میوه خشک» */
   subcategoryName: string;
+  /** slug دسته — مقصد مستقیم دکمهٔ «فروشندگان پیشنهادی» هر ردیف (۱۱-۱۱) */
+  categorySlug: string;
   /** نوع کالای واردشده — مثل «قیسی» (خالی = خود دسته) */
   productType: string;
   /** میزان نیازمندی — کیلوگرم */
   requirementAmount: number;
   unit: string;
+  /** مکان خریدار هنگام ثبت — پارامتر نزدیگیِ تطابق */
+  provinceId?: number | null;
+  cityId?: number | null;
   status: BuyRequestStatus;
   /** هدف ثبت درخواست: قیمت + خرید سریع / فقط اطلاع از قیمت */
   goal: 'price_and_buy' | 'price_only';
@@ -340,17 +353,6 @@ export interface MyBuyRequest {
   createdAt: string;
   /** دلایل رد — فقط رد شده */
   rejectionReasons?: string[];
-}
-
-/** گروه فروشندگان پیشنهادی — کارت دسته در صفحه «پیشنهادی» خریدار */
-export interface SuggestedSellerGroup {
-  id: number;
-  /** نام دسته/کالا — مثل «سیب زمینی» */
-  categoryName: string;
-  /** تعداد فروشندگان هم‌کالا */
-  sellerCount: number;
-  /** مقصد کارت: لیست محصولات همان دسته */
-  href: string;
 }
 
 /** دسته بازخورد نظرسنجی — «تحقیقات بازار» (خطا/انتقاد/بهبود/نیاز جدید) */

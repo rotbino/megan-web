@@ -143,6 +143,16 @@ export async function getProducts(query: ProductQuery = {}): Promise<Paged<Produ
       sort: query.sort,
       page: query.page,
       pageSize: query.pageSize,
+      // زمینهٔ تطابق «مطابق نیاز من» (خواستهٔ مالک ۱۱-۱۱)
+      ...(query.sort === 'match'
+        ? {
+            matchType: query.matchType,
+            matchAmount: query.matchAmount,
+            matchUnit: query.matchUnit,
+            nearProvinceId: query.nearProvinceId,
+            nearCityId: query.nearCityId,
+          }
+        : {}),
     },
     { auth: false },
   );
@@ -1434,7 +1444,7 @@ export async function submitVerification(input: {
 
 // ─── پنل خریدار ────────────────────────────────────────────────────────────
 
-import type { BuyRequestStatus, MyBuyRequest, SuggestedSellerGroup } from '@/lib/types';
+import type { BuyRequestStatus, MyBuyRequest } from '@/lib/types';
 
 export async function getMyBuyRequests(): Promise<{
   items: MyBuyRequest[];
@@ -1490,10 +1500,9 @@ export async function updateMyBuyRequest(input: {
   return { ok: true };
 }
 
-/** فروشندگان پیشنهادی — واقعی از بک‌اند (گروه دسته‌ای بر اساس درخواست‌های من) */
-export async function getSuggestedSellerGroups(): Promise<SuggestedSellerGroup[]> {
-  return apiFetch<SuggestedSellerGroup[]>('/buy-requests/getSuggestedSellers', {});
-}
+// «فروشندگان پیشنهادی» به‌صورت صفحهٔ جدا حذف شد (خواستهٔ مالک ۱۱-۱۱) —
+// دکمهٔ هر ردیف «درخواست‌های خرید من» مستقیم به لیست محصولات همان دسته با
+// سورت تطابق نیاز می‌رود (getProducts با sort='match').
 
 // ─── کیف پول (B9 — واقعی) ──────────────────────────────────────────────────
 

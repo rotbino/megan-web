@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -12,6 +12,7 @@ import {
   MapPin,
   RotateCcw,
   Search,
+  Target,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,7 +32,21 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: 'newest', label: 'جدیدترین' },
 ];
 
+/** گزینهٔ سوم — فقط وقتی زمینهٔ نیاز از «درخواست‌های خرید من» آمده باشد
+ *  (خواستهٔ مالک ۱۱-۱۱): «مطابق نیاز من» = اول همان نوع، بعد تطابق حجم و
+ *  موجودی و نزدیکی به شهر خریدار؛ نردبان/ویژه هم امتیاز می‌گیرند. */
+const MATCH_SORT: { key: SortKey; label: string } = { key: 'match', label: 'مطابق نیاز من' };
+
 type SheetKind = 'categories' | 'sort' | 'province' | 'city' | null;
+
+/** زمینهٔ نیاز خریدار — از پارامترهای URL (ورود از درخواست‌های خرید من) */
+interface BuyNeed {
+  type?: string;
+  amount?: number;
+  unit?: string;
+  provinceId?: number;
+  cityId?: number;
+}
 
 /**
  * پل پارامتر جستجو (F5) — useSearchParams در رندر ایستا باعث CSR-bailout کل
@@ -46,6 +61,37 @@ function SearchBridge({ onS }: { onS: (v: string) => void }) {
   useEffect(() => {
     onS(s);
   }, [s, onS]);
+  return null;
+}
+
+/**
+ * پل زمینهٔ نیاز (خواستهٔ مالک ۱۱-۱۱) — مثل SearchBridge داخل Suspense خودش
+ * می‌نشیند تا رندر ایستای گرید کارت‌ها سالم بماند. پارامترها (type/amount/unit/
+ * provinceId/cityId) فقط بعد از هیدریشن می‌آیند؛ سورت پیش‌فرض با رسیدن نیاز
+ * «مطابق نیاز من» می‌شود و با رفتن آن به «مرتبط‌ترین» برمی‌گردد.
+ */
+function MatchBridge({ onNeed }: { onNeed: (n: BuyNeed | null) => void }) {
+  const sp = useSearchParams();
+  const type = sp.get('type')?.trim() ?? '';
+  const amount = Number(sp.get('amount')) || 0;
+  const unit = sp.get('unit')?.trim() ?? '';
+  const provinceId = Number(sp.get('provinceId')) || 0;
+  const cityId = Number(sp.get('cityId')) || 0;
+  useEffect(() => {
+    // هیچ پارامتری نیست → نیاز خاموش؛ وابستگی‌ها primitive تا هر رندر دوباره
+    // فعال نشود و رد شدنِ کاربر (حذف چیپ) تا پیمایش بعدی URL پایدار بماند
+    if (!type && !amount && !provinceId && !cityId) {
+      onNeed(null);
+      return;
+    }
+    onNeed({
+      ...(type ? { type } : {}),
+      ...(amount > 0 ? { amount } : {}),
+      ...(unit ? { unit } : {}),
+      ...(provinceId > 0 ? { provinceId } : {}),
+      ...(cityId > 0 ? { cityId } : {}),
+    });
+  }, [type, amount, unit, provinceId, cityId, onNeed]);
   return null;
 }
 
@@ -90,6 +136,19 @@ function ProductListingInner({
   const [provinceId, setProvinceId] = useState<number | undefined>(initialProvinceId);
   const [cityId, setCityId] = useState<number | undefined>(initialCityId);
 
+  // ── زمینهٔ نیاز خریدار (خواستهٔ مالک ۱۱-۱۱) — ورود از درخواست‌های خرید ──
+  // با رسیدن نیاز، سورت پیش‌فرض «مطابق نیاز من» می‌شود؛ با رفتن آن (حذف
+  // چیپ یا پیمایش به مسیر بدون پارامتر) به «مرتبط‌ترین» برمی‌گردد — الگوی
+  // تنظیم state در زمان رندر (بدون افکت)
+  const [need, setNeed] = useState<BuyNeed | null>(null);
+  const handleNeed = useCallback((n: BuyNeed | null) => setNeed(n), []);
+  const [lastNeed, setLastNeed] = useState<BuyNeed | null>(null);
+  if (need !== lastNeed) {
+    setLastNeed(need);
+    setSort(need ? 'match' : 'related');
+  }
+  const sorts = need ? [MATCH_SORT, ...SORTS] : SORTS;
+
   // موبایل — مودال‌های انتخاب (بات‌شیت پایین‌رونده)
   const [sheet, setSheet] = useState<SheetKind>(null);
   const [catStack, setCatStack] = useState<Category[]>([]);
@@ -108,7 +167,7 @@ function ProductListingInner({
   }
 
   // با تغییر فیلترها به صفحه ۱ برگرد (الگوی تنظیم state در زمان رندر — بدون افکت)
-  const filterKey = `${categorySlug ?? ''}|${s}|${provinceId ?? ''}|${cityId ?? ''}|${sort}`;
+  const filterKey = `${categorySlug ?? ''}|${s}|${provinceId ?? ''}|${cityId ?? ''}|${sort}|${need ? `${need.type ?? ''}:${need.amount ?? ''}:${need.unit ?? ''}:${need.provinceId ?? ''}:${need.cityId ?? ''}` : ''}`;
   const [lastFilterKey, setLastFilterKey] = useState(filterKey);
   if (lastFilterKey !== filterKey) {
     setLastFilterKey(filterKey);
@@ -116,8 +175,25 @@ function ProductListingInner({
   }
 
   const query = useMemo(
-    () => ({ categorySlug, s, provinceId, cityId, sort, page }),
-    [categorySlug, s, provinceId, cityId, sort, page],
+    () => ({
+      categorySlug,
+      s,
+      provinceId,
+      cityId,
+      sort,
+      page,
+      // زمینهٔ تطابق — فقط با سورت match به بک‌اند می‌رود
+      ...(sort === 'match' && need
+        ? {
+            matchType: need.type,
+            matchAmount: need.amount,
+            matchUnit: need.unit,
+            nearProvinceId: need.provinceId,
+            nearCityId: need.cityId,
+          }
+        : {}),
+    }),
+    [categorySlug, s, provinceId, cityId, sort, page, need],
   );
 
   // seed فقط وقتی کوئری فعال عین کوئری پیش‌فرض اولیه باشد (تطبیق ساخت‌یافته — بدون JSON.stringify)؛
@@ -127,6 +203,7 @@ function ProductListingInner({
   const isDefaultQuery =
     page === 1 &&
     sort === 'related' &&
+    !need &&
     provinceId === initialProvinceId &&
     cityId === initialCityId &&
     s === baseS;
@@ -137,10 +214,11 @@ function ProductListingInner({
     setProvinceId(undefined);
     setCityId(undefined);
     setSort('related');
+    setNeed(null); // زمینهٔ نیاز هم فیلتر است — «حذف همه» آن را هم می‌برد
     if (s) router.replace('/product-list');
   };
 
-  const hasFilters = !!provinceId || !!cityId || !!s || sort !== 'related';
+  const hasFilters = !!provinceId || !!cityId || !!s || !!need || sort !== 'related';
 
   // ─── موبایل: انتخاب دسته سلسله‌مراتبی ─────────────────────────
   const sheetLevel = catStack[catStack.length - 1];
@@ -200,6 +278,25 @@ function ProductListingInner({
 
   const baseChips = (
     <>
+      {/* زمینهٔ نیاز — چیپ اول (خواستهٔ مالک ۱۱-۱۱): «آگریا · ۵۰۰ کیلوگرم»؛
+          حذفش = برگشت به مرور عادی دسته */}
+      {need && (
+        <button
+          type="button"
+          onClick={() => setNeed(null)}
+          aria-label="حذف تطابق با نیاز"
+          title="حذف تطابق با نیاز شما — مرور عادی دسته"
+          className="inline-flex max-w-[15rem] shrink-0 items-center gap-1.5 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
+        >
+          <Target size={13} className="shrink-0" aria-hidden />
+          <span className="truncate">
+            نیاز شما
+            {need.type ? `: ${need.type}` : ''}
+            {need.amount ? ` · ${toFa(need.amount)} ${need.unit ?? ''}` : ''}
+          </span>
+          <X size={13} className="shrink-0" aria-hidden />
+        </button>
+      )}
       {categoryName && (
         <button
           type="button"
@@ -317,6 +414,10 @@ function ProductListingInner({
           <SearchBridge onS={setS} />
         </Suspense>
       )}
+      {/* پل زمینهٔ نیاز — ?type=&amount=&unit=&provinceId=&cityId= (۱۱-۱۱) */}
+      <Suspense>
+        <MatchBridge onNeed={handleNeed} />
+      </Suspense>
       {/* سایدبار فیلتر — دسکتاپ */}
       <aside className="hidden space-y-5 lg:block" aria-label="فیلترها">
         {filterContent}
@@ -330,8 +431,7 @@ function ProductListingInner({
             {chips}
           </div>
           <div className="flex items-center gap-1.5 text-sm">
-
-            {SORTS.map((opt) => (
+            {sorts.map((opt) => (
               <button
                 key={opt.key}
                 type="button"
@@ -484,7 +584,7 @@ function ProductListingInner({
       {/* ─── بات‌شیت مرتب‌سازی — موبایل ─────────────────────────── */}
       <BottomSheet open={sheet === 'sort'} onClose={() => setSheet(null)} title="مرتب سازی بر اساس">
         <ul>
-          {SORTS.map((opt) => (
+          {sorts.map((opt) => (
             <li key={opt.key}>
               <button
                 type="button"

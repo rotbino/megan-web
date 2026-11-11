@@ -660,9 +660,9 @@ export function useMyBuyRequests() {
   return useQuery({ queryKey: ['panel-my-buy-requests'], queryFn: api.getMyBuyRequests, staleTime: 30_000 });
 }
 
-export function useSuggestedSellerGroups() {
-  return useQuery({ queryKey: ['panel-suggested-sellers'], queryFn: api.getSuggestedSellerGroups, staleTime: 60_000 });
-}
+// «فروشندگان پیشنهادی» حذف شد (خواستهٔ مالک ۱۱-۱۱): ورودی آن حالا دکمهٔ هر
+// ردیف «درخواست‌های خرید من» است که مستقیم به لیست محصولات همان دسته با
+// سورت «مطابق نیاز من» می‌رود.
 
 export function useSubmitPanelBuyRequest() {
   const queryClient = useQueryClient();

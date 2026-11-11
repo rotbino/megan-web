@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, ChevronDown, LayoutGrid, Search } from 'lucide-react';
+import { ArrowRight, ChevronDown, FileText, LayoutGrid, Search } from 'lucide-react';
 import { BrandLogo } from '@/components/shared/brand';
 import { HeaderUserMenu } from '@/components/layout/header-user-menu';
 import {
@@ -309,13 +309,14 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
           {user ? (
             <>
               {/* فروشنده → خریداران پنل (سورت امتیاز تطابق — خواسته مالک ۴-۱۱) /
-                  خریدار → فروشندگان پیشنهادی */}
+                  خریدار → درخواست‌های خرید من (خواستهٔ مالک ۱۱-۱۱: فروشندگان
+                  پیشنهادی حالا دکمهٔ هر ردیف همین صفحه است، لینک جدا اضافی بود) */}
               <Link
-                href={isSeller ? '/panel/buyers' : '/panel/suggested-sellers'}
+                href={isSeller ? '/panel/buyers' : '/panel/my-requests'}
                 className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-secondary-foreground hover:bg-accent hover:text-foreground"
               >
-                {isSeller ? <BuyersIcon size={24} /> : <SellersIcon size={24} />}
-                <span className="mt-1">{isSeller ? 'خریداران' : 'فروشندگان'}</span>
+                {isSeller ? <BuyersIcon size={24} /> : <FileText size={24} />}
+                <span className="mt-1">{isSeller ? 'خریداران' : 'درخواست‌ها'}</span>
               </Link>
               <span className="mx-1 h-9 w-px bg-border" aria-hidden />
               {/* آیکون پیام‌ها — فقط برای کاربر واردشده؛ بج خوانده‌نشده با push WS زنده می‌ماند */}

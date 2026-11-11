@@ -72,6 +72,27 @@ const STATUS_LABEL: Record<BuyRequestStatus, string> = {
 
 type ViewKey = 'urgent' | 'book';
 
+/**
+ * مقصد دکمهٔ «فروشندگان پیشنهادی» هر ردیف (خواستهٔ مالک ۱۱-۱۱ دور ۳):
+ * مستقیم لیست محصولات همان دسته + زمینهٔ نیاز به‌صورت پارامتر URL — لیست
+ * با سورت «مطابق نیاز من» باز می‌شود (اول همان نوع، بعد تطابق حجم/موجودی
+ * و نزدیکی به شهر خریدار؛ نردبان/ویژه هم امتیاز می‌گیرند) و کاربر همان‌جا
+ * آزادانه فیلتر/سورت را عوض می‌کند. نام دسته هم قبول است (بک‌اند می‌فهمد).
+ */
+function suggestedSellersHref(req: MyBuyRequest): string {
+  const slug = req.categorySlug?.trim() || req.subcategoryName;
+  const params = new URLSearchParams();
+  if (req.productType.trim()) params.set('type', req.productType.trim());
+  if (req.requirementAmount > 0) {
+    params.set('amount', String(req.requirementAmount));
+    if (req.unit) params.set('unit', req.unit);
+  }
+  if (req.provinceId) params.set('provinceId', String(req.provinceId));
+  if (req.cityId) params.set('cityId', String(req.cityId));
+  const qs = params.toString();
+  return `/product-list/category/${encodeURIComponent(slug)}${qs ? `?${qs}` : ''}`;
+}
+
 /** پارامترهای اولیه از URL — ?tab=book | ?tab=pending|confirmed|rejected (قدمی) | ?status=… */
 function parseInitialParams(): { view: ViewKey; status: BuyRequestStatus } {
   try {
@@ -138,7 +159,7 @@ function RequestRow({ req }: { req: MyBuyRequest }) {
         <div className="flex items-center gap-3">
           {req.status === 'confirmed' && (
             <Button asChild size="sm" variant="outline" className="rounded-md">
-              <Link href="/panel/suggested-sellers">فروشندگان پیشنهادی</Link>
+              <Link href={suggestedSellersHref(req)}>فروشندگان پیشنهادی</Link>
             </Button>
           )}
           <span className="shrink-0 text-[11px] text-muted-foreground">
