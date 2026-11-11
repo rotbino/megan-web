@@ -8,7 +8,11 @@
  * را بالاتر می‌آورد (بج «دقت تطابق» روی کارت‌ها).
  *  • تب‌بار (خواستهٔ مالک ۱۱-۱۱): چسبیده به زیر هدر پنل، تمام‌عرض، با مرز و
  *    سایهٔ خودش — از محتوای صفحه جدا می‌شود و با اسکرول سر جایش می‌ماند؛
- *    تب‌های زیرخط‌دار عین تب‌ویوی واقعی (تب فعال به محتوا وصل است)
+ *    تب‌های زیرخط‌دار عین تب‌ویوی واقعی (تب فعال به محتوا وصل است)؛ بدون
+ *    شمارنده (دور دوم ۱۱-۱۱): تب‌ها خلوت و کم‌جا — فقط آیکون + عنوان
+ *  • نوار فیلتر موبایل (دور دوم ۱۱-۱۱): عین دیوار — جستجوی پیل‌گرد
+ *    تمام‌عرض + فیلترهای دسته/استان/شهر به‌صورت چیش‌های افقی کنار هم در یک
+ *    نوار سرخود (چیپ شهر فقط در تب دوره‌ای)؛ دسکتاپ همان گرید همیشگی
  *  • فوری: کارت خریدار با تماس/چت/نشان (عین پنل قبلی)
  *  • دوره‌ای: کارت دفتر خرید با «ارسال پیشنهاد تامین» + ویزار گروهی
  *  • ارسال‌شده → «پیشنهادهای من» (خواسته مالک ۸-۱۱): تایم‌لاین واحدِ عین
@@ -45,9 +49,6 @@ import {
   useCategoryTree,
   useMyOfferQuota,
   useMyProducts,
-  useMySavedBuyerBooks,
-  useMySentOffers,
-  useMyUrgentChats,
   useProvinces,
 } from '@/lib/mock/hooks';
 import { Input } from '@/components/ui/input';
@@ -152,18 +153,6 @@ function PanelBuyersInner() {
   const dirTotal = dirQuery.data?.total ?? 0;
   const dirPageCount = Math.max(1, Math.ceil(dirTotal / 24));
 
-  // ── تب سوم (خواسته مالک ۶-۱۱؛ ۸-۱۱): «پیشنهادهای من» — تایم‌لاین واحدِ
-  //    پیشنهادهای تامین + گفتگوهای خرید فوری؛ فقط شمارِ بج، لیست خودش داخل
-  //    تب با فیلتر خودش لود می‌شود ──
-  const sentQuery = useMySentOffers({ perPage: 1 });
-  const urgentBadgeQuery = useMyUrgentChats(undefined);
-  const sentCount = (sentQuery.data?.total ?? 0) + (urgentBadgeQuery.data?.items.length ?? 0);
-
-  // ── تب چهارم (خواستهٔ مالک ۱۰-۱۱ دور ۵): «دفاتر ذخیره شده» — دفترهای
-  //    خرید خریدارانی که فروشنده ذخیره کرده؛ لیست مشتری بالقوه ──
-  const savedBooksQuery = useMySavedBuyerBooks(tab === 'saved');
-  const savedBooksCount = savedBooksQuery.data?.length ?? 0;
-
   /** دروازهٔ پیشنهاد تامین (خواستهٔ مالک ۷-۱۱): اول گیت ثبت کالا — فروشندهٔ
    *  بدون آگهی مودال «ثبت کالا لازم است» را می‌بیند؛ بعد گیت بستهٔ فعال */
   const passOfferGates = (): boolean => {
@@ -224,6 +213,13 @@ function PanelBuyersInner() {
     setDirPage(1);
   };
 
+  /** چیپ فیلتر موبایل (خواستهٔ مالک ۱۱-۱۱ دور دوم — عین دیوار): پیل‌گرد فشردهٔ
+   *  ۳۶px با متن xs؛ در sm همه‌چیز به سلکت معمولیِ گرید برمی‌گردد (ارتفاع
+   *  ۴۸/۵۲، گردِ کم، متن sm) — پسوند ! لازم است چون ارتفاع پایهٔ کامپوننت با
+   *  سلکتور data-[size=default] از کلاس ساده خاصیت‌تر است */
+  const chipTriggerCls =
+    'h-9! w-auto gap-1! shrink-0 rounded-full! px-3! text-xs! sm:h-12! sm:w-full sm:gap-2! sm:rounded-md! sm:text-sm! md:h-13!';
+
   const tabButton = (
     key: PanelBuyersTab,
     icon: React.ReactNode,
@@ -231,7 +227,6 @@ function PanelBuyersInner() {
     /** برچسب کوتاه موبایل — چهار تب در یک ردیف ۳۹۰px جا شوند (خواسته مالک:
      *  تب‌ها همیشه کنار هم، نه روی هم و نه نیازمند اسکرول) */
     shortLabel: string,
-    count: number,
   ) => (
     <button
       type="button"
@@ -240,8 +235,9 @@ function PanelBuyersInner() {
       onClick={() => setTab(key)}
       className={cn(
         // تب کلاسیک زیرخط‌دار (خواستهٔ مالک ۱۱-۱۱): خط زیرین ۲px روی مرز خود
-        // نوار می‌نشیند و تب فعال را به محتوا وصل می‌کند — عین تب‌ویوی مرورگر
-        'flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-[11px] font-bold transition-colors sm:px-3 sm:text-[13px]',
+        // نوار می‌نشیند و تب فعال را به محتوا وصل می‌کند — عین تب‌ویوی مرورگر.
+        // بدون شمارنده (دور دوم ۱۱-۱۱): تب‌ها خلوت و کم‌جا
+        'flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-[11px] font-bold transition-colors sm:px-3 sm:text-[13px]',
         tab === key
           ? 'border-primary font-extrabold text-primary'
           : 'border-transparent text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
@@ -251,14 +247,6 @@ function PanelBuyersInner() {
       {/* دسکتاپ: عنوان کامل · موبایل: عنوان کوتاه — هر چهار تب همیشه هم‌ردیف */}
       <span className="hidden sm:inline">{label}</span>
       <span className="sm:hidden">{shortLabel}</span>
-      <span
-        className={cn(
-          'rounded-full px-1.5 py-px font-num text-[10.5px] tabular-nums',
-          tab === key ? 'bg-primary/10 text-primary' : 'bg-foreground/[0.06] text-muted-foreground',
-        )}
-      >
-        {count}
-      </span>
     </button>
   );
 
@@ -285,28 +273,24 @@ function PanelBuyersInner() {
             <ClipboardList size={14} className="shrink-0" />,
             'درخواست‌های خرید فوری',
             'خرید فوری',
-            reqQuery.isLoading && !reqQuery.data ? 0 : reqItems.length,
           )}
           {tabButton(
             'periodic',
             <CalendarClock size={14} className="shrink-0" />,
             'درخواست‌های خرید دوره‌ای',
             'خرید دوره‌ای',
-            dirQuery.isLoading && !dirQuery.data ? 0 : dirTotal,
           )}
           {tabButton(
             'sent',
             <Send size={14} className="shrink-0" />,
             'پیشنهادهای من',
             'پیشنهادها',
-            sentQuery.isLoading || urgentBadgeQuery.isLoading ? 0 : sentCount,
           )}
           {tabButton(
             'saved',
             <BookMarked size={14} className="shrink-0" />,
             'دفاتر ذخیره شده',
             'دفاتر',
-            tab === 'saved' || savedBooksQuery.isFetched ? savedBooksCount : 0,
           )}
         </div>
       </div>
@@ -314,10 +298,15 @@ function PanelBuyersInner() {
       {/* بدنه — ستون همیشگی، فاصلهٔ ثابت زیر تب‌بار */}
       <div className="mx-auto max-w-5xl space-y-4 pt-4">
 
-      {/* جستجو + فیلترها — مشترک دو تب خریداران؛ تب «ارسال شده/دفاتر» فیلتر خودش را دارد */}
+      {/* جستجو + فیلترها — مشترک دو تب خریداران؛ تب «ارسال شده/دفاتر» فیلتر خودش را دارد.
+          موبایل (خواستهٔ مالک ۱۱-۱۱ دور دوم): عین نوار فیلتر دیوار — جستجوی پیل‌گرد
+          تمام‌عرض + فیلترهای دسته/استان/شهر به‌صورت چیش‌های افقی کنار هم در یک نوار
+          سرخود که در تنگی خودش می‌لغزد (چیپ شهر فقط در تب دوره‌ای — در فوری بی‌معناست)؛
+          دسکتاپ: همان گرید چهارستونی همیشگی — با sm:contents ظرف نوار در دسکتاپ
+          محو می‌شود و سلکت‌ها مستقیم خانه‌های گرید می‌شوند */}
       {tab !== 'sent' && tab !== 'saved' && (
         <PanelCard>
-          <div className="grid gap-2 sm:grid-cols-[1fr_190px_170px_150px]">
+          <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[1fr_190px_170px_150px]">
             <div className="relative">
               <Search size={16} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -327,69 +316,87 @@ function PanelBuyersInner() {
                   resetPaging();
                 }}
                 placeholder="جستجو در خریداران (محصول، نوع کالا…)"
-                className="rounded-md pe-9"
+                className="rounded-full pe-9 sm:rounded-md"
               />
             </div>
-            <Select
-              value={rootCat}
-              onValueChange={(v) => {
-                setRootCat(v);
-                resetPaging();
-              }}
-            >
-              <SelectTrigger className="w-full rounded-md" aria-label="گروه محصولات">
-                <SlidersHorizontal size={14} className="text-muted-foreground" />
-                <SelectValue placeholder="همه گروه ها" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">همه گروه ها</SelectItem>
-                {roots.map((r) => (
-                  <SelectItem key={r.id} value={String(r.id)}>
-                    {r.categoryName}
+            <div className="flex items-center gap-2 overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:contents">
+              <Select
+                value={rootCat}
+                onValueChange={(v) => {
+                  setRootCat(v);
+                  resetPaging();
+                }}
+              >
+                <SelectTrigger className={chipTriggerCls} aria-label="گروه محصولات">
+                  <SlidersHorizontal size={14} className="hidden text-muted-foreground sm:block" />
+                  {/* پلیس‌هولدر هرگز دیده نمی‌شود (value همیشه all است) — متن چیپ از
+                      خودِ آیتم «همه» می‌آید: موبایل نام کوتاه فیلتر، دسکتاپ متن کامل */}
+                  <SelectValue placeholder="همه گروه ها" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    <span className="sm:hidden">دسته‌بندی</span>
+                    <span className="hidden sm:inline">همه گروه ها</span>
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={provinceId ? String(provinceId) : 'all'}
-              onValueChange={(v) => {
-                setProvinceId(v === 'all' ? null : Number(v));
-                setCityId(null);
-                resetPaging();
-              }}
-            >
-              <SelectTrigger className="w-full rounded-md" aria-label="استان">
-                <SelectValue placeholder="همه استان‌ها" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">همه استان‌ها</SelectItem>
-                {provinces.map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)}>
-                    {p.name}
+                  {roots.map((r) => (
+                    <SelectItem key={r.id} value={String(r.id)}>
+                      {r.categoryName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={provinceId ? String(provinceId) : 'all'}
+                onValueChange={(v) => {
+                  setProvinceId(v === 'all' ? null : Number(v));
+                  setCityId(null);
+                  resetPaging();
+                }}
+              >
+                <SelectTrigger className={chipTriggerCls} aria-label="استان">
+                  <SelectValue placeholder="همه استان‌ها" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    <span className="sm:hidden">استان</span>
+                    <span className="hidden sm:inline">همه استان‌ها</span>
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={cityId ? String(cityId) : 'all'}
-              onValueChange={(v) => {
-                setCityId(v === 'all' ? null : Number(v));
-                resetPaging();
-              }}
-              disabled={!provinceId || tab !== 'periodic'}
-            >
-              <SelectTrigger className="w-full rounded-md" aria-label="شهر">
-                <SelectValue placeholder={tab === 'periodic' && provinceId ? 'همه شهرها' : 'شهر (دوره‌ای)'} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">همه شهرها</SelectItem>
-                {cities.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>
-                    {c.name}
+                  {provinces.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={cityId ? String(cityId) : 'all'}
+                onValueChange={(v) => {
+                  setCityId(v === 'all' ? null : Number(v));
+                  resetPaging();
+                }}
+                disabled={!provinceId || tab !== 'periodic'}
+              >
+                <SelectTrigger
+                  className={cn(chipTriggerCls, tab !== 'periodic' && 'hidden sm:flex')}
+                  aria-label="شهر"
+                >
+                  <SelectValue placeholder="همه شهرها" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    <span className="sm:hidden">شهر</span>
+                    <span className="hidden sm:inline">
+                      {tab === 'periodic' && provinceId ? 'همه شهرها' : 'شهر (دوره‌ای)'}
+                    </span>
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  {cities.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </PanelCard>
       )}
