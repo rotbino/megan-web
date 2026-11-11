@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, ChevronDown, FileText, LayoutGrid, Search } from 'lucide-react';
+import { ArrowRight, ChevronDown, FileText, LayoutGrid, Search, Sparkles } from 'lucide-react';
 import { BrandLogo } from '@/components/shared/brand';
 import { HeaderUserMenu } from '@/components/layout/header-user-menu';
 import { TasksBell } from '@/components/shared/tasks-bell';
@@ -425,6 +425,19 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
               دسته بندی
               <ChevronDown size={14} className={cn('transition-transform', megaOpen && 'rotate-180')} />
             </button>
+
+            <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
+
+            {/* سرویس‌های تخصصی ارزش‌افزوده (خواستهٔ مالک ۱۱-۱۲) — ریتو و
+                همخرید؛ صفحهٔ فرم ثبت‌نام فروشندگان */}
+            <Link
+              href="/services"
+              onClick={() => setMegaOpen(false)}
+              className="flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              <Sparkles size={17} className="text-primary" />
+              سرویس‌ها
+            </Link>
 
             <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
 

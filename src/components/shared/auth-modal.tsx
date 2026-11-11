@@ -29,7 +29,7 @@ import { flushPendingRfq, takeAfterAuthRedirect, PANEL_RFQ_DEST } from '@/lib/pe
  * (خواسته مالک ۱-۱۱: به‌جای جملهٔ ثابت «فقط با شماره موبایل…»،
  * جمله‌ای که همان لحظه برای کاربر معنا دارد).
  */
-export type AuthIntent = 'login' | 'register' | 'price' | 'call' | 'rfq' | 'save' | 'save-catalog' | 'save-book' | 'chat' | 'review' | 'offer';
+export type AuthIntent = 'login' | 'register' | 'price' | 'call' | 'rfq' | 'save' | 'save-catalog' | 'save-book' | 'chat' | 'review' | 'offer' | 'service-signup';
 
 /** جملهٔ مرحله شماره موبایل بر اساس نیات ورود */
 const INTENT_SUBTITLES: Record<AuthIntent, string> = {
@@ -46,6 +46,8 @@ const INTENT_SUBTITLES: Record<AuthIntent, string> = {
   chat: 'برای گفتگو با فروشنده، شماره موبایل خود را وارد کنید.',
   review: 'برای ثبت نظر، شماره موبایل خود را وارد کنید.',
   offer: 'برای ارسال پیشنهاد تامین، شماره موبایل خود را وارد کنید.',
+  // ثبت‌نام فروشنده در سرویس‌های تخصصی (ریتو/همخرید — خواستهٔ مالک ۱۱-۱۲)
+  'service-signup': 'برای ثبت‌نام در سرویس‌های تخصصی، شماره موبایل خود را وارد کنید؛ هنوز عضو نیستید؟ همین‌جا رایگان ثبت‌نام کنید.',
 };
 
 export function AuthModal({

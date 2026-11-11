@@ -43,6 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/help`, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE}/help/secure-payment`, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${BASE}/register`, changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${BASE}/services`, changeFrequency: 'monthly', priority: 0.5 },
   ];
 
   // سه منبع واقعی — هر کدام مستقل؛ خرابی یکی بقیه را نمی‌اندازد
