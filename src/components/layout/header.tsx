@@ -393,7 +393,19 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
             : 'nav-desktop:grid-rows-[1fr] nav-desktop:opacity-100',
         )}
       >
-        <div className="nav-desktop:min-h-0 nav-desktop:overflow-hidden">
+        {/* مگامنو absolute با top-full زیر نوار آویزان می‌شود؛ اگر این ظرف
+            هنگام باز بودن منو overflow-hidden بماند، منو کاملاً کلیپ می‌شود و
+            کاربر چیزی نمی‌بیند (باگ مالک ۱۱-۱۲: «روی دسته بندی کلیک می‌کنم
+            باز نمی‌شود»). هنگام باز بودن منو overflow-visible است؛ کلید
+            جمع‌شدن نوار (overflow-hidden برای انیمیشن) فقط وقتی منو بسته است
+            لازم می‌شود و اسکرول به پایین هم که نوار را جمع می‌کند، همزمان
+            منو را می‌بندد — پس حالت «نوار در حال جمع‌شدن + منو باز» رخ نمی‌دهد. */}
+        <div
+          className={cn(
+            'nav-desktop:min-h-0',
+            megaOpen ? 'nav-desktop:overflow-visible' : 'nav-desktop:overflow-hidden',
+          )}
+        >
           <div
             ref={megaWrap}
             onMouseLeave={() => setMegaOpen(false)}
