@@ -1643,3 +1643,53 @@ export async function fetchAdminBilling(): Promise<BillingConfig> {
 export async function updateAdminBilling(billing: BillingConfig): Promise<BillingConfig> {
   return adminFetch<BillingConfig>('/admin/settings/updateBilling', { billing });
 }
+
+// ─── ثبت‌نام سرویس‌های تخصصی (admin/service-signups — ۱۱-۱۲) ────────────────
+
+export interface AdminServiceSignupRow {
+  id: string;
+  /** ritu | hamkharid */
+  serviceId: string;
+  guild: string;
+  businessName: string;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: string;
+    userName: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    avatarUrl: string | null;
+  };
+}
+
+export interface AdminServiceSignupList {
+  items: AdminServiceSignupRow[];
+  total: number;
+  page: number;
+  perPage: number;
+  pageCount: number;
+  stats: {
+    total: number;
+    byService: Array<{ serviceId: string; count: number }>;
+    last7Days: number;
+  };
+}
+
+export interface AdminServiceSignupFilters {
+  search?: string;
+  serviceId?: string;
+  page?: number;
+  perPage?: number;
+}
+
+/** فهرست ثبت‌نام‌های ریتو/همخرید (خروجی فرم /services) + آمار تفکیکی */
+export async function fetchAdminServiceSignupList(
+  filters: AdminServiceSignupFilters = {},
+): Promise<AdminServiceSignupList> {
+  return adminFetch<AdminServiceSignupList>(
+    '/admin/service-signups/getSignupList',
+    filters as unknown as Record<string, unknown>,
+  );
+}

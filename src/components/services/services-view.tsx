@@ -1,21 +1,26 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { CheckCircle2, Info, Store, Users } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { BadgePercent, CheckCircle2, Info, Loader2, Store, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/mock/auth';
+import { apiFetch } from '@/lib/api/client';
+import { cn } from '@/lib/utils';
 
 /**
  * سرویس‌های تخصصی ارزش‌افزوده ایمچ (خواستهٔ مالک ۱۱-۱۲ — دور ۲):
  * چارچوب سرویس‌های تخصصی عمده‌فروشی برای آینده — فعلاً فقط فرم و عنوان سرویس‌ها:
  *  • ریتو — سفارش‌گیری مستقیم خرده‌فروش از تولیدکنندگان به قیمت تولید
  *  • همخرید — خرید گروهی از تولیدکنندگان به قیمت تولید
+ *  • فرصت‌های خرید ویژه (به‌زودی) — کالای مازاد و تخفیف‌های ویژهٔ تأمین‌کنندگان
+ *    (از تحلیل ایده‌های ارزش‌افزوده مالک ۱۱-۱۲ — اعلام مسیر، بدون فرم)
  * فروشنده‌ها با دکمهٔ روی باکس سرویس ثبت‌نام می‌کنند (صنف + نام کسب‌وکار)؛
- * مهمان اول به ورود/ثبت‌نام ایمچ هدایت می‌شود (مودال ورود با نیات
- * service-signup) و بعد از ورود، فرم همان سرویسی که انتخاب کرده بود باز
- * می‌شود. ثبت‌نام فعلاً در حافظهٔ مرورگر فروشنده ذخیره می‌شود (پایلوت فرم) —
- * جمع‌آوری روی بک‌اند در فاز راه‌اندازی هر سرویس اضافه می‌شود.
+ * مهمان اول به مودال ورود/ثبت‌نام ایمچ هدایت می‌شود (نیات service-signup)
+ * و بعد از ورود، فرم همان سرویسی که انتخاب کرده بود باز می‌شود.
+ * ثبت‌نام‌ها در بک‌اند ذخیره می‌شوند (service-signups — مالک از پنل ادمین
+ * می‌بیند هر سرویس چه کسانی ثبت‌نام کرده‌اند). دادهٔ پایلوت localStorage
+ * نسخهٔ قبل، یک‌بار بی‌صدا به سرور منتقل و پاک می‌شود.
  */
 
 const STORAGE_KEY = 'imach:service-signup';
@@ -26,26 +31,62 @@ interface ServiceSignup {
   at: number;
 }
 
+/** قرارداد ردیف بک‌اند — POST /service-signups/getMine و save */
+interface ServiceSignupRow {
+  serviceId: string;
+  guild: string;
+  businessName: string;
+  updatedAt: string;
+}
+
 interface ServiceDef {
   id: string;
   title: string;
   tagline: string;
   icon: typeof Store;
+  /** active = فرم ثبت‌نام باز است؛ soon = فقط اعلام مسیر (بدون دکمه) */
+  status: 'active' | 'soon';
+  /** نکات کلیدی سرویس — زیر شرح رسمی */
+  points: string[];
 }
 
-/** سرویس‌های فعال فرم (خواستهٔ مالک) — شرح هر سرویس همان تعریف رسمی خودش است */
+/** سرویس‌های صفحه — شرح هر سرویس فعال همان تعریف رسمی خودش است */
 const SERVICES: ServiceDef[] = [
   {
     id: 'ritu',
+    status: 'active',
     title: 'سرویس ریتو',
     tagline: 'سفارش‌گیری مستقیم خرده‌فروش از تولیدکنندگان به قیمت تولید',
     icon: Store,
+    points: [
+      'قیمت درب کارخانه شفاف و قابل مقایسه',
+      'حداقل سفارش و شرایط حمل و تحویل مشخص',
+      'ارتباط مستقیم خرده‌فروش با تولیدکننده، بدون واسطه‌های غیرضروری',
+    ],
   },
   {
     id: 'hamkharid',
+    status: 'active',
     title: 'سرویس همخرید',
     tagline: 'خرید گروهی از تولیدکنندگان به قیمت تولید',
     icon: Users,
+    points: [
+      'تجمیع سفارش فروشگاه‌ها برای رسیدن به حجم تخفیف تولیدکننده',
+      'هر فروشگاه سهم خود را از محل توافق‌شده تحویل می‌گیرد',
+      'قدرت خرید گروهی با قیمت تولید، برای خریدار کوچک',
+    ],
+  },
+  {
+    id: 'special-offers',
+    status: 'soon',
+    title: 'فرصت‌های خرید ویژه',
+    tagline: 'عرضهٔ کالای مازاد و تخفیف‌های ویژهٔ تولیدکنندگان و شرکت‌های پخش',
+    icon: BadgePercent,
+    points: [
+      'موجودی مازاد تولیدکننده‌ها و بیش‌موجودی شرکت‌های پخش با قیمت ویژه',
+      'تخفیف ویژه بدون انتظار برای تکمیل حد نصاب گروهی',
+      'فرصت‌های محدود و لحظه‌ای برای خرید ارزان‌تر',
+    ],
   },
 ];
 
@@ -63,19 +104,94 @@ export function ServicesView() {
   const [business, setBusiness] = useState('');
   /** سرویسی که مهمان روی آن کلیک کرد — بعد از ورود فرم همان باز می‌شود */
   const [pendingService, setPendingService] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  /** همگام‌سازی با سرور برای چه کاربری انجام شده (phone) — خروج = ریست */
+  const syncedForRef = useRef<string | null>(null);
 
-  // بازیابی ثبت‌نام‌های قبلی از حافظهٔ مرورگر — فقط بعد از مونت (الگوی هیدریشن)
+  // بازیابی ثبت‌نام‌های پایلوت قبلی از حافظهٔ مرورگر — فقط بعد از مونت
+  // (الگوی هیدریشن). بعد از همگام‌سازی موفق با سرور، این کش پاک می‌شود.
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- خواندن حافظه مرورگر فقط بعد از مونت ممکن است (الگوی استاندارد هیدریشن)
+        // خواندن حافظه مرورگر فقط بعد از مونت ممکن است (الگوی استاندارد هیدریشن)
         setRegistered(JSON.parse(raw));
       }
     } catch {
       /* نشست خراب — نادیده */
     }
   }, []);
+
+  // منبع حقیقت ثبت‌نام‌ها بک‌اند است (خواستهٔ مالک ۱۱-۱۲: داده از مرورگر
+  // فروشنده به پنل ادمین برسد). با ورود کاربر: ثبت‌نام‌های سرور خوانده و
+  // دادهٔ پایلوت localStorage (نسخهٔ قبل از بک‌اند) بی‌صدا منتقل و پاک می‌شود.
+  // خروج در همین صفحه → دادهٔ کاربر قبلی پاک می‌شود (صفحهٔ عمومی است).
+  useEffect(() => {
+    if (!user) {
+      if (syncedForRef.current !== null) {
+        syncedForRef.current = null;
+        // خروج در همین صفحه: دادهٔ کاربر قبلی نمایش عمومی نمی‌ماند
+        setRegistered({});
+      }
+      return;
+    }
+    if (syncedForRef.current === user.phone) return;
+    syncedForRef.current = user.phone;
+    void (async () => {
+      // دادهٔ پایلوت محلی — قبل از هر چیز بخوان
+      let local: Record<string, ServiceSignup> = {};
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) local = JSON.parse(raw);
+      } catch {
+        /* نشست خراب — نادیده */
+      }
+      try {
+        const remote = await apiFetch<ServiceSignupRow[]>('/service-signups/getMine');
+        const next: Record<string, ServiceSignup> = {};
+        for (const r of remote) {
+          if (SERVICES.some((s) => s.id === r.serviceId && s.status === 'active')) {
+            next[r.serviceId] = {
+              guild: r.guild,
+              business: r.businessName,
+              at: Date.parse(r.updatedAt) || 0,
+            };
+          }
+        }
+        // مهاجرت پایلوت: ثبت‌نام محلیِ هنوز روی سرور نیست → بی‌صدا ارسال
+        const missing = Object.entries(local).filter(([id]) => !next[id]);
+        let allPushed = true;
+        if (missing.length > 0) {
+          const settled = await Promise.allSettled(
+            missing.map(([id, s]) =>
+              apiFetch('/service-signups/save', {
+                serviceId: id,
+                guild: s.guild,
+                businessName: s.business,
+              }),
+            ),
+          );
+          settled.forEach((res, i) => {
+            // موفق یا ناموفق، در نمایش همین جلسه همان مقدار محلی می‌ماند
+            next[missing[i][0]] = missing[i][1];
+            if (res.status === 'rejected') allPushed = false;
+          });
+        }
+        // کش پایلوت فقط وقتی پاک می‌شود که همه‌چیز روی سرور نشسته باشد
+        if (allPushed) {
+          try {
+            localStorage.removeItem(STORAGE_KEY);
+          } catch {
+            /* noop */
+          }
+        }
+        setRegistered(next);
+      } catch {
+        /* سرور در دسترس نیست — دادهٔ پایلوت محلی نمایش داده می‌شود */
+      }
+    })();
+  }, [user]);
 
   // مهمان که بعد از مودال ورود لاگین شد → فرم همان سرویسی که کلیک کرده بود
   // باز شود. همان الگوی «تنظیم state هنگام رندر» (بدون افکت — عین edit-item-dialog):
@@ -86,6 +202,8 @@ export function ServicesView() {
     setDone(false);
     setGuild('');
     setBusiness('');
+    setError(null);
+    setSaving(false);
   }
 
   const service = active ? SERVICES.find((s) => s.id === active) ?? null : null;
@@ -96,6 +214,7 @@ export function ServicesView() {
     setDone(false);
     setGuild('');
     setBusiness('');
+    setError(null);
   };
 
   /** دکمهٔ باکس سرویس — ثبت‌شده → نمایش وضعیت؛ مهمان → مودال ورود؛ لاگین → فرم */
@@ -112,23 +231,39 @@ export function ServicesView() {
     openForm(id);
   };
 
-  const submit = () => {
+  /** ثبت درخواست — ذخیرهٔ واقعی روی بک‌اند (هر کاربر در هر سرویس یک رکورد) */
+  const submit = async () => {
     const g = guild.trim();
     const b = business.trim();
-    if (!active || !g || !b) return;
-    const next = { ...registered, [active]: { guild: g, business: b, at: Date.now() } };
-    setRegistered(next);
+    if (!active || !g || !b || saving) return;
+    setSaving(true);
+    setError(null);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      /* حافظه پر است — فقط در state */
+      const row = await apiFetch<ServiceSignupRow>('/service-signups/save', {
+        serviceId: active,
+        guild: g,
+        businessName: b,
+      });
+      setRegistered((prev) => ({
+        ...prev,
+        [active]: {
+          guild: row?.guild ?? g,
+          business: row?.businessName ?? b,
+          at: Date.now(),
+        },
+      }));
+      setDone(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'ثبت درخواست ناموفق بود — دوباره تلاش کنید.');
+    } finally {
+      setSaving(false);
     }
-    setDone(true);
   };
 
   const closeDialog = () => {
     setActive(null);
     setDone(false);
+    setError(null);
   };
 
   const valid = guild.trim().length > 0 && business.trim().length > 0;
@@ -140,12 +275,12 @@ export function ServicesView() {
         <h1 className="text-xl font-extrabold sm:text-2xl">سرویس‌های تخصصی ارزش‌افزوده ایمچ</h1>
         <p className="mx-auto mt-3 max-w-2xl text-xs leading-6 text-muted-foreground sm:text-sm sm:leading-7">
           سرویس‌های تخصصی عمده‌فروشی ایمچ مسیر خرید را مستقیم به تولیدکننده وصل می‌کنند.
-          اگر تولیدکننده هستید و دوست دارید در این طرح‌ها به‌عنوان فروشنده حضور داشته باشید،
-          همین حالا در سرویس مورد نظرتان ثبت‌نام کنید.
+          اگر تولیدکننده، شرکت پخش یا تأمین‌کنندهٔ کالا هستید و دوست دارید در این طرح‌ها
+          به‌عنوان فروشنده حضور داشته باشید، همین حالا در سرویس مورد نظرتان ثبت‌نام کنید.
         </p>
       </header>
 
-      {/* باکس سرویس‌ها */}
+      {/* باکس سرویس‌ها — دو سرویس فعال کنار هم، کارت «به‌زودی» تمام‌عرض زیر آن‌ها */}
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         {SERVICES.map((s) => {
           const Icon = s.icon;
@@ -153,7 +288,10 @@ export function ServicesView() {
           return (
             <section
               key={s.id}
-              className="flex flex-col rounded-lg border bg-card p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+              className={cn(
+                'flex flex-col rounded-lg border bg-card p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]',
+                s.status === 'soon' && 'bg-muted/30 md:col-span-2',
+              )}
             >
               <div className="flex items-start gap-3">
                 <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
@@ -161,9 +299,15 @@ export function ServicesView() {
                 </span>
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 pt-1.5">
                   <h2 className="text-base font-extrabold">{s.title}</h2>
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700">
-                    در حال آماده‌سازی
-                  </span>
+                  {s.status === 'soon' ? (
+                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-bold text-secondary-foreground">
+                      به‌زودی
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700">
+                      در حال آماده‌سازی
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -172,8 +316,22 @@ export function ServicesView() {
                 {s.tagline}
               </p>
 
+              {/* نکات کلیدی — چه چیزی برای فروشنده/خریدار حل می‌شود */}
+              <ul className="mt-4 space-y-2 text-[13px] leading-6 text-muted-foreground">
+                {s.points.map((p) => (
+                  <li key={p} className="flex items-start gap-2">
+                    <span className="mt-[9px] size-1.5 shrink-0 rounded-full bg-primary/50" aria-hidden />
+                    <span>{p}</span>
+                  </li>
+                ))}
+              </ul>
+
               <div className="mt-auto pt-5">
-                {isRegistered ? (
+                {s.status === 'soon' ? (
+                  <p className="rounded-md border border-dashed bg-card px-3 py-2.5 text-center text-xs font-bold text-muted-foreground">
+                    ثبت‌نام این سرویس بعداً باز می‌شود
+                  </p>
+                ) : isRegistered ? (
                   <Button
                     variant="outline"
                     className="h-auto w-full rounded-md whitespace-normal py-2.5 leading-6"
@@ -279,12 +437,18 @@ export function ServicesView() {
                   className={INPUT_CLASS}
                 />
               </div>
+              {error && (
+                <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs font-bold leading-5 text-destructive">
+                  {error}
+                </p>
+              )}
               <DialogFooter className="gap-2">
-                <Button variant="outline" className="rounded-md" onClick={closeDialog}>
+                <Button variant="outline" className="rounded-md" onClick={closeDialog} disabled={saving}>
                   انصراف
                 </Button>
-                <Button className="rounded-md" disabled={!valid} onClick={submit}>
-                  ثبت درخواست عضویت
+                <Button className="rounded-md" disabled={!valid || saving} onClick={submit}>
+                  {saving ? <Loader2 size={14} className="me-1.5 animate-spin" /> : null}
+                  {saving ? 'در حال ثبت…' : 'ثبت درخواست عضویت'}
                 </Button>
               </DialogFooter>
             </div>
