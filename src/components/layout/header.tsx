@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, ChevronDown, FileText, LayoutGrid, Search } from 'lucide-react';
 import { BrandLogo } from '@/components/shared/brand';
 import { HeaderUserMenu } from '@/components/layout/header-user-menu';
+import { TasksBell } from '@/components/shared/tasks-bell';
 import {
   BuyersIcon,
   MessagesIcon,
@@ -301,6 +302,14 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
               <SearchIconBuskool size={24} />
             </button>
           </form>
+
+          {/* زنگولهٔ کارهای مهم — موبایل (خواستهٔ مالک ۱۱-۱۱ دور ۴): فقط آیکون
+              کنار جستجو؛ دراپ‌داون دسکتاپ همان بالا در نوار کاربر است */}
+          {user && (
+            <div className="nav-desktop:hidden shrink-0">
+              <TasksBell breakpoint="nav-desktop" variant="plain" />
+            </div>
+          )}
         </div>
 
         {/* نوار کاربر — منتهی‌الیه چپ؛ گروه راست flex-1 است پس این نوار به لبه
@@ -318,6 +327,10 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
                 {isSeller ? <BuyersIcon size={24} /> : <FileText size={24} />}
                 <span className="mt-1">{isSeller ? 'خریداران' : 'درخواست‌ها'}</span>
               </Link>
+              <span className="mx-1 h-9 w-px bg-border" aria-hidden />
+              {/* زنگولهٔ کارهای مهم (خواستهٔ مالک ۱۱-۱۱ دور ۴) — سرنخ سررسیده،
+                  احراز، تکمیل پروفایل، اولین آگهی/درخواست؛ بج تا انجام نشود نمی‌پرد */}
+              <TasksBell showLabel />
               <span className="mx-1 h-9 w-px bg-border" aria-hidden />
               {/* آیکون پیام‌ها — فقط برای کاربر واردشده؛ بج خوانده‌نشده با push WS زنده می‌ماند */}
               <Link

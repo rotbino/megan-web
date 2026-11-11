@@ -20,7 +20,7 @@ import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { ProductImage } from '@/components/shared/product-image';
 import { RelativeTime } from '@/components/shared/relative-time';
 import { PriorityChip, StatusChip } from '@/components/panel/follow/follow-parts';
-import { followDueLabel, followPriorityOf, isFollowDueToday } from '@/lib/follow';
+import { followDueLabel, followPriorityOf, isFollowDueToday, isFollowOverdue } from '@/lib/follow';
 import { useAuth } from '@/lib/mock/auth';
 import { useBuyRequestContact } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
@@ -97,8 +97,9 @@ export function FollowItemRow({
             <PriorityChip priority={item.priority} />
           </button>
         )}
-        {/* یادآور «پیگیری بعدی» — سررسیده (امروز) برجسته کهربایی؛ آینده خاکستری؛
-            کلیک = شیت «تغییر اولویت» که همین‌جا یادآور هم دارد */}
+        {/* یادآور «پیگیری بعدی» — عقب‌افتاده (خواستهٔ مالک ۱۱-۱۱ دور ۴) قرمز،
+            سررسیدِ امروز کهربایی، آینده خاکستری؛ کلیک = شیت «تغییر اولویت»
+            که همین‌جا یادآور هم دارد */}
         {item.nextFollowAt && (
           <button
             type="button"
@@ -106,9 +107,11 @@ export function FollowItemRow({
             title={followDueLabel(item.nextFollowAt) ?? undefined}
             className={cn(
               'inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10.5px] font-bold transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
-              isFollowDueToday(item.nextFollowAt)
-                ? 'border-amber-300 bg-amber-100 text-amber-700'
-                : 'border-border bg-secondary/60 text-muted-foreground',
+              isFollowOverdue(item.nextFollowAt)
+                ? 'border-red-200 bg-red-50 text-red-600'
+                : isFollowDueToday(item.nextFollowAt)
+                  ? 'border-amber-300 bg-amber-100 text-amber-700'
+                  : 'border-border bg-secondary/60 text-muted-foreground',
             )}
           >
             <CalendarClock size={11} className="shrink-0" />

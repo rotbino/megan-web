@@ -58,6 +58,7 @@ import {
   followPriorityOf,
   followTargetOfKind,
   isFollowDueToday,
+  isFollowOverdue,
 } from '@/lib/follow';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -104,6 +105,13 @@ function haystack(item: FollowItem): string {
   return `${p.productName} ${p.subCategoryName} ${p.categoryName} ${p.seller.firstName} ${p.seller.lastName}`.toLowerCase();
 }
 
+/** سرنخِ «مرده» — نهایی/منصرف‌شده؛ پیگیری دیگر معنا ندارد و نباید در شمار
+ *  «پیگیری‌های امروز» یا فیلتر سررسید بیاید (خواستهٔ مالک ۱۱-۱۱ دور ۴:
+ *  شمار تسک زنگوله هم همین قرارداد را دارد — بک‌اند و فرانت هم‌راستا) */
+function isFollowAlive(item: FollowItem): boolean {
+  return item.status !== 'closed' && item.status !== 'dropped';
+}
+
 export function LeadsCrm({ kind, basePath }: { kind: FollowFolderKind; basePath: string }) {
   return (
     <Suspense fallback={<div className="h-64 animate-pulse rounded-lg border bg-card" />}>
@@ -116,6 +124,9 @@ function LeadsCrmInner({ kind, basePath }: { kind: FollowFolderKind; basePath: s
   const router = useRouter();
   const searchParams = useSearchParams();
   const folderParam = searchParams.get('folder');
+  /** ورود با فیلتر «پیگیری‌های امروز» از پیش روشن — مقصد لینک زنگولهٔ
+   *  کارهای مهم (خواستهٔ مالک ۱۱-۱۱ دور ۴: ?due=today از /panel/saved) */
+  const dueParam = searchParams.get('due') === 'today';
 
   // پرونده‌ها و موارد فقط از همان نوع سرنخ — خرید/فروش کاملاً مستقل (دور ۲۸)
   const { data: folders, isLoading: foldersLoading } = useFollowFolders(kind);
@@ -130,7 +141,7 @@ function LeadsCrmInner({ kind, basePath }: { kind: FollowFolderKind; basePath: s
   // اولویت (خواسته مالک ۷-۱۱) و فیلتر «پیگیری‌های امروز» — یادآورهای سررسیده
   // (فیلتر «نوع» حذف شد — دور ۲۸: صفحه هر نوع سرنخ فقط همان نوع را می‌بیند)
   const [priority, setPriority] = useState<FollowPriority | 'all'>('all');
-  const [dueToday, setDueToday] = useState(false);
+  const [dueToday, setDueToday] = useState(dueParam);
   const [sort, setSort] = useState<SortKey>('priority');
 
   // ─── مدال جزئیات و شیت عملیات ──────────────────────────────────────────────
@@ -181,7 +192,8 @@ function LeadsCrmInner({ kind, basePath }: { kind: FollowFolderKind; basePath: s
       case 'priority':
         return priority === 'all' || followPriorityOf(i) === priority;
       case 'due':
-        return !dueToday || isFollowDueToday(i.nextFollowAt);
+        // سرنخ‌های مرده (نهایی/منصرف) پیگیری لازم ندارند — از فیلتر سررسید کنار
+        return !dueToday || (isFollowDueToday(i.nextFollowAt) && isFollowAlive(i));
     }
   };
 
@@ -231,9 +243,10 @@ function LeadsCrmInner({ kind, basePath }: { kind: FollowFolderKind; basePath: s
   );
 
   /** شمار «پیگیری‌های امروز» — یادآورهای سررسیده (خواسته مالک ۷-۱۱:
-   *  «به کاربر یادآوری می‌کند که امروز باید چه کاری انجام دهد») */
+   *  «به کاربر یادآوری می‌کند که امروز باید چه کاری انجام دهد»)؛ سرنخ‌های
+   *  نهایی/منصرف‌شده پیگیری لازم ندارند و شمرده نمی‌شوند */
   const dueTodayCount = useMemo(
-    () => dimBase.due.filter((i) => isFollowDueToday(i.nextFollowAt)).length,
+    () => dimBase.due.filter((i) => isFollowDueToday(i.nextFollowAt) && isFollowAlive(i)).length,
     [dimBase.due],
   );
 
@@ -241,7 +254,10 @@ function LeadsCrmInner({ kind, basePath }: { kind: FollowFolderKind; basePath: s
   const visible = useMemo(() => {
     const list = searched.filter((i) => FILTER_DIMS.every((d) => matchDim(i, d)));
     const prio = (i: FollowItem) => followPriorityOf(i);
-    const dueRank = (i: FollowItem) => (isFollowDueToday(i.nextFollowAt) ? 0 : 1);
+    // رتبهٔ سررسید (خواستهٔ مالک ۱۱-۱۱ دور ۴): عقب‌افتاده ← امروز ← بقیه —
+    // سرنخِ پیگیری‌نشده همیشه بالای لیست، قبل از سررسیدهای امروز
+    const dueRank = (i: FollowItem) =>
+      isFollowOverdue(i.nextFollowAt) ? 0 : isFollowDueToday(i.nextFollowAt) ? 1 : 2;
     return [...list].sort((a, b) => {
       if (sort === 'hot') {
         const d = HOT_ORDER[a.status] - HOT_ORDER[b.status];

@@ -7,7 +7,7 @@
  */
 
 import { apiFetch, serverPost, setTokens, clearTokens, getTokens, ApiError, uploadImage as clientUploadImage, uploadChatFile as clientUploadChatFile, uploadSupportFile as clientUploadSupportFile } from '@/lib/api/client';
-import type { BuyRequest, Category, City, CityMarketQuery, PackageType, Product, ProductQuery, Province, SessionUser } from '@/lib/types';
+import type { BuyRequest, Category, City, CityMarketQuery, PackageType, Product, ProductQuery, Province, SessionUser, UserTask } from '@/lib/types';
 
 export interface Paged<T> {
   items: T[];
@@ -1243,6 +1243,15 @@ export interface UnreadCounts {
 /** POST /chat/unreadCount — ریز؛ بج همه صفحات هر ۳۰s و با هر push WS تازه می‌شود */
 export async function getUnreadMessagesCount(): Promise<UnreadCounts> {
   return apiFetch<UnreadCounts>('/chat/unreadCount', {});
+}
+
+// ─── تسک‌های کاربر — «کارهای مهم من» (خواستهٔ مالک ۱۱-۱۱ دور ۴) ───────────
+
+/** POST /tasks/getMyTasks — کارهای مهم مانده: سرنخ‌های سررسیده، احراز هویت،
+ *  تکمیل پروفایل، اولین آگهی/درخواست. stateless — تا کار انجام نشود در
+ *  پاسخ می‌ماند و بج زنگوله (TasksBell) نمی‌پرد. */
+export async function getMyTasks(): Promise<UserTask[]> {
+  return apiFetch<UserTask[]>('/tasks/getMyTasks', {});
 }
 
 export interface AdminInboxMessage {

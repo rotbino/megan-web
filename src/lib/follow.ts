@@ -4,6 +4,7 @@
  * برای هر دو طرف بازار: فروشنده (درخواست‌های خرید) و خریدار (آگهی‌های فروش).
  */
 
+import { toFa } from '@/lib/format';
 import type { FollowFolderKind, FollowPriority, FollowStatus, FollowTargetType } from '@/lib/types';
 
 export interface FollowStatusMeta {
@@ -128,7 +129,20 @@ export function isFollowDueToday(nextFollowAt: string | null | undefined): boole
   return due.getTime() <= endOfToday.getTime();
 }
 
-/** برچسب کوتاه یادآور — «امروز» / «فردا» / «N روز دیگر» / تاریخ */
+/** عقب‌افتاده است؟ — یادآورِ قبل از امروز که هنوز پیگیری نشده (خواستهٔ مالک
+ *  ۱۱-۱۱ دور ۴: سرنخِ پیگیری‌نشده باید زیر «پیگیری امروز» هم دیده شود و
+ *  با چیپ قرمزِ «N روز گذشته» از سررسیدِ امروز جدا دیده شود) */
+export function isFollowOverdue(nextFollowAt: string | null | undefined): boolean {
+  if (!nextFollowAt) return false;
+  const due = new Date(nextFollowAt.replace(' ', 'T'));
+  if (Number.isNaN(due.getTime())) return false;
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  return due.getTime() < startOfToday.getTime();
+}
+
+/** برچسب کوتاه یادآور — «N روز گذشته» (عقب‌افتاده) / «امروز» / «فردا» /
+ *  «N روز دیگر» / تاریخ */
 export function followDueLabel(nextFollowAt: string | null | undefined): string | null {
   if (!nextFollowAt) return null;
   const due = new Date(nextFollowAt.replace(' ', 'T'));
@@ -136,9 +150,10 @@ export function followDueLabel(nextFollowAt: string | null | undefined): string 
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const days = Math.round((due.getTime() - startOfToday.getTime()) / 86_400_000);
-  if (days <= 0) return 'پیگیری امروز';
+  if (days < 0) return `پیگیری ${toFa(-days)} روز گذشته`;
+  if (days === 0) return 'پیگیری امروز';
   if (days === 1) return 'پیگیری فردا';
-  if (days <= 30) return `پیگیری ${days} روز دیگر`;
+  if (days <= 30) return `پیگیری ${toFa(days)} روز دیگر`;
   return `پیگیری ${due.toLocaleDateString('fa-IR')}`;
 }
 

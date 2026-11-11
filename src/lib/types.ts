@@ -916,3 +916,21 @@ export interface SavedBuyerBookRow {
   savedAt: string;
   lastActiveAt: string | null;
 }
+
+/** ─── تسک‌های کاربر — «کارهای مهم من» (خواستهٔ مالک ۱۱-۱۱ دور ۴) ────────
+ *  هر تسک کاری است که کاربر باید انجام بدهد و هنوز نکرده؛ از وضعیت واقعی
+ *  داده‌ها محاسبه می‌شود (بک‌اند /tasks/getMyTasks) پس «انجام دادن» همان
+ *  کار، خودش تسک را حذف می‌کند — بج زنگوله تا انجام نشود نمی‌پرد. */
+export type UserTaskSeverity = 'urgent' | 'warning' | 'info';
+
+export interface UserTask {
+  /** کلید پایدار — مپ آیکون/رنگ در TasksBell */
+  key: 'follow_due_buy' | 'follow_due_sell' | 'verify' | 'profile' | 'first_product' | 'first_request' | string;
+  title: string;
+  description: string;
+  /** مقصد کلیک — دقیقاً همان فرم/صفحه‌ای که کار باید آنجا انجام شود */
+  href: string;
+  /** تعداد موارد (مثلاً N سرنخ سررسیده) — فقط برای تسک‌های شمارشی */
+  count?: number;
+  severity: UserTaskSeverity;
+}

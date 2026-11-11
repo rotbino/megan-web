@@ -148,7 +148,14 @@ export function useSuggestions(typedText: string) {
 // ─── Mutations ─────────────────────────────────────────────────────────
 
 export function useSubmitBuyRequest() {
-  return useMutation({ mutationFn: api.submitBuyRequest });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.submitBuyRequest,
+    onSuccess: () => {
+      // اولین درخواست ثبت شد → تسک «اولین درخواست خرید» از زنگوله می‌افتد
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+    },
+  });
 }
 
 export function useRequestOtp() {
@@ -242,13 +249,15 @@ export function useIsFollowing(targetType: FollowTargetType, targetId: number, e
   });
 }
 
-/** باطل‌کردن کل دیتای پیگیری پس از هر تغییر */
+/** باطل‌کردن کل دیتای پیگیری پس از هر تغییر — بج تسک‌ها هم تازه شود چون
+ *  شمار سرنخ‌های سررسیده تغییر کرد (خواستهٔ مالک ۱۱-۱۱ دور ۴) */
 function useInvalidateFollows() {
   const queryClient = useQueryClient();
   return () => {
     queryClient.invalidateQueries({ queryKey: ['follow-folders'] });
     queryClient.invalidateQueries({ queryKey: ['follow-items'] });
     queryClient.invalidateQueries({ queryKey: ['following-map'] });
+    queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
   };
 }
 
@@ -262,6 +271,8 @@ export function useSubmitProduct() {
     mutationFn: api.submitProduct,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['panel-my-products'] });
+      // اولین آگهی ثبت شد → تسک «اولین آگهی» از زنگوله می‌افتد
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
     },
   });
 }
@@ -519,6 +530,24 @@ export function useUnreadMessagesCount(enabled: boolean) {
   });
 }
 
+// ─── تسک‌های کاربر — «کارهای مهم من» (خواستهٔ مالک ۱۱-۱۱ دور ۴) ──────
+
+/** بج زنگولهٔ کارهای مهم — سرنخ‌های سررسیده، احراز هویت، تکمیل پروفایل،
+ *  اولین آگهی/درخواست. تسک‌ها stateless از وضعیت واقعی محاسبه می‌شوند؛
+ *  polling ۶۰s + refetch روی فوکوس + ابطال دستی بعد از هر mutation مرتبط
+ *  (پیگیری‌ها، احراز، پروفایل، ثبت آگهی/درخواست) تا بج همان لحظه بیفتد. */
+export function useMyTasks(enabled: boolean) {
+  return useQuery({
+    queryKey: ['my-tasks'],
+    queryFn: api.getMyTasks,
+    enabled,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    retry: 1,
+  });
+}
+
 /** صندوق «پشتیبانی ایمچ» — WS + شبکه ایمنی REST هر ۳۰ ثانیه */
 export function useAdminMessages() {
   return useQuery({
@@ -703,6 +732,8 @@ export function useUpdatePanelProfile() {
     mutationFn: api.updatePanelProfile,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['panel-profile'] });
+      // بخش‌های خالی پروفایل پر شدند → تسک «تکمیل پروفایل» تازه شود
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
     },
   });
 }
@@ -785,6 +816,8 @@ export function useSubmitVerification() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['panel-verification'] });
       queryClient.invalidateQueries({ queryKey: ['panel-profile'] }); // is_verified ممکن است تغییر کند
+      // مدارک رفت → تسک احراز تا بررسی تمام شود از زنگوله می‌افتد
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
     },
   });
 }

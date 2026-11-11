@@ -14,6 +14,7 @@ import { usePathname } from 'next/navigation';
 import { Crown, Home, LogIn, Loader2 } from 'lucide-react';
 import { PanelSidebar, BUYER_NAV, SELLER_NAV } from '@/components/panel/panel-sidebar';
 import { PasswordBanner, PasswordLock } from '@/components/panel/password-banner';
+import { TasksBell } from '@/components/shared/tasks-bell';
 import { usePanelProfile, useMyPackage, useChatSocketEvents } from '@/lib/mock/hooks';
 import { useAuth } from '@/lib/mock/auth';
 import { Button } from '@/components/ui/button';
@@ -152,6 +153,9 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
           <img src="/logo-short.svg" alt="ایمچ" width={28} height={29} className="h-[28px] w-auto" />
         </Link>
         <h1 className="truncate text-[15px] font-extrabold leading-none">{panelPageTitle(pathname)}</h1>
+        {/* زنگولهٔ کارهای مهم (خواستهٔ مالک ۱۱-۱۱ دور ۴) — سرنخ سررسیده، احراز،
+            تکمیل پروفایل، اولین آگهی/درخواست؛ بج تا انجام نشود نمی‌پرد */}
+        {user && <TasksBell breakpoint="lg" variant="plain" className="ms-auto" />}
       </header>
 
       {/* بنر قرمز + مودال «رمز عبور تعیین کنید» — تا تعیین رمز در همه صفحات پنل می‌ماند */}
@@ -219,6 +223,8 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
               >
                 <Home size={18} />
               </Link>
+              {/* زنگولهٔ کارهای مهم — کنار خانه (خواستهٔ مالک ۱۱-۱۱ دور ۴) */}
+              <TasksBell breakpoint="lg" variant="card" />
             </div>
           </div>
         )}
