@@ -324,9 +324,9 @@ export default async function ProductViewPage({ params }: Props) {
                 <PhoneReveal sellerName={sellerName} productId={product.id}>
                   <Button className="h-11 w-full rounded-md text-sm font-medium">
                     <Phone size={17} />
-                    {/* موبایل: «تماس» (خواسته مالک) / دسکتاپ: «شماره تماس» */}
-                    <span className="nav-desktop:hidden">تماس</span>
-                    <span className="hidden nav-desktop:inline">شماره تماس</span>
+                    {/* «تماس» (خواستهٔ مالک ۱۱-۱۱) — موبایل مستقیم تماس می‌گیرد،
+                        دسکتاپ شماره را نشان می‌دهد (منطق PhoneReveal) */}
+                    تماس
                   </Button>
                 </PhoneReveal>
                 <ChatDialog

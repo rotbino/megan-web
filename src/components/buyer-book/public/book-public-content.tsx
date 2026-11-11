@@ -1,23 +1,26 @@
 'use client';
 
 /**
- * محتوای گیت‌دار صفحهٔ عمومی دفتر خرید (/b/{bookId} — دور ۵ + بازطراحی ۱۱-۱۱).
+ * محتوای صفحهٔ عمومی دفتر خرید (/b/{bookId} — دور ۵ + بازطراحی ۱۱-۱۱).
  *
- * پوستهٔ برند (هدر + رنگ/لوگو) SSR و عمومی است؛ اما خودِ دفتر — کالاها،
- * مشخصات خریدار و نظرات — فقط برای خودِ خریدار یا کاربران دارندهٔ بستهٔ
- * فعال ایمچ رندر می‌شود (خواستهٔ مالک: ابزار جذب فروشنده به بسته):
- *  • مهمان → قفل با دعوت به ورود/ثبت‌نام در ایمچ (+ تیزر عنوان بنر)
- *  • بی‌بسته → قفل با دعوت به خرید بسته (+ پاسخ NEED_PACKAGE بک‌اند)
- *  • مجاز → کارت هویت با بنر عنوان‌دار «دفتر خرید» (خواستهٔ مالک ۱۱-۱۱:
+ * پوستهٔ برند (هدر + رنگ/لوگو) SSR و عمومی است؛ مشاهدهٔ خودِ دفتر — کالاها،
+ * مشخصات خریدار و نظرات — برای همهٔ اعضای واردشده رایگان است (خواستهٔ مالک
+ * ۱۱-۱۱: «برای مشاهده دفتر خرید نیاز به خرید بسته نیست»)؛ مهمان به
+ * ورود/ثبت‌نام دعوت می‌شود:
+ *  • گیت ارتباط (خواستهٔ مالک ۱۱-۱۱): دکمه‌های «تماس»، «چت» و «پیشنهاد تامین»
+ *    فقط برای دارندهٔ بستهٔ فعال (یا خودِ خریدار) کار می‌کنند — بقیه مودال
+ *    «برای ارتباط با خریدار باید عضویت خود را ارتقا دهید» + دکمهٔ بسته‌ها
+ *    می‌بینند.
+ *  • کارت هویت با بنر عنوان‌دار «دفتر خرید» (خواستهٔ مالک ۱۱-۱۱:
  *    عنوان دلخواه از تنظیمات + سمت مسئول خرید کنار نام + گواهی احراز هویت)
- *    + آمار + «شرایط تامین» (متن دلخواه خریدار برای تامین‌کنندگان) +
- *    گرید کالاها با «پیشنهاد تامین» + «درباره خریدار» عین کاتالوگ
- *    (توضیحات کسب‌وکار، مجوزها و تصاویر) + نظراتِ نقش‌جداشده
- *    (subject='buyer' — جدا از امتیاز فروشندگی او) + دکمهٔ «ذخیره دفتر خرید»
- *    برای همه حتی خودِ مالک (خواستهٔ مالک ۱۱-۱۱) + دکمه‌های «چت با خریدار»
- *    و «تماس با خریدار» (خواستهٔ مالک ۱۱-۱۱) — چت همیشه؛ تماس فقط وقتی
- *    خریدار در تنظیمات دفتر (و پروفایل) اجازه داده + بج «تایید هویت شده»
- *    روی جلد و کنار نام.
+ *    + نوار منوی بخش‌ها (عین کاتالوگ — نظرات بعد از کالاها) + آمار +
+ *    «شرایط تامین» (متن دلخواه خریدار برای تامین‌کنندگان) + گرید کالاها
+ *    با «پیشنهاد تامین» + «درباره خریدار» عین کاتالوگ (توضیحات کسب‌وکار،
+ *    مجوزها و تصاویر در یک نوار واحد) + نظراتِ نقش‌جداشده (subject='buyer'
+ *    — جدا از امتیاز فروشندگی او) + دکمهٔ «ذخیره دفتر خرید» برای همه حتی
+ *    خودِ مالک (خواستهٔ مالک ۱۱-۱۱) + دکمه‌های «چت» و «تماس» (خواستهٔ مالک
+ *    ۱۱-۱۱) — چت همیشه؛ تماس فقط وقتی خریدار در تنظیمات دفتر (و پروفایل)
+ *    اجازه داده + بج «تایید هویت شده» روی جلد و کنار نام.
  *  • چیدمان دسکتاپ دو ستونه (اصلی + سایدبار دربارهٔ خریدار)؛ موبایل تک‌ستونه
  *    با نوار فیکس ذخیره بالای ناوبری پایین — هم زیبا هم کارآمد.
  */
@@ -34,9 +37,7 @@ import {
   Camera,
   Check,
   Clock3,
-  FileCheck2,
   Loader2,
-  Lock,
   MapPin,
   Package,
   PackageOpen,
@@ -51,12 +52,12 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChatDialog } from '@/components/products/chat-dialog';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
+import { ProfileScrollNav } from '@/components/products/profile-scroll-nav';
 import { useAuth } from '@/lib/mock/auth';
 import {
   useBuyerBookPublic,
   useBuyerBookSaved,
   useMyOfferQuota,
-  useMyPackage,
   useMyProducts,
   useToggleBuyerBookSave,
 } from '@/lib/mock/hooks';
@@ -66,22 +67,20 @@ import { SupplyOfferModal } from '@/components/buyers/supply-offer-modal';
 import { NeedPackageModal } from '@/components/shared/need-package-modal';
 import { RootCategoryIcon } from '@/lib/category-icons';
 import { findCategoryPathById } from '@/lib/categories';
-import { ApiError } from '@/lib/api/client';
 import { useToast } from '@/hooks/use-toast';
 import { stockFa, toFa } from '@/lib/format';
 import { PERIOD_LABELS, type BuyerBookItem, type BuyerDirectoryItem, type BuyerBookSettings } from '@/lib/types';
 import { getSeller } from '@/lib/mock/api';
 import { cn } from '@/lib/utils';
 
-/** کارت قفل — پیام واحد مهمان/بی‌بسته با CTA مناسب + تیزر عنوان بنر دفتر */
+/** کارت قفل مهمان — دعوت به ورود/ثبت‌نام + تیزر عنوان بنر دفتر (مشاهده برای
+ *  اعضای واردشده رایگان است — خواستهٔ مالک ۱۱-۱۱) */
 function LockedCard({
-  variant,
   name,
   bannerTitle,
 }: {
-  variant: 'guest' | 'package';
   name: string;
-  /** عنوان بنر دفتر (تنظیمات) — به مهمان/بی‌بسته نشان می‌دهد این دفتر چه می‌خرد */
+  /** عنوان بنر دفتر (تنظیمات) — به مهمان نشان می‌دهد این دفتر چه می‌خرد */
   bannerTitle?: string | null;
 }) {
   const { requireAuth } = useAuth();
@@ -93,44 +92,20 @@ function LockedCard({
         </p>
       )}
       <span className="mx-auto grid size-16 place-items-center rounded-full bg-(--catalog-accent)/10 text-(--catalog-accent)">
-        {variant === 'guest' ? <ShieldCheck size={28} /> : <Lock size={28} />}
+        <ShieldCheck size={28} />
       </span>
-      <h2 className="mt-4 text-base font-extrabold">
-        {variant === 'guest' ? 'برای دیدن دفترهای خرید وارد ایمچ شوید' : 'دیدن دفتر خرید ویژهٔ دارندگان بسته است'}
-      </h2>
+      <h2 className="mt-4 text-base font-extrabold">برای دیدن دفترهای خرید وارد ایمچ شوید</h2>
       <p className="mx-auto mt-2 max-w-md text-[13px] leading-7 text-muted-foreground">
-        {variant === 'guest' ? (
-          <>
-            دفتر خرید {name} — کالاهایی که به‌طور دوره‌ای می‌خرد — ویژهٔ اعضای ایمچ
-            است. با شماره موبایل، رایگان عضو شوید یا وارد حساب خود شوید.
-          </>
-        ) : (
-          <>
-            دفتر خرید {name} را فروشندگان دارندهٔ بستهٔ اشتراک فعال می‌بینند — لیست
-            مشتری بالقوه: کالاها، حجم و دورهٔ خرید هر کالا، همیشه به‌روز.
-          </>
-        )}
+        دفتر خرید {name} — کالاهایی که به‌طور دوره‌ای می‌خرد — ویژهٔ اعضای ایمچ
+        است. با شماره موبایل، رایگان عضو شوید یا وارد حساب خود شوید.
       </p>
       <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-        {variant === 'guest' ? (
-          <>
-            <Button className="h-10 rounded-lg px-6 text-sm font-bold" onClick={() => requireAuth('register')}>
-              ورود / ثبت‌نام در ایمچ
-            </Button>
-            <Button asChild variant="outline" className="h-10 rounded-lg px-6 text-sm font-bold">
-              <Link href="/">بازگشت به ایمچ</Link>
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button asChild className="h-10 rounded-lg px-6 text-sm font-bold">
-              <Link href="/panel/pricing">مشاهده و خرید بسته‌ها</Link>
-            </Button>
-            <Button asChild variant="outline" className="h-10 rounded-lg px-6 text-sm font-bold">
-              <Link href="/help/charge-package">راهنمای بسته‌ها</Link>
-            </Button>
-          </>
-        )}
+        <Button className="h-10 rounded-lg px-6 text-sm font-bold" onClick={() => requireAuth('register')}>
+          ورود / ثبت‌نام در ایمچ
+        </Button>
+        <Button asChild variant="outline" className="h-10 rounded-lg px-6 text-sm font-bold">
+          <Link href="/">بازگشت به ایمچ</Link>
+        </Button>
       </div>
     </div>
   );
@@ -270,13 +245,11 @@ export function BookPublicContent({
   sharePath: string;
 }) {
   const { user } = useAuth();
-  const { data: myPackage, isLoading: pkgLoading } = useMyPackage();
   const isOwner = !!user && user.userName === resolvedUserName;
-  const hasPackage = !!myPackage && myPackage.isActive && myPackage.pakageType > 0;
 
-  // درخواست دفتر — فقط برای مجازها (مالک یا بسته‌دار) ارسال می‌شود؛ پاسخ
-  // NEED_PACKAGE از بک‌اند هم همان قفل را می‌سازد (گیت سرور منبع حقیقت است)
-  const canFetch = !!user && (isOwner || hasPackage);
+  // مشاهدهٔ دفتر رایگان است (خواستهٔ مالک ۱۱-۱۱) — فقط ورود کافی است؛
+  // گیت بسته روی دکمه‌های تماس/چت/پیشنهاد تامین می‌نشیند (مودال ارتقا)
+  const canFetch = !!user;
   const query = useBuyerBookPublic(canFetch ? bookId : null);
   const data = query.data;
 
@@ -299,19 +272,30 @@ export function BookPublicContent({
     retry: false,
   });
 
-  // ── اکشن‌های «پیشنهاد تامین» — همان گیت‌های پنل خریداران ──
+  // ── اکشن‌های «پیشنهاد تامین» + گیت ارتباط (خواستهٔ مالک ۱۱-۱۱) ──
   const { data: myProducts } = useMyProducts(!!user);
   const products = myProducts?.items;
   const quotaQuery = useMyOfferQuota(!!user);
   const isFeatured = quotaQuery.data?.isFeatured ?? false;
   const { data: tree } = useCategoryTree();
   const [offerTarget, setOfferTarget] = useState<BuyerDirectoryItem | null>(null);
-  const [needPkgOpen, setNeedPkgOpen] = useState(false);
   const [needProductOpen, setNeedProductOpen] = useState(false);
+  /** مودال ارتقای عضویت — پیام واحد تماس/چت/پیشنهاد تامین (خواستهٔ مالک ۱۱-۱۱) */
+  const [contactPkgOpen, setContactPkgOpen] = useState(false);
 
   const hasProducts = (products ?? []).some(
     (p) => p.status === 'confirmed' || p.status === 'pending',
   );
+
+  /** گیت ارتباط: تماس/چت/پیشنهاد تامین فقط با بستهٔ فعال (یا خودِ خریدار) —
+   *  بقیه مودال «برای ارتباط با خریدار باید عضویت خود را ارتقا دهید» */
+  const canContact = isOwner || isFeatured;
+  const requireContact = (): boolean => {
+    if (quotaQuery.isPending) return false;
+    if (canContact) return true;
+    setContactPkgOpen(true);
+    return false;
+  };
 
   const passOfferGates = (): boolean => {
     if (myProducts === undefined || quotaQuery.isPending) return false;
@@ -319,15 +303,12 @@ export function BookPublicContent({
       setNeedProductOpen(true);
       return false;
     }
-    if (!isFeatured) {
-      setNeedPkgOpen(true);
+    if (!canContact) {
+      setContactPkgOpen(true);
       return false;
     }
     return true;
   };
-
-  const needPackageLock =
-    query.error instanceof ApiError && query.error.code === 'NEED_PACKAGE';
 
   /** ساخت آیتم دایرکتوری از کالای دفتر — ورودی مشترک مودال پیشنهاد تامین */
   const synthDirectoryItem = (buyer: NonNullable<typeof data>['buyer'], it: BuyerBookItem): BuyerDirectoryItem => ({
@@ -366,35 +347,11 @@ export function BookPublicContent({
     };
   }, [offerTarget, tree]);
 
-  /* ── قفل‌ها ── */
+  /* ── قفل مهمان — مشاهدهٔ دفتر فقط با ورود؛ اعضا رایگان می‌بینند ── */
   if (!user) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-10 lg:px-6">
-        <LockedCard variant="guest" name={resolvedName} bannerTitle={bannerTitle} />
-      </div>
-    );
-  }
-
-  if (needPackageLock) {
-    return (
-      <div className="mx-auto max-w-5xl px-4 py-10 lg:px-6">
-        <LockedCard variant="package" name={resolvedName} bannerTitle={bannerTitle} />
-      </div>
-    );
-  }
-
-  if (!canFetch) {
-    // بی‌بسته — پاسخ بسته از بک‌اند رسیده؟ else قفل سمت کلاینت
-    return (
-      <div className="mx-auto max-w-5xl px-4 py-10 lg:px-6">
-        {pkgLoading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-40 rounded-xl" />
-            <Skeleton className="h-64 rounded-xl" />
-          </div>
-        ) : (
-          <LockedCard variant="package" name={resolvedName} bannerTitle={bannerTitle} />
-        )}
+        <LockedCard name={resolvedName} bannerTitle={bannerTitle} />
       </div>
     );
   }
@@ -606,36 +563,64 @@ export function BookPublicContent({
               </p>
             </div>
 
-            {/* اقدام‌های تماس (خواستهٔ مالک ۱۱-۱۱) — چت همیشه هست؛ تماس فقط
-                وقتی خریدار اجازه داده (سوییچ دفتر + سوییچ پروفایل). ذخیرهٔ
-                دفتر برای همه حتی خودِ خریدار */}
+            {/* اقدام‌های تماس (خواستهٔ مالک ۱۱-۱۱) — برچسب کوتاه «تماس»/«چت»؛
+                موبایلِ PhoneReveal مستقیم تماس می‌گیرد، دسکتاپ شماره را نشان
+                می‌دهد. گیت ارتباط: بی‌بسته مودال ارتقا. تماس فقط وقتی خریدار
+                اجازه داده (سوییچ دفتر + سوییچ پروفایل). ذخیرهٔ دفتر برای همه */}
             <div className="flex shrink-0 flex-wrap items-center gap-2 pt-2 sm:pb-2">
-              {callAllowed && (
-                <PhoneReveal
-                  sellerName={buyerName}
-                  userName={buyer.userName}
-                  description="برای گفتگو درباره شرایط تامین و هماهنگی خرید دوره‌ای تماس بگیرید."
-                >
-                  <Button className="h-11 rounded-lg px-5 text-sm font-bold">
+              {callAllowed &&
+                (canContact ? (
+                  <PhoneReveal
+                    sellerName={buyerName}
+                    userName={buyer.userName}
+                    description="برای گفتگو درباره شرایط تامین و هماهنگی خرید دوره‌ای تماس بگیرید."
+                  >
+                    <Button className="h-11 rounded-lg px-5 text-sm font-bold">
+                      <Phone size={17} />
+                      تماس
+                    </Button>
+                  </PhoneReveal>
+                ) : (
+                  <Button
+                    className="h-11 rounded-lg px-5 text-sm font-bold"
+                    onClick={requireContact}
+                    title="تماس با خریدار"
+                  >
                     <Phone size={17} />
-                    تماس با خریدار
+                    تماس
                   </Button>
-                </PhoneReveal>
-              )}
+                ))}
               <ChatDialog
                 sellerUserName={buyer.userName}
                 sellerId={buyer.id}
                 sellerName={buyerName}
                 sellerAvatarUrl={buyer.avatarUrl}
-                buttonLabel="چت با خریدار"
+                buttonLabel="چت"
                 directSubtitle="گفتگوی مستقیم با مسئول خرید"
                 buttonVariant="outline"
                 className="h-11 rounded-lg px-5 text-sm font-bold"
+                beforeOpen={requireContact}
               />
               <BookSaveButton buyerUserName={buyer.userName} />
             </div>
           </div>
         </div>
+
+        {/* نوار منوی بخش‌ها — عین کاتالوگ (خواستهٔ مالک ۱۱-۱۱): نظرات بعد از
+            کالاها؛ مجوزها آخر — تا نظرات زیر اسکرول قایم نشود */}
+        <ProfileScrollNav
+          activeDefault="about"
+          sections={[
+            { id: 'about', label: 'درباره خریدار' },
+            { id: 'book-items', label: 'کالاهای دوره‌ای', count: items.length },
+            { id: 'reviews', label: 'نظرات' },
+            {
+              id: 'buyer-gallery',
+              label: 'مجوزها و گواهی‌نامه‌ها',
+              visible: gallery.length > 0 || certificates.length > 0,
+            },
+          ]}
+        />
       </section>
 
       {/* ─── آمار ─── */}
@@ -712,9 +697,10 @@ export function BookPublicContent({
           </section>
         </div>
 
-        {/* ─── سایدبار — درباره خریدار + تصاویر/مجوزها (عین کاتالوگ؛ خواستهٔ
-                مالک ۱۱-۱۱: هر اطلاعاتی از خریدار که برای فروشنده مهم است) ─── */}
-        <aside className="min-w-0 space-y-4" aria-label="مشخصات خریدار">
+        {/* ─── سایدبار — درباره خریدار (لنگر نوار منو)؛ تصاویر/مجوزها در
+                نوار واحد آخر صفحه (خواستهٔ مالک ۱۱-۱۱: هر اطلاعاتی از خریدار
+                که برای فروشنده مهم است) ─── */}
+        <aside id="about" className="min-w-0 space-y-4 scroll-mt-24" aria-label="مشخصات خریدار">
           <div className="rounded-xl border bg-card p-5">
             <h2 className="flex items-center gap-2 text-sm font-bold">
               <span className="grid size-7 place-items-center rounded-lg bg-(--catalog-accent)/10 text-(--catalog-accent)">
@@ -783,70 +769,39 @@ export function BookPublicContent({
         <SellerReviews userName={buyer.userName} sellerName={buyerName} subject="buyer" />
       </section>
 
-      {/* ─── تصاویر و مجوزهای کسب‌وکار (خواستهٔ مالک ۱۱-۱۱: در انتهای دفتر،
-              تمام‌عرض — هر اطلاعات کامل‌تری از خریدار، تماس فروشنده را آسان‌تر
-              می‌کند؛ در نبودِ فیلدهای دفتر، از پروفایل عمومی getSeller می‌آید) ─── */}
+      {/* ─── مجوزها، گواهی‌نامه‌ها و جوایز — نوار واحد (خواستهٔ مالک ۱۱-۱۱):
+              عکس‌های «تصاویر کسب‌وکار» و مجوزها همه در همین یک بخش می‌آیند
+              (دو نوار جدا حذف شد)؛ در انتهای دفتر، تمام‌عرض — در نبودِ فیلدهای
+              دفتر، از پروفایل عمومی getSeller می‌آید ─── */}
       {(gallery.length > 0 || certificates.length > 0) && (
         <section id="buyer-gallery" aria-labelledby="buyer-gallery-title" className="mt-8 scroll-mt-24">
           <h2 id="buyer-gallery-title" className="mb-3 flex items-center gap-2 text-base font-extrabold">
             <span className="grid size-7 place-items-center rounded-lg bg-(--catalog-accent)/10 text-(--catalog-accent)">
               <Camera size={15} />
             </span>
-            تصاویر و مجوزهای کسب و کار
+            مجوزها، گواهی‌نامه‌ها و جوایز
           </h2>
-
-          {gallery.length > 0 && (
-            <div>
-              <h3 className="mb-2 text-xs font-bold text-muted-foreground">تصاویر کسب و کار</h3>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-                {gallery.map((g, i) => (
-                  <a
-                    key={`${g.url}-${i}`}
-                    href={g.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group relative block aspect-square overflow-hidden rounded-lg border bg-secondary"
-                    title="مشاهده تصویر کامل"
-                  >
-                    <img
-                      src={g.thumbUrl ?? g.url}
-                      alt={`تصویر کسب‌وکار ${i + 1}`}
-                      className="size-full object-cover transition-transform group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  </a>
-                ))}
-              </div>
+          <div className="rounded-xl border bg-card p-4 sm:p-5">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+              {[...gallery, ...certificates].map((g, i) => (
+                <a
+                  key={`${g.url}-${i}`}
+                  href={g.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative block aspect-square overflow-hidden rounded-lg border bg-secondary"
+                  title="مشاهده تصویر کامل"
+                >
+                  <img
+                    src={g.thumbUrl ?? g.url}
+                    alt={`مجوز و تصویر کسب‌وکار ${i + 1}`}
+                    className="size-full object-cover transition-transform group-hover:scale-105"
+                    loading="lazy"
+                  />
+                </a>
+              ))}
             </div>
-          )}
-
-          {certificates.length > 0 && (
-            <div className={gallery.length > 0 ? 'mt-5 border-t pt-5' : ''}>
-              <h3 className="mb-2 flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
-                <FileCheck2 size={13} className="text-(--catalog-accent)/70" />
-                مجوزها و گواهی‌ها
-              </h3>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-                {certificates.map((c, i) => (
-                  <a
-                    key={`${c.url}-${i}`}
-                    href={c.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group relative block aspect-square overflow-hidden rounded-lg border bg-secondary"
-                    title="مشاهده مجوز کامل"
-                  >
-                    <img
-                      src={c.thumbUrl ?? c.url}
-                      alt={`مجوز ${i + 1}`}
-                      className="size-full object-cover transition-transform group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
+          </div>
         </section>
       )}
 
@@ -882,23 +837,35 @@ export function BookPublicContent({
             {saversCount > 0 ? ` — ${toFa(saversCount)} فروشنده ذخیره کرده` : ''}
           </p>
         </div>
-        {callAllowed && (
-          <PhoneReveal
-            sellerName={buyerName}
-            userName={buyer.userName}
-            description="برای گفتگو درباره شرایط تامین و هماهنگی خرید دوره‌ای تماس بگیرید."
-          >
+        {callAllowed &&
+          (canContact ? (
+            <PhoneReveal
+              sellerName={buyerName}
+              userName={buyer.userName}
+              description="برای گفتگو درباره شرایط تامین و هماهنگی خرید دوره‌ای تماس بگیرید."
+            >
+              <button
+                type="button"
+                title="تماس با خریدار"
+                className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-4 text-xs font-bold text-white shadow-sm"
+                style={{ backgroundColor: accent ?? 'var(--primary)' }}
+              >
+                <Phone size={16} />
+                تماس
+              </button>
+            </PhoneReveal>
+          ) : (
             <button
               type="button"
               title="تماس با خریدار"
+              onClick={requireContact}
               className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-4 text-xs font-bold text-white shadow-sm"
               style={{ backgroundColor: accent ?? 'var(--primary)' }}
             >
               <Phone size={16} />
               تماس
             </button>
-          </PhoneReveal>
-        )}
+          ))}
         <ChatDialog
           sellerUserName={buyer.userName}
           sellerId={buyer.id}
@@ -908,6 +875,7 @@ export function BookPublicContent({
           directSubtitle="گفتگوی مستقیم با مسئول خرید"
           buttonVariant="outline"
           className="h-10 shrink-0 rounded-lg px-4 text-xs font-bold"
+          beforeOpen={requireContact}
         />
         <BookSaveButton buyerUserName={buyer.userName} compact />
       </div>
@@ -922,7 +890,8 @@ export function BookPublicContent({
         category={targetCategory}
       />
 
-      {/* گیت‌های پیشنهاد — عین پنل خریداران */}
+      {/* گیت‌های پیشنهاد/ارتباط — ثبت کالا و ارتقای عضویت (پیام واحد تماس/
+          چت/پیشنهاد — خواستهٔ مالک ۱۱-۱۱) */}
       <NeedPackageModal
         open={needProductOpen}
         onClose={() => setNeedProductOpen(false)}
@@ -930,10 +899,11 @@ export function BookPublicContent({
         message="برای ارسال پیشنهاد تامین، باید کالاهای خود را برای فروش ثبت کنید تا خریداران مرتبط به شما نمایش داده شوند. با ثبت کالا و حداقل سفارش، سیستم تطابق مطابق‌ترین خریداران را به شما نشان می‌دهد."
       />
       <NeedPackageModal
-        open={needPkgOpen}
-        onClose={() => setNeedPkgOpen(false)}
+        open={contactPkgOpen}
+        onClose={() => setContactPkgOpen(false)}
         kind="package"
-        message="ارسال پیشنهاد تامین به خریداران عمده، ویژهٔ فروشندگان دارندهٔ بستهٔ اشتراک فعال است. با فعال‌سازی یکی از بسته‌های ایمچ، از امروز می‌توانید برای خریداران پیشنهاد بفرستید."
+        message="برای ارتباط با خریدار باید عضویت خود را ارتقا دهید. با فعال‌سازی یکی از بسته‌های ایمچ می‌توانید با خریداران تماس بگیرید، چت کنید و پیشنهاد تامین بفرستید."
+        ctaLabel="مشاهده بسته‌ها"
       />
     </div>
   );

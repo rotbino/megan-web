@@ -200,7 +200,9 @@ export function ProfileHero({
               <PhoneReveal sellerName={name} userName={user.userName}>
                 <Button className="h-11 w-full rounded-lg px-5 text-sm font-bold lg:h-10 lg:w-[142px]">
                   <Phone size={18} />
-                  شماره تماس
+                  {/* «تماس» (خواستهٔ مالک ۱۱-۱۱) — موبایل مستقیم تماس می‌گیرد،
+                      دسکتاپ شماره را نشان می‌دهد (منطق PhoneReveal) */}
+                  تماس
                 </Button>
               </PhoneReveal>
             )}

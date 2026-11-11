@@ -1766,6 +1766,7 @@ export interface MyProductStats {
     /** نردبان فعال — ردیف «روش‌های افزایش بازدید» */
     isLadder: boolean;
   };
+  /** مالک بستهٔ فعال دارد؟ — فقط ردیف «ارتقا عضویت» (هویت‌ها رایگان‌اند — خواستهٔ مالک ۱۱-۱۱) */
   canSeeIdentity: boolean;
   /** مالک احراز هویت شده؟ — ردیف «روش‌های افزایش بازدید» */
   ownerIsVerified: boolean;

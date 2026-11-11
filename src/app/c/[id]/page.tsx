@@ -4,8 +4,6 @@ import {
   BadgeCheck,
   Boxes,
   Building2,
-  Camera,
-  FileCheck2,
   MapPin,
   Send,
   ShieldAlert,
@@ -334,80 +332,42 @@ export default async function CatalogPage({ params }: Props) {
               )}
             </section>
 
-            {/* ─── تصاویر و گواهی‌های کسب‌وکار — زیر لیست کالاها (خواستهٔ مالک
-                ۱۰-۱۱ دور ۵): کالاها مهم‌ترند و اول دیده می‌شوند؛ گالری و
-                گواهی‌ها پس از آن اعتبار فروشنده را کامل می‌کنند ─── */}
+            {/* نظرات کاربران — بلافاصله بعد از محصولات (خواستهٔ مالک ۱۱-۱۱):
+                نظرات برای خریدار از گواهی‌نامه‌ها مهم‌تر است و نباید زیر
+                اسکرول قایم شود */}
+            <SellerReviews userName={user.userName} sellerName={sellerName} />
+
+            {/* ─── مجوزها، گواهی‌نامه‌ها و جوایز — یک نوار واحد (خواستهٔ مالک
+                ۱۱-۱۱): عکس‌های «تصاویر مربوطه» و گواهی‌ها همه در همین یک
+                بخش می‌آیند؛ زیر لیست کالاها و نظرات ─── */}
             {(gallery.length > 0 || certificates.length > 0) && (
               <section id="gallery" aria-labelledby="gallery-title" className="scroll-mt-24">
                 <h2 id="gallery-title" className="mb-3 text-base font-extrabold">
-                  تصاویر و گواهی‌های کسب و کار
+                  مجوزها، گواهی‌نامه‌ها و جوایز
                 </h2>
-                <div className="space-y-3">
-                  {/* تصاویر مربوطه — عین باسکول (محصولات | شرکت | کارکنان) */}
-                  {gallery.length > 0 && (
-                    <div className="rounded-md border bg-card p-5">
-                      <h3 className="flex items-center gap-2 text-sm font-bold">
-                        <Camera size={15} className="text-(--catalog-accent)" />
-                        تصاویر مربوطه
-                      </h3>
-                      <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-                        {gallery.map((g, i) => (
-                          <a
-                            key={`${g.url}-${i}`}
-                            href={g.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group relative block aspect-square overflow-hidden rounded-md border bg-secondary"
-                            title="مشاهده تصویر کامل"
-                          >
-                            { }
-                            <img
-                              src={g.thumbUrl ?? g.url}
-                              alt={`تصویر مربوطه ${i + 1}`}
-                              className="size-full object-cover transition-transform group-hover:scale-105"
-                              loading="lazy"
-                            />
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* گواهی‌های مربوطه — ثبت شرکت | استاندارد محصول */}
-                  {certificates.length > 0 && (
-                    <div className="rounded-md border bg-card p-5">
-                      <h3 className="flex items-center gap-2 text-sm font-bold">
-                        <FileCheck2 size={15} className="text-(--catalog-accent)" />
-                        گواهی های مربوطه
-                      </h3>
-                      <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-                        {certificates.map((c, i) => (
-                          <a
-                            key={`${c.url}-${i}`}
-                            href={c.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group relative block aspect-square overflow-hidden rounded-md border bg-secondary"
-                            title="مشاهده گواهی کامل"
-                          >
-                            { }
-                            <img
-                              src={c.thumbUrl ?? c.url}
-                              alt={`گواهی ${i + 1}`}
-                              className="size-full object-cover transition-transform group-hover:scale-105"
-                              loading="lazy"
-                            />
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                <div className="rounded-md border bg-card p-5">
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                    {[...gallery, ...certificates].map((g, i) => (
+                      <a
+                        key={`${g.url}-${i}`}
+                        href={g.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group relative block aspect-square overflow-hidden rounded-md border bg-secondary"
+                        title="مشاهده تصویر کامل"
+                      >
+                        <img
+                          src={g.thumbUrl ?? g.url}
+                          alt={`مجوز و تصویر کسب‌وکار ${i + 1}`}
+                          className="size-full object-cover transition-transform group-hover:scale-105"
+                          loading="lazy"
+                        />
+                      </a>
+                    ))}
+                  </div>
                 </div>
               </section>
             )}
-
-            {/* نظرات کاربران */}
-            <SellerReviews userName={user.userName} sellerName={sellerName} />
           </div>
 
           {/* سایدبار — کارت فروشنده + اشتراک‌گذاری + نکتهٔ خرید امن */}

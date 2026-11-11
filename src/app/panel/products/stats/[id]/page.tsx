@@ -12,8 +12,10 @@
  *  • «روش‌های افزایش بازدید» (۳-۱۱، الگوی باسکول): نردبان / ارتقا عضویت /
  *    احراز هویت / بروز رسانی قیمت — انجام‌شده تیک سبز می‌خورد، نشده دکمه CTA.
  *
- * هویت بینندگان فقط برای مالکِ دارای اشتراک ویژه. به‌جای شماره تلفن، سه
- * دکمهٔ اقدام هر ردیف: نشان کردن (مهم‌ترین — مودال CRM) + چت + تماس.
+ * هویت بینندگان/چت‌کنندگان/تماس‌گیرندگان/ذخیره‌کنندگان برای همهٔ مالک‌ها
+ * رایگان است (خواستهٔ مالک ۱۱-۱۱: «برای دیدن تماس‌گیرندگان و ذخیره‌کنندگان
+ * لازم نیست بسته بخره»). به‌جای شماره تلفن، سه دکمهٔ اقدام هر ردیف:
+ * نشان کردن (مهم‌ترین — مودال CRM) + چت + تماس.
  */
 
 import Link from 'next/link';
@@ -25,7 +27,6 @@ import {
   Check,
   Crown,
   Eye,
-  Lock,
   MessageSquareText,
   Package,
   Pencil,
@@ -119,7 +120,8 @@ function buildBuckets(daily: Array<{ date: string; count: number }>): ChartBucke
   return out;
 }
 
-/** ردیف هویت — باز است یا قفل (گیت اشتراک ویژه مالک) */
+/** ردیف هویت — هویت‌ها رایگان‌اند (خواستهٔ مالک ۱۱-۱۱)؛ null فقط وقتی
+ *  کاربر حذف شده باشد (فالبک خنثی بدون دکمه‌های اقدام) */
 function UserCell({
   user,
   meta,
@@ -138,7 +140,7 @@ function UserCell({
   if (!user) {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-        <Lock size={12} /> امکان مشاهده فقط برای کاربران ویژه
+        <Users size={12} /> کاربر ایمچ
       </span>
     );
   }
@@ -329,33 +331,8 @@ export default function ProductStatsPage({ params }: { params: Promise<{ id: str
         </Button>
       </div>
 
-      {/* گیت هویت — قفل برای مالک بدون اشتراک ویژه */}
-      {!canSeeIdentity && (
-        <PanelCard className="border-amber-200 bg-amber-50/60">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-md bg-amber-500/15 text-amber-600">
-                <Crown size={18} />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-extrabold text-amber-800">نام و اطلاعات بینندگان قفل است</p>
-                <p className="mt-1 text-xs leading-6 text-amber-700/90">
-                  امکان مشاهده فقط برای کاربران ویژه است — با خرید بسته اشتراک ویژه، هویت کامل
-                  بینندگان، چت‌کنندگان، تماس‌گیرندگان و ذخیره‌کنندگان این آگهی را ببینید و با
-                  آن‌ها چت، تماس و نشان کردن انجام دهید.
-                </p>
-              </div>
-            </div>
-            <Button asChild size="sm" className="shrink-0 rounded-md">
-              <Link href="/panel/pricing">
-                <Crown size={15} /> خرید اشتراک ویژه
-              </Link>
-            </Button>
-          </div>
-        </PanelCard>
-      )}
-
-      {/* کارت‌های مجموع — کل، از ثبت آگهی (بازدید کل) */}
+      {/* کارت‌های مجموع — کل، از ثبت آگهی (بازدید کل)؛ هویت‌ها رایگان‌اند
+          (خواستهٔ مالک ۱۱-۱۱ — بنر قفل حذف شد) */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {cards.map(({ icon: Icon, label, value, hint }) => (
           <div key={label} className="rounded-lg border bg-card p-4">
