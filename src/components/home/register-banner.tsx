@@ -45,7 +45,7 @@ export function RegisterBanner() {
                 <Store size={24} strokeWidth={1.8} />
               </span>
               <p className="text-base font-extrabold sm:text-xl">
-                همین حالا فروشگاه تامین آنلاین خود را بسازید!
+                همین حالا ویترین عمده فروشی خود را بسازید!
               </p>
             </div>
             <p className="max-w-md text-xs leading-6 text-muted-foreground sm:text-sm">
@@ -59,7 +59,7 @@ export function RegisterBanner() {
           {/* تصویر — سبک بازار عمده ایرانی */}
           <div className="relative h-40 w-full shrink-0 sm:h-52 sm:w-80">
             <Image
-              src="/images/register-banner.jpg"
+              src="/images/register-banner.png"
               alt="فروشگاه آنلاین ایمچ — ثبت محصولات و جذب خریداران عمده"
               fill
               sizes="(max-width: 640px) 100vw, 320px"

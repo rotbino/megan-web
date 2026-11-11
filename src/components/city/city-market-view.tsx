@@ -102,7 +102,7 @@ export async function CityMarketView({ city, categoryPath, requestedCityIds }: C
   );
   const heroLine = category
     ? `مستقیم با فروشندگان و تولیدکنندگان ${category.categoryName} در ${city.name} ارتباط بگیر؛ بی‌واسطه و با قیمت روز.`
-    : `مستقیم با تامین‌کنندگان و شرکت‌های پخش ${city.name} ارتباط بگیر؛ بی‌واسطه و با قیمت روز.`;
+    : `مستقیم با تامین‌کنندگان و عمده فروشان ${city.name} ارتباط بگیر؛ بی‌واسطه و با قیمت روز.`;
 
   const breadcrumbLd = category && {
     '@context': 'https://schema.org',

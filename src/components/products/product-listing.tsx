@@ -280,23 +280,7 @@ function ProductListingInner({
     <>
       {/* زمینهٔ نیاز — چیپ اول (خواستهٔ مالک ۱۱-۱۱): «آگریا · ۵۰۰ کیلوگرم»؛
           حذفش = برگشت به مرور عادی دسته */}
-      {need && (
-        <button
-          type="button"
-          onClick={() => setNeed(null)}
-          aria-label="حذف تطابق با نیاز"
-          title="حذف تطابق با نیاز شما — مرور عادی دسته"
-          className="inline-flex max-w-[15rem] shrink-0 items-center gap-1.5 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
-        >
-          <Target size={13} className="shrink-0" aria-hidden />
-          <span className="truncate">
-            نیاز شما
-            {need.type ? `: ${need.type}` : ''}
-            {need.amount ? ` · ${toFa(need.amount)} ${need.unit ?? ''}` : ''}
-          </span>
-          <X size={13} className="shrink-0" aria-hidden />
-        </button>
-      )}
+
       {categoryName && (
         <button
           type="button"
@@ -308,6 +292,21 @@ function ProductListingInner({
           <span className="truncate">{categoryName}</span>
           <X size={13} className="shrink-0" aria-hidden />
         </button>
+      )}
+      {need && (
+          <button
+              type="button"
+              onClick={() => setNeed(null)}
+              aria-label="حذف تطابق با نیاز"
+              title="حذف تطابق با نیاز شما — مرور عادی دسته"
+              className="inline-flex max-w-[15rem] shrink-0 items-center gap-1.5 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
+          >
+            <span className="truncate">
+              {need.type ? ` نوع ${need.type}` : ''}
+              {need.amount ? ` · ${toFa(need.amount)} ${need.unit ?? ''}` : ''}
+          </span>
+            <X size={13} className="shrink-0" aria-hidden />
+          </button>
       )}
       {s && (
         <button

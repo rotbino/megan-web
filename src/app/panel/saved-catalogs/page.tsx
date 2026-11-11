@@ -133,13 +133,7 @@ export default function SavedCatalogsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <div>
-        <h1 className="text-base font-extrabold sm:text-lg">کاتالوگ های ذخیره شده</h1>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          کاتالوگ‌هایی که ذخیره کرده‌اید — مثل دفترچهٔ تلفن؛ کاتالوگ هر فروشنده همان
-          صفحهٔ عمومی اوست. هر وقت خواستید ببینید، تماس بگیرید یا چت کنید.
-        </p>
-      </div>
+
 
       {isLoading ? (
         <div className="space-y-3">
@@ -151,7 +145,7 @@ export default function SavedCatalogsPage() {
         <PanelEmptyState
           icon={BookMarked}
           title="هنوز کاتالوگی ذخیره نکرده‌اید."
-          hint="روی کاتالوگ هر فروشنده‌ای که رسیدید، دکمهٔ «ذخیره کاتالوگ» را بزنید تا این‌جا در دسترس باشد."
+          hint="روی کاتالوگهای فروشندگان‌، دکمهٔ «ذخیره کاتالوگ» را بزنید تا از اینجا اضافه شود."
         />
       ) : (
         <div className="space-y-3">
@@ -161,11 +155,7 @@ export default function SavedCatalogsPage() {
         </div>
       )}
 
-      {/* سرنخ تک‌خطی برای کشف — آیکون چت ایمچ در متن راهنما */}
-      <p className="flex items-center justify-center gap-1.5 pt-1 text-[10.5px] text-muted-foreground">
-        <MessageSquareText size={12} className="text-primary/60" />
-        ذخیره‌کردن کاتالوگ رایگان است؛ کاتالوگ هر فروشنده همان صفحهٔ عمومی اوست.
-      </p>
+
     </div>
   );
 }
