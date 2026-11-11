@@ -787,6 +787,9 @@ export interface CatalogSettings {
   brandColor: string | null;
   /** کلید آیکون برند از فهرست رسمی (lib/catalog-brand) — پیش‌فرض 'store' */
   brandIcon: string;
+  /** دکمهٔ تماس در کاتالوگ (خواستهٔ مالک ۱۱-۱۱) — هر صفحه کلید خودش را دارد؛
+   *  undefined = روشن (بک‌اندی که فیلد را هنوز نمی‌فرستد، عقب‌سازگار می‌ماند) */
+  allowCalls?: boolean;
 }
 
 /** نتیجهٔ رزولو آیدی عمومی کاتالوگ — صفحهٔ /c/{id} */
@@ -840,6 +843,9 @@ export interface BuyerBookSettings {
   /** شرایط و توضیحاتی که تامین‌کنندگان باید بدانند — بخش «شرایط تامین»؛
    *  اختیاری، null = بخش نمایش داده نمی‌شود (خواستهٔ مالک ۱۱-۱۱) */
   supplyTerms: string | null;
+  /** دکمهٔ تماس در دفتر خرید (خواستهٔ مالک ۱۱-۱۱) — فقط همین صفحه را
+   *  تحت تاثیر می‌گذارد (کاتالوگ و پروفایل کلید جدا دارند)؛ undefined = روشن */
+  allowCalls?: boolean;
 }
 
 /** نتیجهٔ رزولو آیدی عمومی دفتر خرید — صفحهٔ /b/{id} (SSR پوستهٔ برند) */
@@ -879,6 +885,9 @@ export interface BuyerBookBuyerInfo {
   gallery: Array<{ url: string; thumbUrl: string }>;
   /** مجوزها و گواهی‌ها */
   certificates: Array<{ url: string; thumbUrl: string }>;
+  /** امکان تماس سراسری کاربر (پروفایل → allow_calls) — خاموش = دکمهٔ تماس
+   *  در هیچ صفحهٔ عمومی‌اش (کاتالوگ/دفتر) نمایش داده نمی‌شود؛ undefined = روشن */
+  allowCalls?: boolean;
 }
 
 /** دیتای کامل صفحهٔ عمومی دفتر خرید — /b/{id}؛ گیت بستهٔ فعال

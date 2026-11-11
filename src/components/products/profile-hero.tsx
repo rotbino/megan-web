@@ -60,8 +60,13 @@ function membershipLabel(days: number): string {
 
 export function ProfileHero({
   user,
+  callEnabled = true,
 }: {
   user: ProfileHeroUser;
+  /** دکمهٔ تماس (خواستهٔ مالک ۱۱-۱۱) — دو کلید کنار هم: سوییچ مخصوص
+   *  کاتالوگ (تنظیمات کاتالوگ) و سوییچ سراسری «امکان تماس» پروفایل؛
+   *  هر کدام خاموش باشد دکمهٔ شماره تماس حذف می‌شود و فقط چت می‌ماند */
+  callEnabled?: boolean;
 }) {
   const name = `${user.firstName} ${user.lastName}`.trim() || 'فروشنده';
   const location = [user.provinceName, user.cityName].filter(Boolean).join('، ');
@@ -188,14 +193,17 @@ export function ProfileHero({
             </div>
           </div>
 
-          {/* دکمه‌های اقدام — موبایل: گرید دوستونه وسط‌چین (باسکول)؛ دسکتاپ: انتهای ردیف */}
+          {/* دکمه‌های اقدام — موبایل: گرید دوستونه وسط‌چین (باسکول)؛ دسکتاپ: انتهای ردیف.
+              تماس خاموش (خواستهٔ مالک ۱۱-۱۱) = فقط «ارسال پیام» تمام‌عرض */}
           <div className="mx-auto grid w-full max-w-[640px] grid-cols-2 gap-4 pt-1 lg:mx-0 lg:flex lg:w-auto lg:gap-4 lg:pt-0">
-            <PhoneReveal sellerName={name} userName={user.userName}>
-              <Button className="h-11 w-full rounded-lg px-5 text-sm font-bold lg:h-10 lg:w-[142px]">
-                <Phone size={18} />
-                شماره تماس
-              </Button>
-            </PhoneReveal>
+            {callEnabled && (
+              <PhoneReveal sellerName={name} userName={user.userName}>
+                <Button className="h-11 w-full rounded-lg px-5 text-sm font-bold lg:h-10 lg:w-[142px]">
+                  <Phone size={18} />
+                  شماره تماس
+                </Button>
+              </PhoneReveal>
+            )}
             <ChatDialog
               sellerUserName={user.userName}
               sellerId={user.id}
@@ -203,7 +211,10 @@ export function ProfileHero({
               sellerAvatarUrl={user.avatarUrl}
               buttonLabel="ارسال پیام"
               buttonVariant="outline"
-              className="h-11 w-full rounded-lg px-5 text-sm font-bold lg:h-10 lg:w-[142px]"
+              className={cn(
+                'h-11 w-full rounded-lg px-5 text-sm font-bold lg:h-10 lg:w-[142px]',
+                !callEnabled && 'col-span-2',
+              )}
             />
             {/* ذخیرهٔ کاتالوگ (خواستهٔ مالک ۱۰-۱۱ دور ۵) — موبایل تمام‌عرض زیر
                 دو دکمه؛ دسکتاپ به قرص روی بنر منتقل شد (variant=banner بالا) */}

@@ -14,7 +14,10 @@
  *    گرید کالاها با «پیشنهاد تامین» + «درباره خریدار» عین کاتالوگ
  *    (توضیحات کسب‌وکار، مجوزها و تصاویر) + نظراتِ نقش‌جداشده
  *    (subject='buyer' — جدا از امتیاز فروشندگی او) + دکمهٔ «ذخیره دفتر خرید»
- *    برای همه حتی خودِ مالک (خواستهٔ مالک ۱۱-۱۱).
+ *    برای همه حتی خودِ مالک (خواستهٔ مالک ۱۱-۱۱) + دکمه‌های «چت با خریدار»
+ *    و «تماس با خریدار» (خواستهٔ مالک ۱۱-۱۱) — چت همیشه؛ تماس فقط وقتی
+ *    خریدار در تنظیمات دفتر (و پروفایل) اجازه داده + بج «تایید هویت شده»
+ *    روی جلد و کنار نام.
  *  • چیدمان دسکتاپ دو ستونه (اصلی + سایدبار دربارهٔ خریدار)؛ موبایل تک‌ستونه
  *    با نوار فیکس ذخیره بالای ناوبری پایین — هم زیبا هم کارآمد.
  */
@@ -37,6 +40,7 @@ import {
   MapPin,
   Package,
   PackageOpen,
+  Phone,
   ScrollText,
   Send,
   ShieldCheck,
@@ -45,6 +49,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ChatDialog } from '@/components/products/chat-dialog';
+import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { useAuth } from '@/lib/mock/auth';
 import {
   useBuyerBookPublic,
@@ -449,6 +455,11 @@ export function BookPublicContent({
   const location = [buyer.provinceName, buyer.cityName].filter(Boolean).join('، ');
   const accent = effSettings.brandColor;
   const supplyTerms = effSettings.supplyTerms?.trim() || null;
+  // دکمهٔ تماس (خواستهٔ مالک ۱۱-۱۱) — دو کلید کنار هم: سوییچ مخصوص همین
+  // دفتر (تنظیمات دفتر خرید) و سوییچ سراسری «امکان تماس» پروفایل؛ هر کدام
+  // خاموش باشد دکمهٔ تماس مخفی می‌شود و فقط چت می‌ماند
+  const callAllowed =
+    effSettings.allowCalls !== false && buyer.allowCalls !== false;
   const companyLabel = buyer.isCompany && buyer.companyName?.trim() ? buyer.companyName.trim() : null;
   const categoryLabel = businessCategory;
 
@@ -489,7 +500,9 @@ export function BookPublicContent({
           <div className="absolute end-6 top-1/2 size-24 -translate-y-1/2 rounded-full bg-white/[0.06] sm:size-32" aria-hidden />
 
           {/* ردیف بالا — لوگوی کسب‌وکار (تنظیمات) به‌جای بج «دفتر خرید»
-              (خواستهٔ مالک ۱۱-۱۱)؛ بدون لوگو = همان بج متنی + فعال بودن */}
+              (خواستهٔ مالک ۱۱-۱۱)؛ بدون لوگو = همان بج متنی. بج «تایید هویت
+              شده» (خواستهٔ مالک ۱۱-۱۱) هم همین بالا می‌نشیند — اولین چیزی
+              که تامین‌کننده روی جلد می‌بیند اعتماد است */}
           <div className="relative flex items-start justify-between gap-2">
             {effSettings.logo ? (
               <img
@@ -503,12 +516,23 @@ export function BookPublicContent({
                 دفتر خرید
               </span>
             )}
-            {buyer.activeRecently && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1.5 text-[10.5px] font-bold text-white backdrop-blur">
-                <span className="size-2 rounded-full bg-emerald-300" aria-hidden />
-                فعال در ۷ روز اخیر
-              </span>
-            )}
+            <span className="flex flex-wrap items-center justify-end gap-1.5">
+              {buyer.isVerified && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1.5 text-[10.5px] font-bold text-white backdrop-blur"
+                  title="هویت و مدارک این خریدار در آیمچ تایید شده است"
+                >
+                  <BadgeCheck size={12} strokeWidth={2.4} />
+                  تایید هویت شده
+                </span>
+              )}
+              {buyer.activeRecently && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1.5 text-[10.5px] font-bold text-white backdrop-blur">
+                  <span className="size-2 rounded-full bg-emerald-300" aria-hidden />
+                  فعال در ۷ روز اخیر
+                </span>
+              )}
+            </span>
           </div>
 
           {/* عنوان بنر — از تنظیمات دفتر (خواستهٔ مالک ۱۱-۱۱)؛ فاصلهٔ پایینش
@@ -553,7 +577,7 @@ export function BookPublicContent({
                     title="هویت و مدارک این خریدار در آیمچ تایید شده است"
                   >
                     <BadgeCheck size={13} strokeWidth={2.4} />
-                    احراز هویت شده
+                    تایید هویت شده
                   </span>
                 )}
                 <span
@@ -582,8 +606,32 @@ export function BookPublicContent({
               </p>
             </div>
 
-            {/* ذخیرهٔ دفتر — برای همه حتی خودِ خریدار (خواستهٔ مالک ۱۱-۱۱) */}
-            <div className="shrink-0 pt-2 sm:pb-2">
+            {/* اقدام‌های تماس (خواستهٔ مالک ۱۱-۱۱) — چت همیشه هست؛ تماس فقط
+                وقتی خریدار اجازه داده (سوییچ دفتر + سوییچ پروفایل). ذخیرهٔ
+                دفتر برای همه حتی خودِ خریدار */}
+            <div className="flex shrink-0 flex-wrap items-center gap-2 pt-2 sm:pb-2">
+              {callAllowed && (
+                <PhoneReveal
+                  sellerName={buyerName}
+                  userName={buyer.userName}
+                  description="برای گفتگو درباره شرایط تامین و هماهنگی خرید دوره‌ای تماس بگیرید."
+                >
+                  <Button className="h-11 rounded-lg px-5 text-sm font-bold">
+                    <Phone size={17} />
+                    تماس با خریدار
+                  </Button>
+                </PhoneReveal>
+              )}
+              <ChatDialog
+                sellerUserName={buyer.userName}
+                sellerId={buyer.id}
+                sellerName={buyerName}
+                sellerAvatarUrl={buyer.avatarUrl}
+                buttonLabel="چت با خریدار"
+                directSubtitle="گفتگوی مستقیم با مسئول خرید"
+                buttonVariant="outline"
+                className="h-11 rounded-lg px-5 text-sm font-bold"
+              />
               <BookSaveButton buyerUserName={buyer.userName} />
             </div>
           </div>
@@ -819,12 +867,13 @@ export function BookPublicContent({
         </Link>
       </footer>
 
-      {/* ─── نوار فیکس ذخیرهٔ موبایل — کارآمدی موبایل (خواستهٔ مالک ۱۱-۱۱):
-              دفتر را هر جای صفحه داری ذخیره کن؛ بالای ناوبری پایین می‌نشیند ─── */}
+      {/* ─── نوار فیکس موبایل — چت/تماس + ذخیره (خواستهٔ مالک ۱۱-۱۱):
+              تامین‌کننده از هر جای صفحه می‌تواند تماس بگیرد یا چت کند؛
+              تماس فقط وقتی خریدار اجازه داده. بالای ناوبری پایین می‌نشیند ─── */}
       <div
         role="toolbar"
-        aria-label="ذخیره دفتر خرید"
-        className="fixed inset-x-0 bottom-[58px] z-40 flex h-16 items-center gap-3 border-t bg-card/95 px-4 shadow-[0_-1px_8px_rgba(0,0,0,0.08)] backdrop-blur nav-desktop:hidden"
+        aria-label="تماس، چت و ذخیره دفتر خرید"
+        className="fixed inset-x-0 bottom-[58px] z-40 flex h-16 items-center gap-2 border-t bg-card/95 px-4 shadow-[0_-1px_8px_rgba(0,0,0,0.08)] backdrop-blur nav-desktop:hidden"
       >
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-extrabold">دفتر خرید {buyerName}</p>
@@ -833,6 +882,33 @@ export function BookPublicContent({
             {saversCount > 0 ? ` — ${toFa(saversCount)} فروشنده ذخیره کرده` : ''}
           </p>
         </div>
+        {callAllowed && (
+          <PhoneReveal
+            sellerName={buyerName}
+            userName={buyer.userName}
+            description="برای گفتگو درباره شرایط تامین و هماهنگی خرید دوره‌ای تماس بگیرید."
+          >
+            <button
+              type="button"
+              title="تماس با خریدار"
+              className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-4 text-xs font-bold text-white shadow-sm"
+              style={{ backgroundColor: accent ?? 'var(--primary)' }}
+            >
+              <Phone size={16} />
+              تماس
+            </button>
+          </PhoneReveal>
+        )}
+        <ChatDialog
+          sellerUserName={buyer.userName}
+          sellerId={buyer.id}
+          sellerName={buyerName}
+          sellerAvatarUrl={buyer.avatarUrl}
+          buttonLabel="چت"
+          directSubtitle="گفتگوی مستقیم با مسئول خرید"
+          buttonVariant="outline"
+          className="h-10 shrink-0 rounded-lg px-4 text-xs font-bold"
+        />
         <BookSaveButton buyerUserName={buyer.userName} compact />
       </div>
 

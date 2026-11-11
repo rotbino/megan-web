@@ -8,6 +8,8 @@
  *  • متن‌های دفتر (خواستهٔ مالک ۱۱-۱۱): عنوان بنر معرفی دفتر، سمت مسئول خرید
  *    (مثل «مسوول خرید») و شرایط تامین — هر شرطی که تامین‌کنندگان باید بدانند
  *    (مثل «فقط تولیدکنندگان پیشنهاد بدهند» یا «حمل بر عهده فروشنده»)؛ اختیاری
+ *  • دکمهٔ تماس دفتر (خواستهٔ مالک ۱۱-۱۱) — کلید مستقل این صفحه؛ خاموش =
+ *    تامین‌کنندگان فقط دکمهٔ چت می‌بینند (کاتالوگ/پروفایل کلید خودش را دارند)
  *  • رنگ برند + لوگوی دلخواه (آپلود) — با پیش‌نمایش زندهٔ جلد دفتر
  * ذخیره: buyerBook/updateSettings (سرور منبع حقیقت ولیدیشن است).
  * چیدمان عین مودال تنظیمات کاتالوگ: بدنهٔ اسکرول‌شوندهٔ عمودی + فوتر فیکس.
@@ -24,12 +26,14 @@ import {
   ImagePlus,
   Loader2,
   Palette,
+  PhoneOff,
   ScrollText,
   Trash2,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
@@ -144,6 +148,7 @@ export function BookSettingsButton({ className }: { className?: string }) {
       ? {
           bookId: null, brandColor: null, logo: null,
           bannerTitle: null, managerTitle: null, supplyTerms: null,
+          allowCalls: true,
         }
       : null);
   const updateSettings = useUpdateBuyerBookSettings();
@@ -154,6 +159,7 @@ export function BookSettingsButton({ className }: { className?: string }) {
   const [logoDraft, setLogoDraft] = useState<string | null>(null);
   const [bannerDraft, setBannerDraft] = useState('');
   const [termsDraft, setTermsDraft] = useState('');
+  const [callsDraft, setCallsDraft] = useState(true);
   const [logoUploading, setLogoUploading] = useState(false);
   const [seeded, setSeeded] = useState(false);
 
@@ -164,6 +170,8 @@ export function BookSettingsButton({ className }: { className?: string }) {
     setLogoDraft(settings.logo ?? null);
     setBannerDraft(settings.bannerTitle ?? '');
     setTermsDraft(settings.supplyTerms ?? '');
+    // دکمهٔ تماس — undefined (بک‌اند قدیمی) = روشن
+    setCallsDraft(settings.allowCalls !== false);
     setSeeded(true);
   }, [settings, seeded]);
 
@@ -213,7 +221,8 @@ export function BookSettingsButton({ className }: { className?: string }) {
       (colorDraft || null) !== (settings.brandColor ?? null) ||
       (logoDraft ?? null) !== (settings.logo ?? null) ||
       (bannerDraft.trim() || null) !== (settings.bannerTitle ?? null) ||
-      (termsDraft.trim() || null) !== (settings.supplyTerms ?? null));
+      (termsDraft.trim() || null) !== (settings.supplyTerms ?? null) ||
+      callsDraft !== (settings.allowCalls !== false));
 
   const idBlocked =
     (!!idDraft && !!formatError) || idStatus.kind === 'taken' || idStatus.kind === 'checking';
@@ -276,6 +285,9 @@ export function BookSettingsButton({ className }: { className?: string }) {
           : {}),
         ...((termsDraft.trim() || null) !== (settings?.supplyTerms ?? null)
           ? { supplyTerms: termsDraft.trim() }
+          : {}),
+        ...(callsDraft !== (settings?.allowCalls !== false)
+          ? { allowCalls: callsDraft }
           : {}),
       });
       toast({ description: 'تنظیمات دفتر خرید ذخیره شد.' });
@@ -452,6 +464,29 @@ export function BookSettingsButton({ className }: { className?: string }) {
                       rows={7}
                       className="resize-none rounded-md text-[11px] font-normal leading-6"
                       aria-label="شرایط تامین برای تامین‌کنندگان"
+                    />
+                  </div>
+
+                  {/* دکمهٔ تماس (خواستهٔ مالک ۱۱-۱۱) — کلید مستقل دفتر خرید؛
+                      خاموش = تامین‌کنندگان در دفتر فقط دکمهٔ چت را می‌بینند.
+                      سوییچ «امکان تماس» پروفایل و کلید کاتالوگ جدا اعمال می‌شوند */}
+                  <div className="flex items-start justify-between gap-3 rounded-md border p-3.5">
+                    <div className="min-w-0">
+                      <label htmlFor="book-allow-calls" className="flex items-center gap-1.5 text-xs font-bold">
+                        <PhoneOff size={14} className="text-muted-foreground/70" />
+                        دکمهٔ تماس در دفتر خرید
+                      </label>
+                      <p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">
+                        اگر خاموش کنید، تامین‌کنندگان در دفتر خرید شما فقط می‌توانند چت کنند؛
+                        شمارهٔ شما هرگز نمایش داده نمی‌شود.
+                      </p>
+                    </div>
+                    <Switch
+                      id="book-allow-calls"
+                      checked={callsDraft}
+                      onCheckedChange={setCallsDraft}
+                      aria-label="دکمهٔ تماس در دفتر خرید"
+                      className="mt-1 shrink-0"
                     />
                   </div>
 

@@ -7,6 +7,8 @@
  *  • آیدی پیش‌فرض لینک (userName) قابل تغییر به آیدی دلخواه است — با
  *    بررسی زندهٔ آزاد بودن (resolvePublicId) + اعتبارسنجی فرمت
  *  • نام برند، رنگ و آیکون دلخواه — با پیش‌نمایش زندهٔ هدر کاتالوگ
+ *  • دکمهٔ تماس کاتالوگ (خواستهٔ مالک ۱۱-۱۱) — کلید مستقل این صفحه؛ خاموش =
+ *    خریداران فقط دکمهٔ چت می‌بینند (دفتر خرید/پروفایل کلید خودش را دارند)
  *  • آمار ذخیره‌کنندگان
  * ذخیره: catalog/updateSettings (سرور منبع حقیقت ولیدیشن است — خطای
  * تکراری‌بودن آیدی با پیام خودش نمایش داده می‌شود).
@@ -25,12 +27,14 @@ import {
   ExternalLink,
   Loader2,
   Palette,
+  PhoneOff,
   Store,
   Users,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -70,7 +74,7 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
   const settledEmpty =
     !settingsQuery.isLoading && settingsQuery.isFetched && !fetched && !!userName;
   const settings: CatalogSettings | null = fetched ??
-    (settledEmpty ? { catalogId: userName, brandName: null, brandColor: null, brandIcon: 'store' } : null);
+    (settledEmpty ? { catalogId: userName, brandName: null, brandColor: null, brandIcon: 'store', allowCalls: true } : null);
   const { data: savers } = useCatalogSavers(userName, open && !!userName);
   const updateSettings = useUpdateCatalogSettings();
 
@@ -81,6 +85,7 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
   const [nameDraft, setNameDraft] = useState('');
   const [colorDraft, setColorDraft] = useState('');
   const [iconDraft, setIconDraft] = useState('store');
+  const [callsDraft, setCallsDraft] = useState(true);
   const [seeded, setSeeded] = useState(false);
 
   // seed — اولین دیتای غیرتهی (سرور یا پیش‌فرض محلی پس از تسویهٔ فچ)
@@ -90,6 +95,8 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
     setNameDraft(settings.brandName ?? '');
     setColorDraft(settings.brandColor ?? '');
     setIconDraft(settings.brandIcon || 'store');
+    // دکمهٔ تماس — undefined (بک‌اند قدیمی) = روشن
+    setCallsDraft(settings.allowCalls !== false);
     setSeeded(true);
   }, [settings, seeded, userName]);
 
@@ -141,7 +148,8 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
     (idDraft !== currentCatalogId ||
       (nameDraft || null) !== (settings.brandName ?? null) ||
       (colorDraft || null) !== (settings.brandColor ?? null) ||
-      iconDraft !== (settings.brandIcon || 'store'));
+      iconDraft !== (settings.brandIcon || 'store') ||
+      callsDraft !== (settings.allowCalls !== false));
 
   const idBlocked = !!formatError || idStatus.kind === 'taken' || idStatus.kind === 'checking';
   const canSave = dirty && !idBlocked && !updateSettings.isPending;
@@ -171,6 +179,7 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
         brandName: nameDraft.trim(),
         brandColor: colorDraft,
         brandIcon: iconDraft,
+        ...(callsDraft !== (settings.allowCalls !== false) ? { allowCalls: callsDraft } : {}),
       });
       toast({ description: 'تنظیمات کاتالوگ ذخیره شد.' });
     } catch (e) {
@@ -454,6 +463,29 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
                     </span>
                   </div>
                 </div>
+              </div>
+
+              {/* ── دکمهٔ تماس (خواستهٔ مالک ۱۱-۱۱) — کلید مستقل کاتالوگ؛
+                  خاموش = خریداران در کاتالوگ فقط دکمهٔ چت را می‌بینند. سوییچ
+                  «امکان تماس» پروفایل و کلید دفتر خرید جدا اعمال می‌شوند ── */}
+              <div className="flex items-start justify-between gap-3 rounded-md border bg-card p-3.5">
+                <div className="min-w-0">
+                  <label htmlFor="catalog-allow-calls" className="flex items-center gap-1.5 text-xs font-bold">
+                    <PhoneOff size={14} className="text-muted-foreground/70" />
+                    دکمهٔ تماس در کاتالوگ
+                  </label>
+                  <p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">
+                    اگر خاموش کنید، خریداران در کاتالوگ شما فقط می‌توانند چت کنند؛
+                    شمارهٔ شما هرگز نمایش داده نمی‌شود.
+                  </p>
+                </div>
+                <Switch
+                  id="catalog-allow-calls"
+                  checked={callsDraft}
+                  onCheckedChange={setCallsDraft}
+                  aria-label="دکمهٔ تماس در کاتالوگ"
+                  className="mt-1 shrink-0"
+                />
               </div>
 
               {/* ── ذخیره‌کنندگان ── */}

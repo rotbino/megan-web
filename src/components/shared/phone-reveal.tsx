@@ -44,12 +44,15 @@ export function PhoneReveal({
   sellerName,
   productId,
   userName,
+  description,
   children,
 }: {
   sellerName: string;
   productId?: number;
   /** شناسه عمومی فروشنده — مسیر پروفایل */
   userName?: string;
+  /** متن زیرعنوان دیالوگ شماره — پیش‌فرض متن فروش؛ دفتر خرید متن تامین می‌دهد */
+  description?: string;
   children?: React.ReactNode;
 }) {
   const { user, requireAuth } = useAuth();
@@ -167,7 +170,7 @@ export function PhoneReveal({
           <DialogHeader className="text-start">
             <DialogTitle className="text-start text-base">شماره تماس {sellerName}</DialogTitle>
             <DialogDescription id="phone-reveal-desc" className="text-start">
-              برای اطلاع از قیمت روز و خرید مستقیم تماس بگیرید.
+              {description ?? 'برای اطلاع از قیمت روز و خرید مستقیم تماس بگیرید.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 rounded-md border p-4 text-center">

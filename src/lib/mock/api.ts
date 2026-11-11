@@ -2004,7 +2004,7 @@ export async function getMyCatalogSettings(): Promise<CatalogSettings | null> {
  *  ۴۰۴ِ بک‌اندِ بدون اندپوینت را به پیام روشن فارسی ترجمه می‌کند
  *  (گزارش مالک ۱۰-۱۱ دور ۴: قبلاً «Cannot POST /api/v1/…» خام می‌آمد). */
 export async function updateMyCatalogSettings(
-  patch: Partial<Pick<CatalogSettings, 'catalogId' | 'brandName' | 'brandColor' | 'brandIcon'>>,
+  patch: Partial<Pick<CatalogSettings, 'catalogId' | 'brandName' | 'brandColor' | 'brandIcon' | 'allowCalls'>>,
 ): Promise<CatalogSettings> {
   let d: { settings: CatalogSettings } | null;
   try {
@@ -2080,7 +2080,7 @@ export async function getMyBuyerBookSettings(): Promise<BuyerBookSettings | null
  *  (عنوان بنر/سمت/شرایط تامین) هم همین‌جا ذخیره می‌شوند (مالک ۱۱-۱۱). */
 export async function updateMyBuyerBookSettings(
   patch: Partial<
-    Pick<BuyerBookSettings, 'bookId' | 'brandColor' | 'logo' | 'bannerTitle' | 'managerTitle' | 'supplyTerms'>
+    Pick<BuyerBookSettings, 'bookId' | 'brandColor' | 'logo' | 'bannerTitle' | 'managerTitle' | 'supplyTerms' | 'allowCalls'>
   >,
 ): Promise<BuyerBookSettings> {
   let d: { settings: BuyerBookSettings } | null;

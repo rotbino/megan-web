@@ -58,6 +58,9 @@ interface SellerData {
     businessCategory?: string | null;
     gallery?: Array<{ url: string; thumbUrl: string }>;
     certificates?: Array<{ url: string; thumbUrl: string }>;
+    // امکان تماس (خواستهٔ مالک ۴-۱۱) — خاموش = دکمهٔ تماس کاتالوگ هم
+    // مخفی می‌شود (کنار سوییچ مخصوص کاتالوگ؛ خواستهٔ مالک ۱۱-۱۱)
+    allow_calls?: boolean;
   };
   products: Product[];
 }
@@ -194,6 +197,12 @@ export default async function CatalogPage({ params }: Props) {
   // صنف (خواسته مالک ۳-۱۱) — مستقل از نام شرکت نمایش داده می‌شود
   const categoryLabel = user.businessCategory?.trim() || null;
 
+  // دکمهٔ تماس (خواستهٔ مالک ۱۱-۱۱) — دو کلید کنار هم: سوییچ مخصوص کاتالوگ
+  // (تنظیمات کاتالوگ → allowCalls) و سوییچ سراسری پروفایل (allow_calls)؛
+  // هر کدام خاموش باشد دکمهٔ شماره تماس حذف می‌شود و فقط چت می‌ماند
+  const callEnabled =
+    (settings.allowCalls ?? true) && (user.allow_calls ?? true);
+
   return (
     // رنگ برند به‌صورت CSS var به همهٔ فرزندان می‌رسد؛ بدون رنگ دلخواه =
     // همان تم نقره‌ای ایمچ (var پیش‌فرض). لهجه‌ها: آیکون بخش‌ها، نوار
@@ -217,6 +226,7 @@ export default async function CatalogPage({ params }: Props) {
           <div className="overflow-hidden rounded-lg bg-card shadow-[0_1px_8px_rgba(0,0,0,0.1)] dark:border dark:border-border">
             <ProfileHero
               user={user as unknown as Parameters<typeof ProfileHero>[0]['user']}
+              callEnabled={callEnabled}
             />
             <ProfileScrollNav
               productCount={user.productCount ?? products.length}

@@ -198,6 +198,8 @@ const PROFILE = {
   is_verified: true,
   is_buyer: true,
   is_seller: false,
+  // امکان تماس (خواستهٔ مالک ۴-۱۱) — خاموش = دکمهٔ تماس برای دیگران مخفی
+  allow_calls: true,
   wallet_balance: 0,
   avatar_url: null,
   business_desc: null,
@@ -227,6 +229,9 @@ for (const pr of PRODUCTS) {
       responseRate: 92,
       productCount: 0,
       totalStock: 0,
+      // امکان تماس (خواستهٔ مالک ۴-۱۱) — کاربر نشست از پروفایل می‌تواند
+      // خاموشش کند (users/updateProfile؛ دکمهٔ تماس کاتالوگ/دفتر مخفی می‌شود)
+      allow_calls: true,
       // کسب‌وکار کاربر نشست (خواستهٔ مالک ۱۱-۱۱) — پیش‌فرض عنوان بنرِ دفترِ
       // خودش «دفتر خرید تولیدی آریا» می‌شود
       isCompany: true,
@@ -264,7 +269,7 @@ for (const [name, s] of SELLERS) {
  *  خوانده می‌شوند؛ بقیهٔ مصرف‌کننده‌ها به آن‌ها کاری ندارند. مشخصات کسب‌وکار
  *  (توضیحات/مجوزها/گالری/احراز) هم عین کاتالوگ در دفتر خرید دیده می‌شود
  *  (خواستهٔ مالک ۱۱-۱۱): هر اطلاعاتی از خریدار که برای فروشنده مهم است. */
-const ME = { id: '50', userName: 'seller0', firstName: 'کاربر', lastName: 'تستی', avatarUrl: null, cityName: 'همدان' };
+const ME = { id: '50', userName: 'seller0', firstName: 'کاربر', lastName: 'تستی', avatarUrl: null, cityName: 'همدان', allow_calls: true };
 const BUYER_USERS = [
   {
     id: '90', userName: 'buyer1', firstName: 'علی', lastName: 'محمدی', avatarUrl: null,
@@ -302,6 +307,8 @@ const BUYER_USERS = [
     address: null,
     gallery: [],
     certificates: [],
+    // دموی «تماس غیرفعال» (خواستهٔ مالک ۱۱-۱۱): دفتر buyer2 چت دارد، تماس نه
+    allow_calls: false,
   },
 ];
 const findUser = (userName) =>
@@ -339,6 +346,9 @@ const resolvedSettings = (userName) => {
     brandName: saved.brandName ?? (u ? `${u.firstName} ${u.lastName}`.trim() : null),
     brandColor: saved.brandColor ?? null,
     brandIcon: saved.brandIcon ?? 'store',
+    // دکمهٔ تماس مخصوص کاتالوگ (خواستهٔ مالک ۱۱-۱۱) — کلید صفحهٔ به صفحه؛
+    // سوییچ پروفایل (allow_calls) جدا از این کلید، همان صفحه را می‌بندد
+    allowCalls: saved.allowCalls !== false,
   };
 };
 
@@ -425,6 +435,9 @@ const resolvedBookSettings = (userName) => {
     bannerTitle: s.bannerTitle ?? null,
     managerTitle: s.managerTitle ?? null,
     supplyTerms: s.supplyTerms ?? null,
+    // دکمهٔ تماس مخصوص دفتر خرید (خواستهٔ مالک ۱۱-۱۱) — فقط همین صفحه؛
+    // سوییچ کاتالوگ و سوییچ پروفایل جدا هستند
+    allowCalls: s.allowCalls !== false,
   };
 };
 /** تنظیمات دفتر هر کاربر — با اولین خواندن، آیدی تصادفیِ پیش‌فرض ساخته می‌شود
@@ -434,7 +447,9 @@ const ensureBookSettings = (userName) => {
   let s = BUYER_BOOK_SETTINGS.get(userName);
   if (!s) { s = {}; BUYER_BOOK_SETTINGS.set(userName, s); }
   if (!s.bookId) s.bookId = freshBookId(userName);
-  return s;
+  // خروجی رزولو‌شده — همهٔ کلیدها (از جمله allowCalls و متن‌های null) همیشه
+  // حاضرند؛ مصرف‌کننده‌های عمومی (getPublic/resolvePublicId) کل فرم را می‌بینند
+  return resolvedBookSettings(userName);
 };
 const ensureMyBookSettings = () => ensureBookSettings(ME.userName);
 
@@ -757,6 +772,17 @@ const server = createServer(async (req, res) => {
         body.id != null
           ? [...SELLERS.values()].find((s) => s.id === String(body.id))
           : findUser(String(body.userName ?? ''));
+      // گیت امکان تماس (خواستهٔ مالک ۴-۱۱) — کاربر خاموش کرده = شماره نمی‌آید؛
+      // پیام روشن می‌گیرد که با چت ادامه دهد
+      if (u && u.allow_calls === false) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: false,
+          code: 'CALLS_DISABLED',
+          message: 'این کاربر امکان تماس تلفنی را غیرفعال کرده است؛ می‌توانید با او چت کنید.',
+        }));
+        return;
+      }
       data = u
         ? { sellerId: u.id, phone: '09120000000', firstName: u.firstName, lastName: u.lastName, userName: u.userName, callLogged: false, callsLeftToday: 20 }
         : null;
@@ -810,6 +836,20 @@ const server = createServer(async (req, res) => {
       break;
     }
     case 'users/getProfile': data = { user: PROFILE }; break;
+    // ذخیرهٔ ویرایش پروفایل — اینجا فقط فیلدهایی که پیش‌نمایش به آن‌ها وابسته
+    // است ماندگار می‌شوند؛ مهم‌تر از همه allow_calls (خواستهٔ مالک ۴-۱۱) که
+    // دکمهٔ تماس کاتالوگ/دفتر همان لحظه خاموش/روشن می‌شود
+    case 'users/updateProfile': {
+      if (body.allow_calls !== undefined) {
+        const allow = body.allow_calls === true;
+        PROFILE.allow_calls = allow;
+        ME.allow_calls = allow;
+        const meSeller = SELLERS.get(ME.userName);
+        if (meSeller) meSeller.allow_calls = allow;
+      }
+      data = { user: PROFILE };
+      break;
+    }
     // ─── دفتر خرید (خواستهٔ مالک ۱۰-۱۱ دور ۵) — خریدار کالاهای دوره‌ای خود ───
     case 'buyers/getMyBook': {
       data = { max: 15, items: BUYER_BOOK_ITEMS.get(ME.userName) ?? [] };
@@ -995,6 +1035,9 @@ const server = createServer(async (req, res) => {
           address: u.address ?? null,
           gallery: u.gallery ?? [],
           certificates: u.certificates ?? [],
+          // امکان تماس سراسری (پروفایل → allow_calls) — دفتر و کاتالوک هر دو
+          // آن را می‌بینند؛ سوییچ مخصوص دفتر (settings.allowCalls) جدا است
+          allowCalls: u.allow_calls !== false,
         },
         items,
         saversCount: countBookSavers(userName),
@@ -1080,6 +1123,9 @@ const server = createServer(async (req, res) => {
         }
         out.supplyTerms = t || null;
       }
+      // دکمهٔ تماس در دفتر خرید (خواستهٔ مالک ۱۱-۱۱) — خاموش = تامین‌کنندگان
+      // فقط چت می‌بینند؛ کلید مستقل از کاتالوگ و پروفایل
+      if (body.allowCalls !== undefined) out.allowCalls = body.allowCalls === true;
       BUYER_BOOK_SETTINGS.set(ME.userName, out);
       data = { settings: resolvedBookSettings(ME.userName) };
       break;
@@ -1307,6 +1353,9 @@ const server = createServer(async (req, res) => {
         }
         out.brandIcon = bi || null;
       }
+      // دکمهٔ تماس در کاتالوگ (خواستهٔ مالک ۱۱-۱۱) — کلید مستقل از دفتر خرید
+      // و پروفایل؛ خاموش = خریداران در کاتالوگ فقط چت می‌بینند
+      if (body.allowCalls !== undefined) out.allowCalls = body.allowCalls === true;
       CATALOG_SETTINGS.set(ME.userName, out);
       data = { settings: resolvedSettings(ME.userName) };
       break;
