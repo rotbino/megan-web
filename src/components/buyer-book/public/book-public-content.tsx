@@ -54,6 +54,7 @@ import { ChatDialog } from '@/components/products/chat-dialog';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 import { ProfileScrollNav } from '@/components/products/profile-scroll-nav';
 import { useAuth } from '@/lib/mock/auth';
+import { fallbackBusinessDesc } from '@/lib/seller-text';
 import {
   useBuyerBookPublic,
   useBuyerBookSaved,
@@ -708,8 +709,15 @@ export function BookPublicContent({
               </span>
               درباره خریدار
             </h2>
+            {/* متن پیش‌فرض پارامتریک آیمچ (خواستهٔ مالک ۱۳-۱۱) — نمایشی و
+                ساخته‌شده از دادهٔ همین صفحه؛ در دیتابیس ذخیره نمی‌شود */}
             <p className="mt-3 whitespace-pre-line text-[13px] leading-7 text-muted-foreground">
-              {businessDesc || 'این خریدار هنوز توضیحی برای کسب‌وکارش ننوشته است.'}
+              {businessDesc ||
+                fallbackBusinessDesc({
+                  name: buyerName,
+                  city: buyer.cityName ?? buyer.provinceName,
+                  kind: 'buyer',
+                })}
             </p>
             <dl className="mt-4 space-y-2.5 border-t pt-4 text-xs">
               {location && (

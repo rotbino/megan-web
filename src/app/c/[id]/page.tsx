@@ -22,6 +22,7 @@ import { RatingStars } from '@/components/shared/rating-stars';
 import { CatalogSaversBox } from '@/components/products/catalog-savers';
 import { apiBase } from '@/lib/api/client';
 import { stockFa, toFa } from '@/lib/format';
+import { fallbackBusinessDesc } from '@/lib/seller-text';
 import type { CatalogSettings, Product } from '@/lib/types';
 
 interface Props {
@@ -258,8 +259,12 @@ export default async function CatalogPage({ params }: Props) {
                     <Store size={15} className="text-(--catalog-accent)" />
                     توضیحات کسب و کار
                   </h3>
+                  {/* متن پیش‌فرض پارامتریک آیمچ (خواستهٔ مالک ۱۳-۱۱) — فقط
+                      نمایشی و ساخته‌شده از دادهٔ همین صفحه؛ چیزی در دیتابیس
+                      ذخیره نمی‌شود و عمداً شبیه متن خودکار باسکول نیست */}
                   <p className="mt-2 whitespace-pre-line text-sm leading-7 text-muted-foreground">
-                    {user.businessDesc?.trim() || 'این فروشنده هنوز توضیحی برای کسب‌وکارش ننوشته است.'}
+                    {user.businessDesc?.trim() ||
+                      fallbackBusinessDesc({ name: sellerName, city: user.cityName ?? user.provinceName })}
                   </p>
                   <dl className="mt-4 grid gap-2 border-t pt-4 text-xs sm:grid-cols-3">
                     <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -383,7 +388,12 @@ export default async function CatalogPage({ params }: Props) {
                 </div>
               )}
               <p className="mt-3 line-clamp-4 text-xs leading-6 text-muted-foreground">
-                {user.businessDesc?.trim() || 'فروشنده عمده در بازار آنلاین.'}
+                {user.businessDesc?.trim() ||
+                  fallbackBusinessDesc({
+                    name: sellerName,
+                    city: user.cityName ?? user.provinceName,
+                    short: true,
+                  })}
               </p>
               <p className="mt-3 border-t pt-3 text-[11px] leading-5 text-muted-foreground">
                 عضویت از{' '}

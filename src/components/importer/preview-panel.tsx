@@ -74,7 +74,19 @@ export function PreviewPanel({ preview }: { preview: ImportPreview }) {
             <span>باسکول #{(user.bUserId ?? 0).toLocaleString('fa-IR')}</span>
             <span>عضویت: {dateFa(user.createdAt)}</span>
             {profile?.address && <span>{profile.address}</span>}
+            {profile?.companyName && <span>شرکت: {profile.companyName}</span>}
           </div>
+          {/* «درباره کسب‌وکار» ایمپورت‌شده — همان متنی که کاتالوگ عمومی
+              نمایش می‌دهد (businessDesc)؛ خالی = صفحه متن پیش‌فرض پارامتریک
+              آیمچ را نشان می‌دهد (خواستهٔ مالک ۱۳-۱۱) */}
+          {profile?.description && (
+            <p
+              className="mt-2 line-clamp-3 rounded-md bg-muted/40 p-2 text-[11px] leading-5 text-muted-foreground"
+              title={profile.description}
+            >
+              {profile.description}
+            </p>
+          )}
         </div>
         <div className="grid grid-cols-4 gap-2 text-center">
           {(
