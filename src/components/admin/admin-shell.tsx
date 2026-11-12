@@ -27,6 +27,7 @@ import {
   ClipboardList,
   Coins,
   Crown,
+  DatabaseZap,
   Headset,
   KeyRound,
   LayoutDashboard,
@@ -131,6 +132,9 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
       { href: '/admin/logs', label: 'لاگ عملیات', Icon: ScrollText, superOnly: false },
       { href: '/admin/admins', label: 'ادمین‌ها', Icon: UserCog, superOnly: true },
       { href: '/admin/settings', label: 'تنظیمات', Icon: Settings, superOnly: false },
+      // ایمپورتر باسکول — ابزار مهاجرت داده از buskool.com (فاز B10)؛
+      // فقط مدیر ارشد و پشت گارد بک‌اند (IMPORTER_ADMIN_PHONE)
+      { href: '/admin/importer', label: 'ایمپورتر باسکول', Icon: DatabaseZap, superOnly: true },
     ],
   },
 ];

@@ -1,7 +1,9 @@
 'use client';
 
 /**
- * ایمپورتر باسکول — صفحهٔ ابزار ادمین برای مهاجرت داده از buskool.com به ایمچ.
+ * ایمپورتر باسکول — ابزار ادمین (پنل مدیریت، /admin/importer) برای مهاجرت
+ * داده از buskool.com به ایمچ. فقط مدیر ارشد (SUPER_ADMIN) می‌بیندش؛
+ * عملیات‌های مخرب سمت بک‌اند هم پشت IMPORTER_ADMIN_PHONE گارد می‌شوند.
  *
  * بخش‌ها:
  *   ۱. نوار وضعیت (اتصال بک‌اند / دیتابیس منبع / تاخیر / کوکی)
@@ -13,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle,
   Ban,
@@ -32,7 +35,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/lib/mock/auth';
+import { fetchAdminMe } from '@/lib/admin/api';
 import {
   ADMIN_PHONE,
   importerApi,
@@ -52,12 +55,20 @@ const JOB_STORAGE_KEY = 'imach:importer:jobId';
 // ═══════════════════════════════════════════════════════════
 
 export function ImporterView() {
-  const { user } = useAuth();
+  // گارد پنل ادمین: نشست ادمین را می‌خوانیم و فقط مدیر ارشد ادامه می‌دهد.
+  // (پوستهٔ AdminShell ورود را چک می‌کند؛ نقش ارشد این‌جا دوباره گارد می‌شود)
+  const { data: me, isLoading } = useQuery({ queryKey: ['admin-me'], queryFn: fetchAdminMe });
 
-  if (!user) return null; // پوستهٔ پنل گیت ورود را نشان می‌دهد
-  if (user.phone !== ADMIN_PHONE) return <AdminOnly />;
+  if (isLoading || !me) {
+    return (
+      <div className="grid place-items-center py-24 text-muted-foreground">
+        <Loader2 className="size-7 animate-spin" />
+      </div>
+    );
+  }
+  if (me.role !== 'SUPER_ADMIN') return <AdminOnly />;
 
-  return <ImporterHome adminPhone={user.phone} />;
+  return <ImporterHome adminPhone={ADMIN_PHONE} />;
 }
 
 // ═════════════════════════════ گیت ادمین ═════════════════════════════
@@ -68,9 +79,9 @@ function AdminOnly() {
       <span className="mx-auto grid size-14 place-items-center rounded-full bg-red-50 text-red-600">
         <ShieldAlert size={26} />
       </span>
-      <h1 className="mt-4 text-lg font-extrabold">دسترسی محدود</h1>
+      <h1 className="mt-4 text-lg font-extrabold">فقط مدیر ارشد</h1>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        ایمپورتر باسکول فقط برای حساب ادمین ({ADMIN_PHONE}) قابل استفاده است.
+        ایمپورتر باسکول فقط برای حساب‌های مدیر ارشد (SUPER_ADMIN) قابل استفاده است.
       </p>
     </div>
   );
