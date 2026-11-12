@@ -705,7 +705,8 @@ function ListImportCard({
       {disabled && (
         <p className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs leading-5 text-amber-800">
           <Ban size={14} className="mt-0.5 shrink-0" />
-          دیتابیس منبع (imach_online_db) متصل نیست — IMPORT_SOURCE_DB_URL را در .env بک‌اند تنظیم کنید.
+          دیتابیس منبع متصل نیست —{' '}
+          {source?.reason ?? 'IMPORT_SOURCE_DB_URL را در .env بک‌اند تنظیم کنید'}
         </p>
       )}
       {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
