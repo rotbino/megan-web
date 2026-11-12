@@ -17,6 +17,8 @@ export interface PingInfo {
   busy: boolean;
   cookieSet: boolean;
   adminPhone: string;
+  /** درایور ذخیرهٔ عکس‌ها — local یعنی دیسک ./uploads، arvan یعنی ابر */
+  storageDriver?: string;
 }
 
 export interface DbStats {
@@ -37,7 +39,22 @@ export interface SourceInfo {
   phoneColumn?: string;
   userNameColumn?: string;
   total?: number;
+  /** تعداد کاربران منبع که ایمپورت شده‌اند (bUserName پر دارد) */
+  imported?: number;
+  /** ایمپورت‌های ناقص/شکست‌خورده (failedImport) */
+  failed?: number;
   sample?: { phone: string; userName: string }[];
+}
+
+/** اولین کاربر منبع که هنوز ایمپورت نشده — پرکردن خودکار offset ادامه */
+export interface NextUnimported {
+  found: boolean;
+  offset: number;
+  userName?: string;
+  total: number;
+  importedCount: number;
+  remaining: number;
+  reason?: string;
 }
 
 export interface CleanupResult {
@@ -151,6 +168,8 @@ export const importerApi = {
   stats: () => fetch(`${BASE}/stats`).then((r) => json<DbStats>(r)),
 
   sourceInfo: () => fetch(`${BASE}/source-info`).then((r) => json<SourceInfo>(r)),
+
+  nextUnimported: () => fetch(`${BASE}/next-unimported`).then((r) => json<NextUnimported>(r)),
 
   cleanup: (adminPhone: string) =>
     fetch(`${BASE}/cleanup`, {

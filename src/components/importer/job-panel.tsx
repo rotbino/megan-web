@@ -104,6 +104,7 @@ export function JobPanel({
             </span>
             <span>
               {job.usersDone ?? 0} موفق / {job.usersFailed ?? 0} خطا
+              {job.counters.usersSkipped ? ` / ${job.counters.usersSkipped.toLocaleString('fa-IR')} ردشده` : ''}
             </span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
@@ -187,4 +188,6 @@ const COUNTER_LABELS: Record<string, string> = {
   imagesFailed: 'تصویر ناموفق',
   usersDone: 'کاربر موفق',
   usersFailed: 'کاربر خطادار',
+  usersSkipped: 'ردشده (قبلاً)',
+  stubUsers: 'کاربر کمکی',
 };

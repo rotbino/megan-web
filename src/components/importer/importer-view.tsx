@@ -24,6 +24,7 @@ import {
   DatabaseZap,
   Eraser,
   Gauge,
+  HardDrive,
   KeyRound,
   Loader2,
   Play,
@@ -43,6 +44,7 @@ import {
   type DbStats,
   type ImportJob,
   type ImportPreview,
+  type NextUnimported,
   type PingInfo,
   type SourceInfo,
 } from '@/lib/importer/client';
@@ -285,12 +287,23 @@ function StatusChips({
       icon: <Cable size={13} />,
     },
     {
-      label: source?.connected ? `دیتابیس منبع (${source.total?.toLocaleString('fa-IR') ?? '—'} کاربر)` : 'دیتابیس منبع قطع',
+      label: source?.connected
+        ? `منبع: ${source.total?.toLocaleString('fa-IR') ?? '—'} کاربر باسکول`
+        : 'کالکشن منبع قطع',
       ok: source ? source.connected : null,
       hint: source?.connected
-        ? `${source.table} • ${source.phoneColumn} / ${source.userNameColumn}`
-        : (source?.reason ?? 'بدون IMPORT_SOURCE_DB_URL'),
+        ? `${source.table} • ${source.imported?.toLocaleString('fa-IR') ?? '۰'} ایمپورت‌شده${source.failed ? ` • ${source.failed.toLocaleString('fa-IR')} ناقص` : ''}`
+        : (source?.reason ?? 'کالکشن user-buskool در دیتابیس فعلی یافت نشد'),
       icon: <Database size={13} />,
+    },
+    {
+      label: ping?.storageDriver === 'local' ? 'عکس‌ها → دیسک لوکال' : 'عکس‌ها → ابرآروان',
+      ok: ping?.storageDriver === 'local' ? true : null,
+      hint:
+        ping?.storageDriver === 'local'
+          ? `ذخیره در پوشهٔ uploads بک‌اند و سرو از /uploads`
+          : 'برای ذخیرهٔ عکس‌ها روی دیسک لوکال، STORAGE_DRIVER=local را در .env بک‌اند بگذارید و ری‌استارت کنید',
+      icon: <HardDrive size={13} />,
     },
     {
       label: ping?.cookieSet ? 'کوکی باسکول فعال' : 'بدون کوکی باسکول',
@@ -608,8 +621,29 @@ function ListImportCard({
   const [maxPerUser, setMaxPerUser] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [next, setNext] = useState<NextUnimported | null>(null);
+  const [nextLoading, setNextLoading] = useState(false);
 
   const disabled = !source?.connected;
+
+  // اولین کاربر ایمپورت‌نشده — «از ردیف» خودکار پر می‌شود (خواستهٔ مالک ۱۳-۱۱:
+  // ادامهٔ ایمپورت از همان‌جا که مانده، بدون نگهداری جداگانه)
+  const findNext = useCallback(async () => {
+    setNextLoading(true);
+    try {
+      const n = await importerApi.nextUnimported();
+      setNext(n);
+      if (n.found) setOffset(String(n.offset));
+    } catch {
+      /* بی‌صدا — با دکمه دوباره قابل تلاش است */
+    } finally {
+      setNextLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (source?.connected) void findNext();
+  }, [source?.connected, findNext]);
 
   const start = (e: React.FormEvent) => {
     e.preventDefault();
@@ -640,15 +674,16 @@ function ListImportCard({
         </span>
         <div>
           <h2 className="text-sm font-extrabold">
-            ایمپورت لیستی از جدول User-buskool{' '}
+            ایمپورت لیستی از کالکشن user-buskool{' '}
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
               فاز ۲ — بعد از تأیید تست تک‌کاربره
             </span>
           </h2>
           <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-            ردیف‌های جدول منبع {source?.connected ? `(${source.total?.toLocaleString('fa-IR')} کاربر)` : ''} را
-            دنباله‌دنباله ایمپورت می‌کند — هر کاربر با همان جریان تستر (پروفایل، آگهی‌ها، کامنت‌ها). با توقف دکمه
-            می‌توانید هر لحظه متوقف کنید و بعداً از همان offset ادامه دهید.
+            کاربران کالکشن منبع {source?.connected ? `(${source.total?.toLocaleString('fa-IR')} کاربر)` : ''} را
+            دنباله‌دنباله ایمپورت می‌کند — هر کاربر با همان جریان تستر (پروفایل، آگهی‌ها، عکس‌ها، کامنت‌ها).
+            کاربران ایمپورت‌شده به‌طور خودکار رد می‌شوند؛ کاربر شکست‌خورده با پرچم «ایمپورت ناقص» برای
+            رسیدگی بعدی می‌ماند و پس از ۳ شکست پیاپی (قطعی/بلاک) جاب متوقف می‌شود.
           </p>
         </div>
       </div>
@@ -656,15 +691,28 @@ function ListImportCard({
       <form onSubmit={start} className="mt-4 grid gap-3 sm:grid-cols-[0.8fr_0.8fr_1fr_auto]">
         <div className="space-y-1.5">
           <Label htmlFor="li-offset">از ردیف (offset)</Label>
-          <Input
-            id="li-offset"
-            dir="ltr"
-            inputMode="numeric"
-            value={offset}
-            onChange={(e) => setOffset(e.target.value.replace(/[^0-9]/g, ''))}
-            className="text-left font-mono"
-            disabled={disabled}
-          />
+          <div className="flex gap-1.5">
+            <Input
+              id="li-offset"
+              dir="ltr"
+              inputMode="numeric"
+              value={offset}
+              onChange={(e) => setOffset(e.target.value.replace(/[^0-9]/g, ''))}
+              className="text-left font-mono"
+              disabled={disabled}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0 gap-1.5 px-2.5"
+              onClick={() => void findNext()}
+              disabled={disabled || nextLoading}
+              title="پیدا کردن اولین کاربری که هنوز ایمپورت نشده"
+            >
+              {nextLoading ? <Loader2 size={15} className="animate-spin" /> : <UserSearch size={15} />}
+              <span className="hidden whitespace-nowrap sm:inline">ایمپورت‌نشدهٔ بعدی</span>
+            </Button>
+          </div>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="li-limit">تعداد کاربر</Label>
@@ -702,11 +750,25 @@ function ListImportCard({
         </div>
       </form>
 
+      {next && source?.connected && (
+        <p className="mt-3 text-xs leading-5 text-muted-foreground">
+          {next.found ? (
+            <>
+              ادامه از <b dir="ltr">@{next.userName}</b> (ردیف {next.offset.toLocaleString('fa-IR')}) —{' '}
+              {next.importedCount.toLocaleString('fa-IR')} کاربر ایمپورت‌شده •{' '}
+              {next.remaining.toLocaleString('fa-IR')} باقی‌مانده از {next.total.toLocaleString('fa-IR')}
+            </>
+          ) : (
+            (next.reason ?? 'همهٔ کاربران منبع ایمپورت شده‌اند')
+          )}
+        </p>
+      )}
+
       {disabled && (
         <p className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs leading-5 text-amber-800">
           <Ban size={14} className="mt-0.5 shrink-0" />
           دیتابیس منبع متصل نیست —{' '}
-          {source?.reason ?? 'IMPORT_SOURCE_DB_URL را در .env بک‌اند تنظیم کنید'}
+          {source?.reason ?? 'کالکشن user-buskool در دیتابیس فعلی یافت نشد'}
         </p>
       )}
       {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
