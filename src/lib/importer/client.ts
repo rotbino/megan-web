@@ -215,3 +215,211 @@ export const importerApi = {
   preview: (userName: string) =>
     fetch(`${BASE}/preview/${encodeURIComponent(userName)}`).then((r) => json<ImportPreview>(r)),
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// مدیریت کاربران ایمپورت‌شده — بخش «دیتا ایمپورت» (خواستهٔ مالک ۱۳-۱۱)
+// اندپوینت‌ها پشت توکن ادمین هستند — همان توکن پنل مدیریت (imach:admin-token)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ADMIN_TOKEN_KEY = 'imach:admin-token';
+
+/** fetch با هدر Authorization توکن ادمین — 401 یعنی نشست مدیریت منقضی */
+async function adminFetch(path: string, body?: unknown): Promise<Response> {
+  let token = '';
+  try {
+    token = localStorage.getItem(ADMIN_TOKEN_KEY) ?? '';
+  } catch {
+    /* SSR/حالت خصوصی */
+  }
+  return fetch(`${API_BASE}/api/v1/${path}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    ...(body !== undefined ? { method: 'POST', body: JSON.stringify(body) } : {}),
+    cache: 'no-store',
+  });
+}
+
+/** سند رفتار کاربر در باسکول — آینهٔ BUserData بک‌اند (b-user-data.ts) */
+export interface BUserDoc {
+  source: 'buskool';
+  userName: string;
+  userId: number;
+  profileId: number | null;
+  premium: { isPremium: boolean; packageType: number; packageTitle: string };
+  isVerified: boolean;
+  isBuyer: boolean;
+  isSeller: boolean;
+  isBlocked: boolean;
+  walletBalance: number;
+  phoneViewPermission: string | null;
+  categoryId: number | null;
+  customerStatus: string | null;
+  supportStatus: string | null;
+  comingFrom: string | null;
+  activityType: string | null;
+  activityDomain: string | null;
+  sex: string | null;
+  province: string | null;
+  city: string | null;
+  address: string | null;
+  postalCode: string | null;
+  isCompany: boolean;
+  companyName: string;
+  companyRegisterCode: string | null;
+  confirmed: boolean;
+  relateds: string[];
+  profilePhotoUrl: string | null;
+  descriptionRaw: string | null;
+  descriptionIsAuto: boolean;
+  responseRate: number | null;
+  reputationScore: string | null;
+  productsCount: number | null;
+  ratingCount: number | null;
+  ratingAvg: number | null;
+  ibp: boolean;
+  createdAt: string | null;
+  importedAt: string;
+  contactedAt: string | null;
+}
+
+export interface ImportedUserRow {
+  id: string;
+  phone: string;
+  userName: string;
+  bUserName: string | null;
+  firstName: string;
+  lastName: string;
+  sex: string | null;
+  avatarUrl: string | null;
+  role: string;
+  isActive: boolean;
+  isVerified: boolean;
+  failedImport: boolean;
+  /** کاربر کمکی نویسندهٔ کامنت باسکول (bk-c*) */
+  isStub: boolean;
+  hasBusinessDesc: boolean;
+  provinceId: number | null;
+  cityId: number | null;
+  provinceName: string | null;
+  cityName: string | null;
+  createdAt: string;
+  lastLoginAt: string | null;
+  b: BUserDoc | null;
+  productsCount: number;
+}
+
+export interface ImportedUsersSummary {
+  total: number;
+  buskool: number;
+  native: number;
+  stub: number;
+  premiumBuskool: number;
+  neverLoggedIn: number;
+  contacted: number;
+  cameAfterContact: number;
+  failed: number;
+  needsMigration: number;
+}
+
+export interface ImportedUsersList {
+  rows: ImportedUserRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  summary: ImportedUsersSummary;
+}
+
+export interface ImportedUsersParams {
+  q?: string;
+  source?: 'buskool' | 'native' | 'stub' | 'all';
+  premium?: 'yes' | 'no';
+  packageType?: number;
+  login?: 'ever' | 'never' | 'after-contact';
+  contacted?: 'yes' | 'no';
+  failed?: 'yes' | 'no';
+  staleDays?: number;
+  sort?: 'lastLogin' | 'createdAt' | 'products' | 'buskoolCreated' | 'imported' | 'contacted';
+  dir?: 'asc' | 'desc';
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ImportedUserDetail {
+  user: {
+    id: string;
+    phone: string;
+    userName: string;
+    bUserName: string | null;
+    firstName: string;
+    lastName: string;
+    sex: string | null;
+    role: string;
+    isActive: boolean;
+    isVerified: boolean;
+    isBuyer: boolean;
+    isSeller: boolean;
+    avatarUrl: string | null;
+    businessDesc: string | null;
+    walletBalance: number;
+    activePakageType: number;
+    provinceName: string | null;
+    cityName: string | null;
+    profile: Record<string, unknown> | null;
+    b: BUserDoc | null;
+    failedImport: boolean;
+    lastLoginAt: string | null;
+    lastSeenAt: string | null;
+    createdAt: string;
+    catalogId: string | null;
+  };
+  counts: {
+    products: number;
+    reviewsReceived: number;
+    reviewsWritten: number;
+    buyRequests: number;
+    photos: number;
+    supplyOffers: number;
+  };
+  products: {
+    id: number;
+    name: string;
+    price: number | null;
+    stock: number;
+    unit: string;
+    status: string;
+    isElevated: boolean;
+    category: string | null;
+    createdAt: string;
+  }[];
+}
+
+export const importedUsersApi = {
+  list: (params: ImportedUsersParams) => {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== null && v !== '' && k !== 'source') qs.set(k, String(v));
+      if (k === 'source' && v && v !== 'all') qs.set(k, v);
+    }
+    return adminFetch(`importer/users${qs.size ? `?${qs}` : ''}`).then((r) => json<ImportedUsersList>(r));
+  },
+
+  detail: (id: string) => adminFetch(`importer/users/${id}`).then((r) => json<ImportedUserDetail>(r)),
+
+  markContacted: (id: string, undo = false) =>
+    adminFetch(`importer/users/${id}/contact`, { undo: String(undo) }).then(
+      (r) => json<{ id: string; contactedAt: string | null }>(r),
+    ),
+
+  remove: (ids: string[], adminPhone: string) =>
+    adminFetch('importer/users/delete', { ids, adminPhone }).then((r) =>
+      json<{ deleted: number; failed: number; results: { id: string; ok: boolean; reason?: string }[] }>(r),
+    ),
+
+  migrateB: (adminPhone: string) =>
+    adminFetch('importer/migrate-b', { adminPhone }).then((r) =>
+      json<{ migrated: number; premiumFixed: number }>(r),
+    ),
+};

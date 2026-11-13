@@ -1,10 +1,9 @@
-import { ImporterView } from '@/components/importer/importer-view';
+import { redirect } from 'next/navigation';
 
 /**
- * ایمپورتر باسکول — ابزار مهاجرت داده از buskool.com، داخل پنل مدیریت.
- * ایندکس ممنوع (پوستهٔ /admin همان noindex کلی دارد)؛ گارد نقش ارشد
- * (SUPER_ADMIN) داخل خود کامپوننت است.
+ * ایمپورتر باسکول به بخش جدای «دیتا ایمپورت» منتقل شد (خواستهٔ مالک ۱۳-۱۱) —
+ * آدرس قدیمی برای لینک‌های ذخیره‌شده به آن‌جا ریدایرکت می‌شود.
  */
-export default function AdminImporterPage() {
-  return <ImporterView />;
+export default function AdminImporterRedirect() {
+  redirect('/data-import/buskool');
 }
