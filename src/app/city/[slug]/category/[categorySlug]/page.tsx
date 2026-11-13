@@ -80,10 +80,12 @@ export default async function CityMarketCategoryPage({ params, searchParams }: P
     <>
       <Header />
       <main className="flex-1">
+        {/* صفحهٔ ۱ — آدرس تمیز دستهٔ شهری؛ صفحه‌های بعدی از [pageno] (۱۴-۱۱) */}
         <CityMarketView
           city={resolved.city}
           categoryPath={resolved.path}
           requestedCityIds={requestedCityIds}
+          page={1}
         />
       </main>
       <Footer />

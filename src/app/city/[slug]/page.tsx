@@ -62,7 +62,8 @@ export default async function CityMarketPage({ params, searchParams }: Props) {
     <>
       <Header />
       <main className="flex-1">
-        <CityMarketView city={city} requestedCityIds={requestedCityIds} />
+        {/* صفحهٔ ۱ — آدرس تمیز بازار؛ صفحه‌های بعدی از [pageno] (۱۴-۱۱) */}
+        <CityMarketView city={city} requestedCityIds={requestedCityIds} page={1} />
       </main>
       <Footer />
     </>

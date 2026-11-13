@@ -62,7 +62,7 @@ async function getProduct(id: number): Promise<Product | null> {
       stock: number; minSalePrice: number; minSaleAmount: number; unit: string;
       categoryId: number; categoryName: string; subCategoryId: number; subCategoryName: string;
       provinceId: number; provinceName: string; cityId: number; cityName: string;
-      myuserId: string; seller: { id: string; userName: string; firstName: string; lastName: string; activePakageType: number; isVerified: boolean };
+      myuserId: string; seller: { id: string; userName: string; firstName: string; lastName: string; activePakageType: number; isVerified: boolean; avatarUrl?: string | null };
       isLadder: boolean; isElevated?: boolean; hasVideo: boolean; isOld: boolean; viewCount: number;
       createdAt: string; updatedAt: string; photos: string[]; photoThumbs?: string[];
     };
@@ -296,9 +296,22 @@ export default async function ProductViewPage({ params }: Props) {
           <aside className="space-y-4" aria-label="اطلاعات فروشنده">
             <div className="rounded-md border bg-card p-5">
               <div className="flex items-center gap-3">
-                <span className="grid size-12 place-items-center rounded-md bg-primary/10 text-primary">
-                  <Store size={22} />
-                </span>
+                {/* آواتار فروشنده — اگر تصویر پروفایل ست کرده باشد کنار نامش
+                    همان نمایش داده می‌شود (خواستهٔ مالک ۱۴-۱۱)؛ وگرنه آیکون فروشگاه */}
+                {product.seller.avatarUrl ? (
+                  <span className="relative size-12 shrink-0 overflow-hidden rounded-md border bg-primary/5">
+                    <img
+                      src={product.seller.avatarUrl}
+                      alt={`تصویر ${sellerName}`}
+                      loading="lazy"
+                      className="size-full object-cover"
+                    />
+                  </span>
+                ) : (
+                  <span className="grid size-12 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+                    <Store size={22} />
+                  </span>
+                )}
                 <div className="min-w-0">
                   {/* «فروشنده ویژه» فقط همین‌جا — کنار نام (خواسته مالک: بدون تکرار روی عکس) */}
                   <p className="flex min-w-0 items-center gap-2 font-bold">

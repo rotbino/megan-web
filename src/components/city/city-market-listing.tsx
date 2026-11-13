@@ -8,7 +8,6 @@ import {
   ArrowUpLeft,
   Check,
   ChevronLeft,
-  ChevronRight,
   List,
   Lock,
   MapPin,
@@ -19,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/products/product-card';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
+import { SeoPagination } from '@/components/shared/seo-pagination';
 import { useCategoryTree, useCityMarketProducts } from '@/lib/mock/hooks';
 import { cityMarketHref } from '@/lib/city-markets';
 import { findCategoryPath } from '@/lib/categories';
@@ -52,12 +52,14 @@ interface CityMarketListingProps {
   provinceCities: ProvinceCityOption[];
   categorySlug?: string;
   categoryName?: string;
-  /** دیتای اولیهٔ SSR (شهر خود صفحه، related، صفحه ۱) */
+  /** دیتای اولیهٔ SSR (شهر خود صفحه، related، صفحهٔ initialPage) */
   initialData?: Paged<Product>;
   /** سایدبار دسته‌ها — سرور-رندر (CategoryFilter با لینک‌های شهری) */
   sidebar?: ReactNode;
   /** تیک‌های اولیه از URL (?cities=) — پایدار در جستجوهای بعدی */
   initialExtraCityIds?: number[];
+  /** شمارهٔ صفحه از URL سئو (/city/tehran/2) — خواستهٔ مالک ۱۴-۱۱ */
+  initialPage?: number;
 }
 
 /** تیک‌های فعال به‌صورت کوئری URL — پایداری بین جستجو/صفحه‌بندی/دسته‌ها */
@@ -142,13 +144,21 @@ export function CityMarketListing({
   initialData,
   sidebar,
   initialExtraCityIds,
+  initialPage,
 }: CityMarketListingProps) {
   const router = useRouter();
 
   // تیک‌های چندشهری — شهرهای دیگر استان (شهر خود صفحه جداست و همیشه هست)
   const [extraCityIds, setExtraCityIds] = useState<number[]>(initialExtraCityIds ?? []);
   const [sort, setSort] = useState<SortKey>('related');
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage ?? 1);
+
+  // همگام‌سازی صفحه با URL سئو — /city/tehran/2 (الگوی تنظیم state در زمان رندر)
+  const [lastInitialPage, setLastInitialPage] = useState(initialPage ?? 1);
+  if (lastInitialPage !== (initialPage ?? 1)) {
+    setLastInitialPage(initialPage ?? 1);
+    setPage(initialPage ?? 1);
+  }
 
   // موبایل — بات‌شیت‌های انتخاب
   const [sheet, setSheet] = useState<SheetKind>(null);
@@ -172,12 +182,12 @@ export function CityMarketListing({
     [cityIds, categorySlug, sort, page],
   );
 
-  // seed فقط برای کوئری پیش‌فرض اولیه (شهر خود صفحه، related، صفحه ۱) —
+  // seed فقط برای کوئری پیش‌فرض اولیه (شهر خود صفحه، related، همان شمارهٔ صفحه) —
   // با اولین تیک/سورت/صفحه، رفچ تازه از سرویس چندشهری می‌رود
-  const isDefaultQuery = page === 1 && sort === 'related' && extraCityIds.length === 0;
+  const isDefaultFilters = sort === 'related' && extraCityIds.length === 0;
   const { data, isFetching, isLoading, isError, refetch } = useCityMarketProducts(
     query,
-    isDefaultQuery ? initialData : undefined,
+    isDefaultFilters && page === (initialPage ?? 1) ? initialData : undefined,
   );
   const items = data?.items ?? [];
 
@@ -466,27 +476,17 @@ export function CityMarketListing({
           </div>
         )}
 
-        {/* صفحه‌بندی */}
+        {/* صفحه‌بندی — سئو (خواستهٔ مالک ۱۴-۱۱): در حالت پیش‌فرض (بدون تیک
+            چندشهری) شماره‌ها لینک واقعی به /city/tehran/2 و… هستند */}
         {data && data.pageCount > 1 && (
-          <nav className="flex items-center justify-center gap-1 pt-2" aria-label="صفحه‌بندی">
-            <Button variant="outline" size="icon-sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label="صفحه قبل">
-              <ChevronRight size={16} />
-            </Button>
-            {Array.from({ length: data.pageCount }).map((_, i) => (
-              <Button
-                key={i}
-                variant={page === i + 1 ? 'default' : 'outline'}
-                size="icon-sm"
-                onClick={() => setPage(i + 1)}
-                aria-current={page === i + 1 ? 'page' : undefined}
-              >
-                {toFa(i + 1)}
-              </Button>
-            ))}
-            <Button variant="outline" size="icon-sm" disabled={page >= data.pageCount} onClick={() => setPage((p) => p + 1)} aria-label="صفحه بعد">
-              <ChevronLeft size={16} />
-            </Button>
-          </nav>
+          <SeoPagination
+            page={page}
+            pageCount={data.pageCount}
+            page1Href={isDefaultFilters ? basePath : undefined}
+            pageHrefPattern={isDefaultFilters ? `${basePath}/{p}` : undefined}
+            onPageChange={setPage}
+            variant="numbers"
+          />
         )}
       </div>
 

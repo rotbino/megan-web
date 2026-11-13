@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Loader2, LogIn, MessageSquareText, PackagePlus, Phone, Search, ShieldCheck } from 'lucide-react';
+import { Loader2, LogIn, MessageSquareText, PackagePlus, Phone, Search, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SeoPagination } from '@/components/shared/seo-pagination';
 import { useBuyRequestContact, useBuyRequests, useProvinces } from '@/lib/mock/hooks';
 import type { Paged } from '@/lib/mock/api';
 import { LazyAuthModal } from '@/components/shared/lazy-auth-modal';
@@ -19,21 +20,42 @@ import type { BuyRequest } from '@/lib/types';
  * درخواست‌های خرید — کارت‌های افقی مثل باسکول با جستجو و فیلتر مکان +
  * صفحه‌بندی واقعی. شماره خریدار فقط برای کاربران واردشده آشکار می‌شود
  * (مدل Lead-gen باسکول) — در غیر این صورت مودال ورود باز می‌شود.
+ * صفحه‌بندی سئو (خواستهٔ مالک ۱۴-۱۱): در حالت پیش‌فرض شماره‌ها لینک واقعی
+ * به /buyAd-requests/2 و… هستند؛ با فیلتر فعال دکمهٔ کلاینت می‌شوند.
  */
-export function BuyRequestsView({ initialData }: { initialData?: Paged<BuyRequest> } = {}) {
+export function BuyRequestsView({
+  initialData,
+  initialPage,
+  page1Href,
+  pageHrefPattern,
+}: {
+  initialData?: Paged<BuyRequest>;
+  initialPage?: number;
+  page1Href?: string;
+  pageHrefPattern?: string;
+} = {}) {
   const [s, setS] = useState('');
   const [provinceId, setProvinceId] = useState<string>('all');
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage ?? 1);
+
+  // همگام‌سازی صفحه با URL سئو (الگوی تنظیم state در زمان رندر)
+  const [lastInitialPage, setLastInitialPage] = useState(initialPage ?? 1);
+  if (lastInitialPage !== (initialPage ?? 1)) {
+    setLastInitialPage(initialPage ?? 1);
+    setPage(initialPage ?? 1);
+  }
 
   const { data: provinces } = useProvinces();
+  // فیلترهای پیش‌فرض — seed و حالت لینکی صفحه‌بندی فقط در همین حالت
+  const isDefaultFilters = !s && provinceId === 'all';
   const { data, isLoading } = useBuyRequests(
     {
       s,
       provinceId: provinceId === 'all' ? undefined : Number(provinceId),
       page,
     },
-    // seed فقط وقتی فیلترها عین حالت اولیه SSR باشند
-    !s && provinceId === 'all' && page === 1 ? initialData : undefined,
+    // seed فقط وقتی فیلترها عین حالت اولیهٔ SSR باشند (همان شمارهٔ صفحه)
+    isDefaultFilters && page === (initialPage ?? 1) ? initialData : undefined,
   );
 
   const items = data?.items ?? [];
@@ -94,46 +116,16 @@ export function BuyRequestsView({ initialData }: { initialData?: Paged<BuyReques
             {items.map((r) => <RequestCard key={r.id} request={r} />)}
           </ul>
 
-          {/* صفحه‌بندی — عین باسکول */}
+          {/* صفحه‌بندی — عین باسکول؛ در حالت پیش‌فرض لینک واقعی (سئو) */}
           {pageCount > 1 && (
-            <nav aria-label="صفحه‌بندی" className="flex items-center justify-center gap-1 py-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="size-8 rounded-md p-0"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                aria-label="صفحه قبل"
-              >
-                <ChevronRight size={15} />
-              </Button>
-              {Array.from({ length: pageCount }, (_, i) => i + 1)
-                .filter((n) => n === 1 || n === pageCount || Math.abs(n - page) <= 1)
-                .map((n, idx, arr) => (
-                  <span key={n} className="flex items-center gap-1">
-                    {idx > 0 && n - arr[idx - 1] > 1 && <span className="px-1 text-xs text-muted-foreground">…</span>}
-                    <Button
-                      variant={n === page ? 'default' : 'outline'}
-                      size="sm"
-                      className="min-w-8 rounded-md"
-                      onClick={() => setPage(n)}
-                      aria-current={n === page ? 'page' : undefined}
-                    >
-                      {toFa(n)}
-                    </Button>
-                  </span>
-                ))}
-              <Button
-                variant="outline"
-                size="sm"
-                className="size-8 rounded-md p-0"
-                disabled={page >= pageCount}
-                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                aria-label="صفحه بعد"
-              >
-                <ChevronLeft size={15} />
-              </Button>
-            </nav>
+            <SeoPagination
+              page={page}
+              pageCount={pageCount}
+              page1Href={isDefaultFilters ? page1Href : undefined}
+              pageHrefPattern={isDefaultFilters ? pageHrefPattern : undefined}
+              onPageChange={setPage}
+              variant="windowed"
+            />
           )}
         </>
       )}

@@ -1,11 +1,9 @@
 import type { Metadata } from 'next';
-import { Header } from '@/components/layout/header';
-import { Footer } from '@/components/layout/footer';
-import { ProductListing } from '@/components/products/product-listing';
-import { CategoryFilter } from '@/components/products/category-filter';
-import { JsonLd } from '@/components/shared/json-ld';
-import { getCategoryTreeSSR, getProductsSSR } from '@/lib/mock/api';
-import { SITE_URL } from '@/lib/site';
+import {
+  ProductListScreen,
+  PRODUCT_LIST_TITLE,
+  PRODUCT_LIST_DESC,
+} from '@/components/products/product-list-screen';
 
 // ISR (F5): صفحه بعد از اولین رندر کش می‌شود و در پس‌زمینه هر ۵ دقیقه
 // بازتولید می‌شود — TTFB همیشه چند میلی‌ثانیه (به‌جای ~۶۰۰ms سردِ force-dynamic).
@@ -14,56 +12,17 @@ import { SITE_URL } from '@/lib/site';
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: 'لیست محصولات و قیمت عمده محصولات',
-  description:
-    'مشاهده لیست کامل آگهی‌های فروش عمده در ایمچ؛ فیلتر بر اساس دسته‌بندی، استان و شهر و مقایسه قیمت روز بازار.',
+  title: PRODUCT_LIST_TITLE,
+  description: PRODUCT_LIST_DESC,
   alternates: { canonical: '/product-list' },
   openGraph: {
-    title: 'لیست محصولات و قیمت عمده محصولات | ایمچ',
-    description:
-      'آگهی‌های فروش عمده با قیمت روز؛ فیلتر دسته‌بندی، استان و شهر.',
+    title: `${PRODUCT_LIST_TITLE} | ایمچ`,
+    description: 'آگهی‌های فروش عمده با قیمت روز؛ فیلتر دسته‌بندی، استان و شهر.',
     type: 'website',
   },
 };
 
-/** کوئری پیش‌فرض اولیه — عین ساختار کلاینت تا queryKey یکی باشد و initialData بخورد */
-const INITIAL_QUERY = {
-  s: '',
-  provinceId: undefined,
-  cityId: undefined,
-  sort: 'related',
-  page: 1,
-} as const;
-
-export default async function ProductListPage() {
-  // درخت دسته‌ها برای سایدبار سرور-رندر (F5) — همان کش داده‌ی layout، بدون fetch اضافه
-  const tree = (await getCategoryTreeSSR(3600)) ?? [];
-  const initial = await getProductsSSR({ ...INITIAL_QUERY }, 300);
-
-  return (
-    <>
-      <Header />
-      <main className="flex-1">
-
-        <ProductListing initialData={initial ?? undefined} sidebar={<CategoryFilter tree={tree} />} />
-      </main>
-      <Footer />
-      {initial && initial.items.length > 0 && (
-        <JsonLd
-          data={{
-            '@context': 'https://schema.org',
-            '@type': 'ItemList',
-            name: 'آگهی‌های فروش عمده ایمچ',
-            numberOfItems: initial.total,
-            itemListElement: initial.items.slice(0, 20).map((p, i) => ({
-              '@type': 'ListItem',
-              position: i + 1,
-              url: `${SITE_URL}/product-view/${p.slug}/${p.categoryName}/${p.id}`,
-              name: p.productName,
-            })),
-          }}
-        />
-      )}
-    </>
-  );
+export default function ProductListPage() {
+  // صفحهٔ ۱ — آدرس تمیز پایه (کنونیکال)؛ صفحه‌های بعدی از /product-list/[pageno]
+  return <ProductListScreen page={1} />;
 }

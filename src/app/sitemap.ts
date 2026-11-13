@@ -15,6 +15,12 @@ interface SitemapProduct {
   seller?: { userName?: string };
 }
 
+/** پاسخ لیست محصولات برای سایت‌مپ — total برای شمارش صفحه‌ها (۱۶تایی مثل UI) */
+interface SitemapProductList {
+  items: SitemapProduct[];
+  total: number;
+}
+
 interface RawCategoryNode {
   id: number;
   category_name: string;
@@ -47,7 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // سه منبع واقعی — هر کدام مستقل؛ خرابی یکی بقیه را نمی‌اندازد
-  const [categoryData, productItems, universe, majorCities] = await Promise.all([
+  const [categoryData, productListPage, universe, majorCities] = await Promise.all([
     fetch(joinUrl(apiBase(), '/categories/getAllCategories'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -63,15 +69,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       body: JSON.stringify({ page: 1, pageSize: 100, sort: 'newest' }),
       next: { revalidate: 3600 },
     })
-      .then((r) => r.json() as Promise<{ status: boolean; data?: { items: SitemapProduct[] } }>)
-      .then((j) => (j?.status && j.data?.items ? j.data.items : []))
-      .catch(() => [] as SitemapProduct[]),
+      .then((r) => r.json() as Promise<{ status: boolean; data?: SitemapProductList }>)
+      .then((j) => (j?.status && j.data?.items ? j.data : { items: [] as SitemapProduct[], total: 0 }))
+      .catch(() => ({ items: [] as SitemapProduct[], total: 0 })),
     getSearchUniverse().catch(() => []),
     // بازارهای عمدهٔ شهری (خواستهٔ مالک ۹-۱۱) — فقط شهرهای بزرگ موجود در دیتابیس
     listMajorCities().catch(() => []),
   ]);
 
   const { flat: categoryNodes, roots: rootCategoryNodes } = categoryData;
+  // آیتم‌های لیست (همراه total برای شمردن صفحه‌ها)
+  const productItems = productListPage.items;
+  const productTotal = productListPage.total;
 
   // فروشندگانِ دارای آگهی — از همان لیست واقعی محصولات (یکتا)
   const sellerNames = [...new Set(productItems.map((p) => p.seller?.userName).filter((x): x is string => Boolean(x)))];
@@ -86,6 +95,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: `${BASE}/product-view/${p.slug}/${p.categoryName}/${p.id}`,
     changeFrequency: 'daily' as const,
     priority: p.isLadder ? 0.7 : 0.5,
+  }));
+
+  // صفحات ۲ به بعد لیست اصلی (خواستهٔ مالک ۱۴-۱۱) — هر پیج URL جدا و
+  // ایندکس‌پذیر؛ سقف ۱۰۰ تا سایت‌مپ سبک بماند (دسته‌ها/بازارهای شهری صفحه‌های
+  // بعدی‌شان را گوگل از خود لینک‌های صفحه‌بندی کشف می‌کند)
+  const listPageCount = Math.min(Math.ceil(productTotal / 16) || 0, 100);
+  const listPagedUrls: MetadataRoute.Sitemap = Array.from({ length: Math.max(0, listPageCount - 1) }, (_, i) => ({
+    url: `${BASE}/product-list/${i + 2}`,
+    changeFrequency: 'daily' as const,
+    priority: 0.8,
   }));
 
   const profilePages: MetadataRoute.Sitemap = sellerNames.map((userName) => ({
@@ -131,5 +150,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...searchPages, ...cityMarketPages, ...cityCategoryPages, ...categoryPages, ...productPages, ...profilePages];
+  return [...staticPages, ...listPagedUrls, ...searchPages, ...cityMarketPages, ...cityCategoryPages, ...categoryPages, ...productPages, ...profilePages];
 }

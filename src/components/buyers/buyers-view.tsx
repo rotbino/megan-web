@@ -60,6 +60,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AuthModal } from '@/components/shared/auth-modal';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
+import { SeoPagination } from '@/components/shared/seo-pagination';
 import { NeedPackageModal } from '@/components/shared/need-package-modal';
 import { SupplyOfferModal } from '@/components/buyers/supply-offer-modal';
 import { GroupOfferWizard } from '@/components/buyers/group-offer-wizard';
@@ -81,7 +82,17 @@ type SheetKind = 'categories' | 'period' | 'location' | null;
 type PeriodFilter = PurchasePeriod | 'all';
 type BuyersTab = 'buyers' | 'requests';
 
-export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }) {
+export function BuyersView({
+  initialData,
+  initialPage,
+  page1Href,
+  pageHrefPattern,
+}: {
+  initialData?: BuyerDirectoryPage;
+  initialPage?: number;
+  page1Href?: string;
+  pageHrefPattern?: string;
+}) {
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -92,10 +103,17 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
   const [period, setPeriod] = useState<PeriodFilter>('all');
   const [provinceId, setProvinceId] = useState<number | null>(null);
   const [cityId, setCityId] = useState<number | null>(null);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage ?? 1);
   const [reqPage, setReqPage] = useState(1);
   // تب‌ویوی واقعی (خواستهٔ مالک دور سوم) — هر دو تب همیشه در دسترس‌اند
   const [tab, setTab] = useState<BuyersTab>('buyers');
+
+  // همگام‌سازی صفحه با URL سئو — /buyers/2 (الگوی تنظیم state در زمان رندر)
+  const [lastInitialPage, setLastInitialPage] = useState(initialPage ?? 1);
+  if (lastInitialPage !== (initialPage ?? 1)) {
+    setLastInitialPage(initialPage ?? 1);
+    setPage(initialPage ?? 1);
+  }
 
   // موبایل — بات‌شیت‌ها
   const [sheet, setSheet] = useState<SheetKind>(null);
@@ -124,7 +142,11 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
     perPage: PER_PAGE,
   };
   const directory = useBuyerDirectory(dirQuery);
-  const data = directory.data ?? initialData;
+  // فیلترهای پیش‌فرض تب خریداران — فقط در همین حالت seed SSR و صفحه‌بندی
+  // لینکی (سئو) فعال است؛ تب درخواست‌ها و فیلترها URL خودشان را ندارند
+  const isDefaultFilters =
+    tab === 'buyers' && !s && !categoryId && period === 'all' && !provinceId && !cityId;
+  const data = directory.data ?? (isDefaultFilters && page === (initialPage ?? 1) ? initialData : undefined);
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / PER_PAGE));
@@ -565,31 +587,17 @@ export function BuyersView({ initialData }: { initialData?: BuyerDirectoryPage }
                   ))}
                 </ul>
 
-                {/* صفحه‌بندی */}
+                {/* صفحه‌بندی — سئو (خواستهٔ مالک ۱۴-۱۱): در حالت پیش‌فرض
+                    قبلی/بعدی لینک واقعی به /buyers/2 و… هستند */}
                 {pageCount > 1 && (
-                  <nav className="flex items-center justify-center gap-3 pt-1" aria-label="صفحه‌بندی">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-md"
-                      disabled={page <= 1}
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    >
-                      <ChevronRight size={15} /> قبلی
-                    </Button>
-                    <span className="text-xs text-muted-foreground">
-                      صفحهٔ {toFa(page)} از {toFa(pageCount)}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-md"
-                      disabled={page >= pageCount}
-                      onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                    >
-                      بعدی <ChevronLeft size={15} />
-                    </Button>
-                  </nav>
+                  <SeoPagination
+                    page={page}
+                    pageCount={pageCount}
+                    page1Href={isDefaultFilters ? page1Href : undefined}
+                    pageHrefPattern={isDefaultFilters ? pageHrefPattern : undefined}
+                    onPageChange={setPage}
+                    variant="compact"
+                  />
                 )}
               </>
             )}

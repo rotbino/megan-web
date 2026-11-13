@@ -78,6 +78,9 @@ export interface Product {
     lastName: string;
     activePakageType: PackageType;
     isVerified: boolean;
+    /** تصویر پروفایل فروشنده — در product-view کنار نام (خواستهٔ مالک ۱۴-۱۱)؛
+     *  نبودِ آن (فروشنده‌های قدیمی) یعنی آیکون پیش‌فرض */
+    avatarUrl?: string | null;
   };
 
   /** نردبان — آگهی نردبان‌شده بالای نتایج می‌آید (۱۰۰ هزار تومان در ماه) */

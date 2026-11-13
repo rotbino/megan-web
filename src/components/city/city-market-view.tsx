@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { MapPin, Store } from 'lucide-react';
+import { notFound } from 'next/navigation';
 import { CityMarketListing, type ProvinceCityOption } from '@/components/city/city-market-listing';
 import { CategoryFilter } from '@/components/products/category-filter';
 import { JsonLd } from '@/components/shared/json-ld';
@@ -27,6 +28,9 @@ export interface CityMarketViewProps {
   categoryPath?: Category[];
   /** تیک‌های چندشهری از URL (?cities=) — پیش از اعتبارسنجی */
   requestedCityIds?: number[];
+  /** شمارهٔ صفحه از URL سئو (/city/tehran/2) — خواستهٔ مالک ۱۴-۱۱: هر
+   *  پیج آدرس جدا برای ایندکس جداگانهٔ گوگل؛ پیش‌فرض ۱ */
+  page?: number;
 }
 
 /** آدرس کنونیکال بازار — اسلاگ لاتین شهرهای بزرگ، نام فارسی کدشدهٔ بقیه */
@@ -43,7 +47,7 @@ export function parseCitiesParam(raw?: string): number[] {
     .filter((n) => Number.isInteger(n) && n > 0);
 }
 
-export async function CityMarketView({ city, categoryPath, requestedCityIds }: CityMarketViewProps) {
+export async function CityMarketView({ city, categoryPath, requestedCityIds, page = 1 }: CityMarketViewProps) {
   const category = categoryPath?.at(-1);
 
   // دیتای بازار — همهٔ فراخوانی‌ها موازی و مستقل (خرابی یکی بقیه را نمی‌اندازد)
@@ -53,10 +57,13 @@ export async function CityMarketView({ city, categoryPath, requestedCityIds }: C
     listCitiesOfProvince(city.provinceId),
     listMajorCities(),
     getCityMarketProductsSSR(
-      { cityIds: [city.id], categorySlug: category?.slug, sort: 'related', page: 1 },
+      { cityIds: [city.id], categorySlug: category?.slug, sort: 'related', page },
       300,
     ),
   ]);
+
+  // آدرس دست‌ساز/کهنهٔ بعد از آخرین صفحه → 404 (ایندکس تمیز)
+  if (page > 1 && initial && initial.items.length === 0) notFound();
 
   const provinceName =
     provinces?.find((p) => p.id === city.provinceId)?.name ?? '';
@@ -168,6 +175,7 @@ export async function CityMarketView({ city, categoryPath, requestedCityIds }: C
         initialData={initial ?? undefined}
         sidebar={sidebar}
         initialExtraCityIds={extraCityIds}
+        initialPage={page}
       />
 
       {/* ---------- لینک‌های داخلی سئو: بازار بقیهٔ شهرها ---------- */}

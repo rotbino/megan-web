@@ -58,6 +58,8 @@ interface RawProduct {
     lastName: string;
     activePakageType: number;
     isVerified: boolean;
+    /** تصویر پروفایل فروشنده — خواستهٔ مالک ۱۴-۱۱ (product-view) */
+    avatarUrl?: string | null;
   };
   isLadder: boolean;
   isElevated: boolean;

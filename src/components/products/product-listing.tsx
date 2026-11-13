@@ -7,7 +7,6 @@ import {
   ArrowDownWideNarrow,
   Check,
   ChevronLeft,
-  ChevronRight,
   List,
   MapPin,
   RotateCcw,
@@ -20,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/products/product-card';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
+import { SeoPagination } from '@/components/shared/seo-pagination';
 import { useCities, useCategoryTree, useProducts, useProvinces } from '@/lib/mock/hooks';
 import { findCategoryPath } from '@/lib/categories';
 import type { Paged } from '@/lib/mock/api';
@@ -106,7 +106,7 @@ interface ProductListingInnerProps {
   categoryName?: string;
   /** عبارت جستجو از مسیر سئو (/product-list/search/[q]) — منبع حقیقت prop سرور است */
   searchQuery?: string;
-  /** دیتای اولیه SSR (صفحه ۱، مرتبط‌ترین، بدون فیلتر مکان) — فقط برای همان کوئری seed می‌شود */
+  /** دیتای اولیه SSR (صفحهٔ initialPage، مرتبط‌ترین، فیلترهای seed) — فقط برای همان کوئری seed می‌شود */
   initialData?: Paged<Product>;
   /** سایدبار سرور-رندر (CategoryFilter) — از مرز کلاینت خارج است (F5) */
   sidebar?: ReactNode;
@@ -114,6 +114,13 @@ interface ProductListingInnerProps {
    *  فقط seed اولیهٔ state است؛ کاربر بعد از آن آزادانه عوض/حذف می‌کند */
   initialProvinceId?: number;
   initialCityId?: number;
+  /** شمارهٔ صفحه از URL سئو (/product-list/2 و…) — خواستهٔ مالک ۱۴-۱۱:
+   *  هر پیج آدرس جدا برای ایندکس جداگانهٔ گوگل */
+  initialPage?: number;
+  /** آدرس تمیز صفحهٔ ۱ (مثل /product-list) — داده شود یعنی صفحه‌بندی لینکی */
+  page1Href?: string;
+  /** الگوی آدرس صفحه‌های ۲ به بعد با جای‌نگهدار {p} (مثل /product-list/{p}) */
+  pageHrefPattern?: string;
 }
 
 function ProductListingInner({
@@ -124,6 +131,9 @@ function ProductListingInner({
   sidebar,
   initialProvinceId,
   initialCityId,
+  initialPage,
+  page1Href,
+  pageHrefPattern,
 }: ProductListingInnerProps) {
   const router = useRouter();
   /** جستجوی پایه — از prop مسیر (صفحه جستجو) یا خالی (لیست/دسته‌بندی) */
@@ -131,7 +141,7 @@ function ProductListingInner({
   const [s, setS] = useState(baseS);
 
   const [sort, setSort] = useState<SortKey>('related');
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage ?? 1);
   // فیلتر مکان — از URL سئو (صفحهٔ فرود شهری) seed می‌شود؛ بعد از آن رفتار عادی
   const [provinceId, setProvinceId] = useState<number | undefined>(initialProvinceId);
   const [cityId, setCityId] = useState<number | undefined>(initialCityId);
@@ -166,6 +176,14 @@ function ProductListingInner({
     setPage(1);
   }
 
+  // همگام‌سازی صفحه با URL سئو — کلیک روی لینک صفحه‌بندی (/product-list/3)
+  // کامپوننت را با initialPage تازه رندر می‌کند (الگوی تنظیم state در زمان رندر)
+  const [lastInitialPage, setLastInitialPage] = useState(initialPage ?? 1);
+  if (lastInitialPage !== (initialPage ?? 1)) {
+    setLastInitialPage(initialPage ?? 1);
+    setPage(initialPage ?? 1);
+  }
+
   // با تغییر فیلترها به صفحه ۱ برگرد (الگوی تنظیم state در زمان رندر — بدون افکت)
   const filterKey = `${categorySlug ?? ''}|${s}|${provinceId ?? ''}|${cityId ?? ''}|${sort}|${need ? `${need.type ?? ''}:${need.amount ?? ''}:${need.unit ?? ''}:${need.provinceId ?? ''}:${need.cityId ?? ''}` : ''}`;
   const [lastFilterKey, setLastFilterKey] = useState(filterKey);
@@ -196,18 +214,19 @@ function ProductListingInner({
     [categorySlug, s, provinceId, cityId, sort, page, need],
   );
 
-  // seed فقط وقتی کوئری فعال عین کوئری پیش‌فرض اولیه باشد (تطبیق ساخت‌یافته — بدون JSON.stringify)؛
-  // در صفحه جستجو initialData با همان s=q پخته شده است؛ در صفحهٔ فرود شهری با همان
-  // فیلترهای seed (استان/شهرِ URL) — اگر کاربر فیلتر را عوض/بردارد، seed دیگر
-  // نمی‌خورد و fetch تازه با فیلتر جدید می‌رود
-  const isDefaultQuery =
-    page === 1 &&
+  // seed فقط وقتی کوئری فعال عین کوئری اولیهٔ SSR باشد (تطبیق ساخت‌یافته — بدون JSON.stringify)؛
+  // SSR در هر مسیر صفحه (۱، ۲، ۳…) با همان شمارهٔ صفحه پخته شده است؛ اگر
+  // کاربر فیلتر را عوض/بردارد، seed دیگر نمی‌خورد و fetch تازه با فیلتر جدید می‌رود
+  const isDefaultFilters =
     sort === 'related' &&
     !need &&
     provinceId === initialProvinceId &&
     cityId === initialCityId &&
     s === baseS;
-  const { data, isFetching, isLoading } = useProducts(query, isDefaultQuery ? initialData : undefined);
+  const { data, isFetching, isLoading } = useProducts(
+    query,
+    isDefaultFilters && page === (initialPage ?? 1) ? initialData : undefined,
+  );
   const items = data?.items ?? [];
 
   const reset = () => {
@@ -520,27 +539,18 @@ function ProductListingInner({
           </div>
         )}
 
-        {/* صفحه‌بندی */}
+        {/* صفحه‌بندی — سئو (خواستهٔ مالک ۱۴-۱۱): در حالت پیش‌فرض شماره‌ها
+            <a> واقعی به /product-list/2 و… هستند تا گوگل هر پیج را جدا ایندکس
+            کند؛ با فیلتر کلاینت‌ساید فعال (بدون URL اختصاصی) دکمهٔ قبلی می‌شود */}
         {data && data.pageCount > 1 && (
-          <nav className="flex items-center justify-center gap-1 pt-2" aria-label="صفحه‌بندی">
-            <Button variant="outline" size="icon-sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label="صفحه قبل">
-              <ChevronRight size={16} />
-            </Button>
-            {Array.from({ length: data.pageCount }).map((_, i) => (
-              <Button
-                key={i}
-                variant={page === i + 1 ? 'default' : 'outline'}
-                size="icon-sm"
-                onClick={() => setPage(i + 1)}
-                aria-current={page === i + 1 ? 'page' : undefined}
-              >
-                {toFa(i + 1)}
-              </Button>
-            ))}
-            <Button variant="outline" size="icon-sm" disabled={page >= data.pageCount} onClick={() => setPage((p) => p + 1)} aria-label="صفحه بعد">
-              <ChevronLeft size={16} />
-            </Button>
-          </nav>
+          <SeoPagination
+            page={page}
+            pageCount={data.pageCount}
+            page1Href={isDefaultFilters ? page1Href : undefined}
+            pageHrefPattern={isDefaultFilters ? pageHrefPattern : undefined}
+            onPageChange={setPage}
+            variant="numbers"
+          />
         )}
       </div>
 
@@ -697,6 +707,9 @@ export function ProductListing({
   sidebar,
   initialProvinceId,
   initialCityId,
+  initialPage,
+  page1Href,
+  pageHrefPattern,
 }: {
   categorySlug?: string;
   categoryName?: string;
@@ -705,6 +718,9 @@ export function ProductListing({
   sidebar?: ReactNode;
   initialProvinceId?: number;
   initialCityId?: number;
+  initialPage?: number;
+  page1Href?: string;
+  pageHrefPattern?: string;
 }) {
   // بدون Suspense بیرونی (F5): useSearchParams فقط داخل SearchBridge است؛
   // رندر ایستا کامل (کارت‌ها در HTML) و هیدریشن بدون fallback-swap.
@@ -717,6 +733,9 @@ export function ProductListing({
       sidebar={sidebar}
       initialProvinceId={initialProvinceId}
       initialCityId={initialCityId}
+      initialPage={initialPage}
+      page1Href={page1Href}
+      pageHrefPattern={pageHrefPattern}
     />
   );
 }
