@@ -11,7 +11,10 @@ import type { Product } from '@/lib/types';
 
 export function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
   const href = `/product-view/${product.slug}/${product.categoryName}/${product.id}`;
-  const updated = parseServerDate(product.updatedAt);
+  // «آخرین به‌روزرسانی قیمت»: مهر تغییر قیمت (برای آگهی باسکولی همان
+  // last_price_update باسکول) اگر باشد، وگرنه آخرین آپدیت آگهی (خواستهٔ
+  // مالک ۱۳-۱۱ — مهرهای باسکول عیناً حفظ می‌شوند)
+  const updated = parseServerDate(product.priceUpdatedAt || product.updatedAt);
 
   return (
       <article className="group flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-lg">

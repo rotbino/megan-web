@@ -61,6 +61,28 @@ export function relativeFa(days: number): string {
   return timeAgoFa(d.toISOString());
 }
 
+/** واژه‌های فارسی ۱ تا ۱۱ — «بیش از {یک|دو|…} ماه/سال» */
+const FA_COUNT_WORDS = ['یک', 'دو', 'سه', 'چهار', 'پنج', 'شش', 'هفت', 'هشت', 'نه', 'ده', 'یازده'];
+
+/**
+ * هشدار کهنگی قیمت (خواستهٔ مالک ۱۳-۱۱): اگر بیش از یک ماه از آخرین آپدیت
+ * قیمت گذشته باشد «این قیمت بیش از یک ماه است که آپدیت نشده» می‌سازد —
+ * دو ماه، سه ماه … تا یازده ماه، بعد «بیش از یک سال»، «دو سال» و …
+ * کمتر از یک ماه → null (هیچی). ماه = ۳۰.۴۴ روز، سال = ۳۶۵.۲۵ روز.
+ */
+export function stalePriceFa(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const days = (Date.now() - new Date(iso).getTime()) / 86_400_000;
+  if (days < 30.44) return null;
+  if (days >= 365.25) {
+    const years = Math.floor(days / 365.25);
+    const word = years <= FA_COUNT_WORDS.length ? FA_COUNT_WORDS[years - 1] : toFa(years);
+    return `این قیمت بیش از ${word} سال است که آپدیت نشده`;
+  }
+  const months = Math.min(Math.floor(days / 30.44), FA_COUNT_WORDS.length);
+  return `این قیمت بیش از ${FA_COUNT_WORDS[months - 1]} ماه است که آپدیت نشده`;
+}
+
 /** تاریخ + ساعت شمسی: «۳۰ مهر ۱۴۰۵، ۱۴:۲۵» — جدول‌های آمار */
 export function dateTimeFa(iso: string): string {
   return new Intl.DateTimeFormat('fa-IR', {

@@ -4,7 +4,7 @@ import { History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RelativeTime } from '@/components/shared/relative-time';
 import { useAuth } from '@/lib/mock/auth';
-import { parseServerDate, priceFa } from '@/lib/format';
+import { parseServerDate, priceFa, stalePriceFa } from '@/lib/format';
 import type { Product } from '@/lib/types';
 
 /**
@@ -14,6 +14,10 @@ import type { Product } from '@/lib/types';
  *   بالای صفحه کنار عکس هست و اینجا تکرار نمی‌شود — قانون عدم تکرار RULES.md §۱-ب).
  *   کارت لیست: زیر قیمت، ریزمتنِ زمان.
  * قیمت فقط برای اعضا: مهمان دکمهٔ «مشاهده قیمت» می‌بیند (مودال ورود نیات‌محور).
+ *
+ * «آخرین به‌روزرسانی» یعنی به‌روزرسانی قیمت: مهر تغییر قیمت (priceUpdatedAt —
+ * برای آگهی باسکولی همان last_price_update) اگر باشد، وگرنه آخرین آپدیت آگهی.
+ * کهنگی قیمت (خواستهٔ مالک ۱۳-۱۱): بیش از یک ماه → متن قرمز زیر قیمت.
  */
 export function ProductPrice({
   product,
@@ -24,7 +28,8 @@ export function ProductPrice({
 }) {
   const { user, requireAuth } = useAuth();
   // تاریخ بک‌اند «YYYY-MM-DD HH:mm:ss» بدون منطقهٔ زمانی است — UTC خوانده شود
-  const updated = parseServerDate(product.updatedAt);
+  const updated = parseServerDate(product.priceUpdatedAt || product.updatedAt);
+  const stale = stalePriceFa(updated);
 
   if (variant === 'page') {
     if (!user) {
@@ -44,6 +49,16 @@ export function ProductPrice({
             آخرین به‌روزرسانی
             <RelativeTime date={updated} />
           </p>
+          {/* کهنگی قیمت — قرمز، برای مهمان هم (خواستهٔ مالک ۱۳-۱۱) */}
+          {stale && (
+            <p
+              suppressHydrationWarning
+              className="mt-1.5 text-center text-xs font-bold leading-5 text-red-600"
+              role="status"
+            >
+              {stale}
+            </p>
+          )}
         </div>
       );
     }
@@ -65,6 +80,17 @@ export function ProductPrice({
           </span>
           <RelativeTime date={updated} className="font-num text-[13px] font-bold text-foreground" />
         </div>
+        {/* کهنگی قیمت — زیر قیمت، قرمز (خواستهٔ مالک ۱۳-۱۱: «بیش از یک ماه است
+            آپدیت نشده» — تا یازده ماه، بعد یک سال/دو سال/…) */}
+        {stale && (
+          <p
+            suppressHydrationWarning
+            className="mt-2 text-center text-xs font-bold leading-5 text-red-600"
+            role="status"
+          >
+            {stale}
+          </p>
+        )}
       </div>
     );
   }
