@@ -38,6 +38,8 @@ export interface SourceInfo {
   table?: string;
   phoneColumn?: string;
   userNameColumn?: string;
+  /** کلیدهای واقعی سند نمونهٔ منبع — عیب‌یابی ناهماهنگی نام ستون */
+  rawKeys?: string[];
   total?: number;
   /** تعداد کاربران منبع که ایمپورت شده‌اند (bUserName پر دارد) */
   imported?: number;
