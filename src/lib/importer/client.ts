@@ -425,3 +425,182 @@ export const importedUsersApi = {
       json<{ migrated: number; premiumFixed: number }>(r),
     ),
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// مدیریت آگهی‌های ایمپورت‌شده — «دیتا ایمپورت → آگهی‌ها» + «تصاویر آگهی‌ها»
+// (خواستهٔ مالک ۱۳-۱۱). آینهٔ قرارداد بک‌اند: imported-products.service.ts
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface ImportedListingRow {
+  id: number;
+  productName: string;
+  slug: string;
+  status: string;
+  unit: string;
+  categoryId: number;
+  subCategoryId: number;
+  categoryName: string | null;
+  subCategoryName: string | null;
+  provinceId: number;
+  cityId: number;
+  provinceName: string | null;
+  cityName: string | null;
+  stock: number;
+  minSalePrice: number;
+  viewCount: number;
+  createdAt: string;
+  updatedAt: string;
+  priceUpdatedAt: string | null;
+  source: 'buskool' | 'native';
+  owner: {
+    id: string;
+    userName: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    bUserName: string | null;
+    lastLoginAt: string | null;
+  };
+  edited: boolean;
+  lastEditedAt: string | null;
+  photoCount: number;
+  photoThumb: string | null;
+}
+
+export interface ImportedListingsSummary {
+  total: number;
+  buskool: number;
+  native: number;
+  ownerLoggedIn: number;
+  editedByUser: number;
+  withoutPhotos: number;
+  pending: number;
+}
+
+export interface ImportedListingsList {
+  rows: ImportedListingRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  summary: ImportedListingsSummary;
+}
+
+export interface ImportedListingsParams {
+  q?: string;
+  source?: 'buskool' | 'native' | 'all';
+  ownerLogin?: 'ever' | 'never';
+  edited?: 'yes' | 'no';
+  status?: 'pending' | 'confirmed' | 'rejected' | 'deleted' | 'all';
+  hasPhotos?: 'yes' | 'no';
+  sort?: 'createdAt' | 'updatedAt' | 'priceUpdatedAt' | 'views' | 'name';
+  dir?: 'asc' | 'desc';
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ProductImageRow {
+  id: string;
+  url: string;
+  thumbUrl: string | null;
+  size: number;
+  mimeType: string;
+  name: string;
+  /** زمان ایمپورت/آپلود اولیه */
+  createdAt: string;
+  /** آخرین تعویض درجا (بایت‌های تازه) — مبنای cache-buster نمایش */
+  updatedAt: string;
+  width: number | null;
+  height: number | null;
+  source: 'buskool' | 'native';
+  importedFrom: string | null;
+  /** URL اصلی فایل در باسکول (قبل از rehost) */
+  originalUrl: string | null;
+  replacedAt: string | null;
+  product: { id: number; name: string; slug: string; status: string } | null;
+  owner: { id: string; userName: string; name: string; phone: string; bUserName: string | null } | null;
+}
+
+export interface ProductImagesSummary {
+  total: number;
+  buskool: number;
+  native: number;
+  replaced: number;
+  /** باسکولی‌های هنوز تعویض‌نشده — باقی‌ماندهٔ کار پاک‌کردن واترمارک */
+  buskoolRemaining: number;
+}
+
+export interface ProductImagesList {
+  rows: ProductImageRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  summary: ProductImagesSummary;
+}
+
+export interface ProductImagesParams {
+  q?: string;
+  source?: 'buskool' | 'native' | 'all';
+  replaced?: 'yes' | 'no';
+  sort?: 'newest' | 'oldest';
+  page?: number;
+  pageSize?: number;
+}
+
+/** نتیجهٔ تعویض درجا — همان فایل، بایت‌های تازه */
+export interface ReplaceImageResult {
+  id: string;
+  url: string;
+  thumbUrl: string | null;
+  size: number;
+  mimeType: string;
+  replacedAt: string;
+  productId: string | null;
+}
+
+/** fetch با توکن ادمین برای بدنهٔ multipart (بدون Content-Type — مرورگر boundary می‌گذارد) */
+async function adminFetchForm(path: string, form: FormData): Promise<Response> {
+  let token = '';
+  try {
+    token = localStorage.getItem(ADMIN_TOKEN_KEY) ?? '';
+  } catch {
+    /* SSR/حالت خصوصی */
+  }
+  return fetch(`${API_BASE}/api/v1/${path}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: form,
+  });
+}
+
+function toQuery(params: Record<string, unknown>): string {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== '' && v !== 'all') qs.set(k, String(v));
+  }
+  return qs.size ? `?${qs}` : '';
+}
+
+export const importedListingsApi = {
+  list: (params: ImportedListingsParams) =>
+    adminFetch(`importer/products${toQuery(params as Record<string, unknown>)}`).then((r) =>
+      json<ImportedListingsList>(r),
+    ),
+};
+
+export const productImagesApi = {
+  list: (params: ProductImagesParams) =>
+    adminFetch(`importer/product-images${toQuery(params as Record<string, unknown>)}`).then((r) =>
+      json<ProductImagesList>(r),
+    ),
+
+  /** تعویض بایت‌های تصویر در همان نام/مسیر — تامبنیل هم بازساخته می‌شود */
+  replace: (id: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return adminFetchForm(`importer/product-images/${id}/replace`, form).then((r) =>
+      json<ReplaceImageResult>(r),
+    );
+  },
+};
