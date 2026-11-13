@@ -156,7 +156,7 @@ export function PreviewPanel({ preview }: { preview: ImportPreview }) {
                   {r.reviewer.city && <span className="text-muted-foreground">{r.reviewer.city}</span>}
                   {r.reviewer.isStub && (
                     <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                      کاربر کمکی (با ایمپورت واقعی ادغام می‌شود)
+                      نویسندهٔ باسکولی (user_for_b_comment — کاربر ایمچ نیست)
                     </span>
                   )}
                   <span className="text-muted-foreground">{dateFa(r.createdAt)}</span>

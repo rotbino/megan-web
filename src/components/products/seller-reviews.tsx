@@ -18,7 +18,7 @@
  */
 
 import { useState } from 'react';
-import { Clock, Loader2, MessageSquarePlus, PencilLine, Star, XCircle } from 'lucide-react';
+import { Clock, Loader2, MapPin, MessageSquarePlus, PencilLine, Star, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -51,7 +51,9 @@ function MyReviewStatusNote({ status }: { status: SellerReviewRow['status'] }) {
   );
 }
 
-/** یک نظر — کارت مؤلف نظر باسکول؛ mine=true برای نظر خودم (سنجاق‌شده بالای لیست) */
+/** یک نظر — کارت مؤلف نظر باسکول؛ mine=true برای نظر خودم (سنجاق‌شده بالای لیست).
+ *  شهر نویسنده زیر نام می‌آید (خواستهٔ مالک ۱۳-۱۱) — برای کاربران واقعی از
+ *  پروفایل و برای کامنت‌های باسکولی از جدول user_for_b_comment. */
 function ReviewCard({ review, mine = false }: { review: SellerReviewRow; mine?: boolean }) {
   const name = `${review.author.firstName} ${review.author.lastName}`.trim() || 'کاربر ایمچ';
   return (
@@ -75,14 +77,24 @@ function ReviewCard({ review, mine = false }: { review: SellerReviewRow; mine?: 
               {name}
               {mine && <span className="ms-1.5 text-[10.5px] font-medium text-(--catalog-accent)">(نظر شما)</span>}
             </p>
-            <p className="text-[10.5px] text-muted-foreground">
-              <RelativeTime date={review.createdAt} /> — شناسه {review.author.userName}
+            <p className="flex flex-wrap items-center gap-x-1.5 text-[10.5px] text-muted-foreground">
+              {review.author.city && (
+                <span className="flex items-center gap-0.5">
+                  <MapPin size={10.5} className="shrink-0" aria-hidden />
+                  {review.author.city}
+                </span>
+              )}
+              <RelativeTime date={review.createdAt} />
+              {/* شناسه فقط برای کاربران واقعی — نویسندهٔ کامنت باسکولی کاربر ایمچ نیست */}
+              {review.author.userName && <>— شناسه {review.author.userName}</>}
             </p>
           </div>
         </div>
         <RatingStars value={review.rating} size={13} />
       </div>
-      <p className="mt-3 whitespace-pre-line text-[13px] leading-6 text-foreground/90">{review.text}</p>
+      {review.text && (
+        <p className="mt-3 whitespace-pre-line text-[13px] leading-6 text-foreground/90">{review.text}</p>
+      )}
       {mine && <MyReviewStatusNote status={review.status} />}
     </article>
   );

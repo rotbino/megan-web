@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { MessageSquareText, Star } from 'lucide-react';
+import { MapPin, MessageSquareText, Star } from 'lucide-react';
 import { RatingStars } from '@/components/shared/rating-stars';
 import { RelativeTime } from '@/components/shared/relative-time';
 import { getSellerReviews } from '@/lib/mock/api';
@@ -26,14 +26,23 @@ async function ReviewCard({ review }: { review: SellerReviewRow }) {
           )}
           <div className="min-w-0">
             <p className="truncate text-[13px] font-bold">{name}</p>
-            <p className="text-[10.5px] text-muted-foreground">
+            {/* شهر نویسنده زیر کامنت (خاستهٔ مالک ۱۳-۱۱) */}
+            <p className="flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
+              {review.author.city && (
+                <span className="flex items-center gap-0.5">
+                  <MapPin size={10.5} className="shrink-0" aria-hidden />
+                  {review.author.city}
+                </span>
+              )}
               <RelativeTime date={review.createdAt} />
             </p>
           </div>
         </div>
         <RatingStars value={review.rating} size={13} />
       </div>
-      <p className="mt-3 whitespace-pre-line text-[13px] leading-6 text-foreground/90">{review.text}</p>
+      {review.text && (
+        <p className="mt-3 whitespace-pre-line text-[13px] leading-6 text-foreground/90">{review.text}</p>
+      )}
     </article>
   );
 }

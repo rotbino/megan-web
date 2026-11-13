@@ -1669,7 +1669,16 @@ export interface SellerReviewRow {
   text: string;
   /** قانون انتشار (مالک ۲-۱۱): pending = در انتظار تأیید ادمین (فقط نویسنده می‌بیند) */
   status: 'pending' | 'approved' | 'rejected';
-  author: { userName: string; firstName: string; lastName: string; avatarUrl?: string | null };
+  /** نویسنده — userName فقط برای کاربران واقعی؛ نویسندهٔ کامنت باسکولی
+   *  (جدول user_for_b_comment — خاستهٔ مالک ۱۳-۱۱) کاربر ایمچ نیست و
+   *  به‌جای شناسه، شهرش زیر کامنت نمایش داده می‌شود. */
+  author: {
+    userName?: string | null;
+    firstName: string;
+    lastName: string;
+    avatarUrl?: string | null;
+    city?: string | null;
+  };
   createdAt: string;
   updatedAt: string;
 }
