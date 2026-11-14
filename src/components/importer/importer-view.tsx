@@ -717,7 +717,7 @@ function ListImportCard({
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="li-limit">تعداد کاربر</Label>
+          <Label htmlFor="li-limit">تعداد کاربر (حداکثر ۲۰۰)</Label>
           <Input
             id="li-limit"
             dir="ltr"
@@ -727,6 +727,10 @@ function ListImportCard({
             className="text-left font-mono"
             disabled={disabled}
           />
+          <p className="text-[10px] leading-4 text-muted-foreground">
+            سقف هر جاب ۲۰۰ کاربر است — برای ایمپورت بیشتر، جاب‌ها را پشت‌سرهم اجرا کنید؛ «ایمپورت‌نشدهٔ
+            بعدی» offset را خودکار پر می‌کند.
+          </p>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="li-max" className="flex items-center gap-1">
