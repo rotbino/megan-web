@@ -1,17 +1,26 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  Suspense,
+  type ReactNode,
+} from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowDownWideNarrow,
   Check,
+  ChevronDown,
   ChevronLeft,
   List,
+  Loader2,
   MapPin,
   RotateCcw,
   Search,
-  Target,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,8 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/products/product-card';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
-import { SeoPagination } from '@/components/shared/seo-pagination';
-import { useCities, useCategoryTree, useProducts, useProvinces } from '@/lib/mock/hooks';
+import { useCities, useCategoryTree, useInfiniteProducts, useProvinces } from '@/lib/mock/hooks';
 import { findCategoryPath } from '@/lib/categories';
 import type { Paged } from '@/lib/mock/api';
 import { toFa } from '@/lib/format';
@@ -141,7 +149,6 @@ function ProductListingInner({
   const [s, setS] = useState(baseS);
 
   const [sort, setSort] = useState<SortKey>('related');
-  const [page, setPage] = useState(initialPage ?? 1);
   // فیلتر مکان — از URL سئو (صفحهٔ فرود شهری) seed می‌شود؛ بعد از آن رفتار عادی
   const [provinceId, setProvinceId] = useState<number | undefined>(initialProvinceId);
   const [cityId, setCityId] = useState<number | undefined>(initialCityId);
@@ -173,25 +180,9 @@ function ProductListingInner({
   if (lastBaseS !== baseS) {
     setLastBaseS(baseS);
     setS(baseS);
-    setPage(1);
   }
 
-  // همگام‌سازی صفحه با URL سئو — کلیک روی لینک صفحه‌بندی (/product-list/3)
-  // کامپوننت را با initialPage تازه رندر می‌کند (الگوی تنظیم state در زمان رندر)
-  const [lastInitialPage, setLastInitialPage] = useState(initialPage ?? 1);
-  if (lastInitialPage !== (initialPage ?? 1)) {
-    setLastInitialPage(initialPage ?? 1);
-    setPage(initialPage ?? 1);
-  }
-
-  // با تغییر فیلترها به صفحه ۱ برگرد (الگوی تنظیم state در زمان رندر — بدون افکت)
-  const filterKey = `${categorySlug ?? ''}|${s}|${provinceId ?? ''}|${cityId ?? ''}|${sort}|${need ? `${need.type ?? ''}:${need.amount ?? ''}:${need.unit ?? ''}:${need.provinceId ?? ''}:${need.cityId ?? ''}` : ''}`;
-  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
-  if (lastFilterKey !== filterKey) {
-    setLastFilterKey(filterKey);
-    setPage(1);
-  }
-
+  // با تغییر فیلترها کلید کوئری عوض می‌شود و لیست بی‌پایان از صفحهٔ ۱ شروع می‌شود
   const query = useMemo(
     () => ({
       categorySlug,
@@ -199,7 +190,6 @@ function ProductListingInner({
       provinceId,
       cityId,
       sort,
-      page,
       // زمینهٔ تطابق — فقط با سورت match به بک‌اند می‌رود
       ...(sort === 'match' && need
         ? {
@@ -211,7 +201,7 @@ function ProductListingInner({
           }
         : {}),
     }),
-    [categorySlug, s, provinceId, cityId, sort, page, need],
+    [categorySlug, s, provinceId, cityId, sort, need],
   );
 
   // seed فقط وقتی کوئری فعال عین کوئری اولیهٔ SSR باشد (تطبیق ساخت‌یافته — بدون JSON.stringify)؛
@@ -223,11 +213,104 @@ function ProductListingInner({
     provinceId === initialProvinceId &&
     cityId === initialCityId &&
     s === baseS;
-  const { data, isFetching, isLoading } = useProducts(
-    query,
-    isDefaultFilters && page === (initialPage ?? 1) ? initialData : undefined,
-  );
-  const items = data?.items ?? [];
+
+  // ─── اسکرول بی‌پایان (خواستهٔ مالک ۱۴-۱۱) ─────────────────────────
+  // صفحه‌ها به‌هم می‌چسبند؛ پیش‌واکشی بافر ۲ صفحه‌ای پشت صحنه انجام می‌شود
+  // تا کاربر تاخیر لود صفحهٔ بعد را حس نکند و لود اولیه هم کند نشود.
+  const firstPage = initialPage ?? 1;
+  const { data, isLoading, isFetching, isFetchingNextPage, fetchNextPage, hasNextPage } =
+    useInfiniteProducts(query, isDefaultFilters ? initialData : undefined);
+
+  // مسطح‌سازی + ضدتکرار (تغییر داده بین fetchهای صفحه‌ای نباید کارت تکراری بیاورد)
+  const items = useMemo(() => {
+    const seen = new Set<number>();
+    const out: Product[] = [];
+    for (const pg of data?.pages ?? []) {
+      for (const p of pg.items) {
+        if (!seen.has(p.id)) {
+          seen.add(p.id);
+          out.push(p);
+        }
+      }
+    }
+    return out;
+  }, [data]);
+
+  const loadedCount = data?.pages.length ?? 0;
+  const lastMeta = data?.pages.at(-1);
+  const total = lastMeta?.total ?? 0;
+
+  /** صفحهٔ در حال مشاهده (۱ = اولین صفحهٔ لودشده) — از جایگاه ویوپورت در گرید */
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const [viewedPage, setViewedPage] = useState(1);
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const rect = el.getBoundingClientRect();
+      if (rect.height <= 0 || loadedCount <= 0) return;
+      const perPage = rect.height / loadedCount; // میانگین ارتفاع هر صفحه
+      if (perPage <= 0) return;
+      // لبهٔ پایین ویوپورت چند صفحه عمقی است؟ (ceil — صفحه‌ای که تازه شروع شده)
+      const depth = Math.ceil((window.innerHeight - rect.top) / perPage);
+      const v = Math.max(1, Math.min(loadedCount, depth));
+      setViewedPage((prev) => (prev !== v ? v : prev));
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [loadedCount]);
+
+  /** بافر پیش‌واکشی (خواستهٔ مالک ۱۴-۱۱): همیشه ۲ صفحه جلوتر از صفحهٔ در حال
+   *  مشاهده در پس‌زمینه آماده باشد — بعد از لود اولیه idle می‌شود تا با
+   *  هیدریشن/LCP رقابت نکند؛ هر صفحهٔ جدید زنجیره را دوباره ارزیابی می‌کند. */
+  useEffect(() => {
+    if (!hasNextPage || isFetching || isLoading) return;
+    if (loadedCount >= viewedPage + 2) return; // بافر کامل
+    let cancelled = false;
+    const go = () => {
+      if (!cancelled) void fetchNextPage();
+    };
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number;
+      cancelIdleCallback?: (h: number) => void;
+    };
+    const ric = w.requestIdleCallback;
+    const handle = ric !== undefined ? ric(go, { timeout: 1500 }) : window.setTimeout(go, 400);
+    return () => {
+      cancelled = true;
+      if (ric !== undefined) w.cancelIdleCallback?.(handle);
+      else window.clearTimeout(handle);
+    };
+  }, [viewedPage, hasNextPage, isFetching, isLoading, loadedCount, fetchNextPage]);
+
+  /** نگهبان انتهای گرید — تور ایمنی روی تخمین viewedPage (rootMargin عمیق:
+   *  پیش از رسیدن کاربر به انتها فعال می‌شود) */
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting) && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
+        }
+      },
+      { rootMargin: '1200px 0px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const reset = () => {
     setProvinceId(undefined);
@@ -436,8 +519,14 @@ function ProductListingInner({
       <Suspense>
         <MatchBridge onNeed={handleNeed} />
       </Suspense>
-      {/* سایدبار فیلتر — دسکتاپ */}
-      <aside className="hidden space-y-5 lg:block" aria-label="فیلترها">
+      {/* سایدبار فیلتر — دسکتاپ؛ چسبان (خواستهٔ مالک ۱۴-۱۱): هنگام اسکرول
+          صفحه سر جایش می‌ماند و همیشه دیده می‌شود؛ اگر از ارتفاع ویوپورت
+          بلندتر باشد خودش اسکرول داخلی می‌گیرد (self-start تا آیتم گرید
+          کشیده نشود و sticky اثر کند — ارتفاع هدر ۱۱۷px + فاصله ۸px) */}
+      <aside
+        className="hidden space-y-5 lg:block lg:self-start lg:sticky lg:top-[125px] lg:max-h-[calc(100vh-141px)] lg:overflow-y-auto lg:pb-1"
+        aria-label="فیلترها"
+      >
         {filterContent}
       </aside>
 
@@ -520,38 +609,84 @@ function ProductListingInner({
           {baseChips}
         </div>
 
-        {/* گرید */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-4 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-md md:h-80" />)}
-          </div>
-        ) : items.length === 0 ? (
-          <div className="rounded-md border bg-card p-8 text-center md:p-12">
-            <p className="text-lg font-bold">آگهی‌ای با این فیلترها پیدا نشد!</p>
-            <Button asChild className="mt-4 rounded-md"><Link href="/#rfq">ثبت درخواست خرید</Link></Button>
-          </div>
-        ) : (
-          <div className={cn('grid grid-cols-1 gap-2.5 transition-opacity md:grid-cols-3 md:gap-4 xl:grid-cols-4', isFetching && 'opacity-60')}>
-            {items.map((p, i) => (
-              // اولین ردیف کارت‌ها (LCP) eager لود می‌شود — بقیه lazy
-              <ProductCard key={p.id} product={p} priority={i < 4} />
-            ))}
+        {/* گرید — ref برای تخمین صفحهٔ در حال مشاهده (بافر پیش‌واکشی) */}
+        <div ref={gridRef}>
+          {isLoading ? (
+            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-4 xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-md md:h-80" />)}
+            </div>
+          ) : items.length === 0 ? (
+            <div className="rounded-md border bg-card p-8 text-center md:p-12">
+              <p className="text-lg font-bold">آگهی‌ای با این فیلترها پیدا نشد!</p>
+              <Button asChild className="mt-4 rounded-md"><Link href="/#rfq">ثبت درخواست خرید</Link></Button>
+            </div>
+          ) : (
+            <div
+              className={cn(
+                'grid grid-cols-1 gap-2.5 transition-opacity md:grid-cols-3 md:gap-4 xl:grid-cols-4',
+                isFetching && !isFetchingNextPage && 'opacity-60',
+              )}
+            >
+              {items.map((p, i) => (
+                // اولین ردیف کارت‌ها (LCP) eager لود می‌شود — بقیه lazy
+                <ProductCard key={p.id} product={p} priority={i < 4} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ─── اسکرول بی‌پایان: لینک «مشاهده بیشتر» سئو (خواستهٔ مالک ۱۴-۱۱) ───
+            موتور جستجو نمی‌تواند اسکرول کند — این <a href> واقعی به URL صفحهٔ
+            بعدی می‌رود و زنجیرهٔ کشف گوگل را زنده نگه می‌دارد؛ برای کاربرِ جاوااسکریپت‌دار
+            کلیک = لود درجا (preventDefault)؛ صفحهٔ آخر → دکمه حذف می‌شود */}
+        {!isLoading && items.length > 0 && hasNextPage && (
+          <div className="flex flex-col items-center gap-2 pt-3">
+            {isDefaultFilters && page1Href && pageHrefPattern ? (
+              <Button asChild variant="outline" className="gap-1.5 rounded-md px-6 font-bold">
+                {/* href واقعی (کرال‌پذیر) = اولین صفحهٔ لودنشده — با اسکرول کاربر جلو می‌رود */}
+                <a
+                  href={
+                    firstPage + loadedCount <= 1
+                      ? page1Href
+                      : (pageHrefPattern ?? '').replace('{p}', String(firstPage + loadedCount))
+                  }
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!isFetchingNextPage) void fetchNextPage();
+                  }}
+                >
+                  {isFetchingNextPage ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <ChevronDown size={15} />
+                  )}
+                  مشاهده آگهی‌های بیشتر
+                </a>
+              </Button>
+            ) : (
+              /* فیلتر کلاینت‌ساید فعال — URL اختصاصی ندارد؛ دکمهٔ ساده */
+              <Button
+                variant="outline"
+                className="gap-1.5 rounded-md px-6 font-bold"
+                disabled={isFetchingNextPage}
+                onClick={() => void fetchNextPage()}
+              >
+                {isFetchingNextPage ? <Loader2 size={15} className="animate-spin" /> : <ChevronDown size={15} />}
+                مشاهده آگهی‌های بیشتر
+              </Button>
+            )}
           </div>
         )}
 
-        {/* صفحه‌بندی — سئو (خواستهٔ مالک ۱۴-۱۱): در حالت پیش‌فرض شماره‌ها
-            <a> واقعی به /product-list/2 و… هستند تا گوگل هر پیج را جدا ایندکس
-            کند؛ با فیلتر کلاینت‌ساید فعال (بدون URL اختصاصی) دکمهٔ قبلی می‌شود */}
-        {data && data.pageCount > 1 && (
-          <SeoPagination
-            page={page}
-            pageCount={data.pageCount}
-            page1Href={isDefaultFilters ? page1Href : undefined}
-            pageHrefPattern={isDefaultFilters ? pageHrefPattern : undefined}
-            onPageChange={setPage}
-            variant="numbers"
-          />
+        {/* پایان لیست — همهٔ آگهی‌ها دیده شد */}
+        {!isLoading && items.length > 0 && !hasNextPage && loadedCount > 1 && (
+          <p className="pt-3 text-center text-xs text-muted-foreground">
+            همهٔ {toFa(total)} آگهی این لیست نمایش داده شد
+          </p>
         )}
+
+        {/* نگهبان اسکرول — ۱۲۰۰px قبل از رسیدن به انتها صفحهٔ بعد را می‌خواهد */}
+        <div ref={sentinelRef} aria-hidden className="h-px" />
       </div>
 
       {/* ─── بات‌شیت انتخاب دسته — موبایل (سلسله‌مراتبی با دکمه بازگشت) ── */}

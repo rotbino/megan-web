@@ -35,6 +35,29 @@ export function useProducts(query: ProductQuery, initialData?: Paged<Product>) {
 }
 
 /**
+ * لیست محصولات با اسکرول بی‌پایان (خواستهٔ مالک ۱۴-۱۱) — همان endpoint با
+ * useInfiniteQuery؛ کلید کوئری «بدون page» است (صفحه = pageParam).
+ * initialData = صفحهٔ SSR هر شماره‌ای که از URL سئو آمده (۱، ۲، …) — زنجیره
+ * از همان‌جا به جلو ادامه می‌یابد؛ با عوض شدن فیلترها کلید عوض می‌شود و
+ * چون seed شرطی است، کوئری تازه از صفحهٔ ۱ شروع می‌شود.
+ */
+export function useInfiniteProducts(
+  query: Omit<ProductQuery, 'page'>,
+  initialData?: Paged<Product>,
+) {
+  return useInfiniteQuery({
+    queryKey: ['products-infinite', query] as const,
+    queryFn: ({ pageParam }: { pageParam: number }) => api.getProducts({ ...query, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage: Paged<Product>) =>
+      lastPage.page < lastPage.pageCount ? lastPage.page + 1 : undefined,
+    ...(initialData ? { initialData: { pages: [initialData], pageParams: [initialData.page] } } : {}),
+    placeholderData: keepPreviousData, // تعویض نرم فیلتر بدون پرش اسکلتون
+    staleTime: 60_000,
+  });
+}
+
+/**
  * لیست چندشهری «بازار عمدهٔ شهری» — سرویس جداگانهٔ /cityMarket/getProducts
  * (خواستهٔ مالک ۹-۱۱). شهر خود صفحه همیشه در cityIds هست؛ تیک شهرهای دیگر
  * استان فقط کلید را عوض می‌کند — با keepPreviousData گرید نرم رفرش می‌شود.
@@ -45,6 +68,23 @@ export function useCityMarketProducts(query: CityMarketQuery, initialData?: Page
     queryFn: () => api.getCityMarketProducts(query),
     ...(initialData ? { initialData } : {}),
     placeholderData: keepPreviousData, // تیک/صفحه‌بندی نرم بدون پرش اسکلتون
+    staleTime: 60_000,
+  });
+}
+
+/** بازار شهری با اسکرول بی‌پایان (خواستهٔ مالک ۱۴-۱۱) — عین useInfiniteProducts، سرویس چندشهری */
+export function useInfiniteCityMarketProducts(
+  query: Omit<CityMarketQuery, 'page'>,
+  initialData?: Paged<Product>,
+) {
+  return useInfiniteQuery({
+    queryKey: ['city-market-infinite', query] as const,
+    queryFn: ({ pageParam }: { pageParam: number }) => api.getCityMarketProducts({ ...query, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage: Paged<Product>) =>
+      lastPage.page < lastPage.pageCount ? lastPage.page + 1 : undefined,
+    ...(initialData ? { initialData: { pages: [initialData], pageParams: [initialData.page] } } : {}),
+    placeholderData: keepPreviousData,
     staleTime: 60_000,
   });
 }

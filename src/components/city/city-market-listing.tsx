@@ -1,14 +1,16 @@
 'use client';
 
-import { useState, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowDownWideNarrow,
   ArrowUpLeft,
   Check,
+  ChevronDown,
   ChevronLeft,
   List,
+  Loader2,
   Lock,
   MapPin,
   RotateCcw,
@@ -18,8 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/products/product-card';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
-import { SeoPagination } from '@/components/shared/seo-pagination';
-import { useCategoryTree, useCityMarketProducts } from '@/lib/mock/hooks';
+import { useCategoryTree, useInfiniteCityMarketProducts } from '@/lib/mock/hooks';
 import { cityMarketHref } from '@/lib/city-markets';
 import { findCategoryPath } from '@/lib/categories';
 import type { Paged } from '@/lib/mock/api';
@@ -151,14 +152,6 @@ export function CityMarketListing({
   // تیک‌های چندشهری — شهرهای دیگر استان (شهر خود صفحه جداست و همیشه هست)
   const [extraCityIds, setExtraCityIds] = useState<number[]>(initialExtraCityIds ?? []);
   const [sort, setSort] = useState<SortKey>('related');
-  const [page, setPage] = useState(initialPage ?? 1);
-
-  // همگام‌سازی صفحه با URL سئو — /city/tehran/2 (الگوی تنظیم state در زمان رندر)
-  const [lastInitialPage, setLastInitialPage] = useState(initialPage ?? 1);
-  if (lastInitialPage !== (initialPage ?? 1)) {
-    setLastInitialPage(initialPage ?? 1);
-    setPage(initialPage ?? 1);
-  }
 
   // موبایل — بات‌شیت‌های انتخاب
   const [sheet, setSheet] = useState<SheetKind>(null);
@@ -166,30 +159,103 @@ export function CityMarketListing({
 
   const { data: tree = [] } = useCategoryTree(); // فقط بات‌شیت موبایل — سایدبار سرور-رندر
 
-  // کوئری چندشهری — شهر صفحه همیشه اول
+  // کوئری چندشهری — شهر صفحه همیشه اول (بدون page — صفحه = pageParam)
   const cityIds = useMemo(() => [city.id, ...extraCityIds], [city.id, extraCityIds]);
-
-  // با تغییر فیلترها به صفحه ۱ برگرد (الگوی تنظیم state در زمان رندر)
-  const filterKey = `${categorySlug ?? ''}|${extraCityIds.join(',')}|${sort}`;
-  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
-  if (lastFilterKey !== filterKey) {
-    setLastFilterKey(filterKey);
-    setPage(1);
-  }
-
-  const query = useMemo(
-    () => ({ cityIds, categorySlug, sort, page }),
-    [cityIds, categorySlug, sort, page],
-  );
+  const query = useMemo(() => ({ cityIds, categorySlug, sort }), [cityIds, categorySlug, sort]);
 
   // seed فقط برای کوئری پیش‌فرض اولیه (شهر خود صفحه، related، همان شمارهٔ صفحه) —
-  // با اولین تیک/سورت/صفحه، رفچ تازه از سرویس چندشهری می‌رود
+  // با اولین تیک/سورت، رفچ تازه از سرویس چندشهری می‌رود
   const isDefaultFilters = sort === 'related' && extraCityIds.length === 0;
-  const { data, isFetching, isLoading, isError, refetch } = useCityMarketProducts(
-    query,
-    isDefaultFilters && page === (initialPage ?? 1) ? initialData : undefined,
-  );
-  const items = data?.items ?? [];
+
+  // ─── اسکرول بی‌پایان (خواستهٔ مالک ۱۴-۱۱) — عین ProductListing ────
+  const firstPage = initialPage ?? 1;
+  const { data, isLoading, isFetching, isFetchingNextPage, fetchNextPage, hasNextPage, isError, refetch } =
+    useInfiniteCityMarketProducts(query, isDefaultFilters ? initialData : undefined);
+
+  const items = useMemo(() => {
+    const seen = new Set<number>();
+    const out: Product[] = [];
+    for (const pg of data?.pages ?? []) {
+      for (const p of pg.items) {
+        if (!seen.has(p.id)) {
+          seen.add(p.id);
+          out.push(p);
+        }
+      }
+    }
+    return out;
+  }, [data]);
+
+  const loadedCount = data?.pages.length ?? 0;
+  const total = data?.pages.at(-1)?.total ?? 0;
+
+  /** صفحهٔ در حال مشاهده — از جایگاه ویوپورت در گرید (بافر پیش‌واکشی) */
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const [viewedPage, setViewedPage] = useState(1);
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const rect = el.getBoundingClientRect();
+      if (rect.height <= 0 || loadedCount <= 0) return;
+      const perPage = rect.height / loadedCount;
+      if (perPage <= 0) return;
+      const depth = Math.ceil((window.innerHeight - rect.top) / perPage);
+      const v = Math.max(1, Math.min(loadedCount, depth));
+      setViewedPage((prev) => (prev !== v ? v : prev));
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [loadedCount]);
+
+  /** بافر پیش‌واکشی — ۲ صفحه جلوتر از صفحهٔ در حال مشاهده، idle پس از لود اولیه */
+  useEffect(() => {
+    if (!hasNextPage || isFetching || isLoading) return;
+    if (loadedCount >= viewedPage + 2) return;
+    let cancelled = false;
+    const go = () => {
+      if (!cancelled) void fetchNextPage();
+    };
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number;
+      cancelIdleCallback?: (h: number) => void;
+    };
+    const ric = w.requestIdleCallback;
+    const handle = ric !== undefined ? ric(go, { timeout: 1500 }) : window.setTimeout(go, 400);
+    return () => {
+      cancelled = true;
+      if (ric !== undefined) w.cancelIdleCallback?.(handle);
+      else window.clearTimeout(handle);
+    };
+  }, [viewedPage, hasNextPage, isFetching, isLoading, loadedCount, fetchNextPage]);
+
+  /** نگهبان انتهای گرید — تور ایمنی روی تخمین viewedPage */
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting) && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
+        }
+      },
+      { rootMargin: '1200px 0px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // ─── تیک چندشهری — فوری + پایدار در URL ──────────────────────
   /** مسیر جاری بازار (دسته یا ریشه) — تیک‌ها باید همان‌جا بمانند */
@@ -345,8 +411,11 @@ export function CityMarketListing({
 
   return (
     <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-4 lg:grid-cols-[260px_1fr] lg:px-6 lg:py-6">
-      {/* سایدبار فیلتر — دسکتاپ: دسته‌ها (سرور-رندر) + شهرهای استان (تیک) */}
-      <aside className="hidden space-y-5 lg:block" aria-label="فیلترها">
+      {/* سایدبار فیلتر — دسکتاپ؛ چسبان (خواستهٔ مالک ۱۴-۱۱): عین ProductListing */}
+      <aside
+        className="hidden space-y-5 lg:block lg:self-start lg:sticky lg:top-[125px] lg:max-h-[calc(100vh-141px)] lg:overflow-y-auto lg:pb-1"
+        aria-label="فیلترها"
+      >
         <div className="rounded-md border bg-card p-4">{sidebar}</div>
         <div className="rounded-md border bg-card p-4">{provinceCitiesBlock('sidebar')}</div>
       </aside>
@@ -426,68 +495,112 @@ export function CityMarketListing({
           )}
         </div>
 
-        {/* گرید */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-4 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-md md:h-80" />)}
-          </div>
-        ) : isError ? (
-          // خطای سرویس — جدا از «نتیجه‌ای نیست» تا کاربر فکر نکند آگهی واقعاً نیست
-          <div className="rounded-md border bg-card p-8 text-center md:p-12">
-            <p className="text-lg font-bold">دریافت آگهی‌ها ناموفق بود.</p>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-              ارتباط با بازار {city.name} برقرار نشد — دوباره تلاش کنید.
-            </p>
-            <Button className="mt-4 rounded-md" onClick={() => refetch()}>
-              <RotateCcw size={15} />
-              تلاش دوباره
-            </Button>
-          </div>
-        ) : items.length === 0 ? (
-          <div className="rounded-md border bg-card p-8 text-center md:p-12">
-            <p className="text-lg font-bold">آگهی‌ای با این فیلترها پیدا نشد!</p>
-            {provinceCities.length > 0 && (
+        {/* گرید — ref برای تخمین صفحهٔ در حال مشاهده */}
+        <div ref={gridRef}>
+          {isLoading ? (
+            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-4 xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-md md:h-80" />)}
+            </div>
+          ) : isError ? (
+            // خطای سرویس — جدا از «نتیجه‌ای نیست» تا کاربر فکر نکند آگهی واقعاً نیست
+            <div className="rounded-md border bg-card p-8 text-center md:p-12">
+              <p className="text-lg font-bold">دریافت آگهی‌ها ناموفق بود.</p>
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-                هنوز در {city.name} با این فیلترها آگهی‌ای نیست — شهرهای دیگر استان{' '}
-                {city.provinceName} را تیک بزنید یا بازار شهرهای نزدیک را ببینید.
+                ارتباط با بازار {city.name} برقرار نشد — دوباره تلاش کنید.
               </p>
-            )}
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-              {provinceCities.length > 0 && (
-                <Button
-                  variant="outline"
-                  className="rounded-md lg:hidden"
-                  onClick={() => setSheet('cities')}
-                >
-                  <MapPin size={14} />
-                  تیک شهرهای دیگر استان
-                </Button>
-              )}
-              <Button asChild className="rounded-md">
-                <Link href="/#rfq">ثبت درخواست خرید</Link>
+              <Button className="mt-4 rounded-md" onClick={() => refetch()}>
+                <RotateCcw size={15} />
+                تلاش دوباره
               </Button>
             </div>
-          </div>
-        ) : (
-          <div className={cn('grid grid-cols-1 gap-2.5 transition-opacity md:grid-cols-3 md:gap-4 xl:grid-cols-4', isFetching && 'opacity-60')}>
-            {items.map((p, i) => (
-              <ProductCard key={p.id} product={p} priority={i < 4} />
-            ))}
+          ) : items.length === 0 ? (
+            <div className="rounded-md border bg-card p-8 text-center md:p-12">
+              <p className="text-lg font-bold">آگهی‌ای با این فیلترها پیدا نشد!</p>
+              {provinceCities.length > 0 && (
+                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+                  هنوز در {city.name} با این فیلترها آگهی‌ای نیست — شهرهای دیگر استان{' '}
+                  {city.provinceName} را تیک بزنید یا بازار شهرهای نزدیک را ببینید.
+                </p>
+              )}
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                {provinceCities.length > 0 && (
+                  <Button
+                    variant="outline"
+                    className="rounded-md lg:hidden"
+                    onClick={() => setSheet('cities')}
+                  >
+                    <MapPin size={14} />
+                    تیک شهرهای دیگر استان
+                  </Button>
+                )}
+                <Button asChild className="rounded-md">
+                  <Link href="/#rfq">ثبت درخواست خرید</Link>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div
+              className={cn(
+                'grid grid-cols-1 gap-2.5 transition-opacity md:grid-cols-3 md:gap-4 xl:grid-cols-4',
+                isFetching && !isFetchingNextPage && 'opacity-60',
+              )}
+            >
+              {items.map((p, i) => (
+                <ProductCard key={p.id} product={p} priority={i < 4} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ─── اسکرول بی‌پایان: لینک «مشاهده بیشتر» سئو (خواستهٔ مالک ۱۴-۱۱) ───
+            در حالت پیش‌فرض (بدون تیک چندشهری) <a href> واقعی به /city/tehran/2 و…
+            می‌رود — زنجیرهٔ کشف گوگل؛ کلیک کاربر = لود درجا؛ صفحهٔ آخر → حذف */}
+        {!isLoading && !isError && items.length > 0 && hasNextPage && (
+          <div className="flex justify-center pt-3">
+            {isDefaultFilters ? (
+              <Button asChild variant="outline" className="gap-1.5 rounded-md px-6 font-bold">
+                <a
+                  href={
+                    firstPage + loadedCount <= 1
+                      ? basePath
+                      : `${basePath}/${firstPage + loadedCount}`
+                  }
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!isFetchingNextPage) void fetchNextPage();
+                  }}
+                >
+                  {isFetchingNextPage ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <ChevronDown size={15} />
+                  )}
+                  مشاهده آگهی‌های بیشتر
+                </a>
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                className="gap-1.5 rounded-md px-6 font-bold"
+                disabled={isFetchingNextPage}
+                onClick={() => void fetchNextPage()}
+              >
+                {isFetchingNextPage ? <Loader2 size={15} className="animate-spin" /> : <ChevronDown size={15} />}
+                مشاهده آگهی‌های بیشتر
+              </Button>
+            )}
           </div>
         )}
 
-        {/* صفحه‌بندی — سئو (خواستهٔ مالک ۱۴-۱۱): در حالت پیش‌فرض (بدون تیک
-            چندشهری) شماره‌ها لینک واقعی به /city/tehran/2 و… هستند */}
-        {data && data.pageCount > 1 && (
-          <SeoPagination
-            page={page}
-            pageCount={data.pageCount}
-            page1Href={isDefaultFilters ? basePath : undefined}
-            pageHrefPattern={isDefaultFilters ? `${basePath}/{p}` : undefined}
-            onPageChange={setPage}
-            variant="numbers"
-          />
+        {/* پایان لیست — همهٔ آگهی‌ها دیده شد */}
+        {!isLoading && !isError && items.length > 0 && !hasNextPage && loadedCount > 1 && (
+          <p className="pt-3 text-center text-xs text-muted-foreground">
+            همهٔ {toFa(total)} آگهی این بازار نمایش داده شد
+          </p>
         )}
+
+        {/* نگهبان اسکرول — ۱۲۰۰px قبل از رسیدن به انتها صفحهٔ بعد را می‌خواهد */}
+        <div ref={sentinelRef} aria-hidden className="h-px" />
       </div>
 
       {/* ─── بات‌شیت دسته‌ها — موبایل (سلسله‌مراتبی، لینک‌های شهری) ── */}
