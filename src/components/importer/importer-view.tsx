@@ -312,11 +312,23 @@ function StatusChips({
       icon: <HardDrive size={13} />,
     },
     {
-      label: ping?.cookieSet ? 'کوکی باسکول فعال' : 'بدون کوکی باسکول',
-      ok: ping?.cookieSet ? true : null,
-      hint: ping?.cookieSet
-        ? 'متن کامل کامنت‌ها دریافت می‌شود'
-        : 'عمومی کار می‌کند؛ برای متن کامنت‌ها BUSKOOL_COOKIE را در .env بگذارید',
+      // سه حالت کوکی (۱۵-۱۱): بدون کوکی / کوکی لاگین‌شده / کوکی مهمان
+      // (کوکی مهمان از باسکول پذیرفته می‌شود ولی متن کامنت‌ها را باز نمی‌کند)
+      label: !ping?.cookieSet
+        ? 'بدون کوکی باسکول'
+        : ping.cookieLoggedIn === true
+          ? 'کوکی باسکول: لاگین‌شده'
+          : ping.cookieLoggedIn === false
+            ? 'کوکی باسکول: بدون لاگین!'
+            : 'کوکی باسکول تنظیم است',
+      ok: !ping?.cookieSet ? null : ping.cookieLoggedIn === false ? false : true,
+      hint: !ping?.cookieSet
+        ? 'عمومی کار می‌کند؛ برای متن کامنت‌ها BUSKOOL_COOKIE را در .env بگذارید'
+        : ping.cookieLoggedIn === true
+          ? 'متن کامل کامنت‌ها دریافت می‌شود'
+          : ping.cookieLoggedIn === false
+            ? 'این کوکی سشن مهمان است و چیزی باز نمی‌کند — در buskool.com وارد حساب شوید و بعد از تب Network (درخواست XHR) کوکی تازه را کپی کنید'
+            : 'وضعیت لاگین سشن نامشخص است — با اجرای ایمپورت یا اسکریپت refresh مشخص می‌شود',
       icon: <KeyRound size={13} />,
     },
     {

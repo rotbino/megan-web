@@ -16,6 +16,10 @@ export interface PingInfo {
   delayMs: number;
   busy: boolean;
   cookieSet: boolean;
+  /** سلامت سشن باسکول (۱۵-۱۱): true = لاگین، false = سشن مهمان/بی‌اثر،
+   *  null = بدون کوکی یا خطای شبکه — کوکی مهمان هم cookieSet:true می‌دهد
+   *  ولی متن کامنت‌ها را باز نمی‌کند */
+  cookieLoggedIn?: boolean | null;
   adminPhone: string;
   /** درایور ذخیرهٔ عکس‌ها — local یعنی دیسک ./uploads، arvan یعنی ابر */
   storageDriver?: string;
