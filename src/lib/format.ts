@@ -126,3 +126,56 @@ export function unitHintFa(amount: number, unit: string): string | null {
   }
   return null;
 }
+
+// ─── پاکسازی توضیحات HTML-مانند (خواستهٔ مالک ۱۴-۱۱) ─────────────────────────
+// باسکول خطوط توضیح آگهی را با <hr/> جدا می‌کند. بک‌اند حالا موقع ایمپورت
+// نرمال می‌کند و دیتای قدیمی backfill شده؛ این تابع تورِ ایمنیِ نمایش است —
+// هر <hr>/<br>/تگ بلوکی باقیمانده را به خط نو (\n) می‌برد تا با
+// whitespace-pre-line درست بیفتد و تگ خام در UI دیده نشود.
+
+const DESC_NAMED_ENTITIES: Record<string, string> = {
+  nbsp: ' ',
+  zwnj: '\u200c',
+  lrm: '\u200e',
+  rlm: '\u200f',
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  '#39': "'",
+  laquo: '«',
+  raquo: '»',
+  hellip: '…',
+  mdash: '—',
+  ndash: '–',
+  middot: '·',
+  bull: '•',
+};
+
+const DESC_LINE_BREAK_TAG =
+  /<(?:hr|br)\b[^>]*>|<\/?(?:p|div|li|ul|ol|h[1-6]|tr|table|blockquote)\b[^>]*>/gi;
+
+function safeCodePoint(code: number): string {
+  return Number.isFinite(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '';
+}
+
+/** متن سادهٔ چندخطی از توضیحات — جداکننده‌ها → \n، تگ‌ها حذف، موجودیت‌ها دیکد */
+export function descToText(input: string | null | undefined): string {
+  let t = String(input ?? '');
+  if (!t.includes('<') && !t.includes('&')) return t.trim();
+  t = t
+    .replace(/\r\n?/g, '\n')
+    .replace(DESC_LINE_BREAK_TAG, '\n')
+    .replace(/<[^>]*>/g, '');
+  t = t
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => safeCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec: string) => safeCodePoint(parseInt(dec, 10)))
+    .replace(/&([a-z#0-9]+);/gi, (m, name: string) => DESC_NAMED_ENTITIES[name.toLowerCase()] ?? m);
+  return t
+    .split('\n')
+    .map((line) => line.replace(/[ \t\u00a0]+/g, ' ').trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}

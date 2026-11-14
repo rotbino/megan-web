@@ -35,7 +35,7 @@ import { MobileContactBar } from '@/components/products/mobile-contact-bar';
 import { ArrowLeftIcon } from '@/components/shared/buskool-icons';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { stockFa, toFa, priceFa } from '@/lib/format';
+import { stockFa, toFa, priceFa, descToText } from '@/lib/format';
 import { apiBase, joinUrl } from '@/lib/api/client';
 import { SITE_URL } from '@/lib/site';
 import type { Product } from '@/lib/types';
@@ -140,6 +140,9 @@ export default async function ProductViewPage({ params }: Props) {
   const city = product.cityName.trim();
   const sellerName = `${product.seller.firstName} ${product.seller.lastName}`.trim();
   const productUrl = `/product-view/${product.slug}/${product.categoryName}/${product.id}`;
+  // توضیحات → متن سادهٔ چندخطی: <hr/> جداکنندهٔ خطوط باسکول به خط نو می‌افتد
+  // و تگ/موجودیت HTML دیگری در UI یا JSON-LD دیده نمی‌شود (خواستهٔ مالک ۱۴-۱۱)
+  const plainDesc = descToText(product.description);
 
   const info = [
     { icon: User, label: 'نام فروشنده', value: sellerName },
@@ -269,7 +272,7 @@ export default async function ProductViewPage({ params }: Props) {
             <section aria-labelledby="desc" className="rounded-md border bg-card p-5">
               <h2 id="desc" className="mb-3 text-base font-bold">توضیحات محصول</h2>
               <p className="whitespace-pre-line text-sm leading-7 text-muted-foreground">
-                {product.description}
+                {plainDesc || '—'}
               </p>
             </section>
 
@@ -455,7 +458,7 @@ export default async function ProductViewPage({ params }: Props) {
           '@context': 'https://schema.org',
           '@type': 'Product',
           name: product.productName,
-          description: product.description.slice(0, 300),
+          description: plainDesc.slice(0, 300),
           category: product.subCategoryName,
           image: product.photos.slice(0, 4).map(absoluteUrl),
           url: `${SITE_URL}${productUrl}`,
