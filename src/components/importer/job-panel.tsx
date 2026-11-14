@@ -186,6 +186,8 @@ const COUNTER_LABELS: Record<string, string> = {
   reviews: 'کامنت ثبت‌شده',
   imagesDownloaded: 'تصویر دانلودشده',
   imagesFailed: 'تصویر ناموفق',
+  relatedsDownloaded: 'تصویر کسب‌وکار',
+  relatedsFailed: 'تصویر کسب‌وکار ناموفق',
   usersDone: 'کاربر موفق',
   usersFailed: 'کاربر خطادار',
   usersSkipped: 'ردشده (قبلاً)',
