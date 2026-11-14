@@ -285,7 +285,11 @@ function StatusChips({
     {
       label: ping ? 'بک‌اند متصل' : 'بک‌اند قطع',
       ok: pingError ? false : ping ? true : null,
-      hint: ping ? `پورت ۴۰۰۰ • تاخیر ${(ping.delayMs / 1000).toLocaleString('fa-IR')} ثانیه بین هر درخواست` : 'megan-back را اجرا کنید',
+      hint: ping
+        ? `هر ${(ping.delayMs / 1000).toLocaleString('fa-IR')} ثانیه شروع یک درخواست جدید — تا ${(
+            ping.pace?.concurrency ?? 4
+          ).toLocaleString('fa-IR')} درخواست هم‌زمان`
+        : 'megan-back را اجرا کنید',
       icon: <Cable size={13} />,
     },
     {

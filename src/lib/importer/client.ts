@@ -19,6 +19,8 @@ export interface PingInfo {
   adminPhone: string;
   /** درایور ذخیرهٔ عکس‌ها — local یعنی دیسک ./uploads، arvan یعنی ابر */
   storageDriver?: string;
+  /** وضعیت گام باسکول (۱۴-۱۱) — فاصلهٔ مؤثر/هم‌زمانی/ضریب عقب‌نشینی تطبیقی */
+  pace?: { gapMs: number; effectiveGapMs: number; concurrency: number; penalty: number };
 }
 
 export interface DbStats {
