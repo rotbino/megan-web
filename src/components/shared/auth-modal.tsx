@@ -211,7 +211,7 @@ export function AuthModal({
               dir="ltr"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••"
+              placeholder=""
               maxLength={72}
               className="rounded-md text-center"
               autoFocus

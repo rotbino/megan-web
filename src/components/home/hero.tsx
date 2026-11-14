@@ -24,7 +24,7 @@ export function Hero() {
                 <img
                     src="/images/hero.webp"
                     alt=""
-                    fetchPriority="high"
+                    fetchPriority="width"
                     className="h-full w-full object-cover object-[center_60%]"
                 />
                 {/* تیرگی فقط سمت راست — بقیه تصویر کاملاً روشن */}
@@ -39,14 +39,15 @@ export function Hero() {
                 <h1 className="text-4xl font-bold leading-[61px]">
                     ایمچ | بازار خرید و فروش عمده
                 </h1>
-                <h2 className="mt-4 max-w-xl text-xl font-normal leading-9 text-white/85">
-                    ارتباط مستقیم با خریداران و فروشندگان عمده
+                <h2 className="mt-4 max-w-xl text-2xl font-normal leading-9 text-white/85">
+                    تطبیق هوشمند تامین کنندگان و خریداران عمده
                 </h2>
+                
                 <Link
                     href="/product-list"
                     className="mt-8 inline-flex h-12 w-[204px] items-center justify-center gap-1.5 rounded-md bg-white text-base font-medium text-primary-deep transition-colors hover:bg-white/90"
                 >
-                    شروع معاملات عمده
+                    شروع جستجوی عمده
                     <ChevronsLeft size={20} />
                 </Link>
             </div>

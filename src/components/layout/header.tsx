@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, ChevronDown, FileText, LayoutGrid, Search, Sparkles } from 'lucide-react';
+import {ArrowRight, ChevronDown, FileText, LayoutGrid, Plus, Search, Sparkles} from 'lucide-react';
 import { BrandLogo } from '@/components/shared/brand';
 import { HeaderUserMenu } from '@/components/layout/header-user-menu';
 import { TasksBell } from '@/components/shared/tasks-bell';
@@ -410,9 +410,9 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
             ref={megaWrap}
             onMouseLeave={() => setMegaOpen(false)}
             inert={barHidden ? true : undefined}
-            className="relative hidden items-center gap-2.5 border-t border-border/60 nav-desktop:flex nav-desktop:gap-3 nav-desktop:px-6"
+            className="relative  items-center gap-2.5 border-t border-border/60 nav-desktop:flex nav-desktop:gap-3 nav-desktop:px-6"
           >
-            <button
+           {/* <button
               type="button"
               onClick={openMega}
               onMouseEnter={openMega}
@@ -424,7 +424,7 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
               <LayoutGrid size={17} className="text-primary" />
               دسته بندی
               <ChevronDown size={14} className={cn('transition-transform', megaOpen && 'rotate-180')} />
-            </button>
+            </button>*/}
 
             <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
 
@@ -435,19 +435,28 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
               onClick={() => setMegaOpen(false)}
               className="flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
             >
-              <Sparkles size={17} className="text-primary" />
+              <LayoutGrid size={17} className="text-primary" />
               سرویس‌ها
+            </Link>
+
+            <Link
+                href={user ? '/panel/products/new' : '/register'}
+                onClick={() => setMegaOpen(false)}
+                className="flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              <Plus size={20} className="text-primary" />
+              فروشنده شوید
             </Link>
 
             <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
 
             {/* CTA بازاریابی — رنگ تمایز (آبی زندهٔ ثابت، نه رنگ برند کاربر) */}
-            <Link
+           {/* <Link
               href={user ? '/panel/products/new' : '/register'}
               className="flex h-9 shrink-0 items-center whitespace-nowrap rounded-md px-2.5 text-sm font-bold text-emphasis transition-colors hover:bg-emphasis-soft hover:text-emphasis-deep"
             >
               فروشنده شوید
-            </Link>
+            </Link>*/}
 
             {/* مگامنوی دسته‌بندی — چسبیده به نوار (بدون فاصله تا هاور قطع نشود) */}
             {megaOpen && (

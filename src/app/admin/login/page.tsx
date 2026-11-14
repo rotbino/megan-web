@@ -110,7 +110,7 @@ export default function AdminLoginPage() {
               dir="ltr"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder=""
               maxLength={72}
               className="rounded-md"
               autoComplete="current-password"
@@ -123,7 +123,7 @@ export default function AdminLoginPage() {
             </p>
           )}
 
-          <Button type="submit" size="lg" className="w-full rounded-md" disabled={pending}>
+          <Button type="submit" size="lg" className="w-full rounded-md py-6" disabled={pending}>
             {pending ? <Loader2 className="animate-spin" size={18} /> : <LogIn size={17} />}
             {pending ? 'در حال ورود…' : 'ورود به پنل مدیریت'}
           </Button>
