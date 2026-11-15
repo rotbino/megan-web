@@ -2,7 +2,7 @@
 
 /**
  * تصاویر آگهی‌ها — صفحهٔ «دیتا ایمپورت → تصاویر آگهی‌ها» (خواستهٔ مالک ۱۳-۱۱،
- * بازطراحی ۱۵-۱۱: ردیفی + سورت/بازهٔ تاریخ + آدرس یکتا).
+ * بازطراحی ۱۵-۱۱ ردیفی، بازطراحی ۱۶-۱۱ عصر گروهی).
  * هدف: سریع‌ترین اسکن برای یافتن تصاویر واترمارک‌دار باسکول + «تعویض درجا»:
  *
  *   گردش‌کار مالک: تصویر را باز می‌کند و ذخیره می‌کند → در Paint واترمارک باسکول
@@ -10,14 +10,17 @@
  *   (همان نام/مسیر/URL) نوشته می‌شود و تامبنیل هم از روی تصویر تازه در همان
  *   کلید تامبنیل بازساخته می‌شود. نمایش با ?v=<آخرین تعویض> کش را می‌شکند.
  *
- * بازطراحی ۱۵-۱۱ (خواستهٔ مالک):
- *   • سورت پیش‌فرض: آخرین آپدیت نزولی، بعد تاریخ ثبت (باسکول واترمارک را
- *     جدیدا گذاشته → جدیدترین‌ها اول). سورت‌های دیگر: ثبت/شناسهٔ آگهی/حجم.
- *   • ۵۰ رکورد در هر صفحه؛ هر صفحه آدرس یکتا دارد (?page=… + فیلترها در
- *     URL) — ویرایش URL = پرش مستقیم.
- *   • چیدمان ردیفی: تصویر تمیز (بدون بج روی عکس)، مشخصات و دکمه‌های
- *     آپلود/دانلود کنار تصویر.
- *   • فیلتر بازهٔ زمانی (ثبت/آپدیت) + دکمه‌های سریع + ۶ ماه شمسی اخیر.
+ * بازطراحی ۱۶-۱۱ عصر (خواستهٔ مالک):
+ *   • کارت گروهی: هر آگهی یک کارت با «همهٔ» عکس‌هایش کنار هم — چیدمان قبلی هر
+ *     عکس را ردیف جدا می‌داد و آگهی چندعکسه چندبار تکرار می‌شد؛ حالا هیچ
+ *     عکسی از قلم نمی‌افتد چون کل گالری آگهی یک‌جا دیده می‌شود.
+ *   • عکس‌ها بزرگ: ۳۰۰×۳۰۰ (اصل فایل — نه تامبنیل — تا واترمارک واضح باشد).
+ *   • صفحه‌بندی بر «آگهی» (نه بر فایل) — عکس‌های یک آگهی بین دو صفحه نمی‌شکافند.
+ *   • سورت‌های محصولی: آپدیت/ثبت/شناسه + تعداد عکس + حجم کل گالری.
+ *
+ * میراث ۱۵-۱۱: سورت پیش‌فرض آخرین آپدیت نزولی؛ ۵۰ رکورد در هر صفحه؛ آدرس یکتا
+ * برای هر صفحه (?page=… + فیلترها در URL)؛ فیلتر بازهٔ زمانی + دکمه‌های سریع +
+ * ۶ ماه شمسی اخیر.
  */
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
@@ -51,7 +54,8 @@ import { useToast } from '@/hooks/use-toast';
 import {
   API_BASE,
   productImagesApi,
-  type ProductImageRow,
+  type ProductImageGroupPhoto,
+  type ProductImageGroupRow,
   type ProductImagesParams,
 } from '@/lib/importer/client';
 import { dateFa, timeAgoFa, toFa } from '@/lib/format';
@@ -63,19 +67,21 @@ const MAX_FILE_MB = 5;
 const MIN_FILE_KB = 4;
 const ACCEPTED = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
-/** ۵۰ رکورد در هر صفحه (خواستهٔ مالک ۱۵-۱۱) */
+/** ۵۰ آگهی در هر صفحه (صفحه‌بندی گروهی بر آگهی — نه بر فایل) */
 const PAGE_SIZE = 50;
 
-/** فیلدهای سورت — پیش‌فرض آخرین آپدیتِ آگهی (تاریخ‌های فایل = زمان ایمپورت‌اند
- *  و برای شکار واترمارک بی‌معنا؛ تاریخ‌های معنا‌دار مال خودِ آگهی‌اند) */
+/** اندازهٔ نمایش هر عکس (خواستهٔ مالک ۱۶-۱۱ عصر: «خیلی بزرگتر، مثلا ۳۰۰×۳۰۰») */
+const PHOTO_BOX = 'size-[300px]';
+
+/** سورت‌های گروهی — همه بر آگهی (نه بر فایل) */
 const SORT_OPTIONS = [
   { value: 'productUpdated', label: 'مرتب: آخرین آپدیت آگهی' },
   { value: 'productCreated', label: 'مرتب: تاریخ ثبت آگهی' },
   { value: 'productId', label: 'مرتب: شناسهٔ آگهی' },
-  { value: 'size', label: 'مرتب: حجم فایل' },
-  { value: 'updatedAt', label: 'مرتب: آخرین تغییر تصویر' },
-  { value: 'createdAt', label: 'مرتب: زمان ایمپورت تصویر' },
+  { value: 'photoCount', label: 'مرتب: تعداد عکس آگهی' },
+  { value: 'size', label: 'مرتب: حجم کل تصاویر آگهی' },
 ] as const;
+const SORT_VALUES = new Set(SORT_OPTIONS.map((o) => o.value as string));
 
 /** فیلد هدف بازهٔ زمانی — روی تاریخ‌های خودِ آگهی (باسکول) */
 const DATE_FIELDS: DateRangeField[] = [
@@ -94,114 +100,164 @@ function vSrc(url: string, updatedAt: string): string {
   return `${imgSrc(url)}${url.includes('?') ? '&' : '?'}v=${v}`;
 }
 
-// ═══════════════════════════════ ردیف تصویر ═══════════════════════════════
-// چیدمان ردیفی (خواستهٔ مالک ۱۵-۱۱): تصویر تمیز در یک سو، مشخصات آگهی و
-// دکمه‌های آپلود/دانلود کنارش — چشم عمودی اسکن می‌کند و هیچ چیزی روی عکس نیست.
+// ═══════════════════════════════ سلول عکس (۳۰۰×۳۰۰) ═══════════════════════════════
 
-function ImageRow({
-  row,
+/**
+ * یک عکس از گالری آگهی — اصل فایل (نه تامبنیل) در جعبهٔ ۳۰۰×۳۰۰ تا واترمارک
+ * باسکول واضح دیده شود؛ کلیک = بازکردن اصل برای ذخیره/ویرایش؛ دکمه‌های
+ * آپلود/دانلود زیر عکس، همیشه دم‌دست (موبایل بدون hover هم).
+ */
+function PhotoCell({
+  photo,
   replacing,
   onPickFile,
 }: {
-  row: ProductImageRow;
+  photo: ProductImageGroupPhoto;
   replacing: boolean;
   onPickFile: (id: string) => void;
 }) {
-  const display = vSrc(row.thumbUrl ?? row.url, row.updatedAt);
-  const main = vSrc(row.url, row.updatedAt);
-  const productHref = row.product
-    ? `/product-view/${row.product.slug}/-/${row.product.id}`
-    : null;
+  // اصل فایل — تامبنیل ۳۷۵px برای جعبهٔ ۳۰۰px کیفیت کافی برای شکار واترمارک ندارد
+  const main = vSrc(photo.url, photo.updatedAt);
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-card p-2 transition-colors hover:border-primary/40">
-      {/* تصویر — کلیک = بازکردن اصل برای ذخیره/ویرایش؛ بدون هیچ بج روی عکس */}
+    <figure className="w-[300px] shrink-0">
       <a
         href={main}
         target="_blank"
         rel="noreferrer"
-        title="بازکردن تصویر اصلی (ذخیره کنید، در پینت واترمارک باسکول را پاک کنید و با دکمهٔ آپلود کنارش جایگزین کنید)"
-        className="relative block size-32 shrink-0 self-center overflow-hidden rounded-md border bg-white"
+        title="بازکردن تصویر اصلی (ذخیره کنید، در پینت واترمارک باسکول را پاک کنید و با دکمهٔ آپلود زیرش جایگزین کنید)"
+        className={cn(
+          'relative block overflow-hidden rounded-md border bg-white',
+          PHOTO_BOX,
+          photo.replacedAt && 'border-emerald-300',
+        )}
       >
         <img
-          src={display}
-          alt={row.product?.name ?? row.name}
+          src={main}
+          alt={photo.name}
           className="h-full w-full object-contain"
           loading="lazy"
         />
+        {photo.replacedAt ? (
+          <span
+            className="absolute start-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-emerald-500/90 px-1.5 py-0.5 text-[9px] font-bold text-white"
+            title={`تعویض‌شده: ${dateFa(photo.replacedAt)} (${timeAgoFa(photo.replacedAt)})`}
+          >
+            <BadgeCheck size={9} /> اصلاح‌شده
+          </span>
+        ) : null}
         {/* لایهٔ آپلود */}
         {replacing ? (
           <span className="absolute inset-0 grid place-items-center bg-background/70 backdrop-blur-[1px]">
-            <Loader2 size={22} className="animate-spin text-primary" />
+            <Loader2 size={26} className="animate-spin text-primary" />
           </span>
         ) : null}
       </a>
-
-      {/* مشخصات آگهی و تصویر */}
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex min-w-0 items-center gap-1.5">
-          {productHref ? (
-            <a
-              href={productHref}
-              target="_blank"
-              rel="noreferrer"
-              className="truncate text-[12.5px] font-bold hover:text-primary hover:underline"
-              title={row.product?.name}
-            >
-              {row.product?.name}
+      {/* مشخصات + عملیات زیر عکس — بدون هیچ بج باسکول روی عکس */}
+      <figcaption className="mt-1 flex items-center justify-between gap-1">
+        <p className="truncate text-[10px] text-muted-foreground">
+          {photo.width && photo.height ? `${toFa(photo.width)}×${toFa(photo.height)}` : ''}
+          {photo.width && photo.height ? ' • ' : ''}
+          {toFa(Math.round(photo.size / 1024))}KB
+        </p>
+        <span className="flex shrink-0 items-center gap-1">
+          <Button
+            size="sm"
+            className="h-7 gap-1 rounded-md px-2 text-[10.5px] font-bold"
+            disabled={replacing}
+            onClick={() => onPickFile(photo.id)}
+            title="فایل اصلاح‌شده (بدون واترمارک باسکول) را انتخاب کنید — همان نام و مسیر جایگزین می‌شود"
+          >
+            {replacing ? <Loader2 size={10} className="animate-spin" /> : <Replace size={10} />}
+            آپلود اصلاح‌شده
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="size-7 shrink-0 rounded-md p-0"
+            asChild
+            title="ذخیرهٔ تصویر اصلی برای ویرایش"
+          >
+            <a href={main} target="_blank" rel="noreferrer" download>
+              <Download size={12} />
             </a>
-          ) : (
-            <p className="truncate text-[12.5px] font-bold text-muted-foreground" title="آگهِ این عکس حذف شده است">
-              آگهی حذف‌شده
-            </p>
-          )}
-          {row.replacedAt ? (
-            <span
-              className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-emerald-500/90 px-1.5 py-0.5 text-[9px] font-bold text-white"
-              title={`تعویض‌شده: ${dateFa(row.replacedAt)} (${timeAgoFa(row.replacedAt)})`}
-            >
-              <BadgeCheck size={9} /> اصلاح‌شده
-            </span>
-          ) : null}
-        </div>
-        <p className="truncate text-[10.5px] text-muted-foreground" dir="ltr">
-          #{toFa(row.product?.id ?? 0)} • {row.owner ? `${row.owner.name || `@${row.owner.userName}`}` : '—'}
-        </p>
-        <p className="truncate text-[10.5px] text-muted-foreground">
-          ثبت آگهی: {row.product ? dateFa(row.product.createdAt) : '—'} • آپدیت آگهی:{' '}
-          {row.product ? dateFa(row.product.updatedAt) : '—'}
-          {row.product ? <span className="text-muted-foreground/70"> ({timeAgoFa(row.product.updatedAt)})</span> : null}
-        </p>
-        <p className="truncate text-[10px] text-muted-foreground/80">
-          {row.width && row.height ? `${toFa(row.width)}×${toFa(row.height)}` : ''} •{' '}
-          {toFa(Math.round(row.size / 1024))}KB • منبع: {row.source === 'buskool' ? 'باسکول' : 'خودی'} • ایمپورت تصویر:{' '}
-          {dateFa(row.createdAt)}
-        </p>
+          </Button>
+        </span>
+      </figcaption>
+    </figure>
+  );
+}
+
+// ═══════════════════════════════ کارت آگهی (گروهی) ═══════════════════════════════
+
+/** یک آگهی = یک کارت: سربرگ مشخصات + همهٔ عکس‌های گالری کنار هم */
+function ProductCard({
+  row,
+  uploadingId,
+  onPickFile,
+}: {
+  row: ProductImageGroupRow;
+  uploadingId: string | null;
+  onPickFile: (id: string) => void;
+}) {
+  const { product, owner } = row;
+  const productHref = `/product-view/${product.slug}/-/${product.id}`;
+  const anyReplaced = row.photos.some((p) => p.replacedAt);
+  const allReplaced = row.photos.length > 0 && row.photos.every((p) => p.replacedAt);
+
+  return (
+    <div className="space-y-2.5 rounded-lg border bg-card p-3 transition-colors hover:border-primary/40">
+      {/* سربرگ: مشخصات آگهی — یک نگاه، همهٔ اطلاعات */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]">
+        <a
+          href={productHref}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[13px] font-bold hover:text-primary hover:underline"
+          title={product.name}
+        >
+          {product.name}
+        </a>
+        <span className="text-muted-foreground" dir="ltr">
+          #{toFa(product.id)}
+        </span>
+        {anyReplaced ? (
+          <span
+            className={cn(
+              'inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-white',
+              allReplaced ? 'bg-emerald-500/90' : 'bg-emerald-500/60',
+            )}
+            title={allReplaced ? 'همهٔ عکس‌های این آگهی اصلاح شده‌اند' : 'حداقل یک عکس این آگهی اصلاح شده است'}
+          >
+            <BadgeCheck size={9} /> {allReplaced ? 'کامل اصلاح‌شده' : 'اصلاح‌شده دارد'}
+          </span>
+        ) : null}
+        <span className="mx-0.5 h-3.5 w-px bg-border" aria-hidden />
+        <span className="truncate text-muted-foreground">
+          {owner ? (owner.name || `@${owner.userName}`) : '—'}
+        </span>
+        <span className="text-muted-foreground/70">•</span>
+        <span className="truncate text-muted-foreground" title={`ثبت: ${dateFa(product.createdAt)} — آپدیت: ${dateFa(product.updatedAt)}`}>
+          ثبت {dateFa(product.createdAt)} • آپدیت {dateFa(product.updatedAt)} ({timeAgoFa(product.updatedAt)})
+        </span>
+        <span className="text-muted-foreground/70">•</span>
+        <span className="shrink-0 font-bold text-primary">
+          {toFa(row.photoCount)} عکس
+        </span>
+        <span className="text-muted-foreground/70">•</span>
+        <span className="shrink-0 text-muted-foreground">{toFa(Math.round(row.totalSize / 1024))}KB</span>
       </div>
 
-      {/* عملیات — کنار مشخصات، همیشه دم‌دست */}
-      <div className="flex shrink-0 flex-col gap-1.5 self-center sm:flex-row sm:items-center">
-        <Button
-          size="sm"
-          className="h-8 gap-1 rounded-md px-2.5 text-[11px] font-bold"
-          disabled={replacing}
-          onClick={() => onPickFile(row.id)}
-          title="فایل اصلاح‌شده (بدون واترمارک باسکول) را انتخاب کنید — همان نام و مسیر جایگزین می‌شود"
-        >
-          {replacing ? <Loader2 size={11} className="animate-spin" /> : <Replace size={11} />}
-          آپلود نسخهٔ اصلاح‌شده
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="size-8 shrink-0 rounded-md p-0"
-          asChild
-          title="ذخیرهٔ تصویر اصلی برای ویرایش"
-        >
-          <a href={main} target="_blank" rel="noreferrer" download>
-            <Download size={13} />
-          </a>
-        </Button>
+      {/* همهٔ عکس‌های گالری این آگهی — ۳۰۰×۳۰۰، هیچ‌کدام از قلم نمی‌افتد */}
+      <div className="flex flex-wrap gap-2.5">
+        {row.photos.map((photo) => (
+          <PhotoCell
+            key={photo.id}
+            photo={photo}
+            replacing={uploadingId === photo.id}
+            onPickFile={onPickFile}
+          />
+        ))}
       </div>
     </div>
   );
@@ -229,11 +285,16 @@ function ProductImagesManagerInner() {
   const pathname = usePathname();
 
   // ── وضعیت — مقدار اولیه از URL (لینک مستقیم/اشتراک) ──
+  // سورت‌های legacy فایلی (createdAt/updatedAt/newest/oldest) → productUpdated
+  const initSort = () => {
+    const v = sp.get('sort') ?? 'productUpdated';
+    return SORT_VALUES.has(v) ? v : 'productUpdated';
+  };
   const [search, setSearch] = useState(() => sp.get('q') ?? '');
   const [debounced, setDebounced] = useState(() => (sp.get('q') ?? '').trim());
   const [source, setSource] = useState<string>(() => sp.get('src') ?? 'all');
   const [replaced, setReplaced] = useState<string>(() => sp.get('rep') ?? ANY);
-  const [sort, setSort] = useState<string>(() => sp.get('sort') ?? 'productUpdated');
+  const [sort, setSort] = useState<string>(initSort);
   const [dir, setDir] = useState<'asc' | 'desc'>(() => (sp.get('dir') === 'asc' ? 'asc' : 'desc'));
   const [dateField, setDateField] = useState<string>(() => (sp.get('fld') === 'created' ? 'created' : 'updated'));
   const [from, setFrom] = useState<string | null>(() => sp.get('from'));
@@ -269,7 +330,8 @@ function ProductImagesManagerInner() {
   useEffect(() => {
     const nextQ = sp.get('q') ?? '';
     const nextP = Math.max(1, parseInt(sp.get('page') ?? '1', 10) || 1);
-    const nextSort = sp.get('sort') ?? 'productUpdated';
+    const nextSortRaw = sp.get('sort') ?? 'productUpdated';
+    const nextSort = SORT_VALUES.has(nextSortRaw) ? nextSortRaw : 'productUpdated';
     const nextDir = sp.get('dir') === 'asc' ? 'asc' : 'desc';
     const nextSrc = sp.get('src') ?? 'all';
     const nextRep = sp.get('rep') ?? ANY;
@@ -288,7 +350,7 @@ function ProductImagesManagerInner() {
     setSearch((cur) => (cur !== nextQ ? nextQ : cur));
   }, [sp]);
 
-  // ── پارامترهای API ──
+  // ── پارامترهای API (گروهی — صفحه‌بندی بر آگهی) ──
   const params: ProductImagesParams = useMemo(
     () => ({
       ...(debounced ? { q: debounced } : {}),
@@ -308,8 +370,8 @@ function ProductImagesManagerInner() {
   );
 
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['product-images', params],
-    queryFn: () => productImagesApi.list(params),
+    queryKey: ['product-images-grouped', params],
+    queryFn: () => productImagesApi.listGrouped(params),
     placeholderData: keepPreviousData,
   });
 
@@ -327,7 +389,7 @@ function ProductImagesManagerInner() {
         title: 'تصویر جایگزین شد',
         description: 'همان نام و همان مسیر — تصویر اصلی و تامبنیل هر دو بازنویسی شدند.',
       });
-      void queryClient.invalidateQueries({ queryKey: ['product-images'] });
+      void queryClient.invalidateQueries({ queryKey: ['product-images-grouped'] });
     },
     onError: (err) => {
       toast({
@@ -406,7 +468,7 @@ function ProductImagesManagerInner() {
           <div>
             <h1 className="text-base font-extrabold">تصاویر آگهی‌ها</h1>
             <p className="text-[11px] text-muted-foreground">
-              {data ? `${toFa(data.total)} تصویر مطابق فیلترها` : 'یافتن واترمارک باسکول و تعویض درجا'}
+              {data ? `${toFa(data.total)} آگهی مطابق فیلترها — همهٔ عکس‌های هر آگهی یک‌جا` : 'یافتن واترمارک باسکول و تعویض درجا'}
             </p>
           </div>
         </div>
@@ -427,10 +489,10 @@ function ProductImagesManagerInner() {
       <div className="flex items-start gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3.5 py-2.5 text-[11.5px] leading-6">
         <Info size={15} className="mt-0.5 shrink-0 text-primary" />
         <p>
-          <b>گردش‌کار پاک‌کردن واترمارک باسکول:</b> روی تصویر کلیک کنید و اصلی را ذخیره کنید → در Paint واترمارک باسکول را
-          پاک کنید → «آپلود نسخهٔ اصلاح‌شده» را بزنید. فایل جدید <b>در همان نام و همان مسیر</b> جایگزین می‌شود (URL عوض
-          نمی‌شود) و <b>تامبنیل هم دقیقاً به همین شکل</b> از روی تصویر تازه بازساخته می‌شود. واترمارک آیمچِ داخل پیکسل‌ها
-          حفظ می‌شود و دوباره روی آن نمی‌نشیند.
+          <b>گردش‌کار پاک‌کردن واترمارک باسکول:</b> هر کارت یک آگهی است با <b>همهٔ عکس‌هایش</b> — عکسی از قلم نمی‌افتد.
+          روی هر عکس کلیک کنید و اصلی را ذخیره کنید → در Paint واترمارک باسکول را پاک کنید → «آپلود اصلاح‌شده» زیر همان
+          عکس را بزنید. فایل جدید <b>در همان نام و همان مسیر</b> جایگزین می‌شود (URL عوض نمی‌شود) و <b>تامبنیل هم دقیقاً
+          به همین شکل</b> از روی تصویر تازه بازساخته می‌شود. واترمارک آیمچِ داخل پیکسل‌ها حفظ می‌شود و دوباره روی آن نمی‌نشیند.
         </p>
       </div>
 
@@ -490,18 +552,18 @@ function ProductImagesManagerInner() {
           </Select>
 
           <Select value={replaced} onValueChange={(v) => { setReplaced(v); setPage(1); }}>
-            <SelectTrigger className="h-8 w-[140px] rounded-[10px] text-[11.5px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 w-[165px] rounded-[10px] text-[11.5px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value={ANY}>وضعیت اصلاح: همه</SelectItem>
-              <SelectItem value="no">هنوز اصلاح نشده</SelectItem>
-              <SelectItem value="yes">اصلاح‌شده</SelectItem>
+              <SelectItem value="no">عکس اصلاح‌نشده دارد</SelectItem>
+              <SelectItem value="yes">عکس اصلاح‌شده دارد</SelectItem>
             </SelectContent>
           </Select>
 
           <span className="mx-1 h-5 w-px bg-border" aria-hidden />
 
           <Select value={sort} onValueChange={(v) => { setSort(v); setPage(1); }}>
-            <SelectTrigger className="h-8 w-[175px] rounded-[10px] text-[11.5px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 w-[185px] rounded-[10px] text-[11.5px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               {SORT_OPTIONS.map((o) => (
                 <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
@@ -537,33 +599,33 @@ function ProductImagesManagerInner() {
         months={6}
       />
 
-      {/* آلبوم ردیفی — ۵۰تایی */}
+      {/* آلبوم گروهی — هر آگهی یک کارت با همهٔ عکس‌هایش (۳۰۰×۳۰۰) */}
       {isLoading ? (
         <div className="space-y-2">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <Skeleton key={i} className="h-36 w-full rounded-lg" />
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-80 w-full rounded-lg" />
           ))}
         </div>
       ) : rows.length === 0 ? (
         <div className="grid place-items-center rounded-lg border bg-card py-16 text-center">
           <Images size={30} className="text-muted-foreground/40" />
-          <p className="mt-2 text-sm font-bold">تصویری مطابق فیلترها پیدا نشد</p>
+          <p className="mt-2 text-sm font-bold">آگهی‌ای مطابق فیلترها پیدا نشد</p>
           <p className="mt-1 text-[11px] text-muted-foreground">فیلترها را تغییر دهید یا عبارت دیگری جستجو کنید</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {rows.map((row) => (
-            <ImageRow
-              key={row.id}
+            <ProductCard
+              key={row.product.id}
               row={row}
-              replacing={uploadingId === row.id}
+              uploadingId={uploadingId}
               onPickFile={onPickFile}
             />
           ))}
         </div>
       )}
 
-      {/* صفحه‌بندی — ۵۰تایی؛ هر صفحه آدرس یکتا (?page=…) */}
+      {/* صفحه‌بندی — بر آگهی؛ هر صفحه آدرس یکتا (?page=…) */}
       {pageCount > 1 && (
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Button size="sm" variant="outline" className="h-8 rounded-md" disabled={page <= 1} onClick={() => setPage(page - 1)}>

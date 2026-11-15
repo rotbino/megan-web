@@ -599,12 +599,15 @@ export interface ProductImagesParams {
   q?: string;
   source?: 'buskool' | 'native' | 'all';
   replaced?: 'yes' | 'no';
+  /** حالت گروهی (۱۶-۱۱ عصر): هر آگهی یک ردیف با همهٔ عکس‌هایش */
+  group?: 'product';
   /** فیلد سورت — پیش‌فرض productUpdated (آخرین آپدیتِ آگهی، بعد ثبت) */
   sort?:
     | 'productUpdated'
     | 'productCreated'
     | 'productId'
     | 'size'
+    | 'photoCount'
     | 'createdAt'
     | 'updatedAt'
     | 'newest'
@@ -618,6 +621,28 @@ export interface ProductImagesParams {
   updatedTo?: string;
   page?: number;
   pageSize?: number;
+}
+
+/** عکس داخل کارت گروهی — محصول/مالک روی ردیف گروه هست */
+export type ProductImageGroupPhoto = Omit<ProductImageRow, 'product' | 'owner'>;
+
+/** ردیف گروهی (خواستهٔ مالک ۱۶-۱۱ عصر): هر آگهی یک کارت با «همهٔ» عکس‌هایش */
+export interface ProductImageGroupRow {
+  product: NonNullable<ProductImageRow['product']>;
+  owner: ProductImageRow['owner'];
+  photos: ProductImageGroupPhoto[];
+  photoCount: number;
+  totalSize: number;
+}
+
+export interface ProductImagesGroupedList {
+  rows: ProductImageGroupRow[];
+  /** تعداد آگهی‌های منطبق (صفحه‌بندی بر آگهی) */
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  summary: ProductImagesSummary;
 }
 
 /** نتیجهٔ تعویض درجا — همان فایل، بایت‌های تازه */
@@ -666,6 +691,12 @@ export const productImagesApi = {
     adminFetch(`importer/product-images${toQuery(params as Record<string, unknown>)}`).then((r) =>
       json<ProductImagesList>(r),
     ),
+
+  /** حالت گروهی (۱۶-۱۱ عصر): هر آگهی یک کارت با همهٔ عکس‌هایش */
+  listGrouped: (params: ProductImagesParams) =>
+    adminFetch(
+      `importer/product-images${toQuery({ ...params, group: 'product' } as Record<string, unknown>)}`,
+    ).then((r) => json<ProductImagesGroupedList>(r)),
 
   /** تعویض بایت‌های تصویر در همان نام/مسیر — تامبنیل هم بازساخته می‌شود */
   replace: (id: string, file: File) => {
