@@ -663,6 +663,22 @@ function ListImportCard({
     if (source?.connected) void findNext();
   }, [source?.connected, findNext]);
 
+  // پایان جاب لیستی = offset بعدی خودکار (خواستهٔ مالک ۱۵-۱۱: «دیگه لازم نباشه
+  // دکمهٔ ایمپورت‌نشدهٔ بعدی رو بزنم») — اولین کاربر ایمپورت‌نشدهٔ تازه پیدا و
+  // در فیلد «از ردیف» درج می‌شود؛ خط راهنمای «ادامه از …» هم تازه می‌شود.
+  const lastFinishedJobRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      job &&
+      job.kind === 'list' &&
+      (job.status === 'done' || job.status === 'stopped' || job.status === 'failed') &&
+      lastFinishedJobRef.current !== job.id
+    ) {
+      lastFinishedJobRef.current = job.id;
+      void findNext();
+    }
+  }, [job, findNext]);
+
   const start = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -733,19 +749,20 @@ function ListImportCard({
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="li-limit">تعداد کاربر (حداکثر ۲۰۰)</Label>
+          <Label htmlFor="li-limit">تعداد کاربر</Label>
           <Input
             id="li-limit"
             dir="ltr"
             inputMode="numeric"
+            placeholder="200"
             value={limit}
             onChange={(e) => setLimit(e.target.value.replace(/[^0-9]/g, ''))}
             className="text-left font-mono"
             disabled={disabled}
           />
           <p className="text-[10px] leading-4 text-muted-foreground">
-            سقف هر جاب ۲۰۰ کاربر است — برای ایمپورت بیشتر، جاب‌ها را پشت‌سرهم اجرا کنید؛ «ایمپورت‌نشدهٔ
-            بعدی» offset را خودکار پر می‌کند.
+            هر عددی می‌توانید بگذارید (۱۰۰، ۱۰۰۰، ۱۰۰۰۰) — پشت‌سرهم در قطعه‌های ۲۰۰تایی در همین جاب اجرا می‌شود؛
+            وقتی تمام شد offset بعدی خودکار پر می‌شود.
           </p>
         </div>
         <div className="space-y-1.5">
