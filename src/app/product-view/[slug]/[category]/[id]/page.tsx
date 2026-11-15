@@ -36,6 +36,7 @@ import { ArrowLeftIcon } from '@/components/shared/buskool-icons';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { stockFa, toFa, priceFa, descToText } from '@/lib/format';
+import { getRelatedProductsSSR } from '@/lib/mock/api';
 import { apiBase, joinUrl } from '@/lib/api/client';
 import { SITE_URL } from '@/lib/site';
 import type { Product } from '@/lib/types';
@@ -136,6 +137,11 @@ export default async function ProductViewPage({ params }: Props) {
   const { id } = await params;
   const product = await getProduct(Number(id));
   if (!product) notFound();
+
+  // محصولات مشابه — صفحهٔ ۱ سمت سرور (کش ۶۰s هم‌گام خود صفحه) تا داخل HTML
+  // اولیه باشد؛ صفحات بعد در کلاینت با اسکرول/دکمهٔ «نمایش بیشتر» می‌آیند
+  // (خواستهٔ مالک ۱۶-۱۱) — pageSize باید با PAGE_SIZE کامپوننت (۲۰) یکی باشد
+  const relatedPage1 = await getRelatedProductsSSR(product, 1, 20, 60);
 
   const city = product.cityName.trim();
   const sellerName = `${product.seller.firstName} ${product.seller.lastName}`.trim();
@@ -396,9 +402,9 @@ export default async function ProductViewPage({ params }: Props) {
           <SellerCtaBox />
         </div>
 
-        {/* ─── محصولات مشابه — گرید صفحه‌بندی‌شده ─── */}
+        {/* ─── محصولات مشابه — اسکرول بی‌پایان + دکمهٔ «نمایش بیشتر» سئو ─── */}
         <div className="pt-8">
-          <SimilarProducts product={product} />
+          <SimilarProducts product={product} basePath={productUrl} initialData={relatedPage1} />
         </div>
 
         {/* ─── جستجوهای مرتبط (کالا × شهر × فروشنده) ─── */}

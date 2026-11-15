@@ -14,7 +14,6 @@ const qk = {
   products: (q: ProductQuery) => ['products', q] as const,
   cityMarket: (q: CityMarketQuery) => ['city-market', q] as const,
   product: (id: number) => ['product', id] as const,
-  related: (id: number) => ['related', id] as const,
   categoryTree: ['category-tree'] as const,
   provinces: ['provinces'] as const,
   cities: (pid: number) => ['cities', pid] as const,
@@ -98,12 +97,24 @@ export function useProduct(id: number) {
   });
 }
 
-export function useRelatedProducts(product: Product | null | undefined, page = 1, pageSize = 20) {
-  return useQuery({
-    queryKey: product ? [...qk.related(product.id), page, pageSize] : ['related', 'none'],
-    queryFn: () => api.getRelatedProducts(product!, page, pageSize),
+/**
+ * محصولات مشابه با اسکرول بی‌پایان (خواستهٔ مالک ۱۶-۱۱) — عین useInfiniteProducts؛
+ * صفحهٔ بعد با اسکرول/دکمهٔ «نمایش بیشتر» می‌آید. initialData = صفحهٔ ۱ از SSR
+ * صفحهٔ آگهی (پاسخ سرور همیشه page واقعی را برمی‌گرداند؛ زنجیره از همان‌جا ادامه می‌یابد).
+ */
+export function useInfiniteRelatedProducts(
+  product: Product | null | undefined,
+  pageSize = 20,
+  initialData?: Paged<Product>,
+) {
+  return useInfiniteQuery({
+    queryKey: product ? ['related-infinite', product.id, pageSize] : ['related-infinite', 'none'],
+    queryFn: ({ pageParam }: { pageParam: number }) => api.getRelatedProducts(product!, pageParam, pageSize),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage: Paged<Product>) =>
+      lastPage.page < lastPage.pageCount ? lastPage.page + 1 : undefined,
     enabled: !!product,
-    placeholderData: (prev) => prev, // صفحه‌بندی نرم — اسکرول نپرد
+    ...(initialData ? { initialData: { pages: [initialData], pageParams: [initialData.page] } } : {}),
     staleTime: 120_000,
   });
 }

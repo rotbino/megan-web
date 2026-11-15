@@ -170,14 +170,44 @@ export async function getProduct(id: number): Promise<Product | null> {
   }
 }
 
-/** محصولات مشابه — هم‌زیردسته + گسترش هم‌دسته؛ سورت نردبان←ویژه←آپدیت + صفحه‌بندی */
+/** محصولات مشابه — هم‌زیردسته + گسترش هم‌دسته؛ سورت نردبان←ویژه←آپدیت + صفحه‌بندی.
+ *  خطا قورت داده نمی‌شود تا کوئری بی‌نهایت بتواند retry کند و دکمهٔ «نمایش بیشتر»
+ *  بعد از خطای شبکه دوباره قابل کلیک باشد. */
 export async function getRelatedProducts(
   product: Pick<Product, 'id' | 'subCategoryId' | 'categoryId'>,
   page = 1,
   pageSize = 20,
-): Promise<{ items: Product[]; total: number; page: number; pageCount: number }> {
+): Promise<Paged<Product>> {
+  const raw = await apiFetch<{
+    items: RawProduct[];
+    total: number;
+    page: number;
+    pageCount: number;
+  }>(
+    '/products/getRelatedProducts',
+    {
+      subCategoryId: product.subCategoryId,
+      excludeId: product.id,
+      categoryId: product.categoryId,
+      page,
+      pageSize,
+    },
+    { auth: false },
+  );
+  return { ...raw, items: raw.items.map(toProduct) };
+}
+
+/** محصولات مشابه — دیتای اولیهٔ SSR صفحهٔ آگهی (خواستهٔ مالک ۱۶-۱۱):
+ *  صفحهٔ ۱ داخل HTML اولیه می‌نشیند تا هم کاربر فوری ببیند هم گوگل‌بات
+ *  بدون اجرای JS کارت‌ها و لینک‌ها را ببیند؛ revalidate هم‌گام خود صفحه (۶۰s). */
+export async function getRelatedProductsSSR(
+  product: Pick<Product, 'id' | 'subCategoryId' | 'categoryId'>,
+  page = 1,
+  pageSize = 20,
+  revalidate = 60,
+): Promise<Paged<Product> | null> {
   try {
-    const raw = await apiFetch<{
+    const raw = await serverPost<{
       items: RawProduct[];
       total: number;
       page: number;
@@ -191,11 +221,11 @@ export async function getRelatedProducts(
         page,
         pageSize,
       },
-      { auth: false },
+      revalidate,
     );
     return { ...raw, items: raw.items.map(toProduct) };
   } catch {
-    return { items: [], total: 0, page, pageCount: 0 };
+    return null; // بک‌اند خاموش/خطا → کامپوننت کلاینت خودش می‌گیرد
   }
 }
 
