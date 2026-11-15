@@ -14,6 +14,7 @@ import {
   Loader2,
   OctagonX,
   SkipForward,
+  WifiOff,
   XCircle,
 } from 'lucide-react';
 import type { ImportJob, LogLine } from '@/lib/importer/client';
@@ -62,12 +63,16 @@ export function JobPanel({
 
   const counterEntries = Object.entries(job.counters).filter(([k]) => !k.startsWith('buskool'));
 
+  // نگهبان شبکه (۱۵-۱۱ شب): جاب در انتظار بازگشت اینترنت است — توقف موقت، نه شکست
+  const netWaiting = job.status === 'running' && job.netWaiting === true;
+  const netWaitMin = job.netWaitSince ? Math.floor((Date.now() - job.netWaitSince) / 60000) : 0;
+
   return (
     <div className="mt-4 rounded-lg border bg-card">
       {/* هدر جاب */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-4 py-2.5">
         <div className="flex flex-wrap items-center gap-2 text-sm font-bold">
-          {job.status === 'running' && <Loader2 size={16} className="animate-spin text-primary" />}
+          {job.status === 'running' && !netWaiting && <Loader2 size={16} className="animate-spin text-primary" />}
           {job.status === 'done' && <Check size={16} className="text-emerald-600" />}
           {job.status === 'failed' && <XCircle size={16} className="text-red-600" />}
           {job.status === 'stopped' && <OctagonX size={16} className="text-amber-600" />}
@@ -75,6 +80,12 @@ export function JobPanel({
             {job.kind === 'single' ? 'ایمپورت تک‌کاربره' : 'ایمپورت لیستی'}
             {job.userName ? ` — ${job.userName}` : ''}
           </span>
+          {netWaiting && (
+            <span className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2.5 py-0.5 text-[11px] text-amber-800">
+              <WifiOff size={12} className="animate-pulse" />
+              اینترنت قطع است — ایمپورت نگه داشته شد{netWaitMin >= 1 ? ` (${netWaitMin.toLocaleString('fa-IR')} دقیقه)` : ''}
+            </span>
+          )}
           <span className="font-mono text-xs font-normal text-muted-foreground">#{job.id}</span>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -99,8 +110,16 @@ export function JobPanel({
         <div className="border-b px-4 py-3">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
-              کاربر {job.currentUserIndex ?? 0} از {job.totalUsers}
-              {job.currentUser ? ` — در حال پردازش: ${job.currentUser}` : ''}
+              {netWaiting ? (
+                <span className="font-bold text-amber-700">
+                  در انتظار اتصال اینترنت… بعد از وصل شدن از همین کاربر ادامه می‌یابد
+                </span>
+              ) : (
+                <>
+                  کاربر {job.currentUserIndex ?? 0} از {job.totalUsers}
+                  {job.currentUser ? ` — در حال پردازش: ${job.currentUser}` : ''}
+                </>
+              )}
             </span>
             <span>
               {job.usersDone ?? 0} موفق / {job.usersFailed ?? 0} خطا
@@ -109,7 +128,10 @@ export function JobPanel({
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full rounded-full bg-primary transition-all"
+              className={cn(
+                'h-full rounded-full transition-all',
+                netWaiting ? 'animate-pulse bg-amber-500' : 'bg-primary',
+              )}
               style={{ width: `${Math.min(100, ((job.currentUserIndex ?? 0) / job.totalUsers) * 100)}%` }}
             />
           </div>

@@ -34,6 +34,7 @@ import {
   ShieldAlert,
   Timer,
   UserSearch,
+  WifiOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -281,7 +282,7 @@ function StatusChips({
   pingError: string | null;
   source: SourceInfo | null;
 }) {
-  const items: { label: string; ok: boolean | null; hint: string; icon: React.ReactNode }[] = [
+  const items: { label: string; ok: boolean | null; hint: string; icon: React.ReactNode; hidden?: boolean }[] = [
     {
       label: ping ? 'بک‌اند متصل' : 'بک‌اند قطع',
       ok: pingError ? false : ping ? true : null,
@@ -332,6 +333,15 @@ function StatusChips({
       icon: <KeyRound size={13} />,
     },
     {
+      // نگهبان شبکه (۱۵-۱۱ شب): فقط وقتی جاب در حال اجراست معنا دارد —
+      // true یعنی همین حالا در انتظار بازگشت اینترنت است (توقف موقت)
+      label: 'اینترنت: قطع (انتظار)',
+      ok: ping?.netWaiting ? false : null,
+      hint: 'اتصال شبکه قطع است — ایمپورت متوقف نشده، فقط نگه داشته شده و به‌محض وصل شدن از همان‌جا ادامه می‌یابد',
+      icon: <WifiOff size={13} />,
+      hidden: !ping?.netWaiting,
+    },
+    {
       label: ping?.busy ? 'ایمپورت در حال اجرا' : 'بیکار',
       ok: ping ? !ping.busy : null,
       hint: ping?.busy ? 'یک جاب در پس‌زمینه در حال اجراست' : 'آمادهٔ شروع',
@@ -341,7 +351,7 @@ function StatusChips({
 
   return (
     <div className="mt-3 flex flex-wrap gap-2">
-      {items.map((it) => (
+      {items.filter((it) => !it.hidden).map((it) => (
         <div
           key={it.label}
           title={it.hint}

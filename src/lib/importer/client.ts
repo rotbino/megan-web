@@ -16,6 +16,9 @@ export interface PingInfo {
   delayMs: number;
   busy: boolean;
   cookieSet: boolean;
+  /** (۱۵-۱۱ شب) نگهبان شبکه: true یعنی جاب در حال اجرا همین حالا در انتظار
+   *  بازگشت اینترنت است — توقف موقت، نه شکست؛ بعد از وصل شدن از همان‌جا ادامه می‌یابد */
+  netWaiting?: boolean;
   /** سلامت سشن باسکول (۱۵-۱۱): true = لاگین، false = سشن مهمان/بی‌اثر،
    *  null = بدون کوکی یا خطای شبکه — کوکی مهمان هم cookieSet:true می‌دهد
    *  ولی متن کامنت‌ها را باز نمی‌کند */
@@ -101,6 +104,10 @@ export interface ImportJob {
   error?: string;
   startedAt: number;
   finishedAt?: number;
+  /** (۱۵-۱۱ شب) نگهبان شبکه: جاب متوقف نشده — فقط در انتظار اتصال است */
+  netWaiting?: boolean;
+  /** از چه لحظه‌ای منتظر شبکه مانده (مهر یونیکس ms) */
+  netWaitSince?: number | null;
 }
 
 export interface PreviewProduct {
