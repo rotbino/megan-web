@@ -9,6 +9,8 @@
  * سمت سرور (SSR): توکن نیست → فقط اندپوینت‌های عمومی؛ آدرس مستقیم بک.
  */
 
+import { resolveBackendUrl } from '@/lib/backend-url';
+
 const TOKEN_KEY = 'imach:tokens';
 
 export interface Tokens {
@@ -33,12 +35,11 @@ function isServer(): boolean {
 }
 
 /** آدرس پایه — کلاینت از پروکسی هم‌مبدأ، سرور مستقیم به بک
- *  (BACKEND_URL کلید اصلی؛ BACKEND_ORIGIN برای سازگاری با next.config.ts قدیمی) */
+ *  (منطق محیط‌آگاه مشترک: src/lib/backend-url.ts — ورسل همیشه بک ابری،
+ *  لوکال پیش‌فرض 127.0.0.1:4000 و override دستی با BACKEND_URL) */
 export function apiBase(): string {
   if (!isServer()) return '/api';
-  const backend =
-    process.env.BACKEND_URL ?? process.env.BACKEND_ORIGIN ?? 'http://127.0.0.1:4000';
-  return `${backend}/api/v1`;
+  return `${resolveBackendUrl()}/api/v1`;
 }
 
 // ─── توکن‌ها ──────────────────────────────────────────────────────────────────

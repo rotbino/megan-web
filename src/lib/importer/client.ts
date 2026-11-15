@@ -108,6 +108,12 @@ export interface ImportJob {
   netWaiting?: boolean;
   /** از چه لحظه‌ای منتظر شبکه مانده (مهر یونیکس ms) */
   netWaitSince?: number | null;
+  /** (۱۶-۱۱) توقف موقت: درخواست pause ثبت شده/اعمال شده — ادامه با resume */
+  paused?: boolean;
+  /** (۱۶-۱۱) درخواست pause ثبت شده — هنوز به ایستگاه امن نرسیده */
+  pauseRequested?: boolean;
+  /** (۱۶-۱۱) درخواست توقف ثبت شده — اعمال بین درخواست‌ها؛ دوبار زدن = فوری */
+  stopRequested?: boolean;
 }
 
 export interface PreviewProduct {
@@ -225,7 +231,25 @@ export const importerApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ adminPhone }),
-    }).then((r) => json<{ stopped: boolean }>(r)),
+    }).then((r) =>
+      json<{ stopped: boolean; status: string; mode?: 'graceful' | 'forced' | 'already-finished' }>(r),
+    ),
+
+  /** توقف موقت جاب (۱۶-۱۱) — در نخستین ایستگاه امن می‌ایستد و منتظر می‌ماند */
+  pauseJob: (id: string, adminPhone: string) =>
+    fetch(`${BASE}/jobs/${id}/pause`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminPhone }),
+    }).then((r) => json<{ paused: boolean; status: string }>(r)),
+
+  /** ادامهٔ جاب بعد از توقف موقت (۱۶-۱۱) — از همان ایستگاه */
+  resumeJob: (id: string, adminPhone: string) =>
+    fetch(`${BASE}/jobs/${id}/resume`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminPhone }),
+    }).then((r) => json<{ resumed: boolean; status: string }>(r)),
 
   preview: (userName: string) =>
     fetch(`${BASE}/preview/${encodeURIComponent(userName)}`).then((r) => json<ImportPreview>(r)),

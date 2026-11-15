@@ -35,8 +35,9 @@ export function SimilarProducts({ product }: { product: Product }) {
       </section>
     );
   }
-  // بخش خالی رندر نمی‌شود (قانون حالت خالی — RULES.md §۱)
-  if (items.length === 0 && pageCount === 0) return null;
+  // بخش خالی رندر نمی‌شود (قانون حالت خالی — RULES.md §۱)؛ بک‌اند برای مجموعهٔ
+  // خالی هم pageCount=1 می‌دهد، پس ملاک خودِ آیتم‌هاست (total=0 → هیچ مشابه‌ای نیست)
+  if (items.length === 0) return null;
 
   const pages = Array.from({ length: pageCount }, (_, i) => i + 1).filter(
     (p) => p === 1 || p === pageCount || Math.abs(p - page) <= 2,

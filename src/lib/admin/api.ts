@@ -8,6 +8,7 @@
  */
 
 import { ApiError } from '@/lib/api/client';
+import { resolveBackendUrl } from '@/lib/backend-url';
 
 const ADMIN_TOKEN_KEY = 'imach:admin-token';
 
@@ -141,8 +142,10 @@ export function clearAdminToken(): void {
 // ─── فراخوانی ────────────────────────────────────────────────────────────────
 
 function apiBase(): string {
+  // منطق محیط‌آگاه مشترک (src/lib/backend-url.ts): ورسل همیشه بک ابری،
+  // لوکال پیش‌فرض 127.0.0.1:4000 و override دستی با BACKEND_URL در .env
   return isServer()
-    ? `${process.env.BACKEND_URL ?? 'http://localhost:4000'}/api/v1`
+    ? `${resolveBackendUrl()}/api/v1`
     : '/api';
 }
 

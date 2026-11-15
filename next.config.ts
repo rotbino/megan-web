@@ -2,16 +2,18 @@ import type { NextConfig } from "next";
 import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createConnection } from "node:net";
+import { resolveBackendUrl } from "./src/lib/backend-url";
 
 /**
- * ── آدرس بک‌اند — یک کلید برای همه ────────────────────────────────────────
- * BACKEND_URL جایگزین اصلی است (هم برای rewrites این‌جا، هم برای fetchهای SSR
- * در client.ts). BACKEND_ORIGIN برای سازگاری با .envهای قبلی پشتیبانی می‌شود.
- * در پروفایل لوکال نیازی به تغییر نیست — پیش‌فرض 127.0.0.1:4000 همان است.
- * برای استقرار ابری فقط همین یک متغیر را در .env عوض کنید.
+ * ── آدرس بک‌اند — خودکار و محیط‌آگاه (خواستهٔ مالک ۱۶-۱۱) ──────────────────
+ * منطق واحد در src/lib/backend-url.ts (همان‌جا مستند شده):
+ *  · ورسل (VERCEL + production) → همیشه https://megan-back.vercel.app —
+ *    مستقل از .env؛
+ *  · لوکال → پیش‌فرض http://127.0.0.1:4000؛ تغییر دستی با BACKEND_URL
+ *    در .env / .env.local (مثلاً اتصال موقت به دیتای ابری از لوکال).
+ * BACKEND_ORIGIN برای سازگاری با .envهای قدیمی پشتیبانی می‌شود.
  */
-const BACKEND_URL =
-  process.env.BACKEND_URL ?? process.env.BACKEND_ORIGIN ?? "http://127.0.0.1:4000";
+const BACKEND_URL = resolveBackendUrl();
 
 /**
  * ── تصاویر remote ────────────────────────────────────────────────────────────
@@ -69,9 +71,10 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // ── یک کلید برای همه: کلاینت‌های مرورگری هم از همان BACKEND_URL پیروی
+  // ── یک کلید برای همه: کلاینت‌های مرورگری هم از همان آدرس بک‌اند پیروی
   // می‌کنند (پنل ایمپورتر ادمین → NEXT_PUBLIC_API_URL و وب‌سوکت چت →
-  // NEXT_PUBLIC_WS_URL). سوییچ ورسل/لوکال فقط با تغییر یک خط .env است.
+  // NEXT_PUBLIC_WS_URL). روی ورسل خودکار بک ورسل، در لوکال پیش‌فرض بک لوکال
+  // (منطق مشترک: src/lib/backend-url.ts؛ سوییچ دستی لوکال: BACKEND_URL در .env).
   env: {
     NEXT_PUBLIC_API_URL: BACKEND_URL,
     NEXT_PUBLIC_WS_URL: BACKEND_URL,

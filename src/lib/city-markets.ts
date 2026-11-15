@@ -145,9 +145,46 @@ export async function listMajorCities(): Promise<ResolvedMajorCity[]> {
   return out;
 }
 
-// ─── دایرکتوری همهٔ شهرها (/city) — گروه‌بندی استانی از دیتابیس ─────────────
+// ─── شهرهای پربازار (باکس صفحهٔ اول — خواستهٔ مالک ۱۶-۱۱) ────────────────────
 
 import { serverPost } from './api/client';
+
+/** شهر پربازار — خروجی POST /locations/getTopCities */
+export interface TopCityMarket {
+  /** id عددی باسکول شهر */
+  id: number;
+  /** نام رسمی دیتابیس (نمایش) */
+  name: string;
+  provinceId: number | null;
+  /** تعداد آگهی عمومی همان شهر (مبنای سورت نزولی بک‌اند) */
+  count: number;
+}
+
+/**
+ * ۵۰ شهری که بیشترین آگهی عمومی را دارند — از بیشترین، اول لیست
+ * (خواستهٔ مالک ۱۶-۱۱: «۵۰ شهری که بیشترین آگهی رو دارن بیار؛ از بیشترین
+ * باید اول لیست باشه؛ ولی نباید صفحهٔ اول کند شود»).
+ *
+ *  · دیتا با کش دادهٔ نکست (۱ ساعت) از بک‌اند می‌آید — بک‌اند هم ۱۰ دقیقه
+ *    کش می‌کند و تگ products آن را تازه نگه می‌دارد ⇒ صفحهٔ اول هیچ هزینهٔ
+ *    اضافه‌ای نمی‌پردازد؛
+ *  · بک‌اند قدیمی/در دسترس (اندپوینت نبود) → [] → فراخواننده به رجیستری
+ *    شهرهای بزرگ برمی‌گردد تا باکس هرگز صفحه را نشکند.
+ */
+export async function listTopCityMarkets(limit = 50): Promise<TopCityMarket[]> {
+  try {
+    const raw = await serverPost<
+      Array<{ id: number; city_name: string; province_id: number | null; count: number }>
+    >('/locations/getTopCities', { limit }, 3600);
+    return (Array.isArray(raw) ? raw : [])
+      .filter((c) => c && typeof c.id === 'number' && c.city_name)
+      .map((c) => ({ id: c.id, name: c.city_name, provinceId: c.province_id ?? null, count: c.count ?? 0 }));
+  } catch {
+    return []; // اندپوینت نیست/خطا — فالبک رجیستری
+  }
+}
+
+// ─── دایرکتوری همهٔ شهرها (/city) — گروه‌بندی استانی از دیتابیس ─────────────
 
 /** یک استان با شهرهایش — برای صفحهٔ دایرکتوری */
 export interface ProvinceCities {

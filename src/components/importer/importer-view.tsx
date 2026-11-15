@@ -5,15 +5,12 @@
  * برای مهاجرت داده از buskool.com به ایمچ. کاملاً جدا از پنل ادمین است؛
  * عملیات‌های مخرب سمت بک‌اند هم پشت IMPORTER_ADMIN_PHONE گارد می‌شوند.
  *
- * بخش‌ها:
+ * بخش‌ها (ترتیب جدید — خواستهٔ مالک ۱۶-۱۱):
  *   ۱. نوار وضعیت (اتصال بک‌اند / دیتابیس منبع / تاخیر / کوکی)
  *   ۲. آمار فعلی دیتابیس
- *   ۳. پاک‌سازی کامل (فقط حساب ادمین 09196421264 نگه داشته می‌شود؛
- *      بایت‌های ذخیره‌سازی و پوشهٔ قدیمی buskool هم بهترین‌حال پاک می‌شوند)
- *   ۴. تستر ایمپورت تک‌کاربره — یوزرنیم باسکول را بدهید، شروع کنید،
- *      پیشرفت زنده + پیش‌نمایش نتیجه را ببینید؛ عکس‌ها در همان مسیر
- *      آگهی‌های معمولی (پوشهٔ خود کاربر) ذخیره می‌شوند
- *   ۵. ایمپورت لیستی (فاز ۲ — پس از تأیید تست تک‌کاربره)
+ *   ۳. ایمپورت لیستی — ابزار اصلی، بالای صفحه
+ *   ۴. تستر ایمپورت تک‌کاربره — برای امتحان، پایین‌تر
+ *   ۵. پاک‌سازی کامل — آخر صفحه و دکمه‌اش غیرفعال (خطرناک — روز مبادا)
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -196,6 +193,21 @@ function ImporterHome({ adminPhone }: { adminPhone: string }) {
     pollJob(id);
   };
 
+  // ── کنترل‌های جاب (۱۶-۱۱) — پالز/پلی/استاپ؛ بعد از هر فرمان، پول ۱.۵ثانیه‌ای
+  // وضعیت تازه را می‌آورد ولی برای پاسخ‌گویی هم‌زمان همین‌جا هم رفرش می‌کنیم ──
+  const controlJob = (fn: (id: string) => Promise<unknown>) => (id: string) => {
+    void fn(id)
+      .then(() => importerApi.job(id))
+      .then((j) => setJob(j))
+      .catch(() => undefined); // پول زنده به‌زودی وضعیت را می‌آورد
+  };
+
+  /** جاب تمام‌شده را از صفحه بردار (دکمهٔ «بستن پنل» — ۱۶-۱۱) */
+  const dismissJob = () => {
+    localStorage.removeItem(JOB_STORAGE_KEY);
+    setJob(null);
+  };
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       {/* ─── هدر + نوار وضعیت ─── */}
@@ -227,16 +239,28 @@ function ImporterHome({ adminPhone }: { adminPhone: string }) {
       {/* ─── آمار دیتابیس ─── */}
       {stats && <StatsGrid stats={stats} />}
 
-      {/* ─── پاک‌سازی ─── */}
-      <CleanupCard adminPhone={adminPhone} onDone={refreshStatus} />
+      {/* ─── ایمپورت لیستی — ابزار اصلی، اول صفحه (خواستهٔ مالک ۱۶-۱۱) ─── */}
+      <ListImportCard
+        adminPhone={adminPhone}
+        source={source}
+        job={job?.kind === 'list' ? job : null}
+        onJobStarted={startJob}
+        onPause={controlJob((id) => importerApi.pauseJob(id, adminPhone))}
+        onResume={controlJob((id) => importerApi.resumeJob(id, adminPhone))}
+        onStop={controlJob((id) => importerApi.stopJob(id, adminPhone))}
+        onDismiss={dismissJob}
+      />
 
-      {/* ─── تستر تک‌کاربره ─── */}
+      {/* ─── تستر تک‌کاربره (ایمپورت تستی — پایین‌تر، ۱۶-۱۱) ─── */}
       <SingleTesterCard
         adminPhone={adminPhone}
         source={source}
         onJobStarted={startJob}
         job={job?.kind === 'single' ? job : null}
-        onStop={(id) => void importerApi.stopJob(id, adminPhone)}
+        onPause={controlJob((id) => importerApi.pauseJob(id, adminPhone))}
+        onResume={controlJob((id) => importerApi.resumeJob(id, adminPhone))}
+        onStop={controlJob((id) => importerApi.stopJob(id, adminPhone))}
+        onDismiss={dismissJob}
         onPreview={loadPreview}
         previewLoading={previewLoading}
       />
@@ -259,14 +283,9 @@ function ImporterHome({ adminPhone }: { adminPhone: string }) {
         </section>
       )}
 
-      {/* ─── ایمپورت لیستی (فاز ۲) ─── */}
-      <ListImportCard
-        adminPhone={adminPhone}
-        source={source}
-        job={job?.kind === 'list' ? job : null}
-        onJobStarted={startJob}
-        onStop={(id) => void importerApi.stopJob(id, adminPhone)}
-      />
+      {/* ─── پاک‌سازی کامل — آخر صفحه با دکمهٔ غیرفعال (خواستهٔ مالک ۱۶-۱۱:
+          خطرناک است و ممکن است اشتباهی دست بخورد؛ فقط برای روز مبادا می‌ماند ─── */}
+      <CleanupCard adminPhone={adminPhone} onDone={refreshStatus} />
     </div>
   );
 }
@@ -395,6 +414,13 @@ function StatsGrid({ stats }: { stats: DbStats }) {
 
 // ═════════════════════════════ پاک‌سازی ═════════════════════════════
 
+/**
+ * پاک‌سازی کامل دیتابیس — آخر صفحه با دکمهٔ غیرفعال (خواستهٔ مالک ۱۶-۱۱):
+ * «خطرناکه و ممکنه اشتباهی دست کاربر بخوره و همهٔ دیتاها پاک بشه؛ دیگه
+ * نیازی بهش نیست، فقط برای روز مبادا به‌صورت دیزیبل بمونه ولی کدها و
+ * دکمه پاک نشه.» کد و اندپوینت بک‌اند دست‌نخورده مانده‌اند — برای فعال‌سازی
+ * مجدد این `disabled` را بردارید.
+ */
 function CleanupCard({ adminPhone, onDone }: { adminPhone: string; onDone: () => void }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -416,7 +442,7 @@ function CleanupCard({ adminPhone, onDone }: { adminPhone: string; onDone: () =>
   };
 
   return (
-    <section className="rounded-lg border-2 border-red-200 bg-red-50/40 p-4">
+    <section className="rounded-lg border-2 border-red-200 bg-red-50/40 p-4 opacity-90">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-red-100 text-red-600">
@@ -426,13 +452,17 @@ function CleanupCard({ adminPhone, onDone }: { adminPhone: string; onDone: () =>
             <h2 className="text-sm font-extrabold text-red-900">پاک‌سازی کامل دیتابیس برای شروع مهاجرت</h2>
             <p className="mt-1 max-w-2xl text-xs leading-5 text-red-800/80">
               تمام کاربران (به‌جز حساب ادمین {adminPhone})، آگهی‌ها، کامنت‌ها، گفتگوها، لیست‌ها و تصاویر سرور حذف
-              می‌شوند. حتی آگهی‌ها و داده‌های خود ادمین پاک می‌شود و فقط حساب کاربری‌اش می‌ماند. این عمل قابل بازگشت
-              نیست.
+              می‌شوند. این عمل غیرقابل بازگشت است.
+            </p>
+            {/* چون دکمه غیرفعال است، این توضیح همیشه روشن باشد که چرا */}
+            <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-bold text-red-700">
+              <Ban size={12} className="shrink-0" />
+              غیرفعال شده برای جلوگیری از پاک‌شدن تصادفی همهٔ داده‌ها — دیگر لازم نیست؛ فقط برای روز مبادا این‌جا مانده است.
             </p>
           </div>
         </div>
         {!confirming ? (
-          <Button variant="destructive" size="sm" onClick={() => setConfirming(true)} className="shrink-0">
+          <Button variant="destructive" size="sm" disabled className="shrink-0" title="غیرفعال — خطرناک">
             پاک‌سازی کامل
           </Button>
         ) : (
@@ -472,7 +502,10 @@ function SingleTesterCard({
   source,
   job,
   onJobStarted,
+  onPause,
+  onResume,
   onStop,
+  onDismiss,
   onPreview,
   previewLoading,
 }: {
@@ -480,7 +513,10 @@ function SingleTesterCard({
   source: SourceInfo | null;
   job: ImportJob | null;
   onJobStarted: (id: string) => void;
+  onPause: (id: string) => void;
+  onResume: (id: string) => void;
   onStop: (id: string) => void;
+  onDismiss: () => void;
   onPreview: (userName: string) => void;
   previewLoading: boolean;
 }) {
@@ -601,7 +637,7 @@ function SingleTesterCard({
         <p className="mt-3 rounded-md border border-red-200 bg-red-50 p-2.5 text-xs text-red-700">{error}</p>
       )}
 
-      {job && <JobPanel job={job} onStop={onStop} />}
+      {job && <JobPanel job={job} onPause={onPause} onResume={onResume} onStop={onStop} onDismiss={onDismiss} />}
 
       {job && job.status !== 'running' && job.userName && (
         <div className="mt-3 flex flex-wrap gap-2">
@@ -636,13 +672,19 @@ function ListImportCard({
   source,
   job,
   onJobStarted,
+  onPause,
+  onResume,
   onStop,
+  onDismiss,
 }: {
   adminPhone: string;
   source: SourceInfo | null;
   job: ImportJob | null;
   onJobStarted: (id: string) => void;
+  onPause: (id: string) => void;
+  onResume: (id: string) => void;
   onStop: (id: string) => void;
+  onDismiss: () => void;
 }) {
   const [offset, setOffset] = useState('0');
   const [limit, setLimit] = useState('5');
@@ -719,8 +761,8 @@ function ListImportCard({
         <div>
           <h2 className="text-sm font-extrabold">
             ایمپورت لیستی از کالکشن user-buskool{' '}
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-              فاز ۲ — بعد از تأیید تست تک‌کاربره
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+              ابزار اصلی
             </span>
           </h2>
           <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
@@ -823,7 +865,7 @@ function ListImportCard({
       )}
       {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
 
-      {job && <JobPanel job={job} onStop={onStop} />}
+      {job && <JobPanel job={job} onPause={onPause} onResume={onResume} onStop={onStop} onDismiss={onDismiss} />}
     </section>
   );
 }

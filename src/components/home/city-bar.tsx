@@ -1,21 +1,31 @@
 import Link from 'next/link';
-import { MapPin } from 'lucide-react';
-import { listMajorCities } from '@/lib/city-markets';
+import { ChevronLeft, MapPin } from 'lucide-react';
+import { cityMarketHref, listMajorCities, listTopCityMarkets } from '@/lib/city-markets';
 
 /**
- * باکس «بازار عمده شهرها» در صفحه اول (خواستهٔ مالک ۹-۱۱ دور جدید):
- * نوار شهرهای بزرگ به ترتیب اهمیت — ورودی مستقیم به بازار عمده هر شهر
- * (imach.ir/city/tehran …) الگوی «شهرهای پربازدید» دیوار.
+ * باکس «بازار عمده شهرها» در صفحه اول — ورودی مستقیم به بازار عمده هر شهر
+ * (imach.ir/city/tehran …).
  *
- *  · دیتا فقط از دیتابیس: listMajorCities → رزولور شهرهای بک‌اند —
- *    «همه چیز باید از دیتابیس بیاد» (خواستهٔ مالک)؛
- *  · بک‌اند در دسترس نیست → باکس حذف می‌شود (null) تا صفحه سالم بماند؛
- *  · موبایل: اسکرول افقی روان (no-scrollbar)؛ دسکتاپ: چیپ‌ها wrap می‌شوند؛
- *  · مینیمال — بدون رنگ اضافه؛ همان زبان کارت‌های صفحه اول.
+ *  · ۵۰ شهری که بیشترین آگهی عمومی را دارند، از بیشترین اول (خواستهٔ مالک
+ *    ۱۶-۱۱) — دیتا فقط از دیتابیس: /locations/getTopCities (کش بک ۱۰ دقیقه +
+ *    کش دادهٔ نکست ۱ ساعت ⇒ صفحهٔ اول هیچ هزینهٔ اضافه‌ای نمی‌پردازد)؛
+ *  · بک‌اند قدیمی/در دسترس نیست → فالبک رجیستری شهرهای بزرگ؛ آن هم نبود →
+ *    باکس حذف می‌شود (null) تا صفحه سالم بماند؛
+ *  · «همه شهرها» دکمهٔ رنگی پر است تا بیشتر به چشم بیاید (خواستهٔ مالک ۱۶-۱۱)؛
+ *  · موبایل: اسکرول افقی روان (no-scrollbar)؛ دسکتاپ: چیپ‌ها wrap می‌شوند.
  */
 export async function CityBar() {
-  const majors = await listMajorCities();
-  if (majors.length === 0) return null;
+  // ۱) شهرهای پربازار (۵۰ شهر، نزولی به تعداد آگهی) — ۲) فالبک رجیستری
+  const top = await listTopCityMarkets(50);
+  const cities: { name: string; href: string }[] = top.map((c) => ({
+    name: c.name,
+    href: cityMarketHref(c.name),
+  }));
+  if (cities.length === 0) {
+    const majors = await listMajorCities();
+    for (const m of majors) cities.push({ name: m.name, href: `/city/${m.slug}` });
+  }
+  if (cities.length === 0) return null;
 
   return (
     <section
@@ -28,21 +38,23 @@ export async function CityBar() {
             <MapPin size={16} className="text-primary" />
             بازار عمده شهرها
           </h2>
+          {/* دکمهٔ رنگی پر — بیشتر به چشم بیاید (خواستهٔ مالک ۱۶-۱۱) */}
           <Link
             href="/city"
-            className="shrink-0 text-xs font-medium leading-7 text-primary transition-colors hover:text-primary/80 lg:text-sm"
+            className="flex shrink-0 items-center gap-0.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-bold leading-5 text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 lg:text-[13px]"
           >
             همه شهرها
+            <ChevronLeft size={14} className="shrink-0" />
           </Link>
         </div>
         <nav
           aria-label="بازار عمده شهرهای ایران"
           className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-3 pt-2.5 lg:flex-wrap lg:overflow-visible lg:px-5 lg:pb-4 lg:pt-3"
         >
-          {majors.map((c) => (
+          {cities.map((c) => (
             <Link
-              key={c.slug}
-              href={`/city/${c.slug}`}
+              key={c.href}
+              href={c.href}
               title={`بازار عمده ${c.name}`}
               className="shrink-0 rounded-full border bg-card px-3.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-accent lg:text-[13px]"
             >
