@@ -312,6 +312,8 @@ export interface ImportedUserRow {
   isActive: boolean;
   isVerified: boolean;
   failedImport: boolean;
+  /** دلیل آخرین شکست ایمپورت (۱۵-۱۱) — از profile.bImportError؛ null = بدون ثبت */
+  importError: { message: string; sig: string; at: string } | null;
   /** کاربر کمکی نویسندهٔ کامنت باسکول (bk-c*) */
   isStub: boolean;
   hasBusinessDesc: boolean;

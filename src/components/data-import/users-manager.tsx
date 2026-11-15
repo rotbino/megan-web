@@ -529,7 +529,25 @@ export function UsersManager() {
                       </div>
                     </div>
                   </td>
-                  <td className="hidden p-2 align-middle md:table-cell"><SourceChip row={row} /></td>
+                  <td className="hidden p-2 align-middle md:table-cell">
+                    <SourceChip row={row} />
+                    {/* دلیل شکست ایمپورت (۱۵-۱۱) — خطای رکورد ذخیره می‌شود تا بعداً رسیدگی شود */}
+                    {row.failedImport && (
+                      <p
+                        className="mt-1 flex max-w-[170px] items-center gap-1 truncate text-[10px] font-bold text-red-600"
+                        title={
+                          row.importError
+                            ? `دلیل شکست ایمپورت: ${row.importError.message}${
+                                row.importError.at ? `\n(${dateFa(row.importError.at)})` : ''
+                              }`
+                            : 'شکست قدیمی — دلیلش ثبت نشده'
+                        }
+                      >
+                        <AlertTriangle size={10} className="shrink-0" />
+                        <span className="truncate">{row.importError?.message ?? 'ایمپورت ناقص'}</span>
+                      </p>
+                    )}
+                  </td>
                   <td className="p-2 align-middle"><BuskoolPackageChip row={row} /></td>
                   <td className="hidden p-2 align-middle sm:table-cell">
                     <span className="inline-flex items-center gap-1 tabular-nums">
