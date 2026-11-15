@@ -47,7 +47,7 @@ function imageRemotePatterns(): RemotePattern[] {
     { protocol: "http", hostname: "localhost" },
     { protocol: "http", hostname: "127.0.0.1" },
   ];
-  // بک‌اندِ فعال از .env (مثلاً daymat-back.vercel.app برای تصاویر /uploads)
+  // بک‌اندِ فعال از .env (مثلاً megan-back.vercel.app برای تصاویر /uploads)
   const backend = backendImagePattern();
   if (backend) patterns.push(backend);
   const extra = (process.env.NEXT_IMAGE_HOSTS ?? "")
