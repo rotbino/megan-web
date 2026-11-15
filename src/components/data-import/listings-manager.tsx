@@ -11,8 +11,9 @@
  *     باسکول (ثبت/آپدیت/آپدیت قیمت)، تعداد عکس + پرش به آلبوم تصاویر همان آگهی.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   Boxes,
@@ -47,6 +48,7 @@ import {
 } from '@/lib/importer/client';
 import { dateFa, priceFa, stalePriceFa, timeAgoFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { DateRangeFilter, type DateRangeField } from './date-range-filter';
 
 const ANY = '__any__';
 
@@ -88,7 +90,26 @@ function StatusBadge({ status }: { status: string }) {
 
 // ═══════════════════════════════ صفحه ═══════════════════════════════
 
+/** فیلد هدف بازهٔ زمانی — ثبت/آپدیت (خواستهٔ مالک ۱۵-۱۱) */
+const DATE_FIELDS: DateRangeField[] = [
+  { value: 'created', label: 'تاریخ ثبت' },
+  { value: 'updated', label: 'تاریخ آپدیت' },
+];
+
+/** بازهٔ تاریخ/صفحه در URL — نیاز به Suspense دارد */
 export function ListingsManager() {
+  return (
+    <Suspense>
+      <ListingsManagerInner />
+    </Suspense>
+  );
+}
+
+function ListingsManagerInner() {
+  const sp = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   // ── فیلترها ──
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -99,8 +120,11 @@ export function ListingsManager() {
   const [hasPhotos, setHasPhotos] = useState<string>(ANY);
   const [sort, setSort] = useState<string>('createdAt');
   const [dir, setDir] = useState<'asc' | 'desc'>('desc');
-  const [page, setPage] = useState(1);
-  const pageSize = 20;
+  const [dateField, setDateField] = useState<string>('created');
+  const [from, setFrom] = useState<string | null>(() => sp.get('from'));
+  const [to, setTo] = useState<string | null>(() => sp.get('to'));
+  const [page, setPage] = useState(() => Math.max(1, parseInt(sp.get('page') ?? '1', 10) || 1));
+  const pageSize = 50;
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -110,6 +134,25 @@ export function ListingsManager() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // ── بازهٔ تاریخ/صفحه در URL — لینک مستقیم و اشتراک‌گذاری ──
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    if (from) qs.set('from', from);
+    if (to) qs.set('to', to);
+    if (page > 1) qs.set('page', String(page));
+    router.replace(qs.size ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [router, pathname, from, to, page]);
+
+  // ── خواندن از URL — ویرایش دستی آدرس/دکمه‌های back-forward ──
+  useEffect(() => {
+    const nextP = Math.max(1, parseInt(sp.get('page') ?? '1', 10) || 1);
+    const nextFrom = sp.get('from');
+    const nextTo = sp.get('to');
+    setPage((cur) => (cur !== nextP ? nextP : cur));
+    setFrom((cur) => (cur !== nextFrom ? nextFrom : cur));
+    setTo((cur) => (cur !== nextTo ? nextTo : cur));
+  }, [sp]);
+
   const params: ImportedListingsParams = useMemo(
     () => ({
       ...(debounced ? { q: debounced } : {}),
@@ -118,12 +161,17 @@ export function ListingsManager() {
       ...(edited !== ANY ? { edited: edited as 'yes' | 'no' } : {}),
       ...(status !== 'all' ? { status: status as ImportedListingsParams['status'] } : {}),
       ...(hasPhotos !== ANY ? { hasPhotos: hasPhotos as 'yes' | 'no' } : {}),
+      ...(from || to
+        ? dateField === 'updated'
+          ? { updatedFrom: from ?? undefined, updatedTo: to ?? undefined }
+          : { createdFrom: from ?? undefined, createdTo: to ?? undefined }
+        : {}),
       sort: sort as ImportedListingsParams['sort'],
       dir,
       page,
       pageSize,
     }),
-    [debounced, source, ownerLogin, edited, status, hasPhotos, sort, dir, page],
+    [debounced, source, ownerLogin, edited, status, hasPhotos, dateField, from, to, sort, dir, page],
   );
 
   const { data, isLoading, isFetching, refetch } = useQuery({
@@ -138,6 +186,7 @@ export function ListingsManager() {
 
   const resetFilters = () => {
     setSearch('');
+    setDebounced('');
     setSource('all');
     setOwnerLogin(ANY);
     setEdited(ANY);
@@ -145,6 +194,9 @@ export function ListingsManager() {
     setHasPhotos(ANY);
     setSort('createdAt');
     setDir('desc');
+    setDateField('created');
+    setFrom(null);
+    setTo(null);
     setPage(1);
   };
 
@@ -292,6 +344,17 @@ export function ListingsManager() {
             پاک‌کردن فیلترها
           </Button>
         </div>
+
+        {/* بازهٔ زمانی ثبت/آپدیت + دکمه‌های سریع + ۱۲ ماه شمسی اخیر (خواستهٔ مالک ۱۵-۱۱) */}
+        <DateRangeFilter
+          fields={DATE_FIELDS}
+          field={dateField}
+          onFieldChange={(v) => { setDateField(v); setPage(1); }}
+          from={from}
+          to={to}
+          onChange={(r) => { setFrom(r.from); setTo(r.to); setPage(1); }}
+          months={12}
+        />
       </div>
 
       {/* جدول */}

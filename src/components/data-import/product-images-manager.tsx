@@ -1,20 +1,28 @@
 'use client';
 
 /**
- * تصاویر آگهی‌ها — صفحهٔ «دیتا ایمپورت → تصاویر آگهی‌ها» (خواستهٔ مالک ۱۳-۱۱).
- * آلبوم اسکن‌پذیر (کارت‌های ~۲۰۰×۲۰۰، ۲۰تایی در هر صفحه) برای یافتن تصاویرِ
- * واترمارک‌دار باسکول + «تعویض درجا»:
+ * تصاویر آگهی‌ها — صفحهٔ «دیتا ایمپورت → تصاویر آگهی‌ها» (خواستهٔ مالک ۱۳-۱۱،
+ * بازطراحی ۱۵-۱۱: ردیفی + سورت/بازهٔ تاریخ + آدرس یکتا).
+ * هدف: سریع‌ترین اسکن برای یافتن تصاویر واترمارک‌دار باسکول + «تعویض درجا»:
  *
  *   گردش‌کار مالک: تصویر را باز می‌کند و ذخیره می‌کند → در Paint واترمارک باسکول
  *   را پاک می‌کند → دکمهٔ «آپلود نسخهٔ اصلاح‌شده» → فایل جدید روی «همان کلید»
  *   (همان نام/مسیر/URL) نوشته می‌شود و تامبنیل هم از روی تصویر تازه در همان
- *   کلید تامبنیل بازساخته می‌شود. نمایش این صفحه با ?v=<آخرین تعویض> کش خودش
- *   را می‌شکند تا نتیجه فوراً دیده شود.
+ *   کلید تامبنیل بازساخته می‌شود. نمایش با ?v=<آخرین تعویض> کش را می‌شکند.
+ *
+ * بازطراحی ۱۵-۱۱ (خواستهٔ مالک):
+ *   • سورت پیش‌فرض: آخرین آپدیت نزولی، بعد تاریخ ثبت (باسکول واترمارک را
+ *     جدیدا گذاشته → جدیدترین‌ها اول). سورت‌های دیگر: ثبت/شناسهٔ آگهی/حجم.
+ *   • ۵۰ رکورد در هر صفحه؛ هر صفحه آدرس یکتا دارد (?page=… + فیلترها در
+ *     URL) — ویرایش URL = پرش مستقیم.
+ *   • چیدمان ردیفی: تصویر تمیز (بدون بج روی عکس)، مشخصات و دکمه‌های
+ *     آپلود/دانلود کنار تصویر.
+ *   • فیلتر بازهٔ زمانی (ثبت/آپدیت) + دکمه‌های سریع + ۶ ماه شمسی اخیر.
  */
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BadgeCheck,
@@ -29,7 +37,6 @@ import {
   Replace,
   Search,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -49,11 +56,32 @@ import {
 } from '@/lib/importer/client';
 import { dateFa, timeAgoFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { DateRangeFilter, type DateRangeField } from './date-range-filter';
 
 const ANY = '__any__';
 const MAX_FILE_MB = 5;
 const MIN_FILE_KB = 4;
 const ACCEPTED = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
+/** ۵۰ رکورد در هر صفحه (خواستهٔ مالک ۱۵-۱۱) */
+const PAGE_SIZE = 50;
+
+/** فیلدهای سورت — پیش‌فرض آخرین آپدیتِ آگهی (تاریخ‌های فایل = زمان ایمپورت‌اند
+ *  و برای شکار واترمارک بی‌معنا؛ تاریخ‌های معنا‌دار مال خودِ آگهی‌اند) */
+const SORT_OPTIONS = [
+  { value: 'productUpdated', label: 'مرتب: آخرین آپدیت آگهی' },
+  { value: 'productCreated', label: 'مرتب: تاریخ ثبت آگهی' },
+  { value: 'productId', label: 'مرتب: شناسهٔ آگهی' },
+  { value: 'size', label: 'مرتب: حجم فایل' },
+  { value: 'updatedAt', label: 'مرتب: آخرین تغییر تصویر' },
+  { value: 'createdAt', label: 'مرتب: زمان ایمپورت تصویر' },
+] as const;
+
+/** فیلد هدف بازهٔ زمانی — روی تاریخ‌های خودِ آگهی (باسکول) */
+const DATE_FIELDS: DateRangeField[] = [
+  { value: 'updated', label: 'تاریخ آپدیت آگهی' },
+  { value: 'created', label: 'تاریخ ثبت آگهی' },
+];
 
 function imgSrc(url: string): string {
   return url.startsWith('http') ? url : `${API_BASE}${url}`;
@@ -66,9 +94,11 @@ function vSrc(url: string, updatedAt: string): string {
   return `${imgSrc(url)}${url.includes('?') ? '&' : '?'}v=${v}`;
 }
 
-// ═══════════════════════════════ کارت تصویر ═══════════════════════════════
+// ═══════════════════════════════ ردیف تصویر ═══════════════════════════════
+// چیدمان ردیفی (خواستهٔ مالک ۱۵-۱۱): تصویر تمیز در یک سو، مشخصات آگهی و
+// دکمه‌های آپلود/دانلود کنارش — چشم عمودی اسکن می‌کند و هیچ چیزی روی عکس نیست.
 
-function ImageCard({
+function ImageRow({
   row,
   replacing,
   onPickFile,
@@ -84,106 +114,94 @@ function ImageCard({
     : null;
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-lg border bg-card transition-colors hover:border-primary/40">
-      {/* تصویر — کلیک = بازکردن اصل برای ذخیره/ویرایش */}
-      <div className="relative aspect-square bg-white">
-        <a
-          href={main}
-          target="_blank"
-          rel="noreferrer"
-          title="بازکردن تصویر اصلی (ذخیره کنید، در پینت واترمارک باسکول را پاک کنید و با دکمهٔ پایین آپلود کنید)"
-          className="block h-full w-full"
-        >
-          <img
-            src={display}
-            alt={row.product?.name ?? row.name}
-            className="h-full w-full object-contain"
-            loading="lazy"
-          />
-        </a>
-
-        {/* نشان منبع */}
-        {row.source === 'buskool' ? (
-          <Badge className="absolute start-1.5 top-1.5 bg-primary-soft px-1.5 py-0 text-[9px] font-bold text-primary hover:bg-primary-soft">
-            باسکول
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="absolute start-1.5 top-1.5 px-1.5 py-0 text-[9px] font-bold text-muted-foreground">
-            خودی
-          </Badge>
-        )}
-
-        {/* نشان تعویض */}
-        {row.replacedAt ? (
-          <span
-            className="absolute end-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-emerald-500/90 px-1.5 py-0.5 text-[9px] font-bold text-white"
-            title={`تعویض‌شده: ${dateFa(row.replacedAt)} (${timeAgoFa(row.replacedAt)})`}
-          >
-            <BadgeCheck size={9} /> اصلاح‌شده
-          </span>
-        ) : null}
-
+    <div className="flex items-center gap-3 rounded-lg border bg-card p-2 transition-colors hover:border-primary/40">
+      {/* تصویر — کلیک = بازکردن اصل برای ذخیره/ویرایش؛ بدون هیچ بج روی عکس */}
+      <a
+        href={main}
+        target="_blank"
+        rel="noreferrer"
+        title="بازکردن تصویر اصلی (ذخیره کنید، در پینت واترمارک باسکول را پاک کنید و با دکمهٔ آپلود کنارش جایگزین کنید)"
+        className="relative block size-32 shrink-0 self-center overflow-hidden rounded-md border bg-white"
+      >
+        <img
+          src={display}
+          alt={row.product?.name ?? row.name}
+          className="h-full w-full object-contain"
+          loading="lazy"
+        />
         {/* لایهٔ آپلود */}
         {replacing ? (
-          <div className="absolute inset-0 grid place-items-center bg-background/70 backdrop-blur-[1px]">
-            <div className="flex flex-col items-center gap-1.5 text-primary">
-              <Loader2 size={22} className="animate-spin" />
-              <p className="text-[10px] font-bold">در حال جایگزینی…</p>
-            </div>
-          </div>
+          <span className="absolute inset-0 grid place-items-center bg-background/70 backdrop-blur-[1px]">
+            <Loader2 size={22} className="animate-spin text-primary" />
+          </span>
         ) : null}
-      </div>
+      </a>
 
-      {/* اطلاعات و عملیات */}
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5 border-t p-2">
-        <div className="min-w-0">
+      {/* مشخصات آگهی و تصویر */}
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex min-w-0 items-center gap-1.5">
           {productHref ? (
             <a
               href={productHref}
               target="_blank"
               rel="noreferrer"
-              className="block truncate text-[11.5px] font-bold hover:text-primary hover:underline"
+              className="truncate text-[12.5px] font-bold hover:text-primary hover:underline"
               title={row.product?.name}
             >
               {row.product?.name}
             </a>
           ) : (
-            <p className="truncate text-[11.5px] font-bold text-muted-foreground" title="آگهِ این عکس حذف شده است">
+            <p className="truncate text-[12.5px] font-bold text-muted-foreground" title="آگهِ این عکس حذف شده است">
               آگهی حذف‌شده
             </p>
           )}
-          <p className="truncate text-[10px] text-muted-foreground" dir="ltr">
-            #{toFa(row.product?.id ?? 0)} • {row.owner ? `${row.owner.name || `@${row.owner.userName}`}` : '—'}
-          </p>
-          <p className="truncate text-[9.5px] text-muted-foreground/80">
-            {row.width && row.height ? `${toFa(row.width)}×${toFa(row.height)}` : ''} • {toFa(Math.round(row.size / 1024))}KB
-            {row.replacedAt ? ` • ${timeAgoFa(row.replacedAt)}` : ''}
-          </p>
+          {row.replacedAt ? (
+            <span
+              className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-emerald-500/90 px-1.5 py-0.5 text-[9px] font-bold text-white"
+              title={`تعویض‌شده: ${dateFa(row.replacedAt)} (${timeAgoFa(row.replacedAt)})`}
+            >
+              <BadgeCheck size={9} /> اصلاح‌شده
+            </span>
+          ) : null}
         </div>
+        <p className="truncate text-[10.5px] text-muted-foreground" dir="ltr">
+          #{toFa(row.product?.id ?? 0)} • {row.owner ? `${row.owner.name || `@${row.owner.userName}`}` : '—'}
+        </p>
+        <p className="truncate text-[10.5px] text-muted-foreground">
+          ثبت آگهی: {row.product ? dateFa(row.product.createdAt) : '—'} • آپدیت آگهی:{' '}
+          {row.product ? dateFa(row.product.updatedAt) : '—'}
+          {row.product ? <span className="text-muted-foreground/70"> ({timeAgoFa(row.product.updatedAt)})</span> : null}
+        </p>
+        <p className="truncate text-[10px] text-muted-foreground/80">
+          {row.width && row.height ? `${toFa(row.width)}×${toFa(row.height)}` : ''} •{' '}
+          {toFa(Math.round(row.size / 1024))}KB • منبع: {row.source === 'buskool' ? 'باسکول' : 'خودی'} • ایمپورت تصویر:{' '}
+          {dateFa(row.createdAt)}
+        </p>
+      </div>
 
-        <div className="mt-auto flex items-center gap-1.5">
-          <Button
-            size="sm"
-            className="h-7 flex-1 gap-1 rounded-md px-2 text-[10.5px] font-bold"
-            disabled={replacing}
-            onClick={() => onPickFile(row.id)}
-            title="فایل اصلاح‌شده (بدون واترمارک باسکول) را انتخاب کنید — همان نام و مسیر جایگزین می‌شود"
-          >
-            {replacing ? <Loader2 size={11} className="animate-spin" /> : <Replace size={11} />}
-            آپلود نسخهٔ اصلاح‌شده
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="size-7 shrink-0 rounded-md p-0"
-            asChild
-            title="ذخیرهٔ تصویر اصلی برای ویرایش"
-          >
-            <a href={main} target="_blank" rel="noreferrer" download>
-              <Download size={12} />
-            </a>
-          </Button>
-        </div>
+      {/* عملیات — کنار مشخصات، همیشه دم‌دست */}
+      <div className="flex shrink-0 flex-col gap-1.5 self-center sm:flex-row sm:items-center">
+        <Button
+          size="sm"
+          className="h-8 gap-1 rounded-md px-2.5 text-[11px] font-bold"
+          disabled={replacing}
+          onClick={() => onPickFile(row.id)}
+          title="فایل اصلاح‌شده (بدون واترمارک باسکول) را انتخاب کنید — همان نام و مسیر جایگزین می‌شود"
+        >
+          {replacing ? <Loader2 size={11} className="animate-spin" /> : <Replace size={11} />}
+          آپلود نسخهٔ اصلاح‌شده
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="size-8 shrink-0 rounded-md p-0"
+          asChild
+          title="ذخیرهٔ تصویر اصلی برای ویرایش"
+        >
+          <a href={main} target="_blank" rel="noreferrer" download>
+            <Download size={13} />
+          </a>
+        </Button>
       </div>
     </div>
   );
@@ -191,7 +209,7 @@ function ImageCard({
 
 // ═══════════════════════════════ صفحه ═══════════════════════════════
 
-/** لینک عمقی ?q= (از جدول آگهی‌ها) نیاز به Suspense دارد (الگوی buy-requests) */
+/** فیلترها و صفحه‌بندی در URL — نیاز به Suspense دارد (الگوی buy-requests) */
 export function ProductImagesManager() {
   return (
     <Suspense>
@@ -206,18 +224,24 @@ function ProductImagesManagerInner() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const targetIdRef = useRef<string | null>(null);
 
-  // لینک از صفحهٔ آگهی‌ها: ?q=<شناسهٔ آگهی>
-  const initialQ = useSearchParams().get('q') ?? '';
+  const sp = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
 
-  // ── فیلترها ──
-  const [search, setSearch] = useState(initialQ);
-  const [debounced, setDebounced] = useState(initialQ.trim());
-  const [source, setSource] = useState<string>('all');
-  const [replaced, setReplaced] = useState<string>(ANY);
-  const [sort, setSort] = useState<string>('newest');
-  const [page, setPage] = useState(1);
-  const pageSize = 20; // ۲۰تایی — اسکن سریع چشم (خواستهٔ مالک)
+  // ── وضعیت — مقدار اولیه از URL (لینک مستقیم/اشتراک) ──
+  const [search, setSearch] = useState(() => sp.get('q') ?? '');
+  const [debounced, setDebounced] = useState(() => (sp.get('q') ?? '').trim());
+  const [source, setSource] = useState<string>(() => sp.get('src') ?? 'all');
+  const [replaced, setReplaced] = useState<string>(() => sp.get('rep') ?? ANY);
+  const [sort, setSort] = useState<string>(() => sp.get('sort') ?? 'productUpdated');
+  const [dir, setDir] = useState<'asc' | 'desc'>(() => (sp.get('dir') === 'asc' ? 'asc' : 'desc'));
+  const [dateField, setDateField] = useState<string>(() => (sp.get('fld') === 'created' ? 'created' : 'updated'));
+  const [from, setFrom] = useState<string | null>(() => sp.get('from'));
+  const [to, setTo] = useState<string | null>(() => sp.get('to'));
+  const [page, setPage] = useState(() => Math.max(1, parseInt(sp.get('page') ?? '1', 10) || 1));
+  const [jumpTo, setJumpTo] = useState('');
 
+  // debounce جستجو → q
   useEffect(() => {
     const t = setTimeout(() => {
       setDebounced(search.trim());
@@ -226,16 +250,61 @@ function ProductImagesManagerInner() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // ── هر صفحه آدرس یکتا (خواستهٔ مالک ۱۵-۱۱): نوشتن وضعیت در URL ──
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    if (debounced) qs.set('q', debounced);
+    if (source !== 'all') qs.set('src', source);
+    if (replaced !== ANY) qs.set('rep', replaced);
+    if (sort !== 'productUpdated') qs.set('sort', sort);
+    if (dir !== 'desc') qs.set('dir', dir);
+    if (dateField !== 'updated') qs.set('fld', dateField);
+    if (from) qs.set('from', from);
+    if (to) qs.set('to', to);
+    if (page > 1) qs.set('page', String(page));
+    router.replace(qs.size ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [router, pathname, debounced, source, replaced, sort, dir, dateField, from, to, page]);
+
+  // ── خواندن از URL — ویرایش دستی آدرس/دکمه‌های back-forward ──
+  useEffect(() => {
+    const nextQ = sp.get('q') ?? '';
+    const nextP = Math.max(1, parseInt(sp.get('page') ?? '1', 10) || 1);
+    const nextSort = sp.get('sort') ?? 'productUpdated';
+    const nextDir = sp.get('dir') === 'asc' ? 'asc' : 'desc';
+    const nextSrc = sp.get('src') ?? 'all';
+    const nextRep = sp.get('rep') ?? ANY;
+    const nextFld = sp.get('fld') === 'created' ? 'created' : 'updated';
+    const nextFrom = sp.get('from');
+    const nextTo = sp.get('to');
+    setPage((cur) => (cur !== nextP ? nextP : cur));
+    setSort((cur) => (cur !== nextSort ? nextSort : cur));
+    setDir((cur) => (cur !== nextDir ? nextDir : cur));
+    setSource((cur) => (cur !== nextSrc ? nextSrc : cur));
+    setReplaced((cur) => (cur !== nextRep ? nextRep : cur));
+    setDateField((cur) => (cur !== nextFld ? nextFld : cur));
+    setFrom((cur) => (cur !== nextFrom ? nextFrom : cur));
+    setTo((cur) => (cur !== nextTo ? nextTo : cur));
+    setDebounced((cur) => (cur !== nextQ.trim() ? nextQ.trim() : cur));
+    setSearch((cur) => (cur !== nextQ ? nextQ : cur));
+  }, [sp]);
+
+  // ── پارامترهای API ──
   const params: ProductImagesParams = useMemo(
     () => ({
       ...(debounced ? { q: debounced } : {}),
       ...(source !== 'all' ? { source: source as ProductImagesParams['source'] } : {}),
       ...(replaced !== ANY ? { replaced: replaced as 'yes' | 'no' } : {}),
       sort: sort as ProductImagesParams['sort'],
+      dir,
+      ...(from || to
+        ? dateField === 'updated'
+          ? { updatedFrom: from ?? undefined, updatedTo: to ?? undefined }
+          : { createdFrom: from ?? undefined, createdTo: to ?? undefined }
+        : {}),
       page,
-      pageSize,
+      pageSize: PAGE_SIZE,
     }),
-    [debounced, source, replaced, sort, page],
+    [debounced, source, replaced, sort, dir, dateField, from, to, page],
   );
 
   const { data, isLoading, isFetching, refetch } = useQuery({
@@ -298,10 +367,22 @@ function ProductImagesManagerInner() {
 
   const resetFilters = () => {
     setSearch('');
+    setDebounced('');
     setSource('all');
     setReplaced(ANY);
-    setSort('newest');
+    setSort('productUpdated');
+    setDir('desc');
+    setDateField('updated');
+    setFrom(null);
+    setTo(null);
     setPage(1);
+  };
+
+  const jump = (e: React.FormEvent) => {
+    e.preventDefault();
+    const n = parseInt(jumpTo, 10);
+    if (!Number.isNaN(n) && n >= 1) setPage(Math.min(n, pageCount));
+    setJumpTo('');
   };
 
   return (
@@ -420,12 +501,24 @@ function ProductImagesManagerInner() {
           <span className="mx-1 h-5 w-px bg-border" aria-hidden />
 
           <Select value={sort} onValueChange={(v) => { setSort(v); setPage(1); }}>
-            <SelectTrigger className="h-8 w-[130px] rounded-[10px] text-[11.5px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 w-[175px] rounded-[10px] text-[11.5px]"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="newest">جدیدترین اول</SelectItem>
-              <SelectItem value="oldest">قدیمی‌ترین اول</SelectItem>
+              {SORT_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 rounded-[10px] px-2.5 text-[11px]"
+            onClick={() => { setDir(dir === 'desc' ? 'asc' : 'desc'); setPage(1); }}
+            title={dir === 'desc' ? 'نزولی (جدید→قدیم) — کلیک: صعودی' : 'صعودی (قدیم→جدید) — کلیک: نزولی'}
+          >
+            {dir === 'desc' ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
+            {dir === 'desc' ? 'نزولی' : 'صعودی'}
+          </Button>
 
           <Button size="sm" variant="ghost" className="h-8 rounded-[10px] px-2.5 text-[11px] text-muted-foreground" onClick={resetFilters}>
             پاک‌کردن فیلترها
@@ -433,11 +526,22 @@ function ProductImagesManagerInner() {
         </div>
       </div>
 
-      {/* آلبوم */}
+      {/* فیلتر بازهٔ زمانی + دکمه‌های سریع + ماه‌های شمسی */}
+      <DateRangeFilter
+        fields={DATE_FIELDS}
+        field={dateField}
+        onFieldChange={(v) => { setDateField(v); setPage(1); }}
+        from={from}
+        to={to}
+        onChange={(r) => { setFrom(r.from); setTo(r.to); setPage(1); }}
+        months={6}
+      />
+
+      {/* آلبوم ردیفی — ۵۰تایی */}
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <Skeleton key={i} className="aspect-[3/4] w-full rounded-lg" />
+        <div className="space-y-2">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <Skeleton key={i} className="h-36 w-full rounded-lg" />
           ))}
         </div>
       ) : rows.length === 0 ? (
@@ -447,9 +551,9 @@ function ProductImagesManagerInner() {
           <p className="mt-1 text-[11px] text-muted-foreground">فیلترها را تغییر دهید یا عبارت دیگری جستجو کنید</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        <div className="space-y-2">
           {rows.map((row) => (
-            <ImageCard
+            <ImageRow
               key={row.id}
               row={row}
               replacing={uploadingId === row.id}
@@ -459,9 +563,9 @@ function ProductImagesManagerInner() {
         </div>
       )}
 
-      {/* صفحه‌بندی — ۲۰تایی */}
+      {/* صفحه‌بندی — ۵۰تایی؛ هر صفحه آدرس یکتا (?page=…) */}
       {pageCount > 1 && (
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <Button size="sm" variant="outline" className="h-8 rounded-md" disabled={page <= 1} onClick={() => setPage(page - 1)}>
             <ChevronRight size={14} /> قبلی
           </Button>
@@ -471,6 +575,19 @@ function ProductImagesManagerInner() {
           <Button size="sm" variant="outline" className="h-8 rounded-md" disabled={page >= pageCount} onClick={() => setPage(page + 1)}>
             بعدی <ChevronLeft size={14} />
           </Button>
+          <form onSubmit={jump} className="flex items-center gap-1">
+            <Input
+              value={jumpTo}
+              onChange={(e) => setJumpTo(e.target.value.replace(/[^0-9]/g, ''))}
+              inputMode="numeric"
+              placeholder="شمارهٔ صفحه"
+              className="h-8 w-24 rounded-md text-[11.5px]"
+              aria-label="پرش به شمارهٔ صفحه"
+            />
+            <Button size="sm" variant="outline" className="h-8 rounded-md text-[11px]" type="submit">
+              برو
+            </Button>
+          </form>
         </div>
       )}
 

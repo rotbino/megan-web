@@ -358,6 +358,9 @@ export interface ImportedUsersParams {
   contacted?: 'yes' | 'no';
   failed?: 'yes' | 'no';
   staleDays?: number;
+  /** بازهٔ تاریخ ثبت‌نام — ISO میلادی (خواستهٔ مالک ۱۵-۱۱) */
+  createdFrom?: string;
+  createdTo?: string;
   sort?: 'lastLogin' | 'createdAt' | 'products' | 'buskoolCreated' | 'imported' | 'contacted';
   dir?: 'asc' | 'desc';
   page?: number;
@@ -508,6 +511,12 @@ export interface ImportedListingsParams {
   edited?: 'yes' | 'no';
   status?: 'pending' | 'confirmed' | 'rejected' | 'deleted' | 'all';
   hasPhotos?: 'yes' | 'no';
+  /** بازهٔ تاریخ ثبت آگهی — ISO میلادی (خواستهٔ مالک ۱۵-۱۱) */
+  createdFrom?: string;
+  createdTo?: string;
+  /** بازهٔ تاریخ آخرین تغییر آگهی — ISO میلادی */
+  updatedFrom?: string;
+  updatedTo?: string;
   sort?: 'createdAt' | 'updatedAt' | 'priceUpdatedAt' | 'views' | 'name';
   dir?: 'asc' | 'desc';
   page?: number;
@@ -532,7 +541,15 @@ export interface ProductImageRow {
   /** URL اصلی فایل در باسکول (قبل از rehost) */
   originalUrl: string | null;
   replacedAt: string | null;
-  product: { id: number; name: string; slug: string; status: string } | null;
+  /** تاریخ‌های خودِ آگهی (باسکول) — مبنای سورت/فیلتر شکار واترمارک */
+  product: {
+    id: number;
+    name: string;
+    slug: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
   owner: { id: string; userName: string; name: string; phone: string; bUserName: string | null } | null;
 }
 
@@ -558,7 +575,23 @@ export interface ProductImagesParams {
   q?: string;
   source?: 'buskool' | 'native' | 'all';
   replaced?: 'yes' | 'no';
-  sort?: 'newest' | 'oldest';
+  /** فیلد سورت — پیش‌فرض productUpdated (آخرین آپدیتِ آگهی، بعد ثبت) */
+  sort?:
+    | 'productUpdated'
+    | 'productCreated'
+    | 'productId'
+    | 'size'
+    | 'createdAt'
+    | 'updatedAt'
+    | 'newest'
+    | 'oldest';
+  dir?: 'asc' | 'desc';
+  /** بازهٔ تاریخ ثبتِ خودِ آگهی (باسکول) — ISO میلادی */
+  createdFrom?: string;
+  createdTo?: string;
+  /** بازهٔ تاریخ آخرین تغییرِ خودِ آگهی — ISO میلادی */
+  updatedFrom?: string;
+  updatedTo?: string;
   page?: number;
   pageSize?: number;
 }

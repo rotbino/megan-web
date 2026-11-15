@@ -20,8 +20,9 @@
  * برای خرید بسته دعوت می‌کنیم.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
@@ -82,6 +83,7 @@ import {
 } from '@/lib/importer/client';
 import { dateFa, priceFa, timeAgoFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { DateRangeFilter } from './date-range-filter';
 
 // ─── ثابت‌های نمایش ─────────────────────────────────────────────────────────
 
@@ -133,13 +135,26 @@ function BuskoolPackageChip({ row }: { row: ImportedUserRow }) {
 
 // ═══════════════════════════════ صفحه ═══════════════════════════════
 
+/** وضعیت اشتراکی (q/بازهٔ تاریخ/صفحه) در URL — نیاز به Suspense دارد */
 export function UsersManager() {
+  return (
+    <Suspense>
+      <UsersManagerInner />
+    </Suspense>
+  );
+}
+
+function UsersManagerInner() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // ── فیلترها ──
-  const [search, setSearch] = useState('');
-  const [debounced, setDebounced] = useState('');
+  const sp = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // ── فیلترها — q/بازهٔ تاریخ/صفحه از URL (خواستهٔ مالک ۱۵-۱۱: «در هر بازه چند نفر ثبت‌نام کرده‌اند») ──
+  const [search, setSearch] = useState(() => sp.get('q') ?? '');
+  const [debounced, setDebounced] = useState(() => (sp.get('q') ?? '').trim());
   const [source, setSource] = useState<string>('all');
   const [premium, setPremium] = useState<string>(ANY);
   const [packageType, setPackageType] = useState<string>(ANY);
@@ -149,8 +164,10 @@ export function UsersManager() {
   const [staleDays, setStaleDays] = useState<string>(ANY);
   const [sort, setSort] = useState<string>('lastLogin');
   const [dir, setDir] = useState<'asc' | 'desc'>('desc');
-  const [page, setPage] = useState(1);
-  const pageSize = 20;
+  const [createdFrom, setCreatedFrom] = useState<string | null>(() => sp.get('from'));
+  const [createdTo, setCreatedTo] = useState<string | null>(() => sp.get('to'));
+  const [page, setPage] = useState(() => Math.max(1, parseInt(sp.get('page') ?? '1', 10) || 1));
+  const pageSize = 50;
 
   // ── انتخاب و دیالوگ‌ها ──
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -165,6 +182,29 @@ export function UsersManager() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // ── q/بازهٔ تاریخ/صفحه در URL — لینک مستقیم و اشتراک‌گذاری ──
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    if (debounced) qs.set('q', debounced);
+    if (createdFrom) qs.set('from', createdFrom);
+    if (createdTo) qs.set('to', createdTo);
+    if (page > 1) qs.set('page', String(page));
+    router.replace(qs.size ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [router, pathname, debounced, createdFrom, createdTo, page]);
+
+  // ── خواندن از URL — ویرایش دستی آدرس/دکمه‌های back-forward ──
+  useEffect(() => {
+    const nextQ = sp.get('q') ?? '';
+    const nextP = Math.max(1, parseInt(sp.get('page') ?? '1', 10) || 1);
+    const nextFrom = sp.get('from');
+    const nextTo = sp.get('to');
+    setPage((cur) => (cur !== nextP ? nextP : cur));
+    setCreatedFrom((cur) => (cur !== nextFrom ? nextFrom : cur));
+    setCreatedTo((cur) => (cur !== nextTo ? nextTo : cur));
+    setDebounced((cur) => (cur !== nextQ.trim() ? nextQ.trim() : cur));
+    setSearch((cur) => (cur !== nextQ ? nextQ : cur));
+  }, [sp]);
+
   const params: ImportedUsersParams = useMemo(
     () => ({
       ...(debounced ? { q: debounced } : {}),
@@ -175,12 +215,15 @@ export function UsersManager() {
       ...(contacted !== ANY ? { contacted: contacted as 'yes' | 'no' } : {}),
       ...(failed !== ANY ? { failed: failed as 'yes' | 'no' } : {}),
       ...(staleDays !== ANY ? { staleDays: Number(staleDays) } : {}),
+      ...(createdFrom || createdTo
+        ? { createdFrom: createdFrom ?? undefined, createdTo: createdTo ?? undefined }
+        : {}),
       sort: sort as ImportedUsersParams['sort'],
       dir,
       page,
       pageSize,
     }),
-    [debounced, source, premium, packageType, login, contacted, failed, staleDays, sort, dir, page],
+    [debounced, source, premium, packageType, login, contacted, failed, staleDays, createdFrom, createdTo, sort, dir, page],
   );
 
   const { data, isLoading, isFetching, refetch } = useQuery({
@@ -247,6 +290,7 @@ export function UsersManager() {
 
   const resetFilters = () => {
     setSearch('');
+    setDebounced('');
     setSource('all');
     setPremium(ANY);
     setPackageType(ANY);
@@ -256,6 +300,8 @@ export function UsersManager() {
     setStaleDays(ANY);
     setSort('lastLogin');
     setDir('desc');
+    setCreatedFrom(null);
+    setCreatedTo(null);
     setPage(1);
   };
 
@@ -270,7 +316,9 @@ export function UsersManager() {
           <div>
             <h1 className="text-base font-extrabold">مدیریت کاربران</h1>
             <p className="text-[11px] text-muted-foreground">
-              {data ? `${toFa(data.total)} کاربر مطابق فیلترها` : 'کنترل رفتار کاربران ایمپورت‌شده در کنار سایر کاربران'}
+              {data
+                ? `${toFa(data.total)} کاربر مطابق فیلترها${createdFrom || createdTo ? ` — ثبت‌نام در بازهٔ انتخابی` : ''}`
+                : 'کنترل رفتار کاربران ایمپورت‌شده در کنار سایر کاربران'}
             </p>
           </div>
         </div>
@@ -440,6 +488,15 @@ export function UsersManager() {
             پاک‌کردن فیلترها
           </Button>
         </div>
+
+        {/* بازهٔ تاریخ ثبت‌نام + دکمه‌های سریع + ۶ ماه شمسی اخیر (خواستهٔ مالک ۱۵-۱۱) */}
+        <DateRangeFilter
+          label="بازهٔ تاریخ ثبت‌نام"
+          from={createdFrom}
+          to={createdTo}
+          onChange={(r) => { setCreatedFrom(r.from); setCreatedTo(r.to); setPage(1); }}
+          months={6}
+        />
 
         {/* نوار عملیات گروهی */}
         {selected.size > 0 && (
