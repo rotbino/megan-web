@@ -24,7 +24,7 @@ export function Hero() {
                 <img
                     src="/images/hero.webp"
                     alt=""
-                    fetchPriority="width"
+                    fetchPriority="high"
                     className="h-full w-full object-cover object-[center_60%]"
                 />
                 {/* تیرگی فقط سمت راست — بقیه تصویر کاملاً روشن */}
