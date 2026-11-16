@@ -16,6 +16,7 @@ import {
 } from '@/components/shared/buskool-icons';
 import { useAuth } from '@/lib/mock/auth';
 import { useCategoryTree, useSuggestions, useUnreadMessagesCount, useChatSocketEvents } from '@/lib/mock/hooks';
+import { CarryFilters } from '@/components/shared/carry-filters';
 import { searchPath } from '@/lib/popular-searches';
 import { UnreadBadge } from '@/components/shared/unread-badge';
 import { cn } from '@/lib/utils';
@@ -208,6 +209,8 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card shadow-[0_2px_12px_rgba(35,38,43,0.08)]">
+      {/* مگامنو/لینک‌های بازار — کلیک با فیلترهای فعالِ URL همراه می‌شود (خواستهٔ مالک ۱۷-۱۱ دور ۲) */}
+      <CarryFilters>
       {/* ─── ردیف ۱ — هدر اصلی ──
           گروه راست (لوگو + جستجو) flex-1 است؛ یعنی فضای اضافه همیشه داخل گروه
           می‌ماند و جستجو هرگز از لوگو جدا نمی‌شود. نوار کاربر shrink-0 است و
@@ -470,6 +473,7 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
           </div>
         </div>
       </div>
+      </CarryFilters>
     </header>
   );
 }

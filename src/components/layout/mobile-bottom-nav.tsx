@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { FileText, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/mock/auth';
+import { CarryFilters } from '@/components/shared/carry-filters';
 import { useUnreadMessagesCount } from '@/lib/mock/hooks';
 import { UnreadBadge } from '@/components/shared/unread-badge';
 import {
@@ -104,6 +105,8 @@ export function MobileBottomNav() {
       aria-label="ناوبری موبایل ایمچ"
       className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card"
     >
+      {/* لینک «بازار» — کلیک با فیلترهای فعالِ URL همراه می‌شود (خواستهٔ مالک ۱۷-۱۱ دور ۲) */}
+      <CarryFilters>
       <div className="flex h-[58px] pe-2">
         {items.map(({ href, label, Icon, match }) => {
           const active = match(pathname);
@@ -128,6 +131,7 @@ export function MobileBottomNav() {
           );
         })}
       </div>
+      </CarryFilters>
     </nav>
   );
 }

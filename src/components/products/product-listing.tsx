@@ -27,8 +27,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/products/product-card';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
 import { LocationFilterCard, useFilterState } from '@/components/products/filter-state';
+import { CarryFilters } from '@/components/shared/carry-filters';
+import { UrlFilterSeed } from '@/components/shared/url-seed';
 import { useCities, useCategoryTree, useInfiniteProducts, useProvinces } from '@/lib/mock/hooks';
 import { findCategoryPath } from '@/lib/categories';
+import { productListHref, writeUrlFilters } from '@/lib/list-nav';
 import type { Paged } from '@/lib/mock/api';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -164,10 +167,11 @@ function ProductListingInner({
   /** انتخاب استان — شهر وابسته را هم پاک می‌کند (هر دو مسیر) */
   const selectProvince = useCallback(
     (id: number | undefined) => {
-      if (ctx) ctx.setProvince(id);
+      if (ctx) ctx.setProvince(id); // provider خودش URL را هم هم‌گام می‌کند
       else {
         setLocalProvinceId(id);
         setLocalCityId(undefined);
+        writeUrlFilters({ province: id != null ? String(id) : null, city: null });
       }
     },
     [ctx],
@@ -175,9 +179,43 @@ function ProductListingInner({
   const selectCity = useCallback(
     (id: number | undefined) => {
       if (ctx) ctx.setCity(id);
-      else setLocalCityId(id);
+      else {
+        setLocalCityId(id);
+        writeUrlFilters({ city: id != null ? String(id) : null });
+      }
     },
     [ctx],
+  );
+
+  /** تغییر سورت — state + URL بدون ناوبری (خواستهٔ مالک ۱۷-۱۱ دور ۲)؛
+   *  «مطابق نیاز من» از زمینهٔ نیاز مشتق می‌شود و در URL ثبت نمی‌شود */
+  const applySort = useCallback((k: SortKey) => {
+    setSort(k);
+    writeUrlFilters({ sort: k === 'newest' ? 'newest' : null });
+  }, []);
+
+  // ── seed فیلترها از URL (خواستهٔ مالک ۱۷-۱۱ دور ۲) ──────────────────
+  // ورود با لینک اشتراک‌گذاری/رفرش/back: صفحه‌ها ایستا رندر می‌شوند و این
+  // پارامترها را نمی‌بینند؛ برگهٔ نامرئی UrlFilterSeed (عین SearchBridge)
+  // یک‌بار بعد از هیدریشن مقدارها را می‌رساند. seed سئوی مکان (صفحهٔ فرود
+  // شهری /search/[q]/[city]) هم اگر در URL نباشد به URL منتقل می‌شود تا
+  // آدرس همیشه حقیقت فیلترها را داشته باشد و اشتراک‌گذاری‌پذیر باشد.
+  const seedUrlFilters = useCallback(
+    (url: { provinceId?: number; cityId?: number; sort?: 'newest' }) => {
+      if (url.sort) applySort(url.sort);
+      if (!ctx) {
+        if (url.provinceId !== undefined || url.cityId !== undefined) {
+          setLocalProvinceId(url.provinceId);
+          setLocalCityId(url.provinceId !== undefined ? url.cityId : undefined);
+        } else if (initialProvinceId != null || initialCityId != null) {
+          writeUrlFilters({
+            ...(initialProvinceId != null ? { province: String(initialProvinceId) } : {}),
+            ...(initialCityId != null ? { city: String(initialCityId) } : {}),
+          });
+        }
+      }
+    },
+    [applySort, ctx, initialProvinceId, initialCityId],
   );
 
   // ── زمینهٔ نیاز خریدار (خواستهٔ مالک ۱۱-۱۱) — ورود از درخواست‌های خرید ──
@@ -185,7 +223,11 @@ function ProductListingInner({
   // چیپ یا پیمایش به مسیر بدون پارامتر) به «مرتبط‌ترین» برمی‌گردد — الگوی
   // تنظیم state در زمان رندر (بدون افکت)
   const [need, setNeed] = useState<BuyNeed | null>(null);
-  const handleNeed = useCallback((n: BuyNeed | null) => setNeed(n), []);
+  const handleNeed = useCallback((n: BuyNeed | null) => {
+    setNeed(n);
+    // سورتِ «مطابق نیاز من» از نیاز مشتق می‌شود — پارامتر کهنهٔ sort پاک شود
+    if (n) writeUrlFilters({ sort: null });
+  }, []);
   const [lastNeed, setLastNeed] = useState<BuyNeed | null>(null);
   if (need !== lastNeed) {
     setLastNeed(need);
@@ -343,6 +385,9 @@ function ProductListingInner({
     selectProvince(undefined);
     setSort('related');
     setNeed(null); // زمینهٔ نیاز هم فیلتر است — «حذف همه» آن را هم می‌برد
+    // پاک‌سازی URL بدون ناوبری — فیلتر مکان را selectProvince می‌برد؛
+    // سورت و پارامترهای نیاز همین‌جا (تا MatchBridge دوباره فعالشان نکند)
+    writeUrlFilters({ sort: null, type: null, amount: null, unit: null, provinceId: null, cityId: null });
     if (s) router.replace('/product-list');
   };
 
@@ -354,6 +399,7 @@ function ProductListingInner({
   const pageReset = useCallback(() => {
     setSort('related');
     setNeed(null);
+    writeUrlFilters({ sort: null, type: null, amount: null, unit: null, provinceId: null, cityId: null });
     if (s) router.replace('/product-list');
   }, [s, router]);
   useEffect(() => {
@@ -394,7 +440,7 @@ function ProductListingInner({
     }
     setSheet(null);
     setCatStack([]);
-    router.push(`/product-list/category/${c.slug}`);
+    router.push(productListHref(`/product-list/category/${encodeURIComponent(c.slug)}`));
   };
 
   const closeSheets = () => {
@@ -402,7 +448,8 @@ function ProductListingInner({
     setCatStack([]);
   };
 
-  const clearCategory = () => router.push('/product-list');
+  /** حذف دسته — فیلترهای دیگر (استان/شهر/سورت/جستجو/نیاز) حفظ می‌شوند */
+  const clearCategory = () => router.push(productListHref('/product-list'));
 
   // ─── چیپ‌های فیلتر فعال — نوار مرتب‌سازی (خواسته مالک ۳۰-۱۰) ────────────
   // هر فیلتر انتخاب‌شده به‌صورت دکمه آبی کمرنگ با آیکون بستن می‌آید؛
@@ -507,7 +554,8 @@ function ProductListingInner({
   const filterContent = (
     <>
       <div className="rounded-md border bg-card p-4">
-        {sidebar}
+        {/* لینک‌های درخت (Server Component) — کلیک با فیلترهای فعال URL همراه می‌شود */}
+        <CarryFilters>{sidebar}</CarryFilters>
       </div>
       <LocationFilterCard
         provinceId={provinceId}
@@ -537,6 +585,8 @@ function ProductListingInner({
       <Suspense>
         <MatchBridge onNeed={handleNeed} />
       </Suspense>
+      {/* seed فیلترهای مکان/سورت — ?province= &city= &sort=newest (۱۷-۱۱ دور ۲) */}
+      <UrlFilterSeed onSeed={seedUrlFilters} />
 
         {/* نوار بالا — دسکتاپ: چیپ فیلترهای فعال + مرتب‌سازی (بدون شمار آگهی — خواسته مالک ۱-۱۱) */}
         <div className="hidden flex-wrap items-center justify-between gap-3 rounded-md border bg-card p-3 lg:flex">
@@ -548,7 +598,7 @@ function ProductListingInner({
               <button
                 key={opt.key}
                 type="button"
-                onClick={() => setSort(opt.key)}
+                onClick={() => applySort(opt.key)}
                 className={cn(
                   'rounded-md px-2 py-1 text-xs font-semibold transition-colors',
                   sort === opt.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-primary',
@@ -742,7 +792,7 @@ function ProductListingInner({
             <li key={opt.key}>
               <button
                 type="button"
-                onClick={() => { setSort(opt.key); setSheet(null); }}
+                onClick={() => { applySort(opt.key); setSheet(null); }}
                 className={cn(
                   'flex w-full items-center justify-between gap-2 rounded-md px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
                   sort === opt.key ? 'font-bold text-primary' : 'font-medium',

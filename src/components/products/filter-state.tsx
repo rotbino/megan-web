@@ -12,6 +12,8 @@ import { MapPin, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCities, useProvinces } from '@/lib/mock/hooks';
+import { writeUrlFilters } from '@/lib/list-nav';
+import { UrlFilterSeed } from '@/components/shared/url-seed';
 
 /**
  * وضعیت مشترک «فیلتر مکان» بین سایدبارِ layout دسته و لیستِ صفحه —
@@ -20,6 +22,12 @@ import { useCities, useProvinces } from '@/lib/mock/hooks';
  * بار) از layout دسته می‌آیند و ریمونت نمی‌شوند. چون سایدبار حالا بیرون
  * از صفحه زنده می‌ماند، state استان/شهر در این Context نگه داشته می‌شود تا
  * انتخاب کاربر بین دسته‌ها حفظ شود و کارت مکان با لیست هم‌نوا بماند.
+ *
+ * (خواستهٔ مالک ۱۷-۱۱ — دور ۲): فیلترها در URL هم منعکس می‌شوند
+ * (?province= &city=) — تغییر فیلتر فقط replaceState بومی است: هیچ ناوبری/
+ * اسکلتی در کار نیست، فقط کوئری لیست دوباره اجرا می‌شود و فیلترها با
+ * رفرش، back/forward و لینکِ اشتراک‌گذاری هم زنده می‌مانند. seed اولیه
+ * هم از URL خوانده می‌شود (ورود با لینک فیلتردار از بیرون خانواده).
  *
  * صفحه‌های بدون provider (لیست اصلی، جستجو، بازار شهری) از حالت «کنترل‌شده»
  * LocationFilterCard استفاده می‌کنند — عین رفتار قبلی با state محلی صفحه.
@@ -52,12 +60,25 @@ export function FilterStateProvider({ children }: { children: React.ReactNode })
   const [hasPageFilters, setHasPageFilters] = useState(false);
   const pageResetRef = useRef<(() => void) | null>(null);
 
+  // seed از URL فقط یک‌بار هنگام mount (لینک اشتراک‌گذاری/رفرش/back) —
+  // بعد از آن URL همیشه با خود تغییرات state هم‌گام نگه داشته می‌شود
+  const seedFromUrl = useCallback((v: { provinceId?: number; cityId?: number }) => {
+    if (v.provinceId !== undefined || v.cityId !== undefined) {
+      setProvinceId(v.provinceId);
+      setCityId(v.provinceId !== undefined ? v.cityId : undefined);
+    }
+  }, []);
+
   const setProvince = useCallback((id: number | undefined) => {
     setProvinceId(id);
     setCityId(undefined); // شهر تابع استان است
+    writeUrlFilters({ province: id != null ? String(id) : null, city: null });
   }, []);
 
-  const setCity = useCallback((id: number | undefined) => setCityId(id), []);
+  const setCity = useCallback((id: number | undefined) => {
+    setCityId(id);
+    writeUrlFilters({ city: id != null ? String(id) : null });
+  }, []);
 
   const setPageReset = useCallback((fn: (() => void) | null) => {
     pageResetRef.current = fn;
@@ -67,6 +88,7 @@ export function FilterStateProvider({ children }: { children: React.ReactNode })
   const resetAll = useCallback(() => {
     setProvinceId(undefined);
     setCityId(undefined);
+    writeUrlFilters({ province: null, city: null, sort: null });
     pageResetRef.current?.();
   }, []);
 
@@ -75,7 +97,12 @@ export function FilterStateProvider({ children }: { children: React.ReactNode })
     [provinceId, cityId, setProvince, setCity, resetAll, setPageReset, hasPageFilters],
   );
 
-  return <FilterStateContext.Provider value={value}>{children}</FilterStateContext.Provider>;
+  return (
+    <FilterStateContext.Provider value={value}>
+      <UrlFilterSeed onSeed={seedFromUrl} />
+      {children}
+    </FilterStateContext.Provider>
+  );
 }
 
 /**
@@ -132,7 +159,7 @@ export function LocationFilterCard({
       </h2>
       <Select
         dir="rtl"
-        value={provinceId ? String(provinceId) : undefined}
+        value={provinceId ? String(provinceId) : ''}
         onValueChange={(v) => setProvince(Number(v))}
       >
         <SelectTrigger className="w-full rounded-md" aria-label="استان">
@@ -146,7 +173,7 @@ export function LocationFilterCard({
       </Select>
       <Select
         dir="rtl"
-        value={cityId ? String(cityId) : undefined}
+        value={cityId ? String(cityId) : ''}
         onValueChange={(v) => setCity(Number(v))}
         disabled={!provinceId}
       >

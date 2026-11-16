@@ -1,5 +1,6 @@
 import { CategoryFilter } from '@/components/products/category-filter';
 import { FilterStateProvider, LocationFilterCard } from '@/components/products/filter-state';
+import { CarryFilters } from '@/components/shared/carry-filters';
 import { getCategoryTreeSSR } from '@/lib/mock/api';
 import { findCategoryPath } from '@/lib/categories';
 
@@ -39,7 +40,10 @@ export default async function CategoryLayout({ children, params }: Props) {
           aria-label="فیلترها"
         >
           <div className="rounded-md border bg-card p-4">
-            <CategoryFilter tree={tree} path={path ?? undefined} />
+            {/* لینک‌های درخت سرور-رندر — کلیک با فیلترهای فعال URL همراه می‌شود (خواستهٔ مالک ۱۷-۱۱ دور ۲) */}
+            <CarryFilters>
+              <CategoryFilter tree={tree} path={path ?? undefined} />
+            </CarryFilters>
           </div>
           <LocationFilterCard />
         </aside>
