@@ -142,6 +142,89 @@ export function ProductViewSkeleton() {
   );
 }
 
+// ─── اسکلت‌های سکشن‌های پایین صفحهٔ آگهی (استریم/لیزی‌لود ۱۸-۱۱) ───────────────
+// صفحهٔ جزئیات کالا فقط با «مشخصات کالا + فروشنده» بالا می‌آید؛ این اسکلت‌ها
+// جای سکشن‌های زیر صفحه را پر می‌کنند تا دیتای استریمی/لیزی برسد (خواستهٔ
+// مالک ۱۸-۱۱: کاربر تأخیر را متوجه نشود، سئو با استریم SSR حفظ می‌شود).
+
+/** اسکلت ریل افقی «محصولات دیگر فروشنده» — هم پیش‌نمایش LazyOnView،
+ *  هم حالت لودینگ خود ریل؛ کارت‌های تخت هم‌شکل کارت واقعی */
+export function RailSkeleton({ cards = 4 }: { cards?: number }) {
+  return (
+    <section className="mx-auto max-w-7xl px-4 lg:px-6" aria-busy="true" aria-hidden>
+      <Bone className="mb-4 h-6 w-52" />
+      <div className="flex gap-2.5 overflow-hidden">
+        {Array.from({ length: cards }, (_, i) => (
+          <div key={i} className="flex w-56 shrink-0 flex-col md:w-60 [&>div]:flex-1">
+            <CardSkeleton />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** اسکلت بخش «نظرات کاربران» — دو کارت نظر هم‌شکل نظرات واقعی */
+export function ReviewsSkeleton({ cards = 2 }: { cards?: number }) {
+  return (
+    <section className="mx-auto max-w-7xl px-4 lg:px-6" aria-busy="true" aria-hidden>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <Bone className="h-6 w-64" />
+        <Bone className="h-4 w-24" />
+      </div>
+      <div className="grid gap-2.5 lg:grid-cols-2">
+        {Array.from({ length: cards }, (_, i) => (
+          <div key={i} className="rounded-md border bg-card p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <Bone className="size-9 shrink-0 rounded-full" />
+                <div className="space-y-1.5">
+                  <Bone className="h-3.5 w-24" />
+                  <Bone className="h-2.5 w-16" />
+                </div>
+              </div>
+              <Bone className="h-4 w-20" />
+            </div>
+            <Bone className="mt-3 h-3 w-full" />
+            <Bone className="mt-1.5 h-3 w-3/5" />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** اسکلت گرید «محصولات مشابه» — ۸ کارت در گرید ۳/۴ ستونه */
+export function SimilarSkeleton({ cards = 8 }: { cards?: number }) {
+  return (
+    <section className="mx-auto max-w-7xl px-4 lg:px-6" aria-busy="true" aria-hidden>
+      <Bone className="mb-4 h-6 w-40" />
+      <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-4 xl:grid-cols-4">
+        {Array.from({ length: cards }, (_, i) => (
+          <CardSkeleton key={i} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** اسکلت «جستجوهای مرتبط» — جعبهٔ چیپ‌های متن‌ی */
+export function RelatedLinksSkeleton() {
+  return (
+    <section className="mx-auto max-w-7xl px-4 pb-8 lg:px-6" aria-busy="true" aria-hidden>
+      <div className="rounded-lg border bg-card p-4 lg:p-5">
+        <Bone className="h-5 w-56" />
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+          {['w-32', 'w-44', 'w-28', 'w-40', 'w-36', 'w-48', 'w-24', 'w-40'].map((w, i) => (
+            <Bone key={i} className={`h-3.5 ${w}`} />
+          ))}
+        </div>
+        <Bone className="mt-5 h-4 w-52" />
+      </div>
+    </section>
+  );
+}
+
 /** اسکلت لیست درخواست‌های خرید — کارت‌های ردیفی */
 export function BuyRequestsSkeleton({ rows = 6 }: { rows?: number }) {
   return (

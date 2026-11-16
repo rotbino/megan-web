@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -33,6 +34,13 @@ import { SellerOnlineBadge } from '@/components/products/seller-online-badge';
 import { SellerRatingBadge } from '@/components/products/seller-rating-badge';
 import { MobileContactBar } from '@/components/products/mobile-contact-bar';
 import { ArrowLeftIcon } from '@/components/shared/buskool-icons';
+import { LazyOnView } from '@/components/shared/lazy-on-view';
+import {
+  RailSkeleton,
+  RelatedLinksSkeleton,
+  ReviewsSkeleton,
+  SimilarSkeleton,
+} from '@/components/shared/page-skeletons';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { stockFa, toFa, priceFa, descToText } from '@/lib/format';
@@ -133,15 +141,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+/** محصولات مشابه — سکشن استریمی (خواستهٔ مالک ۱۸-۱۱): fetch صفحهٔ ۱ دیگر
+ *  «شل» صفحه را بلاک نمی‌کند؛ داخل Suspense بعد از مشخصات کالا استریم می‌شود
+ *  و همچنان سرور-رندر و داخل HTML می‌ماند (سئو حفظ شد). صفحات بعد در کلاینت
+ *  با اسکرول/دکمهٔ «نمایش بیشتر» (خواستهٔ مالک ۱۶-۱۱) — pageSize باید با
+ *  PAGE_SIZE کامپوننت (۲۰) یکی باشد؛ کش ۶۰s هم‌گام خود صفحه */
+async function SimilarSection({ product, basePath }: { product: Product; basePath: string }) {
+  const relatedPage1 = await getRelatedProductsSSR(product, 1, 20, 60);
+  return <SimilarProducts product={product} basePath={basePath} initialData={relatedPage1} />;
+}
+
 export default async function ProductViewPage({ params }: Props) {
   const { id } = await params;
   const product = await getProduct(Number(id));
   if (!product) notFound();
-
-  // محصولات مشابه — صفحهٔ ۱ سمت سرور (کش ۶۰s هم‌گام خود صفحه) تا داخل HTML
-  // اولیه باشد؛ صفحات بعد در کلاینت با اسکرول/دکمهٔ «نمایش بیشتر» می‌آیند
-  // (خواستهٔ مالک ۱۶-۱۱) — pageSize باید با PAGE_SIZE کامپوننت (۲۰) یکی باشد
-  const relatedPage1 = await getRelatedProductsSSR(product, 1, 20, 60);
 
   const city = product.cityName.trim();
   const sellerName = `${product.seller.firstName} ${product.seller.lastName}`.trim();
@@ -385,16 +398,21 @@ export default async function ProductViewPage({ params }: Props) {
           </aside>
         </div>
 
-        {/* ─── نظرات ۵ نظر آخر (اگر باشد) ─── */}
-        <ProductReviews sellerUserName={product.seller.userName} sellerName={sellerName} />
+        {/* ─── نظرات ۵ نظر آخر (اگر باشد) — استریم بعد از شل؛ همچنان SSR/سئو ─── */}
+        <Suspense fallback={<ReviewsSkeleton />}>
+          <ProductReviews sellerUserName={product.seller.userName} sellerName={sellerName} />
+        </Suspense>
 
-        {/* ─── محصولات دیگر همین فروشنده — ریل خودگردان ─── */}
+        {/* ─── محصولات دیگر همین فروشنده — ریل خودگردان؛ فچ فقط وقتی به
+            ویوپورت نزدیک شد (محتوای کلاینت‌فچ است، در HTML نیست → سئو بی‌تأثیر) ─── */}
         <div className="pt-8">
-          <SellerProductsRail
-            sellerUserName={product.seller.userName}
-            sellerName={sellerName}
-            excludeId={product.id}
-          />
+          <LazyOnView fallback={<RailSkeleton />}>
+            <SellerProductsRail
+              sellerUserName={product.seller.userName}
+              sellerName={sellerName}
+              excludeId={product.id}
+            />
+          </LazyOnView>
         </div>
 
         {/* ─── دعوت به ثبت محصول (کاربران گوگل) ─── */}
@@ -402,20 +420,25 @@ export default async function ProductViewPage({ params }: Props) {
           <SellerCtaBox />
         </div>
 
-        {/* ─── محصولات مشابه — اسکرول بی‌پایان + دکمهٔ «نمایش بیشتر» سئو ─── */}
+        {/* ─── محصولات مشابه — استریم بعد از شل (SSR/سئو حفظ) + اسکرول
+            بی‌پایان و دکمهٔ «نمایش بیشتر» کرال‌پذیر ?sp=N ─── */}
         <div className="pt-8">
-          <SimilarProducts product={product} basePath={productUrl} initialData={relatedPage1} />
+          <Suspense fallback={<SimilarSkeleton />}>
+            <SimilarSection product={product} basePath={productUrl} />
+          </Suspense>
         </div>
 
-        {/* ─── جستجوهای مرتبط (کالا × شهر × فروشنده) ─── */}
+        {/* ─── جستجوهای مرتبط (کالا × شهر × فروشنده) — استریم بعد از شل ─── */}
         <div className="pt-8">
-          <RelatedSearches
-            productName={product.productName}
-            subCategoryName={product.subCategoryName}
-            cityName={city}
-            sellerUserName={product.seller.userName}
-            sellerName={sellerName}
-          />
+          <Suspense fallback={<RelatedLinksSkeleton />}>
+            <RelatedSearches
+              productName={product.productName}
+              subCategoryName={product.subCategoryName}
+              cityName={city}
+              sellerUserName={product.seller.userName}
+              sellerName={sellerName}
+            />
+          </Suspense>
         </div>
 
         {/* جای نوار فیکس موبایل (۷۲px بالای نوار پایین ۵۹px) تا محتوا زیرش نماند */}

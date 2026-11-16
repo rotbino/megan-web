@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Store } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { useSellerProducts } from '@/lib/mock/hooks';
-import { Skeleton } from '@/components/ui/skeleton';
+import { RailSkeleton } from '@/components/shared/page-skeletons';
 import type { Product } from '@/lib/types';
 
 /**
@@ -12,6 +12,8 @@ import type { Product } from '@/lib/types';
  * نوار اسکرول افقی که خودش هر ۱ ثانیه یک کارت جلو می‌رود (مکث ۱ ثانیه روی هر
  * محصول — عین خواستهٔ مالک)؛ با هاور/لمس/فوکوس می‌ایستد تا کاربر خودش بچرخد.
  * کارت‌ها سورت قانونی از سرور می‌آیند (نردبان ← ویژه ← آپدیت).
+ * لیزی‌لود ۱۸-۱۱: این ریل داخل LazyOnView است — فچ فقط وقتی نزدیک ویوپورت
+ * شود شروع می‌شود (این کامپوننت همان لحظه مونت می‌شود که کاربر نزدیک است).
  */
 export function SellerProductsRail({
   sellerUserName,
@@ -54,16 +56,7 @@ export function SellerProductsRail({
   };
 
   if (isLoading) {
-    return (
-      <section className="mx-auto max-w-7xl px-4 lg:px-6" aria-busy>
-        <Skeleton className="mb-4 h-6 w-52" />
-        <div className="flex gap-2.5 overflow-hidden">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-64 w-56 shrink-0 rounded-md" />
-          ))}
-        </div>
-      </section>
-    );
+    return <RailSkeleton />;
   }
   if (products.length === 0) return null;
 
