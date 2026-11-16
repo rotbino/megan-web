@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/products/product-card';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
 import { LocationFilterCard, useFilterState } from '@/components/products/filter-state';
+import { logActivity } from '@/lib/activity';
 import { CarryFilters } from '@/components/shared/carry-filters';
 import { UrlFilterSeed } from '@/components/shared/url-seed';
 import { useCities, useCategoryTree, useInfiniteProducts, useProvinces } from '@/lib/mock/hooks';
@@ -251,10 +252,19 @@ function ProductListingInner({
     setS(baseS);
   }
 
+  // ── دستهٔ فعال (خواستهٔ مالک ۱۸-۱۱ دور ۲) ──────────────────────────
+  // روی صفحهٔ دسته، تعویض دسته از سایدبار کلاینت‌ساید است (navigateCategory —
+  // pushState بومی، بدون ناوبری سرور): نوار فیلتر/دکمه‌های سورت هیچ‌گاه ریمونت
+  // یا اسکلت نمی‌شوند و کوئری لیست از کش React Query فوری جواب می‌گیرد.
+  // تا وقتی override کلاینت فعال نباشد، همان prop سرور (SSR/سئو) حاکم است.
+  const clientCat = ctx?.category ?? null;
+  const activeCategorySlug = clientCat?.slug ?? categorySlug;
+  const activeCategoryName = clientCat?.name ?? categoryName;
+
   // با تغییر فیلترها کلید کوئری عوض می‌شود و لیست بی‌پایان از صفحهٔ ۱ شروع می‌شود
   const query = useMemo(
     () => ({
-      categorySlug,
+      categorySlug: activeCategorySlug,
       s,
       provinceId,
       cityId,
@@ -270,13 +280,14 @@ function ProductListingInner({
           }
         : {}),
     }),
-    [categorySlug, s, provinceId, cityId, sort, need],
+    [activeCategorySlug, s, provinceId, cityId, sort, need],
   );
 
   // seed فقط وقتی کوئری فعال عین کوئری اولیهٔ SSR باشد (تطبیق ساخت‌یافته — بدون JSON.stringify)؛
   // SSR در هر مسیر صفحه (۱، ۲، ۳…) با همان شمارهٔ صفحه پخته شده است؛ اگر
-  // کاربر فیلتر را عوض/بردارد، seed دیگر نمی‌خورد و fetch تازه با فیلتر جدید می‌رود
+  // کاربر فیلتر یا دسته را عوض/بردارد، seed دیگر نمی‌خورد و fetch تازه می‌رود
   const isDefaultFilters =
+    (!clientCat || clientCat.slug === categorySlug) &&
     sort === 'related' &&
     !need &&
     provinceId === initialProvinceId &&
@@ -286,7 +297,8 @@ function ProductListingInner({
   // ─── اسکرول بی‌پایان (خواستهٔ مالک ۱۴-۱۱) ─────────────────────────
   // صفحه‌ها به‌هم می‌چسبند؛ پیش‌واکشی بافر ۲ صفحه‌ای پشت صحنه انجام می‌شود
   // تا کاربر تاخیر لود صفحهٔ بعد را حس نکند و لود اولیه هم کند نشود.
-  const firstPage = initialPage ?? 1;
+  // سوییچ کلاینت‌ساید به دستهٔ دیگر همیشه از صفحهٔ ۱ شروع می‌شود (URL تمیزِ همان دسته).
+  const firstPage = clientCat && clientCat.slug !== categorySlug ? 1 : (initialPage ?? 1);
   const { data, isLoading, isFetching, isFetchingNextPage, fetchNextPage, hasNextPage } =
     useInfiniteProducts(query, isDefaultFilters ? initialData : undefined);
 
@@ -308,6 +320,51 @@ function ProductListingInner({
   const loadedCount = data?.pages.length ?? 0;
   const lastMeta = data?.pages.at(-1);
   const total = lastMeta?.total ?? 0;
+
+  // کوئری فعال را نزد provider (سایدبار layout دسته) ثبت کن تا پیش‌واکشی
+  // hover روی لینک دسته‌ها با همان فیلترهای فعال انجام شود (خواستهٔ مالک ۱۸-۱۱ دور ۲)
+  useEffect(() => {
+    ctx?.setActiveQuery(query);
+  }, [ctx, query]);
+
+  // ثبت بازدید دستهٔ سوییچ‌شده — عین CategoryViewPing سرور، برای مسیر کلاینت‌ساید
+  // (ping دستهٔ SSR را خود صفحه می‌زند؛ این فقط برای تعویض‌های بعدی است)
+  useEffect(() => {
+    if (!clientCat) return;
+    logActivity({ type: 'category_view', categoryName: clientCat.name }, `c:${clientCat.name}`);
+  }, [clientCat]);
+
+  // ── هم‌نمایی دستهٔ فعال با URL (خواستهٔ مالک ۱۸-۱۱ دور ۲) ─────────────
+  // back/forward مرورگر به ورودی‌های سوییچ کلاینت‌ساید (pushState): Next برای
+  // این ورودی‌ها درخت کش‌شدهٔ دستهٔ قبلی را بدون فچ برمی‌گرداند؛ این هم‌نماکننده
+  // override را با مقصد واقعی URL تنظیم/پاک می‌کند تا همیشه همان دسته‌ای که
+  // در آدرس هست نمایش داده شود — و چون کوئری کلاینت‌ساید است، برگشت/پیش‌روی
+  // هم از کش React Query فوری جواب می‌گیرد (بدون اسکلت). mount هم پوشش
+  // می‌دهد (بازگشت به ورودی pushState بعد از ریمونت provider).
+  const syncCategoryFromUrl = useCallback(() => {
+    const m = window.location.pathname.match(/^\/product-list\/category\/([^/]+)/);
+    const urlSlug = m ? decodeURIComponent(m[1]) : undefined;
+    // گارد تساوی — setState تکراری نده (حلقهٔ رندر از مسیر ctx → effect)
+    if (urlSlug && urlSlug !== categorySlug) {
+      if (ctx?.category?.slug === urlSlug) return; // هم‌نواست
+      // درخت سرور کهنه است — override کلاینت با مقصد URL هم‌نما می‌شود؛
+      // navigateCategory وقتی URL همان دسته باشد فقط state/عنوان را عوض می‌کند
+      const p = findCategoryPath(tree, urlSlug);
+      ctx?.navigateCategory(urlSlug, p?.[p.length - 1]?.categoryName ?? urlSlug);
+    } else if (ctx?.category) {
+      // درخت سرور با URL هم‌نواست — override خاموش (SSR حاکم) و عنوان به SSR برمی‌گردد
+      ctx.clearCategory();
+      if (categoryName) {
+        document.title = `${categoryName} - خرید و قیمت ${categoryName} عمده | ارزان‌ترین قیمت`;
+      }
+    }
+  }, [ctx, categorySlug, categoryName, tree]);
+  useEffect(() => {
+    if (!ctx) return;
+    syncCategoryFromUrl();
+    window.addEventListener('popstate', syncCategoryFromUrl);
+    return () => window.removeEventListener('popstate', syncCategoryFromUrl);
+  }, [ctx, syncCategoryFromUrl]);
 
   /** صفحهٔ در حال مشاهده (۱ = اولین صفحهٔ لودشده) — از جایگاه ویوپورت در گرید */
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -420,8 +477,8 @@ function ProductListingInner({
    * برای برگ، یک سطح عقب‌تر (هم‌ترازهای خودش) — عین رفتار باسکول.
    */
   const openCategoriesSheet = () => {
-    if (categorySlug) {
-      const p = findCategoryPath(tree, categorySlug);
+    if (activeCategorySlug) {
+      const p = findCategoryPath(tree, activeCategorySlug);
       if (p?.length) {
         const cur = p[p.length - 1];
         setCatStack(cur.children?.length ? p : p.slice(0, -1));
@@ -440,6 +497,12 @@ function ProductListingInner({
     }
     setSheet(null);
     setCatStack([]);
+    // (خواستهٔ مالک ۱۸-۱۱ دور ۲) روی صفحهٔ دسته، انتخاب بات‌شیت موبایل هم
+    // کلاینت‌ساید است — بدون ناوبری سرور و با کش React Query
+    if (ctx) {
+      ctx.navigateCategory(c.slug, c.categoryName);
+      return;
+    }
     router.push(productListHref(`/product-list/category/${encodeURIComponent(c.slug)}`));
   };
 
@@ -472,15 +535,15 @@ function ProductListingInner({
       {/* زمینهٔ نیاز — چیپ اول (خواستهٔ مالک ۱۱-۱۱): «آگریا · ۵۰۰ کیلوگرم»؛
           حذفش = برگشت به مرور عادی دسته */}
 
-      {categoryName && (
+      {activeCategoryName && (
         <button
           type="button"
           onClick={clearCategory}
-          aria-label={`حذف فیلتر دسته ${categoryName}`}
+          aria-label={`حذف فیلتر دسته ${activeCategoryName}`}
           title="حذف فیلتر دسته"
           className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
         >
-          <span className="truncate">{categoryName}</span>
+          <span className="truncate">{activeCategoryName}</span>
           <X size={13} className="shrink-0" aria-hidden />
         </button>
       )}
@@ -757,13 +820,13 @@ function ProductListingInner({
         title={sheetLevel ? sheetLevel.categoryName : 'همه دسته ها'}
       >
         {/* میان‌بر: مشاهده همه محصولات دسته فعال (مثل باسکول) */}
-        {categoryName && categorySlug && (
+        {activeCategoryName && activeCategorySlug && (
           <Link
-            href={`/product-list/category/${encodeURIComponent(categorySlug)}`}
+            href={`/product-list/category/${encodeURIComponent(activeCategorySlug)}`}
             onClick={closeSheets}
             className="mb-1 flex items-center justify-between gap-2 rounded-md bg-primary/5 px-3 py-3 text-sm font-bold text-primary transition-colors hover:bg-primary/10"
           >
-            مشاهده همه محصولات {categoryName}
+            مشاهده همه محصولات {activeCategoryName}
             <ChevronLeft size={16} aria-hidden />
           </Link>
         )}

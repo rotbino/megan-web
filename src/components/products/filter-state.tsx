@@ -4,16 +4,19 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
+import type { QueryClient } from '@tanstack/react-query';
 import { MapPin, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCities, useProvinces } from '@/lib/mock/hooks';
-import { writeUrlFilters } from '@/lib/list-nav';
+import { useCities, useProvinces, prefetchInfiniteProducts } from '@/lib/mock/hooks';
+import { writeUrlFilters, productListHref } from '@/lib/list-nav';
 import { UrlFilterSeed } from '@/components/shared/url-seed';
+import type { ProductQuery } from '@/lib/types';
 
 /**
  * وضعیت مشترک «فیلتر مکان» بین سایدبارِ layout دسته و لیستِ صفحه —
@@ -33,6 +36,12 @@ import { UrlFilterSeed } from '@/components/shared/url-seed';
  * LocationFilterCard استفاده می‌کنند — عین رفتار قبلی با state محلی صفحه.
  */
 
+/** دستهٔ انتخاب‌شده با سوییچ کلاینت‌ساید (بدون ناوبری سرور) */
+export interface ClientCategory {
+  slug: string;
+  name: string;
+}
+
 interface FilterStateValue {
   provinceId?: number;
   cityId?: number;
@@ -45,6 +54,19 @@ interface FilterStateValue {
   setPageReset: (fn: (() => void) | null) => void;
   /** آیا صفحهٔ فعلی فیلتر محلی فعال دارد؟ (نمایش دکمهٔ «حذف همه») */
   hasPageFilters: boolean;
+  /** دستهٔ فعال کلاینت — سوییچ بدون ناوبری سرور (خواستهٔ مالک ۱۸-۱۱ دور ۲)؛
+   * null یعنی همان دستهٔ SSR صفحه فعال است */
+  category: ClientCategory | null;
+  /** تعویض دسته بدون رندر سرور — عین فیلترها: pushState بومی + کوئری کلاینت.
+   * نوار فیلتر/سورت هیچ‌وقت اسکلت نمی‌گیرد و کش React Query فوری جواب می‌دهد.
+   * اگر URL همین دسته را نشان دهد فقط state/عنوان هم‌نما می‌شود (بدون pushState) */
+  navigateCategory: (slug: string, name: string) => void;
+  /** خاموش‌کردن override — وقتی درخت سرور (SSR/POP واقعی) خودش حاکم است */
+  clearCategory: () => void;
+  /** صفحهٔ فعلی کوئری فعال لیست را ثبت می‌کند تا prefetch hover دقیق باشد */
+  setActiveQuery: (q: Omit<ProductQuery, 'page'> | null) => void;
+  /** پیش‌واکشی صفحهٔ ۱ دستهٔ دیگر با همان فیلترهای فعال — برای hover سایدبار */
+  prefetchCategory: (slug: string, client: QueryClient) => void;
 }
 
 const FilterStateContext = createContext<FilterStateValue | null>(null);
@@ -59,6 +81,40 @@ export function FilterStateProvider({ children }: { children: React.ReactNode })
   const [cityId, setCityId] = useState<number | undefined>(undefined);
   const [hasPageFilters, setHasPageFilters] = useState(false);
   const pageResetRef = useRef<(() => void) | null>(null);
+
+  // ── سوییچ کلاینت‌ساید دسته (خواستهٔ مالک ۱۸-۱۱ دور ۲) ──────────────
+  // تعویض دسته از سایدبار دیگر ناوبری سرور نیست؛ عین فیلترها فقط URL با
+  // pushState بومی عوض می‌شود و کوئری لیست (React Query) دیتای تازه/کش‌شده
+  // می‌آورد. نتیجه: نوار چیپ/سورت هیچ‌گاه اسکلت نمی‌گیرد، متن چیپ همان لحظه
+  // عوض می‌شود و برگشت به دستهٔ قبلی از کش، فوری و بدون درخواست است.
+  const [category, setCategory] = useState<ClientCategory | null>(null);
+  const activeQueryRef = useRef<Omit<ProductQuery, 'page'> | null>(null);
+
+  const navigateCategory = useCallback((slug: string, name: string) => {
+    // دستهٔ فعلی URL — اگر همان است، فقط state/عنوان هم‌نوا می‌شود (بدون pushState)
+    const m = window.location.pathname.match(/^\/product-list\/category\/([^/]+)/);
+    const current = m ? decodeURIComponent(m[1]) : undefined;
+    // آبجکت تازه فقط وقتی که مقدار عوض شده — وگرنه حلقهٔ رندر (ctx → effect → setState)
+    setCategory((cur) => (cur && cur.slug === slug && cur.name === name ? cur : { slug, name }));
+    // عنوان تب هم‌نمای generateMetadata همان دسته — حس ناوبری کامل بدون رندر سرور
+    document.title = `${name} - خرید و قیمت ${name} عمده | ارزان‌ترین قیمت`;
+    if (current === slug) return; // بدون pushState تکراری/اسکرول
+    window.history.pushState(null, '', productListHref(`/product-list/category/${encodeURIComponent(slug)}`));
+    window.scrollTo({ top: 0 });
+  }, []);
+
+  const clearCategory = useCallback(() => setCategory(null), []);
+
+  const setActiveQuery = useCallback((q: Omit<ProductQuery, 'page'> | null) => {
+    activeQueryRef.current = q;
+  }, []);
+
+  const prefetchCategory = useCallback((slug: string, client: QueryClient) => {
+    const base = activeQueryRef.current;
+    if (!base || base.categorySlug === slug) return; // کوئری فعال خودش هست
+    void prefetchInfiniteProducts(client, { ...base, categorySlug: slug });
+  }, []);
+
 
   // seed از URL فقط یک‌بار هنگام mount (لینک اشتراک‌گذاری/رفرش/back) —
   // بعد از آن URL همیشه با خود تغییرات state هم‌گام نگه داشته می‌شود
@@ -93,8 +149,21 @@ export function FilterStateProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const value = useMemo(
-    () => ({ provinceId, cityId, setProvince, setCity, resetAll, setPageReset, hasPageFilters }),
-    [provinceId, cityId, setProvince, setCity, resetAll, setPageReset, hasPageFilters],
+    () => ({
+      provinceId,
+      cityId,
+      setProvince,
+      setCity,
+      resetAll,
+      setPageReset,
+      hasPageFilters,
+      category,
+      navigateCategory,
+      clearCategory,
+      setActiveQuery,
+      prefetchCategory,
+    }),
+    [provinceId, cityId, setProvince, setCity, resetAll, setPageReset, hasPageFilters, category, navigateCategory, clearCategory, setActiveQuery, prefetchCategory],
   );
 
   return (

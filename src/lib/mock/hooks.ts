@@ -4,6 +4,7 @@
 
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient, useInfiniteQuery, keepPreviousData } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
 import { ensureChatSocket, onChatEvent } from '@/lib/api/socket';
 import { useBaseData } from '@/lib/base-data';
 import * as api from './api';
@@ -33,6 +34,26 @@ export function useProducts(query: ProductQuery, initialData?: Paged<Product>) {
   });
 }
 
+/** کلید کوئری لیست بی‌پایان — منبع واحد تا prefetch و هوک همیشه یکی باشد */
+export function infiniteProductsKey(query: Omit<ProductQuery, 'page'>) {
+  return ['products-infinite', query] as const;
+}
+
+/**
+ * پیش‌واکشی صفحهٔ ۱ یک دستهٔ دیگر (خواستهٔ مالک ۱۸-۱۱ دور ۲) — با hover روی
+ * لینک دستهٔ سایدبار صدا زده می‌شود تا کلیک، از کش فوری جواب بگیرد؛ همان
+ * queryFn/staleTime هوک → همان کلید → hit تضمینی. درخواست فقط وقتی می‌رود
+ * که کش تازه نداشته باشد (React Query خودش dedupe می‌کند).
+ */
+export function prefetchInfiniteProducts(client: QueryClient, query: Omit<ProductQuery, 'page'>) {
+  return client.prefetchInfiniteQuery({
+    queryKey: infiniteProductsKey(query),
+    queryFn: ({ pageParam }: { pageParam: number }) => api.getProducts({ ...query, page: pageParam }),
+    initialPageParam: 1,
+    staleTime: 60_000,
+  });
+}
+
 /**
  * لیست محصولات با اسکرول بی‌پایان (خواستهٔ مالک ۱۴-۱۱) — همان endpoint با
  * useInfiniteQuery؛ کلید کوئری «بدون page» است (صفحه = pageParam).
@@ -45,7 +66,7 @@ export function useInfiniteProducts(
   initialData?: Paged<Product>,
 ) {
   return useInfiniteQuery({
-    queryKey: ['products-infinite', query] as const,
+    queryKey: infiniteProductsKey(query),
     queryFn: ({ pageParam }: { pageParam: number }) => api.getProducts({ ...query, page: pageParam }),
     initialPageParam: 1,
     getNextPageParam: (lastPage: Paged<Product>) =>

@@ -1,6 +1,5 @@
-import { CategoryFilter } from '@/components/products/category-filter';
-import { FilterStateProvider, LocationFilterCard } from '@/components/products/filter-state';
-import { CarryFilters } from '@/components/shared/carry-filters';
+import { CategoryNav } from '@/components/products/category-nav';
+import { LocationFilterCard, FilterStateProvider } from '@/components/products/filter-state';
 import { getCategoryTreeSSR } from '@/lib/mock/api';
 import { findCategoryPath } from '@/lib/categories';
 
@@ -40,10 +39,10 @@ export default async function CategoryLayout({ children, params }: Props) {
           aria-label="فیلترها"
         >
           <div className="rounded-md border bg-card p-4">
-            {/* لینک‌های درخت سرور-رندر — کلیک با فیلترهای فعال URL همراه می‌شود (خواستهٔ مالک ۱۷-۱۱ دور ۲) */}
-            <CarryFilters>
-              <CategoryFilter tree={tree} path={path ?? undefined} />
-            </CarryFilters>
+            {/* لینک‌های درخت سرور-رندر — کلیک با فیلترهای فعال URL همراه می‌شود؛
+                (خواستهٔ مالک ۱۸-۱۱ دور ۲) تعویض دسته کلاینت‌ساید است: بدون
+                ناوبری سرور، بدون اسکلت نوار فیلتر، با کش React Query */}
+            <CategoryNav tree={tree} ssrPath={path ?? undefined} />
           </div>
           <LocationFilterCard />
         </aside>
