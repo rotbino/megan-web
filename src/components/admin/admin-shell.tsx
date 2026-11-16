@@ -25,6 +25,7 @@ import {
   Boxes,
   ChevronDown,
   ClipboardList,
+  LayoutList,
   Coins,
   Crown,
   DatabaseZap,
@@ -104,6 +105,9 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
     title: 'بازار و محتوا',
     items: [
       { href: '/admin/products', label: 'آگهی‌ها', Icon: Boxes, superOnly: false, badge: 'pendingProducts' },
+      // گزارش آگهی‌ها روی تاکسونومی v2 (۱۶-۱۱) — صفحهٔ مهاجرت موازی: سایت عمومی
+      // روی باسکول است؛ این‌جا آگهی‌ها روی درخت ۱۵-ریشه‌ای جدید دیده می‌شوند.
+      { href: '/admin/ads-report', label: 'گزارش آگهی‌ها', Icon: LayoutList, superOnly: false },
       { href: '/admin/buy-requests', label: 'درخواست‌های خرید', Icon: ClipboardList, superOnly: false, badge: 'pendingBuyRequests' },
       // ثبت‌نام سرویس‌های تخصصی — ریتو/همخرید از /services (۱۱-۱۲)
       { href: '/admin/service-signups', label: 'ثبت‌نام سرویس‌ها', Icon: Sparkles, superOnly: false },

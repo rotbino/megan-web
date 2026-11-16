@@ -1696,3 +1696,99 @@ export async function fetchAdminServiceSignupList(
     filters as unknown as Record<string, unknown>,
   );
 }
+
+// ─── گزارش آگهی‌ها — تاکسونومی v2 (گروه‌بندی جدید ایمچ) ───────────────────────
+
+/** گزینهٔ اتریبیوت پایلوت — تطبیق با نام آزاد آگهی در بک‌اند */
+export interface AdsReportAttrOption {
+  label: string;
+  match: string[];
+}
+
+export interface AdsReportAttr {
+  key: string;
+  label: string;
+  hint?: string;
+  options: AdsReportAttrOption[];
+}
+
+/** نود درخت v2 — با شمار آگهی زیر گره */
+export interface AdsReportTreeNode {
+  key: string;
+  name: string;
+  icon?: string;
+  count: number;
+  attrs?: AdsReportAttr[];
+  children?: AdsReportTreeNode[];
+}
+
+export interface AdsReportTree {
+  totalProducts: number;
+  mapped: number;
+  unmapped: number;
+  roots: AdsReportTreeNode[];
+}
+
+/** ردیف گزارش — عین AdminProductRow + مسیر v2 + اتریبیوت‌های استخراج‌شده */
+export interface AdsReportRow {
+  id: number;
+  product_name: string;
+  status: 'pending' | 'confirmed' | 'rejected' | 'deleted';
+  v2_path: string[] | null;
+  v2_key: string | null;
+  buskol_path: string;
+  province_name: string;
+  city_name: string;
+  seller: {
+    id: string;
+    user_name: string;
+    full_name: string;
+    phone: string;
+    is_verified: boolean;
+  };
+  stock: number;
+  min_sale_amount: number;
+  min_sale_price: number;
+  unit: string;
+  is_ladder: boolean;
+  view_count: number;
+  photo: string | null;
+  created_at: string;
+  updated_at: string;
+  resolved_attrs?: Record<string, string>;
+}
+
+export interface AdsReportFilters {
+  /** 'all' | 'unmapped' | کلید v2 مثل agri.pulses.chickpea */
+  nodeKey?: string;
+  provinceId?: number;
+  cityId?: number;
+  status?: 'pending' | 'confirmed' | 'rejected' | 'deleted';
+  search?: string;
+  attrs?: Record<string, string[]>;
+  page?: number;
+  perPage?: number;
+}
+
+export interface AdsReportList {
+  total: number;
+  page: number;
+  perPage: number;
+  pageCount: number;
+  counts: Record<string, number>;
+  attrs: AdsReportAttr[];
+  items: AdsReportRow[];
+}
+
+/** درخت ۱۵-ریشه‌ای v2 + شمار آگهی هر گره + پوشش نگاشت */
+export async function fetchAdsReportTree(): Promise<AdsReportTree> {
+  return adminFetch<AdsReportTree>('/admin/ads-report/getTree', {});
+}
+
+/** لیست آگهی‌ها روی دستهٔ جدید — فیلتر گره/شهر/وضعیت/جستجو/اتریبیوت */
+export async function fetchAdsReport(filters: AdsReportFilters = {}): Promise<AdsReportList> {
+  return adminFetch<AdsReportList>('/admin/ads-report/getReport', {
+    ...filters,
+    attrs: filters.attrs && Object.keys(filters.attrs).length ? filters.attrs : undefined,
+  });
+}
