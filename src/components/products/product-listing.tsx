@@ -19,15 +19,14 @@ import {
   List,
   Loader2,
   MapPin,
-  RotateCcw,
   Search,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/products/product-card';
 import { BottomSheet } from '@/components/shared/bottom-sheet';
+import { LocationFilterCard, useFilterState } from '@/components/products/filter-state';
 import { useCities, useCategoryTree, useInfiniteProducts, useProvinces } from '@/lib/mock/hooks';
 import { findCategoryPath } from '@/lib/categories';
 import type { Paged } from '@/lib/mock/api';
@@ -129,6 +128,9 @@ interface ProductListingInnerProps {
   page1Href?: string;
   /** الگوی آدرس صفحه‌های ۲ به بعد با جای‌نگهدار {p} (مثل /product-list/{p}) */
   pageHrefPattern?: string;
+  /** حالت ستون-لیست (خواستهٔ مالک ۱۷-۱۱): صفحهٔ دسته که گرید صفحه و سایدبار
+   *  را از layout می‌گیرد — این کامپوننت فقط ستون لیست + شیت‌ها را رندر می‌کند */
+  embedded?: boolean;
 }
 
 function ProductListingInner({
@@ -142,6 +144,7 @@ function ProductListingInner({
   initialPage,
   page1Href,
   pageHrefPattern,
+  embedded,
 }: ProductListingInnerProps) {
   const router = useRouter();
   /** جستجوی پایه — از prop مسیر (صفحه جستجو) یا خالی (لیست/دسته‌بندی) */
@@ -149,9 +152,33 @@ function ProductListingInner({
   const [s, setS] = useState(baseS);
 
   const [sort, setSort] = useState<SortKey>('related');
-  // فیلتر مکان — از URL سئو (صفحهٔ فرود شهری) seed می‌شود؛ بعد از آن رفتار عادی
-  const [provinceId, setProvinceId] = useState<number | undefined>(initialProvinceId);
-  const [cityId, setCityId] = useState<number | undefined>(initialCityId);
+  // فیلتر مکان (خواستهٔ مالک ۱۷-۱۱): در صفحهٔ دسته از Context مشترک با
+  // سایدبارِ layout می‌آید تا هنگام ناوبری بین دسته‌ها انتخاب کاربر حفظ شود
+  // و کارت مکان با کوئری لیست هم‌نوا بماند؛ در بقیهٔ صفحه‌ها (بدون provider)
+  // state محلی عین قبل — seed از URL سئو (صفحهٔ فرود شهری).
+  const ctx = useFilterState();
+  const [localProvinceId, setLocalProvinceId] = useState<number | undefined>(initialProvinceId);
+  const [localCityId, setLocalCityId] = useState<number | undefined>(initialCityId);
+  const provinceId = ctx ? ctx.provinceId : localProvinceId;
+  const cityId = ctx ? ctx.cityId : localCityId;
+  /** انتخاب استان — شهر وابسته را هم پاک می‌کند (هر دو مسیر) */
+  const selectProvince = useCallback(
+    (id: number | undefined) => {
+      if (ctx) ctx.setProvince(id);
+      else {
+        setLocalProvinceId(id);
+        setLocalCityId(undefined);
+      }
+    },
+    [ctx],
+  );
+  const selectCity = useCallback(
+    (id: number | undefined) => {
+      if (ctx) ctx.setCity(id);
+      else setLocalCityId(id);
+    },
+    [ctx],
+  );
 
   // ── زمینهٔ نیاز خریدار (خواستهٔ مالک ۱۱-۱۱) — ورود از درخواست‌های خرید ──
   // با رسیدن نیاز، سورت پیش‌فرض «مطابق نیاز من» می‌شود؛ با رفتن آن (حذف
@@ -313,14 +340,29 @@ function ProductListingInner({
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const reset = () => {
-    setProvinceId(undefined);
-    setCityId(undefined);
+    selectProvince(undefined);
     setSort('related');
     setNeed(null); // زمینهٔ نیاز هم فیلتر است — «حذف همه» آن را هم می‌برد
     if (s) router.replace('/product-list');
   };
 
   const hasFilters = !!provinceId || !!cityId || !!s || !!need || sort !== 'related';
+
+  // ثبت فیلترهای محلی صفحه نزد سایدبار layout (صفحهٔ دسته): دکمهٔ «حذف همهٔ
+  // فیلترها»ی سایدبار باید سورت/جستجو/نیاز را هم پاک کند — عین رفتار قبل
+  const hasPageFilters = !!s || !!need || sort !== 'related';
+  const pageReset = useCallback(() => {
+    setSort('related');
+    setNeed(null);
+    if (s) router.replace('/product-list');
+  }, [s, router]);
+  useEffect(() => {
+    if (!ctx || !embedded) return;
+    ctx.setPageReset(hasPageFilters ? pageReset : null);
+    return () => {
+      ctx.setPageReset(null);
+    };
+  }, [ctx, embedded, hasPageFilters, pageReset]);
 
   // ─── موبایل: انتخاب دسته سلسله‌مراتبی ─────────────────────────
   const sheetLevel = catStack[catStack.length - 1];
@@ -429,7 +471,7 @@ function ProductListingInner({
   const locationChips = cityName ? (
     <button
       type="button"
-      onClick={() => setCityId(undefined)}
+      onClick={() => selectCity(undefined)}
       aria-label="حذف فیلتر شهر"
       title="حذف فیلتر شهر"
       className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
@@ -441,7 +483,7 @@ function ProductListingInner({
   ) : provinceName ? (
     <button
       type="button"
-      onClick={() => { setProvinceId(undefined); setCityId(undefined); }}
+      onClick={() => selectProvince(undefined)}
       aria-label="حذف فیلتر استان"
       title="حذف فیلتر استان"
       className="inline-flex max-w-[11rem] shrink-0 items-center gap-1.5 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
@@ -460,54 +502,30 @@ function ProductListingInner({
   );
 
   // ─── سایدبار دسکتاپ (بدون تغییر) ──────────────────────────────
-  // سایدبار فیلتر — دسکتاپ؛ بخش دسته‌ها سرور-رندر (prop)، مکان کلاینت
+  // سایدبار فیلتر (حالت عادی) — بخش دسته‌ها سرور-رندر (prop)؛ کارت مکان از
+  // LocationFilterCard کنترل‌شده. در صفحهٔ دسته (embedded) سایدبار اینجا نیست — از layout می‌آید.
   const filterContent = (
     <>
       <div className="rounded-md border bg-card p-4">
         {sidebar}
       </div>
-
-      <div className="space-y-3 rounded-md border bg-card p-4">
-        <h2 className="flex items-center gap-1.5 text-sm font-bold">
-          <MapPin size={14} className="text-primary" />
-          موقعیت جغرافیایی
-        </h2>
-        <Select
-          dir="rtl"
-          value={provinceId ? String(provinceId) : undefined}
-          onValueChange={(v) => { setProvinceId(Number(v)); setCityId(undefined); }}
-        >
-          <SelectTrigger className="w-full rounded-md" aria-label="استان">
-            <SelectValue placeholder="همه استان‌ها" />
-          </SelectTrigger>
-          <SelectContent>
-            {provinces.map((p) => (
-              <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select dir="rtl" value={cityId ? String(cityId) : undefined} onValueChange={(v) => setCityId(Number(v))} disabled={!provinceId}>
-          <SelectTrigger className="w-full rounded-md" aria-label="شهر">
-            <SelectValue placeholder={provinceId ? 'همه شهرها' : 'ابتدا استان را انتخاب کنید'} />
-          </SelectTrigger>
-          <SelectContent>
-            {cities.map((c) => (
-              <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={reset} className="w-full gap-1.5 text-muted-foreground">
-            <RotateCcw size={13} />
-            حذف همه فیلترها
-          </Button>
-        )}
-      </div>
+      <LocationFilterCard
+        provinceId={provinceId}
+        cityId={cityId}
+        onProvinceChange={selectProvince}
+        onCityChange={selectCity}
+        showReset={hasFilters}
+        onReset={reset}
+      />
     </>
   );
 
-  return (
-    <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-4 lg:grid-cols-[260px_1fr] lg:px-6 lg:py-6">
+  // ─── ستون لیست — تنها ناحیه‌ای که در ناوبری دسته‌ها عوض می‌شود ──────────
+  // (خواستهٔ مالک ۱۷-۱۱): هدر/فوتر و سایدبار فیلترها از layoutها می‌آیند؛
+  // این fragment داخل ستون layout دسته (یا گرید همین کامپوننت در حالت عادی)
+  // می‌نشیند و پل‌های نامرئی جستجو/نیاز هم همین‌جا می‌مانند.
+  const listColumn = (
+    <>
       {/* پل جستجو — فقط همین ناحیه در رندر ایستا به CSR می‌افتد (نامرئی)؛
           در صفحه جستجوی مسیر-محور لازم نیست (s از prop سرور می‌آید) */}
       {!searchQuery && (
@@ -519,19 +537,7 @@ function ProductListingInner({
       <Suspense>
         <MatchBridge onNeed={handleNeed} />
       </Suspense>
-      {/* سایدبار فیلتر — دسکتاپ؛ چسبان (خواستهٔ مالک ۱۴-۱۱): هنگام اسکرول
-          صفحه سر جایش می‌ماند و همیشه دیده می‌شود؛ اگر از ارتفاع ویوپورت
-          بلندتر باشد خودش اسکرول داخلی می‌گیرد (self-start تا آیتم گرید
-          کشیده نشود و sticky اثر کند — ارتفاع هدر ۱۱۷px + فاصله ۸px) */}
-      <aside
-        className="hidden space-y-5 lg:block lg:self-start lg:sticky lg:top-[125px] lg:max-h-[calc(100vh-141px)] lg:overflow-y-auto lg:pb-1"
-        aria-label="فیلترها"
-      >
-        {filterContent}
-      </aside>
 
-      {/* لیست */}
-      <div className="min-w-0 space-y-4">
         {/* نوار بالا — دسکتاپ: چیپ فیلترهای فعال + مرتب‌سازی (بدون شمار آگهی — خواسته مالک ۱-۱۱) */}
         <div className="hidden flex-wrap items-center justify-between gap-3 rounded-md border bg-card p-3 lg:flex">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-sm">
@@ -685,10 +691,14 @@ function ProductListingInner({
           </p>
         )}
 
-        {/* نگهبان اسکرول — ۱۲۰۰px قبل از رسیدن به انتها صفحهٔ بعد را می‌خواهد */}
-        <div ref={sentinelRef} aria-hidden className="h-px" />
-      </div>
+      {/* نگهبان اسکرول — ۱۲۰۰px قبل از رسیدن به انتها صفحهٔ بعد را می‌خواهد */}
+      <div ref={sentinelRef} aria-hidden className="h-px" />
+    </>
+  );
 
+  // بات‌شیت‌های موبایل — fixed هستند؛ جای‌شان در درخت مهم نیست
+  const sheets = (
+    <>
       {/* ─── بات‌شیت انتخاب دسته — موبایل (سلسله‌مراتبی با دکمه بازگشت) ── */}
       <BottomSheet
         open={sheet === 'categories'}
@@ -757,7 +767,7 @@ function ProductListingInner({
           <li>
             <button
               type="button"
-              onClick={() => { setProvinceId(undefined); setCityId(undefined); setSheet(null); }}
+              onClick={() => { selectProvince(undefined); setSheet(null); }}
               className={cn(
                 'flex w-full items-center justify-between gap-2 rounded-md px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
                 !provinceId ? 'font-bold text-primary' : 'font-medium text-muted-foreground',
@@ -771,7 +781,7 @@ function ProductListingInner({
             <li key={p.id}>
               <button
                 type="button"
-                onClick={() => { setProvinceId(p.id); setCityId(undefined); setSheet(null); }}
+                onClick={() => { selectProvince(p.id); setSheet(null); }}
                 className={cn(
                   'flex w-full items-center justify-between gap-2 rounded-md px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
                   provinceId === p.id ? 'font-bold text-primary' : 'font-medium',
@@ -795,7 +805,7 @@ function ProductListingInner({
           <li>
             <button
               type="button"
-              onClick={() => { setCityId(undefined); setSheet(null); }}
+              onClick={() => { selectCity(undefined); setSheet(null); }}
               className={cn(
                 'flex w-full items-center justify-between gap-2 rounded-md px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
                 !cityId ? 'font-bold text-primary' : 'font-medium text-muted-foreground',
@@ -816,7 +826,7 @@ function ProductListingInner({
               <li key={c.id}>
                 <button
                   type="button"
-                  onClick={() => { setCityId(c.id); setSheet(null); }}
+                  onClick={() => { selectCity(c.id); setSheet(null); }}
                   className={cn(
                     'flex w-full items-center justify-between gap-2 rounded-md px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
                     cityId === c.id ? 'font-bold text-primary' : 'font-medium',
@@ -830,6 +840,37 @@ function ProductListingInner({
           )}
         </ul>
       </BottomSheet>
+    </>
+  );
+
+  // حالت embedded (صفحهٔ دسته): گرید صفحه و سایدبار از layout دسته می‌آیند —
+  // فقط ستون لیست + شیت‌ها اینجا رندر می‌شود؛ ناوبری سیب→هلو فقط همین ناحیه
+  // را با loading.tsx عوض می‌کند و بقیهٔ صفحه سر جایش می‌ماند (خواستهٔ مالک ۱۷-۱۱).
+  if (embedded) {
+    return (
+      <>
+        {listColumn}
+        {sheets}
+      </>
+    );
+  }
+
+  return (
+    <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-4 lg:grid-cols-[260px_1fr] lg:px-6 lg:py-6">
+      {/* سایدبار فیلتر — دسکتاپ؛ چسبان (خواستهٔ مالک ۱۴-۱۱): هنگام اسکرول
+          صفحه سر جایش می‌ماند و همیشه دیده می‌شود؛ اگر از ارتفاع ویوپورت
+          بلندتر باشد خودش اسکرول داخلی می‌گیرد (self-start تا آیتم گرید
+          کشیده نشود و sticky اثر کند — ارتفاع هدر ۱۱۷px + فاصله ۸px) */}
+      <aside
+        className="hidden space-y-5 lg:block lg:self-start lg:sticky lg:top-[125px] lg:max-h-[calc(100vh-141px)] lg:overflow-y-auto lg:pb-1"
+        aria-label="فیلترها"
+      >
+        {filterContent}
+      </aside>
+
+      {/* لیست */}
+      <div className="min-w-0 space-y-4">{listColumn}</div>
+      {sheets}
     </div>
   );
 }
@@ -845,6 +886,7 @@ export function ProductListing({
   initialPage,
   page1Href,
   pageHrefPattern,
+  embedded,
 }: {
   categorySlug?: string;
   categoryName?: string;
@@ -856,6 +898,7 @@ export function ProductListing({
   initialPage?: number;
   page1Href?: string;
   pageHrefPattern?: string;
+  embedded?: boolean;
 }) {
   // بدون Suspense بیرونی (F5): useSearchParams فقط داخل SearchBridge است؛
   // رندر ایستا کامل (کارت‌ها در HTML) و هیدریشن بدون fallback-swap.
@@ -871,6 +914,7 @@ export function ProductListing({
       initialPage={initialPage}
       page1Href={page1Href}
       pageHrefPattern={pageHrefPattern}
+      embedded={embedded}
     />
   );
 }

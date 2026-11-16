@@ -1,8 +1,5 @@
 import { notFound } from 'next/navigation';
-import { Header } from '@/components/layout/header';
-import { Footer } from '@/components/layout/footer';
 import { ProductListing } from '@/components/products/product-listing';
-import { CategoryFilter } from '@/components/products/category-filter';
 import { JsonLd } from '@/components/shared/json-ld';
 import { CategoryViewPing } from '@/components/shared/category-view-ping';
 import { getCategoryTreeSSR, getProductsSSR } from '@/lib/mock/api';
@@ -14,6 +11,10 @@ import type { Category } from '@/lib/types';
  * اسکرین مشترک «دستهٔ لیست محصولات» — /product-list/category/[slug] و
  * /product-list/category/[slug]/[pageno] (خواستهٔ مالک ۱۴-۱۱: هر پیج URL
  * جداگانه مثل /product-list/category/میوه/2 برای ایندکس جداگانهٔ گوگل).
+ *
+ * (خواستهٔ مالک ۱۷-۱۱): هدر/فوتر از layout خانوادهٔ /product-list و سایدبار
+ * فیلترها از layout همین سگمنت می‌آیند — این اسکرین فقط «ستون لیست کالاها»
+ * رندر می‌کند (embedded) تا ناوبری بین دسته‌ها فقط همین ستون را عوض کند.
  */
 
 /** مسیر دسته: فقط از درخت زنده بک‌اند — بدون فالبک ماک */
@@ -63,23 +64,18 @@ export async function CategoryScreen({ slug, page }: { slug: string; page: numbe
 
   return (
     <>
-      <Header />
-      <main className="flex-1">
-        {/* عنوان و مسیر بالای محتوا حذف شد (خواسته مالک ۴-۱۱) — تکراری و زشت؛
-            مسیر دسته برای موتور جستجو در JsonLd BreadcrumbList همان‌جا هست */}
-        <ProductListing
-          categorySlug={decoded}
-          categoryName={cat.categoryName}
-          initialData={initial ?? undefined}
-          sidebar={<CategoryFilter tree={tree} path={path} />}
-          initialPage={page}
-          page1Href={base}
-          pageHrefPattern={`${base}/{p}`}
-        />
-        {/* ثبت انتخاب دسته در فعالیت‌ها (پنل ادمین — خواستهٔ مالک ۳۰-۱۰) */}
-        <CategoryViewPing categoryName={cat.categoryName} />
-      </main>
-      <Footer />
+      {/* هدر/فوتر/سایدبار از layoutها — اینجا فقط ستون لیست (خواسته مالک ۱۷-۱۱) */}
+      <ProductListing
+        embedded
+        categorySlug={decoded}
+        categoryName={cat.categoryName}
+        initialData={initial ?? undefined}
+        initialPage={page}
+        page1Href={base}
+        pageHrefPattern={`${base}/{p}`}
+      />
+      {/* ثبت انتخاب دسته در فعالیت‌ها (پنل ادمین — خواستهٔ مالک ۳۰-۱۰) */}
+      <CategoryViewPing categoryName={cat.categoryName} />
       <JsonLd data={breadcrumbLd} />
       {initial && initial.items.length > 0 && (
         <JsonLd

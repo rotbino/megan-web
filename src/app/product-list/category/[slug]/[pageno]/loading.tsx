@@ -1,10 +1,6 @@
-import { ProductListSkeleton } from '@/components/shared/page-skeletons';
+import { ListingColumnSkeleton } from '@/components/shared/page-skeletons';
 
-/** لودینگ تغییر پارامتر همین سگمنت (دسته/صفحه/جستجو) — اسکلت همان لحظه */
+/** لودینگ تغییر صفحهٔ دسته — فقط ستون لیست؛ سایدبار و هدر پایدارند */
 export default function Loading() {
-  return (
-    <main className="flex-1">
-      <ProductListSkeleton />
-    </main>
-  );
+  return <ListingColumnSkeleton />;
 }

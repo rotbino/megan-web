@@ -78,6 +78,41 @@ export function ProductListSkeleton({ cards = 12 }: { cards?: number }) {
   );
 }
 
+/**
+ * اسکلت «فقط ستون لیست» — صفحهٔ دسته (خواستهٔ مالک ۱۷-۱۱): هدر/فوتر و
+ * سایدبار فیلترها از layout می‌آیند و در ناوبری بین دسته‌ها سر جایشان
+ * می‌مانند؛ این اسکلت داخل ستون لیستِ layout دسته می‌نشیند (والدش خودش
+ * space-y-4 دارد) و جای نوارها + گرید را همان لحظهٔ کلیک پر می‌کند.
+ */
+export function ListingColumnSkeleton({ cards = 12 }: { cards?: number }) {
+  return (
+    <>
+      {/* نوار فیلتر و مرتب‌سازی — موبایل */}
+      <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto border-b border-border/70 px-4 pb-2.5 lg:hidden" aria-hidden>
+        <Bone className="h-8.5 w-20 shrink-0" />
+        <Bone className="h-8.5 w-24 shrink-0" />
+        <Bone className="h-8.5 w-16 shrink-0" />
+      </div>
+
+      {/* نوار بالا — دسکتاپ: چیپ‌ها + مرتب‌سازی */}
+      <div className="hidden flex-wrap items-center justify-between gap-3 rounded-md border bg-card p-3 lg:flex" aria-hidden>
+        <Bone className="h-4.5 w-44" />
+        <div className="flex items-center gap-2">
+          <Bone className="h-7 w-20" />
+          <Bone className="h-7 w-20" />
+        </div>
+      </div>
+
+      {/* گرید کارت‌ها — موبایل تک‌ستونه، دسکتاپ ۳/۴ ستونه */}
+      <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-4 xl:grid-cols-4">
+        {Array.from({ length: cards }, (_, i) => (
+          <CardSkeleton key={i} />
+        ))}
+      </div>
+    </>
+  );
+}
+
 /** اسکلت صفحهٔ جزئیات آگهی — گالری + ستون اطلاعات */
 export function ProductViewSkeleton() {
   return (

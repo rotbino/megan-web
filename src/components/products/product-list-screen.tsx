@@ -1,6 +1,4 @@
 import { notFound } from 'next/navigation';
-import { Header } from '@/components/layout/header';
-import { Footer } from '@/components/layout/footer';
 import { ProductListing } from '@/components/products/product-listing';
 import { CategoryFilter } from '@/components/products/category-filter';
 import { JsonLd } from '@/components/shared/json-ld';
@@ -39,17 +37,14 @@ export async function ProductListScreen({ page }: { page: number }) {
 
   return (
     <>
-      <Header />
-      <main className="flex-1">
-        <ProductListing
-          initialData={initial ?? undefined}
-          sidebar={<CategoryFilter tree={tree} />}
-          initialPage={page}
-          page1Href={PRODUCT_LIST_PAGE1_HREF}
-          pageHrefPattern={PRODUCT_LIST_PAGE_HREF_PATTERN}
-        />
-      </main>
-      <Footer />
+      {/* هدر/فوتر از layout /product-list (خواسته مالک ۱۷-۱۱) */}
+      <ProductListing
+        initialData={initial ?? undefined}
+        sidebar={<CategoryFilter tree={tree} />}
+        initialPage={page}
+        page1Href={PRODUCT_LIST_PAGE1_HREF}
+        pageHrefPattern={PRODUCT_LIST_PAGE_HREF_PATTERN}
+      />
       {initial && initial.items.length > 0 && (
         <JsonLd
           data={{
