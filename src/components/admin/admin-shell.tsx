@@ -25,7 +25,6 @@ import {
   Boxes,
   ChevronDown,
   ClipboardList,
-  LayoutList,
   Coins,
   Crown,
   DatabaseZap,
@@ -105,9 +104,9 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
     title: 'بازار و محتوا',
     items: [
       { href: '/admin/products', label: 'آگهی‌ها', Icon: Boxes, superOnly: false, badge: 'pendingProducts' },
-      // گزارش آگهی‌ها روی تاکسونومی v2 (۱۶-۱۱) — صفحهٔ مهاجرت موازی: سایت عمومی
-      // روی باسکول است؛ این‌جا آگهی‌ها روی درخت ۱۵-ریشه‌ای جدید دیده می‌شوند.
-      { href: '/admin/ads-report', label: 'گزارش آگهی‌ها', Icon: LayoutList, superOnly: false },
+      // گزارش آگهی‌ها روی تاکسونومی v2 (۱۶-۱۱) — به‌فرمای مالک به مسیر عمومی
+      // /product-filter منتقل شد تا صفحهٔ نهایی واقعی طراحی شود؛ پس از تکمیل
+      // جای /product-list را می‌گیرد. ادمین همچنان با همان API کار می‌کند.
       { href: '/admin/buy-requests', label: 'درخواست‌های خرید', Icon: ClipboardList, superOnly: false, badge: 'pendingBuyRequests' },
       // ثبت‌نام سرویس‌های تخصصی — ریتو/همخرید از /services (۱۱-۱۲)
       { href: '/admin/service-signups', label: 'ثبت‌نام سرویس‌ها', Icon: Sparkles, superOnly: false },
@@ -176,11 +175,15 @@ function SidebarNav({ onNavigate, superAdmin }: { onNavigate?: () => void; super
   // کاربر همیشه مؤثر است (رفع باگ ۸-۱۱: روی صفحهٔ داخل یک گروه، بقیهٔ
   // گره‌ها دیگر قفل نبودند و باز نمی‌شدند — گروه فعال openGroup را
   // override می‌کرد و هیچ کلیکی اثر نمی‌کرد)
-  const [openGroup, setOpenGroup] = useState<number | null>(activeGroupIndex ?? 0);
-  useEffect(() => {
-    if (activeGroupIndex !== null) setOpenGroup(activeGroupIndex);
-  }, [activeGroupIndex]);
-  const effectiveOpen = openGroup;
+  // الگوی override + snapshot — بدون setState-in-effect: انتخاب کاربر تا
+  // وقتی گروهِ فعال همان لحظهٔ کلیک باشد معتبر است؛ با ناوبری به گروهی
+  // دیگر، خودبه‌خود به گروه فعال برمی‌گردد (عین رفتار قبلی).
+  const [groupChoice, setGroupChoice] = useState<{ nav: number | null; idx: number } | null>(null);
+  const effectiveOpen =
+    groupChoice && groupChoice.nav === activeGroupIndex
+      ? groupChoice.idx
+      : (activeGroupIndex ?? 0);
+  const setOpenGroup = (idx: number) => setGroupChoice({ nav: activeGroupIndex, idx });
 
   // صف‌های در انتظار — نشان قرمز آیتم‌ها (۶۰ ثانیه یک‌بار تازه می‌شود)
   const { data: queues } = useQuery({
