@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/toaster";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
+import { ReferralCapture } from "@/components/shared/referral-capture";
 import { PresenceProvider } from "@/components/shared/presence-provider";
 import { PageViewPing } from "@/components/shared/page-view-ping";
 import { BaseDataProvider } from "@/lib/base-data";
@@ -104,6 +105,8 @@ export default async function RootLayout({
           <BaseDataProvider tree={tree ?? undefined} provinces={provinces ?? undefined}>
             <div className="flex min-h-screen flex-col">{children}</div>
             <MobileBottomNav />
+            {/* کد رفرال بازاریاب از لینک دعوت (?ref=) — کوکی ۹۰ روزه */}
+            <ReferralCapture />
             <PresenceProvider />
             <PageViewPing />
             <Toaster />

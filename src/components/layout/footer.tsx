@@ -39,6 +39,14 @@ const footerCols = [
       { label: 'نمایش درخواست‌های خرید', href: '/buyAd-requests' },
     ],
   },
+  {
+    // پنل بازاریابی (افلیت) — خواسته مالک: لینک در فوتر سایت
+    title: 'همکاری با ما',
+    links: [
+      { label: 'بازاریابی و همکاری در فروش', href: '/panel/affiliate' },
+      { label: 'مدیریت بازاریابی (ادمین)', href: '/panel/affiliate/admin' },
+    ],
+  },
 ];
 
 export function Footer() {
@@ -58,7 +66,7 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-4 lg:px-6">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-5 lg:px-6">
         <div className="space-y-4">
           <BrandLogo size="md" />
           <p className="max-w-xs text-xs leading-6 text-muted-foreground">

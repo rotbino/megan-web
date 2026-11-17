@@ -20,6 +20,7 @@ import {
   BookMarked,
   FileText,
   Medal,
+  Megaphone,
   MessageSquare,
   Package,
   ShieldCheck,
@@ -42,11 +43,13 @@ interface PanelNavItem {
   exact?: boolean;
 }
 
-/** منوی فروشنده — ۷ آیتم؛ دور ۱۶: «آیمچ من» اول از همه (هر دو پنل).
+/** منوی فروشنده — ۸ آیتم؛ دور ۱۶: «آیمچ من» اول از همه (هر دو پنل).
  *  دور ۱۹+ (خواسته مالک ۴-۱۱): «خریداران پیشنهادی» حذف شد — تطبیق حالا داخل
  *  صفحهٔ «خریداران» است. خواسته مالک ۶-۱۱: «پیشنهادات تامین» هم حذف شد —
  *  همان لیست تب سوم «پیشنهادات ارسال شده» صفحهٔ خریداران شد؛ منو خلوت‌تر
- *  و هر چیز در جای گویاتر خودش. */
+ *  و هر چیز در جای گویاتر خودش.
+ *  «بازاریابی» (افلیت ۱۷-۱۱): نقش سیستمی مستقل — خواسته مالک: لینک پنل
+ *  بازاریابی در لینک‌های «آیمچ من» هم باشد. */
 export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel', label: 'آیمچ من', icon: UserRound, exact: true },
   { href: '/panel/products', label: 'محصولات من', icon: Package },
@@ -55,6 +58,7 @@ export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
   { href: '/panel/pricing', label: 'ارتقا عضویت', icon: Medal },
   { href: '/panel/sell-leads', label: 'سرنخ‌های فروش', icon: Bookmark },
+  { href: '/panel/affiliate', label: 'بازاریابی', icon: Megaphone, exact: true },
 ];
 
 /** منوی خریدار — ۵ آیتم (خواستهٔ مالک ۱۱-۱۱ دور ۳): «فروشندگان پیشنهادی»

@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, KeyRound, Loader2, MapPin, Smartphone, UserRound } from 'lucide-react';
+import { ArrowRight, KeyRound, Loader2, MapPin, Smartphone, UserRound, UserRoundCheck } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { readReferralCookie } from '@/components/shared/referral-capture';
 import {
   Select,
   SelectContent,
@@ -18,6 +19,7 @@ import { useLoginSession, useProvinces, useCities, useUpdatePanelProfile } from 
 import { useAuth } from '@/lib/mock/auth';
 import { getTokens } from '@/lib/api/client';
 import { resolveAfterAuthDest } from '@/lib/pending-rfq';
+import { toFa } from '@/lib/format';
 
 /**
  * ورود/ثبت‌نام (روش سشن — بدون پیامک، تا آمدن پنل پیامک):
@@ -36,6 +38,13 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+
+  // کد معرف از کوکی imach_ref (لینک دعوت بازاریاب) — فقط سمت مرورگر
+  const [referrerCode, setReferrerCode] = useState<string | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- خواندن کوکی مرورگر فقط بعد از مونت ممکن است (الگوی استاندارد هیدریشن)
+    setReferrerCode(readReferralCookie());
+  }, []);
 
   // مرحله اطلاعات — نام/نام‌خانوادگی + استان/شهر
   const [firstName, setFirstName] = useState('');
@@ -184,6 +193,15 @@ export default function RegisterPage() {
 
               {step === 'phone' ? (
                 <form onSubmit={sendPhone} className="space-y-4">
+                  {/* کد معرف از کوکی — کاربر با لینک دعوت بازاریاب وارد شده؛
+                      هنگام ثبت‌نام به‌عنوان «دعوت‌شده» او ثبت می‌شود (بک‌اند: referredById) */}
+                  {referrerCode && (
+                    <p className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs leading-5 text-foreground/80">
+                      <UserRoundCheck size={15} className="shrink-0 text-primary" />
+                      شما با کد معرف <b className="font-num">{toFa(referrerCode)}</b> وارد ایمچ شده‌اید؛
+                      پس از ثبت‌نام، دعوت‌کننده شما ثبت می‌شود.
+                    </p>
+                  )}
                   <div className="space-y-1.5">
                     <Label htmlFor="phone">شماره موبایل</Label>
                     <Input
