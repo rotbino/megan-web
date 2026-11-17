@@ -1647,12 +1647,14 @@ export async function updateAdminBilling(billing: BillingConfig): Promise<Billin
   return adminFetch<BillingConfig>('/admin/settings/updateBilling', { billing });
 }
 
-// ─── ثبت‌نام سرویس‌های تخصصی (admin/service-signups — ۱۱-۱۲) ────────────────
+// ─── ثبت‌نام سرویس‌های تخصصی (admin/service-signups — ۱۷-۱۱) ────────────────
 
 export interface AdminServiceSignupRow {
   id: string;
-  /** ritu | hamkharid */
+  /** maidan-yar | factory-buy | pakhshyar | hamkharid */
   serviceId: string;
+  /** نقش ثبت‌نام: خریدار | فروشنده | هر دو */
+  role: 'buyer' | 'seller' | 'both';
   guild: string;
   businessName: string;
   createdAt: string;
@@ -1664,6 +1666,8 @@ export interface AdminServiceSignupRow {
     lastName: string;
     phone: string;
     avatarUrl: string | null;
+    /** آیدی سفارشی کاتالوگ — null = پیش‌فرض (userName)؛ لینک: /c/{catalogId ?? userName} */
+    catalogId: string | null;
   };
 }
 
@@ -1676,6 +1680,8 @@ export interface AdminServiceSignupList {
   stats: {
     total: number;
     byService: Array<{ serviceId: string; count: number }>;
+    /** به تفکیک نقش — خریداران = buyer + both، فروشندگان = seller + both */
+    byRole: { buyer: number; seller: number; both: number };
     last7Days: number;
   };
 }
@@ -1687,7 +1693,7 @@ export interface AdminServiceSignupFilters {
   perPage?: number;
 }
 
-/** فهرست ثبت‌نام‌های ریتو/همخرید (خروجی فرم /services) + آمار تفکیکی */
+/** فهرست ثبت‌نام‌کنندگان طرح‌های /services + آمار تفکیکی سرویس/نقش */
 export async function fetchAdminServiceSignupList(
   filters: AdminServiceSignupFilters = {},
 ): Promise<AdminServiceSignupList> {

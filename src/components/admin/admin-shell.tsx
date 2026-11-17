@@ -108,7 +108,7 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
       // /product-filter منتقل شد تا صفحهٔ نهایی واقعی طراحی شود؛ پس از تکمیل
       // جای /product-list را می‌گیرد. ادمین همچنان با همان API کار می‌کند.
       { href: '/admin/buy-requests', label: 'درخواست‌های خرید', Icon: ClipboardList, superOnly: false, badge: 'pendingBuyRequests' },
-      // ثبت‌نام سرویس‌های تخصصی — ریتو/همخرید از /services (۱۱-۱۲)
+      // ثبت‌نام سرویس‌های تخصصی — میدان‌یار/خرید از کارخانه/پخشیار/همخرید از /services (۱۷-۱۱)
       { href: '/admin/service-signups', label: 'ثبت‌نام سرویس‌ها', Icon: Sparkles, superOnly: false },
       { href: '/admin/reviews', label: 'نظرات فروشندگان', Icon: Star, superOnly: false, badge: 'pendingReviews' },
       { href: '/admin/verifications', label: 'احراز هویت', Icon: BadgeCheck, superOnly: false, badge: 'pendingVerifications' },
