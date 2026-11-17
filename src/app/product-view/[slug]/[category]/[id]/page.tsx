@@ -44,7 +44,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { stockFa, toFa, priceFa, descToText } from '@/lib/format';
-import { getRelatedProductsSSR } from '@/lib/mock/api';
+import { getCategoryTreeSSR, getRelatedProductsSSR } from '@/lib/mock/api';
+import { findCategoryPathById } from '@/lib/categories';
 import { apiBase, joinUrl } from '@/lib/api/client';
 import { SITE_URL } from '@/lib/site';
 import type { Product } from '@/lib/types';
@@ -163,6 +164,42 @@ export default async function ProductViewPage({ params }: Props) {
   // و تگ/موجودیت HTML دیگری در UI یا JSON-LD دیده نمی‌شود (خواستهٔ مالک ۱۴-۱۱)
   const plainDesc = descToText(product.description);
 
+  // ─── زنجیرهٔ کامل دسته از ریشهٔ درخت (خواستهٔ مالک ۱۷-۱۱) ───
+  // به‌جای «همه دسته ها» نام سطح اول می‌آید: مواد غذایی > لبنیات > ماست > پنیر ریکوتا.
+  // درخت از همان کش layout خوانده می‌شود (همان getCategoryTreeSSR با revalidate یکسان)
+  // ⇒ هیچ fetch اضافه‌ای به بک‌اند نمی‌رود.
+  const catTree = await getCategoryTreeSSR(3600);
+  const catPath = catTree
+    ? (findCategoryPathById(catTree, product.subCategoryId) ??
+       findCategoryPathById(catTree, product.categoryId))
+    : null;
+
+  const categoryHref = (nameOrSlug: string) =>
+    `/product-list/category/${encodeURIComponent(nameOrSlug)}`;
+
+  interface Crumb {
+    name: string;
+    href: string;
+  }
+
+  const crumbs: Crumb[] = [];
+  if (catPath && catPath.length > 0) {
+    // مسیر کامل ریشه → زیردسته: [مواد غذایی، لبنیات، ماست]
+    for (const c of catPath) {
+      crumbs.push({ name: c.categoryName, href: categoryHref(c.slug) });
+    }
+    // زیردسته‌ای که در درخت نیست (نوع کالای دستی) — مثل قبل به‌عنوان خرده‌آخرِ دسته
+    const lastCat = crumbs[crumbs.length - 1];
+    if (product.subCategoryName && product.subCategoryName !== lastCat.name) {
+      crumbs.push({ name: product.subCategoryName, href: categoryHref(product.subCategoryName) });
+    }
+  } else {
+    // درخت در دسترس نیست — مسیر قدیمی با «همه دسته ها» (فالبک امن)
+    crumbs.push({ name: 'همه دسته ها', href: '/product-list' });
+    crumbs.push({ name: product.categoryName, href: categoryHref(product.categoryName) });
+    crumbs.push({ name: product.subCategoryName, href: categoryHref(product.subCategoryName) });
+  }
+
   const info = [
     { icon: User, label: 'نام فروشنده', value: sellerName },
     { icon: MapPin, label: 'آدرس', value: `${product.provinceName} — ${city}` },
@@ -200,28 +237,19 @@ export default async function ProductViewPage({ params }: Props) {
         <div className="mx-auto max-w-7xl px-4 pt-4 lg:px-6">
           {/* ─── نوار ناوبری بالا (بردکرامب) — عین باسکول ─── */}
           <nav aria-label="مسیر صفحه" className="no-scrollbar mb-3 flex h-9 items-center gap-1 overflow-x-auto text-[13px] md:text-sm">
-            <Link
-              href="/product-list"
-              className="flex shrink-0 items-center gap-1 whitespace-nowrap text-muted-foreground hover:text-primary"
-            >
-              <Home size={15} className="shrink-0" />
-              همه دسته ها
-            </Link>
-            <ArrowLeftIcon size={16} className="shrink-0 text-muted-foreground/60" />
-            <Link
-              href={`/product-list/category/${encodeURIComponent(product.categoryName)}`}
-              className="shrink-0 whitespace-nowrap text-muted-foreground hover:text-primary"
-            >
-              {product.categoryName}
-            </Link>
-            <ArrowLeftIcon size={16} className="shrink-0 text-muted-foreground/60" />
-            <Link
-              href={`/product-list/category/${encodeURIComponent(product.subCategoryName)}`}
-              className="shrink-0 whitespace-nowrap text-muted-foreground hover:text-primary"
-            >
-              {product.subCategoryName}
-            </Link>
-            <ArrowLeftIcon size={16} className="shrink-0 text-muted-foreground/60" />
+            {crumbs.map((c, i) => (
+              <span key={`${c.href}-${i}`} className="flex shrink-0 items-center gap-1">
+                {i > 0 && <ArrowLeftIcon size={16} className="shrink-0 text-muted-foreground/60" aria-hidden />}
+                <Link
+                  href={c.href}
+                  className="flex shrink-0 items-center gap-1 whitespace-nowrap text-muted-foreground hover:text-primary"
+                >
+                  {i === 0 && <Home size={15} className="shrink-0" aria-hidden />}
+                  {c.name}
+                </Link>
+              </span>
+            ))}
+            <ArrowLeftIcon size={16} className="shrink-0 text-muted-foreground/60" aria-hidden />
             <span className="shrink-0 whitespace-nowrap font-bold text-foreground" aria-current="page">
               {product.productName}
             </span>
@@ -459,23 +487,18 @@ export default async function ProductViewPage({ params }: Props) {
         data={{
           '@context': 'https://schema.org',
           '@type': 'BreadcrumbList',
+          // هم‌گام با بردکرامبِ دیدنی صفحه (قانون سئو): ایمچ > مواد غذایی > لبنیات > ماست > کالا
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'ایمچ', item: SITE_URL },
+            ...crumbs.map((c, i) => ({
+              '@type': 'ListItem',
+              position: i + 2,
+              name: c.name,
+              item: `${SITE_URL}${c.href}`,
+            })),
             {
               '@type': 'ListItem',
-              position: 2,
-              name: product.categoryName,
-              item: `${SITE_URL}/product-list/category/${encodeURIComponent(product.categoryName)}`,
-            },
-            {
-              '@type': 'ListItem',
-              position: 3,
-              name: product.subCategoryName,
-              item: `${SITE_URL}/product-list/category/${encodeURIComponent(product.subCategoryName)}`,
-            },
-            {
-              '@type': 'ListItem',
-              position: 4,
+              position: crumbs.length + 2,
               name: product.productName,
               item: `${SITE_URL}${productUrl}`,
             },
