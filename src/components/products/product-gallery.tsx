@@ -357,7 +357,7 @@ function GalleryLightbox({
       aria-modal="true"
       aria-label={alt}
       onKeyDown={onRootKeyDown}
-      className="fixed inset-0 z-[100] animate-in fade-in duration-150"
+      className="fixed inset-0 z-[100] m-0 animate-in fade-in duration-150"
       style={{ background: 'rgba(0,0,0,0.96)' }}
     >
       {/* بستن — ✕ در بالا-آغاز (راستِ RTL) */}

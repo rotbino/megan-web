@@ -836,7 +836,7 @@ export function BookPublicContent({
       <div
         role="toolbar"
         aria-label="تماس، چت و ذخیره دفتر خرید"
-        className="fixed inset-x-0 bottom-[58px] z-40 flex h-16 items-center gap-2 border-t bg-card/95 px-4 shadow-[0_-1px_8px_rgba(0,0,0,0.08)] backdrop-blur nav-desktop:hidden"
+        className="fixed inset-x-0 bottom-[58px] m-0 z-40 flex h-16 items-center gap-2 border-t bg-card/95 px-4 shadow-[0_-1px_8px_rgba(0,0,0,0.08)] backdrop-blur nav-desktop:hidden"
       >
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-extrabold">دفتر خرید {buyerName}</p>

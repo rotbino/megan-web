@@ -42,10 +42,19 @@ export function PremiumSellerBadge({ className }: { className?: string }) {
   );
 }
 
-/** نشان احراز هویت */
+/** نشان احراز هویت — چیپ با هالهٔ نارنجیِ برندِ کمرنگ (خواستهٔ مالک ۱۸-۱۱:
+ *  «دورش یه رنگ برند کمرنگ بنداز که مشخص‌تر باشه» — رنگ برندِ بصری ایمچ
+ *  نارنجیِ تاکید است (توکن emphasis؛ --primary نقره‌ای تم است)؛ پس مثل
+ *  الگوی OldAdBadge از پالت orange استفاده می‌کنیم که در تم تیره هم
+ *  خودکار تینت تیره/متن روشن می‌گیرد. موبایل و دسکتاپ = کامپوننت مشترک */
 export function VerifiedBadge({ className, label = 'احراز هویت شده' }: { className?: string; label?: string }) {
   return (
-    <span className={cn('inline-flex items-center gap-1 text-[11px] font-medium text-primary', className)}>
+    <span
+      className={cn(
+        'inline-flex w-fit items-center gap-1 rounded-md bg-orange-50 px-1.5 py-0.5 text-[11px] font-medium text-orange-700 ring-1 ring-orange-200',
+        className,
+      )}
+    >
       <BadgeCheck size={14} strokeWidth={2.2} />
       {label}
     </span>

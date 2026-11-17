@@ -819,14 +819,15 @@ function ProductListingInner({
         onBack={catStack.length ? () => setCatStack((st) => st.slice(0, -1)) : undefined}
         title={sheetLevel ? sheetLevel.categoryName : 'همه دسته ها'}
       >
-        {/* میان‌بر: مشاهده همه محصولات دسته فعال (مثل باسکول) */}
+        {/* میان‌بر: همه محصولات دسته فعال (مثل باسکول؛ خواستهٔ مالک ۱۸-۱۱:
+            بدون فعل «مشاهده» — فقط «همه محصولات …») */}
         {activeCategoryName && activeCategorySlug && (
           <Link
             href={`/product-list/category/${encodeURIComponent(activeCategorySlug)}`}
             onClick={closeSheets}
             className="mb-1 flex items-center justify-between gap-2 rounded-md bg-primary/5 px-3 py-3 text-sm font-bold text-primary transition-colors hover:bg-primary/10"
           >
-            مشاهده همه محصولات {activeCategoryName}
+            همه محصولات {activeCategoryName}
             <ChevronLeft size={16} aria-hidden />
           </Link>
         )}
