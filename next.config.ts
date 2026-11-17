@@ -7,7 +7,7 @@ import { resolveBackendUrl } from "./src/lib/backend-url";
 /**
  * ── آدرس بک‌اند — خودکار و محیط‌آگاه (خواستهٔ مالک ۱۶-۱۱) ──────────────────
  * منطق واحد در src/lib/backend-url.ts (همان‌جا مستند شده):
- *  · ورسل (VERCEL + production) → همیشه https://megan-back.vercel.app —
+ *  · ورسل (VERCEL + production) → همیشه https://imach-back.vercel.app —
  *    مستقل از .env؛
  *  · لوکال → پیش‌فرض http://127.0.0.1:4000؛ تغییر دستی با BACKEND_URL
  *    در .env / .env.local (مثلاً اتصال موقت به دیتای ابری از لوکال).
@@ -49,7 +49,7 @@ function imageRemotePatterns(): RemotePattern[] {
     { protocol: "http", hostname: "localhost" },
     { protocol: "http", hostname: "127.0.0.1" },
   ];
-  // بک‌اندِ فعال از .env (مثلاً megan-back.vercel.app برای تصاویر /uploads)
+  // بک‌اندِ فعال از .env (مثلاً imach-back.vercel.app برای تصاویر /uploads)
   const backend = backendImagePattern();
   if (backend) patterns.push(backend);
   const extra = (process.env.NEXT_IMAGE_HOSTS ?? "")

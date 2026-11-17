@@ -2,22 +2,24 @@
  * آدرس بک‌اند — یک منبع حقیقت برای همهٔ محیط‌ها (خواستهٔ مالک ۱۶-۱۱):
  * «فرانت روی ورسل (imach.ir) همیشه به بک‌اند ورسل وصل شود؛ روی لوکال‌هاست
  * پیش‌فرض بک‌اند لوکالِ در حال اجرای خودم باشد و بتوانم دستی عوضش کنم.»
+ * ۱۸-۱۱: اکانت ورسل قبلی (پهنای باند رایگان تمام‌شده) تعطیل شد؛ بک ابری به
+ * اکانت جدید منتقل شد → https://imach-back.vercel.app (جایگزین megan-back).
  *
  * قواعد (به‌ترتیب):
  *  ۱. استقرار ورسل (متغیر سیستمی VERCEL + NODE_ENV=production) → همیشه و
- *     بدون استثنا بک ابری https://megan-back.vercel.app — حتی اگر فایل .env
+ *     بدون استثنا بک ابری https://imach-back.vercel.app — حتی اگر فایل .env
  *     چیز دیگری بگوید (فراز از .env کامیت‌شده هم مستقل می‌شود)؛
  *  ۲. لوکال → پیش‌فرض http://127.0.0.1:4000 (همان پورت `bun run start`)؛
  *  ۳. تغییر دستی لوکال: BACKEND_URL را در .env یا .env.local ست کنید
- *     (مثلاً BACKEND_URL=https://megan-back.vercel.app برای اتصال از لوکال
+ *     (مثلاً BACKEND_URL=https://imach-back.vercel.app برای اتصال از لوکال
  *     به دیتای ابری) — فقط همان `next dev` را ری‌استارت کنید.
  *
  * کاربران این ماژول: next.config.ts (پروکسی /api + NEXT_PUBLIC_*)،
  * src/lib/api/client.ts (SSR) و src/lib/admin/api.ts (SSR پنل ادمین).
  */
 
-/** بک‌اند پروداکشن (ابری) — در ورسل همیشه همین */
-export const PRODUCTION_BACKEND_URL = 'https://megan-back.vercel.app';
+/** بک‌اند پروداکشن (ابری — اکانت جدید ورسل از ۱۸-۱۱) — در ورسل همیشه همین */
+export const PRODUCTION_BACKEND_URL = 'https://imach-back.vercel.app';
 
 /** بک‌اند لوکال — پیش‌فرض محیط توسعهٔ خودتان */
 export const LOCAL_BACKEND_URL = 'http://127.0.0.1:4000';
