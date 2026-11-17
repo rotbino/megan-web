@@ -38,7 +38,6 @@ yarn-error.log*
 # vercel
 .vercel
 
-
 # typescript
 *.tsbuildinfo
 next-env.d.ts
@@ -67,3 +66,6 @@ tool-results/
 
 # نشانگر محیط پیش‌نمایش سندباکس — استاب بک‌اند (instrumentation.ts) را فعال می‌کند
 .sandbox-preview
+
+# توکن گیت — هرگز وارد ریپو نمی‌شود (ذخیره در سندباکس بیرونی)
+.git-credentials

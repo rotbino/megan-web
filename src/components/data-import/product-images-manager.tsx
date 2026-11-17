@@ -218,9 +218,16 @@ function ProductCard({
         >
           {product.name}
         </a>
-        <span className="text-muted-foreground" dir="ltr">
+        <a
+          href={productHref}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[11.5px] font-bold text-muted-foreground hover:text-primary hover:underline"
+          dir="ltr"
+          title={`آگهی #${toFa(product.id)} — بازکردن صفحهٔ آگهی (پیشگیری از قاطی‌شدن آگهی‌های هم‌نام)`}
+        >
           #{toFa(product.id)}
-        </span>
+        </a>
         {anyReplaced ? (
           <span
             className={cn(
@@ -387,7 +394,7 @@ function ProductImagesManagerInner() {
     onSuccess: () => {
       toast({
         title: 'تصویر جایگزین شد',
-        description: 'همان نام و همان مسیر — تصویر اصلی و تامبنیل هر دو بازنویسی شدند.',
+        description: 'کلید نسخه‌دار تازه ساخته شد — تصویر و تامبنیل با URL جدید، کش‌ها فوری می‌شکنند.',
       });
       void queryClient.invalidateQueries({ queryKey: ['product-images-grouped'] });
     },

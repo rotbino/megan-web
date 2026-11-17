@@ -698,7 +698,11 @@ export const productImagesApi = {
       `importer/product-images${toQuery({ ...params, group: 'product' } as Record<string, unknown>)}`,
     ).then((r) => json<ProductImagesGroupedList>(r)),
 
-  /** تعویض بایت‌های تصویر در همان نام/مسیر — تامبنیل هم بازساخته می‌شود */
+  /**
+   * تعویض تصویر آگهی — بک‌اند کلید نسخه‌دار تازه می‌سازد (رفع کش ۱۷-۱۱):
+   * URL جدید ⇒ کش مرورگر/CDN/بهینه‌ساز فوری می‌شکند؛ تامبنیل هم در کلید
+   * تازه بازساخته و کلیدهای قدیمی حذف می‌شوند. ردیف File همان می‌ماند.
+   */
   replace: (id: string, file: File) => {
     const form = new FormData();
     form.append('file', file);
