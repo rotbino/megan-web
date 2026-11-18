@@ -9,19 +9,25 @@ import { toFa } from '@/lib/format';
  * گزینهٔ «سایر» با اینپوت عددی آزاد برای بیش از ۵ روز؛ پیش‌فرض ۳ روز.
  * مشترک: فرم ویرایش آگهی و مدال سریع آپدیت قیمت.
  * معنا: بعد از این پنجره، اگر قیمت تازه نشود آگهی بج «قیمت منقضی شده» می‌گیرد.
+ * سقف انتخاب ۳۶۵ روز است (ولیدیشن بک‌اند)؛ value=null یعنی «بدون انتخاب» —
+ * برای آگهی با اعتبار خارج از بازه (ایمپورتی‌های ۱۰ ساله = ۳۶۵۰) که تا
+ * انتخاب واقعی کاربر نباید به سرور برود (رفع خطای Max 365 — ۱۹-۱۱).
  */
 export function PriceValidityPicker({
   value,
   onChange,
   ariaLabel = 'اعتبار قیمت',
 }: {
-  value: number;
+  value: number | null;
   onChange: (days: number) => void;
   ariaLabel?: string;
 }) {
-  // حالت «سایر» — با کلیک روی چیپ سایر یا مقدار اولیهٔ بزرگ‌تر از ۵ روشن می‌شود
-  const [customMode, setCustomMode] = useState(value > 5);
-  const [customDraft, setCustomDraft] = useState(value > 5 ? String(value) : '');
+  // حالت «سایر» — با کلیک روی چیپ سایر یا مقدار اولیهٔ بزرگ‌تر از ۵ روشن می‌شود؛
+  // مقدار اولیهٔ خارج از سقف (مثل ۳۶۵۰) به ۳۶۵ بریده می‌شود
+  const [customMode, setCustomMode] = useState(value !== null && value > 5);
+  const [customDraft, setCustomDraft] = useState(
+    value !== null && value > 5 ? String(Math.min(value, 365)) : '',
+  );
 
   const pickPreset = (d: number) => {
     setCustomMode(false);
@@ -31,8 +37,8 @@ export function PriceValidityPicker({
 
   const pickOther = () => {
     setCustomMode(true);
-    // مقدار اولیهٔ معقول برای شروع تایپ؛ کاربر بلافاصله می‌تواند عوضش کند
-    const d = Math.max(1, Number(customDraft.replace(/\D/g, '')) || 6);
+    // مقدار اولیهٔ معقول برای شروع تایپ؛ سقف ۳۶۵ (ولیدیشن سرور)
+    const d = Math.min(Math.max(1, Number(customDraft.replace(/\D/g, '')) || 6), 365);
     if (!customDraft) setCustomDraft(String(d));
     onChange(d);
   };
@@ -105,7 +111,7 @@ export function PriceValidityPicker({
           />
           <span className="text-xs text-muted-foreground">روز</span>
           <span className="text-[11px] leading-5 text-muted-foreground">
-            اعتبار دلخواه شما — بیشتر از ۵ روز
+            اعتبار دلخواه شما — بیشتر از ۵ روز، حداکثر ۳۶۵ روز
           </span>
         </div>
       )}

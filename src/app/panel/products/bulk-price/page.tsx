@@ -64,15 +64,25 @@ export default function BulkPricePage() {
           price: p.minSalePrice ? p.minSalePrice.toLocaleString('en-US') : '',
           stock: p.stock ? p.stock.toLocaleString('en-US') : '',
           minOrder: p.minSaleAmount ? p.minSaleAmount.toLocaleString('en-US') : '',
-          validity: String(p.priceValidityDays ?? 3),
+          // اعتبار خارج از بازهٔ انتخابی (ایمپورتی‌های ۳۶۵۰) خالی شروع می‌شود؛
+          // خالی = بدون تغییر → ارسال نمی‌شود و همان قبلی می‌ماند (رفع ۱۹-۱۱)
+          validity: (p.priceValidityDays ?? 3) <= 365 ? String(p.priceValidityDays ?? 3) : '',
         })),
     );
   }
 
-  /** اعتبارِ واردشدهٔ معتبر — ۰/خالی یعنی «دست نخورده» و همان قبلی می‌ماند */
-  const validityOf = (r: Row) => {
+  /** اعتبارِ واردشدهٔ معتبر (۱..۳۶۵) — خالی/۰ یعنی «دست نخورده» و اصلاً ارسال
+   *  نمی‌شود تا سرور همان قبلی را نگه دارد؛ برای آگهی ایمپورتی با اعتبار
+   *  ۱۰ ساله (۳۶۵۰) هم همین‌طور است که سقف ولیدیشن سرور است (رفع ۱۹-۱۱) */
+  const validityOf = (r: Row): number | undefined => {
     const v = num(r.validity);
-    return v >= 1 ? Math.min(v, 365) : r.baseValidity;
+    return v >= 1 ? Math.min(v, 365) : undefined;
+  };
+
+  /** آیا ستون اعتبار این ردیف واقعاً عوض شده؟ (واردشده ≠ مقدار فعلی سرور) */
+  const validityDirty = (r: Row): boolean => {
+    const v = validityOf(r);
+    return v !== undefined && v !== r.baseValidity;
   };
 
   /** ردیف‌های واقعاً تغییر یافته — فقط همین‌ها ارسال می‌شوند */
@@ -83,7 +93,7 @@ export default function BulkPricePage() {
           num(r.price) !== r.basePrice ||
           num(r.stock) !== r.baseStock ||
           num(r.minOrder) !== r.baseMinOrder ||
-          validityOf(r) !== r.baseValidity,
+          validityDirty(r),
       ),
     [rows],
   );
@@ -123,7 +133,15 @@ export default function BulkPricePage() {
         rs?.map((r) => {
           const c = changed.find((x) => x.id === r.id);
           return c
-            ? { ...r, basePrice: num(c.price), baseStock: num(c.stock), baseMinOrder: num(c.minOrder), baseValidity: validityOf(c) }
+            ? {
+                ...r,
+                basePrice: num(c.price),
+                baseStock: num(c.stock),
+                baseMinOrder: num(c.minOrder),
+                // اعتبار ارسال‌نشده → قبلی می‌ماند؛ ارسال‌شده → مقدار نهایی (clamp شده)
+                baseValidity: validityOf(c) ?? c.baseValidity,
+                validity: validityOf(c) !== undefined ? String(validityOf(c)) : r.validity,
+              }
             : r;
         }) ?? rs,
       );
@@ -184,7 +202,7 @@ export default function BulkPricePage() {
                 num(r.price) !== r.basePrice ||
                 num(r.stock) !== r.baseStock ||
                 num(r.minOrder) !== r.baseMinOrder ||
-                validityOf(r) !== r.baseValidity;
+                validityDirty(r);
               return (
                 <div
                   key={r.id}
@@ -279,7 +297,7 @@ export default function BulkPricePage() {
                     <b className="text-primary">{toFa(changed.length)}</b> آگهی تغییر یافته
                   </>
                 ) : (
-                  'اعتبار قیمت: پنجره‌ای که بعد از آن، بدون آپدیت، آگهی «قیمت منقضی شده» می‌گیرد (پیش‌فرض ۳ روز).'
+                  'اعتبار قیمت: پنجره‌ای که بعد از آن، بدون آپدیت، آگهی «قیمت منقضی شده» می‌گیرد (پیش‌فرض ۳ روز — خالی بگذارید یعنی همان اعتبار فعلی بماند).'
                 )}
               </p>
               <Button

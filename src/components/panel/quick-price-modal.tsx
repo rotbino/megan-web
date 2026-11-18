@@ -12,6 +12,13 @@ import { timeAgoFa, parseServerDate, toFa } from '@/lib/format';
 
 const num = (v: string) => Number(v.replace(/[^\d]/g, '')) || 0;
 
+/** نمایش گویای اعتبار فعلی — آگهی‌های ایمپورتی ۱۰ ساله (۳۶۵۰ روز) «۱۰ سال»
+ *  نشان داده می‌شوند نه عدد خام (رفع باگ ۱۹-۱۱: پیش‌پر/ارسال ۳۶۵۰ به سرور) */
+const validityLabelFa = (days?: number): string => {
+  const d = days ?? 3;
+  return d > 365 ? `${toFa(Math.round(d / 365))} سال` : `${toFa(d)} روز`;
+};
+
 /**
  * مودال سریع «آپدیت قیمت» (خواسته مالک ۷-۱۱ دور هفدهم) — از دکمهٔ ظریف زیر
  * کارت آگهی و از روی بج «قیمت منقضی شده» باز می‌شود؛ فقط قیمت + اعتبار،
@@ -35,15 +42,19 @@ export function QuickPriceModal({
   const { toast } = useToast();
   const save = useUpdateProductPrice();
 
-  // پیش‌پر شدن فرم با هر بار باز شدن — الگوی «state حین رندر» (بدون effect)
+  // پیش‌پر شدن فرم با هر بار باز شدن — الگوی «state حین رندر» (بدون effect)؛
+  // اعتبار فقط اگر در بازهٔ قابل انتخاب (۱..۳۶۵) است پیش‌پر می‌شود؛ آگهی
+  // ایمپورتی (۳۶۵۰) بدون انتخاب می‌ماند و تا انتخاب کاربر اصلاً ارسال
+  // نمی‌شود تا سرور همان قبلی را نگه دارد (ولیدیشن Max 365 — ۱۹-۱۱)
   const [wasOpen, setWasOpen] = useState(Boolean(product));
   const [price, setPrice] = useState('');
-  const [validity, setValidity] = useState(3);
+  const [validity, setValidity] = useState<number | null>(null);
   if (Boolean(product) !== wasOpen) {
     setWasOpen(Boolean(product));
     if (product) {
       setPrice(product.minSalePrice ? product.minSalePrice.toLocaleString('en-US') : '');
-      setValidity(product.priceValidityDays ?? 3);
+      const stored = product.priceValidityDays ?? 3;
+      setValidity(stored >= 1 && stored <= 365 ? stored : null);
     }
   }
 
@@ -53,7 +64,8 @@ export function QuickPriceModal({
   const submit = () => {
     if (!product || badPrice) return;
     save.mutate(
-      { id: product.id, minSalePrice: priceNum, priceValidityDays: validity },
+      // اعتبار دست‌نخورده (null) ارسال نمی‌شود → سرور مقدار قبلی را نگه می‌دارد
+      { id: product.id, minSalePrice: priceNum, priceValidityDays: validity ?? undefined },
       {
         onSuccess: () => {
           toast({ description: `قیمت «${product.productName}» به‌روزرسانی شد.` });
@@ -88,10 +100,10 @@ export function QuickPriceModal({
               ) : product?.priceUpdatedAt ? (
                 <>
                   آخرین تغییر قیمت: {timeAgoFa(parseServerDate(product.priceUpdatedAt))} · اعتبار فعلی{' '}
-                  {toFa(product.priceValidityDays ?? 3)} روز
+                  {validityLabelFa(product.priceValidityDays)}
                 </>
               ) : (
-                <>اعتبار فعلی {toFa(product?.priceValidityDays ?? 3)} روز</>
+                <>اعتبار فعلی {validityLabelFa(product?.priceValidityDays)}</>
               )}
             </p>
           </div>
@@ -116,7 +128,7 @@ export function QuickPriceModal({
           {/* اعتبار قیمت — پیش‌فرض ۳ روز */}
           <div className="space-y-2">
             <p className="text-xs font-bold">
-              اعتبار قیمت <span className="text-muted-foreground">(پیش‌فرض ۳ روز — بعد از این مهلت، قیمت «منقضی شده» نشان داده می‌شود)</span>
+              اعتبار قیمت <span className="text-muted-foreground">(اگر تغییر ندهید، همان اعتبار فعلی می‌ماند — بعد از این مهلت، قیمت «منقضی شده» نشان داده می‌شود)</span>
             </p>
             <PriceValidityPicker value={validity} onChange={setValidity} ariaLabel="اعتبار قیمت به روز" />
           </div>

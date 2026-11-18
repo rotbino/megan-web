@@ -71,8 +71,10 @@ interface EditDraft {
   stock: string;
   minSaleAmount: string;
   minSalePrice: string;
-  /** اعتبار قیمت به روز (۷-۱۱ دور هفدهم) — پیش‌فرض ۳ روز */
-  priceValidityDays: number;
+  /** اعتبار قیمت به روز (۷-۱۱ دور هفدهم) — null = بدون انتخاب: اعتبار فعلی
+   *  آگهی خارج از بازهٔ ۱..۳۶۵ است (ایمپورتی‌های ۱۰ ساله) و تا انتخاب کاربر
+   *  ارسال نمی‌شود تا سرور همان قبلی را نگه دارد (رفع خطای Max 365 — ۱۹-۱۱) */
+  priceValidityDays: number | null;
   description: string;
   features: ProductFeature[];
 }
@@ -161,7 +163,9 @@ export default function EditProductPage() {
       stock: p.stock ? p.stock.toLocaleString('en-US') : '',
       minSaleAmount: p.minSaleAmount ? p.minSaleAmount.toLocaleString('en-US') : '',
       minSalePrice: p.minSalePrice ? p.minSalePrice.toLocaleString('en-US') : '',
-      priceValidityDays: p.priceValidityDays ?? 3,
+      // اعتبار فقط در بازهٔ قابل انتخاب پیش‌پر می‌شود؛ خارج از آن (مثل ۳۶۵۰
+      // آگهی‌های ایمپورتی) بدون انتخاب می‌ماند و در ذخیره ارسال نمی‌شود
+      priceValidityDays: (p.priceValidityDays ?? 3) <= 365 ? (p.priceValidityDays ?? 3) : null,
       description: p.description ?? '',
       features: (p.features ?? []).filter((f) => f.key !== 'برند').map((f) => ({ ...f })),
     });
@@ -223,7 +227,8 @@ export default function EditProductPage() {
         stock: num(draft.stock),
         minSaleAmount: num(draft.minSaleAmount),
         minSalePrice: num(draft.minSalePrice),
-        priceValidityDays: draft.priceValidityDays,
+        // اعتبار دست‌نخورده (null) ارسال نمی‌شود → سرور مقدار قبلی را نگه می‌دارد
+        priceValidityDays: draft.priceValidityDays ?? undefined,
         description: draft.description,
         features: [
           ...draft.features.filter((f) => f.key && f.value.trim()),
