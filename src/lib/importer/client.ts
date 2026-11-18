@@ -675,6 +675,8 @@ export interface ProductFileRow {
   url: string;
   thumbUrl: string | null;
   hasWatermark: boolean;
+  /** (۱۹-۱۱) زمان اصلاح واترمارک — غیرnull یعنی تمیز شده و در تب «اصلاح واترمارک» است */
+  fixedAt: string | null;
   /** id آگهیِ صاحب تصویر (رشته) */
   relatedId: string | null;
   size: number;
@@ -682,9 +684,12 @@ export interface ProductFileRow {
 }
 
 export interface ProductFilesSummary {
+  /** باقی‌مانده = همه به‌جز اصلاح‌شده‌ها (تب «همه» همین را نشان می‌دهد) */
   total: number;
   watermarked: number;
   clean: number;
+  /** اصلاح‌شده‌ها — تب «اصلاح واترمارک» */
+  fixed: number;
 }
 
 export interface ProductFilesList {
@@ -697,8 +702,9 @@ export interface ProductFilesList {
 }
 
 export interface ProductFilesParams {
-  /** فیلتر واترمارک — مبنای جداکردن لیست علامت‌خورده‌ها برای پاک‌سازی */
-  watermark?: 'yes' | 'no' | 'all';
+  /** فیلتر واترمارک — مبنای جداکردن لیست علامت‌خورده‌ها برای پاک‌سازی؛
+   *  fixed = تب «اصلاح واترمارک»: تصاویری که واترمارکشان حذف شده (۱۹-۱۱) */
+  watermark?: 'yes' | 'no' | 'fixed' | 'all';
   /** فقط تصاویر این آگهی — لینک عمیق «N عکس» از صفحهٔ آگهی‌ها */
   productId?: number;
   /** سورت بر تاریخ خودِ آگهی (باسکول) — پیش‌فرض productCreated = زمان ثبت

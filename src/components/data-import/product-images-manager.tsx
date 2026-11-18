@@ -28,6 +28,7 @@ import { Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  BadgeCheck,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
@@ -45,7 +46,7 @@ import { productFilesApi, type ProductFileRow, type ProductFilesParams } from '@
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-type WmFilter = 'all' | 'yes' | 'no';
+type WmFilter = 'all' | 'yes' | 'no' | 'fixed';
 
 /** سورت بر تاریخ خودِ آگهی (باسکول) — زمان ثبت (پیش‌فرض) / آخرین ویرایش */
 type SortKey = 'productCreated' | 'productUpdated';
@@ -54,6 +55,9 @@ const WM_TABS: Array<{ key: WmFilter; label: string }> = [
   { key: 'all', label: 'همهٔ تصاویر' },
   { key: 'yes', label: 'واترمارک‌دار' },
   { key: 'no', label: 'بدون واترمارک' },
+  // اصلاح‌شده‌ها — تب جدا تا لیست باقی‌مانده خلوت بماند (خواستهٔ مالک ۱۹-۱۱):
+  // تصویری که واترمارکش حذف شده دیگر در «همه» نمی‌آید
+  { key: 'fixed', label: 'اصلاح واترمارک' },
 ];
 
 const SORT_TABS: Array<{ key: SortKey; label: string; hint: string }> = [
@@ -62,7 +66,7 @@ const SORT_TABS: Array<{ key: SortKey; label: string; hint: string }> = [
 ];
 
 function isWmKey(v: string | null): v is WmFilter {
-  return v === 'all' || v === 'yes' || v === 'no';
+  return v === 'all' || v === 'yes' || v === 'no' || v === 'fixed';
 }
 
 function isSortKey(v: string | null): v is SortKey {
@@ -134,7 +138,7 @@ function ProductImagesManagerInner() {
       productFilesApi.setWatermark(id, hasWatermark),
     onMutate: async ({ id, hasWatermark }) => {
       await queryClient.cancelQueries({ queryKey: ['product-files'] });
-      const snapshots = queryClient.getQueriesData<{ rows: ProductFileRow[]; summary: { total: number; watermarked: number; clean: number } }>({ queryKey: ['product-files'] });
+      const snapshots = queryClient.getQueriesData<{ rows: ProductFileRow[]; summary: { total: number; watermarked: number; clean: number; fixed: number } }>({ queryKey: ['product-files'] });
       for (const [key, value] of snapshots) {
         if (!value) continue;
         queryClient.setQueryData(key, {
@@ -192,14 +196,16 @@ function ProductImagesManagerInner() {
         </div>
       </div>
 
-      {/* کارت‌های آماری + فیلتر — کلیک روی کارت = اعمال همان فیلتر */}
+      {/* کارت‌های آماری + فیلتر — کلیک روی کارت = اعمال همان فیلتر.
+          «کل تصاویر» = باقی‌مانده (بدون اصلاح‌شده‌ها) — هم‌راستا با تب «همه» */}
       {summary ? (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {(
             [
-              { key: 'all' as WmFilter, label: 'کل تصاویر', value: summary.total, icon: Images, cls: '' },
+              { key: 'all' as WmFilter, label: 'باقی‌مانده', value: summary.total, icon: Images, cls: '' },
               { key: 'yes' as WmFilter, label: 'واترمارک‌دار', value: summary.watermarked, icon: ShieldAlert, cls: 'text-amber-600' },
               { key: 'no' as WmFilter, label: 'بدون واترمارک', value: summary.clean, icon: ShieldCheck, cls: 'text-emerald-600' },
+              { key: 'fixed' as WmFilter, label: 'اصلاح واترمارک', value: summary.fixed, icon: BadgeCheck, cls: 'text-emerald-600' },
             ]
           ).map((c) => (
             <button
@@ -299,7 +305,9 @@ function ProductImagesManagerInner() {
               ? 'این آگهی تصویری ندارد یا شناسه اشتباه است'
               : wm === 'yes'
                 ? 'هنوز هیچ تصویری علامت واترمارک نخورده — از تب «همهٔ تصاویر» علامت بزنید'
-                : 'فیلتر را تغییر دهید یا دوباره تلاش کنید'}
+                : wm === 'fixed'
+                  ? 'هنوز هیچ تصویری اصلاح نشده — تصاویری که واترمارکشان حذف شود اینجا می‌آیند'
+                  : 'فیلتر را تغییر دهید یا دوباره تلاش کنید'}
           </p>
         </div>
       ) : (
@@ -310,6 +318,8 @@ function ProductImagesManagerInner() {
               className={cn(
                 'overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md',
                 f.hasWatermark && 'border-amber-400/80 ring-2 ring-amber-300/50',
+                // اصلاح‌شده = قاب سبز — در تب «اصلاح واترمارک» چشم می‌افتد (۱۹-۱۱)
+                f.fixedAt && 'border-emerald-400/80 ring-2 ring-emerald-300/50',
               )}
             >
               <a
@@ -327,6 +337,15 @@ function ProductImagesManagerInner() {
                   loading="lazy"
                   className="size-full object-contain"
                 />
+                {/* نشان «اصلاح شده» — تیک سبز گوشهٔ تصویر */}
+                {f.fixedAt && (
+                  <span
+                    className="absolute start-1.5 top-1.5 grid size-6 place-items-center rounded-md bg-emerald-600/85 text-white"
+                    title={`واترمارک این تصویر در ${new Date(f.fixedAt).toLocaleDateString('fa-IR')} اصلاح شد`}
+                  >
+                    <BadgeCheck size={13} />
+                  </span>
+                )}
                 <span className="absolute end-1.5 top-1.5 grid size-6 place-items-center rounded-md bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100">
                   <ExternalLink size={12} />
                 </span>
