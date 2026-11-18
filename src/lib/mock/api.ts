@@ -771,6 +771,8 @@ import type {
   PanelProfile,
   ProductStatus,
   SuggestedBuyer,
+  WebImportMode,
+  WebImportProgress,
 } from '@/lib/types';
 
 /** پروفایل پنل — واقعی از بک‌اند */
@@ -2243,4 +2245,29 @@ export async function getMySavedBuyerBooks(): Promise<SavedBuyerBookRow[]> {
   } catch {
     return [];
   }
+}
+
+// ─── ثبت گروهی محصول — ایمپورت از وب (۱۸-۱۱) ──────────────────────────────
+
+/**
+ * آیا کاربر واجد شرایط «ثبت گروهی محصول» است؟ (بک: عضو سابقِ از پیش ثبت‌شده)
+ * 401/خطا → بی‌صدا eligible:false — کاربر لاگین‌نشده دکمه را نمی‌بیند.
+ */
+export async function getWebImportStatus(): Promise<{ eligible: boolean }> {
+  try {
+    return await apiFetch<{ eligible: boolean }>('/products/webImportStatus', {});
+  } catch {
+    return { eligible: false };
+  }
+}
+
+/** شروع جلسهٔ ایمپورت از وب — full (کالای جدید + به‌روزرسانی + پروفایل)
+ *  یا prices (فقط به‌روزرسانی قیمت/موجودی/حداقل سفارش) */
+export async function startWebImport(mode: WebImportMode): Promise<WebImportProgress> {
+  return apiFetch<WebImportProgress>('/products/webImportStart', { mode });
+}
+
+/** پردازش تکهٔ بعدی جلسه — فرانت در حلقه صدا می‌زند تا done/failed */
+export async function stepWebImport(): Promise<WebImportProgress> {
+  return apiFetch<WebImportProgress>('/products/webImportStep', {});
 }

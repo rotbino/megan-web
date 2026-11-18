@@ -937,3 +937,46 @@ export interface UserTask {
   count?: number;
   severity: UserTaskSeverity;
 }
+
+/** ─── ثبت گروهی محصول — ایمپورت از وب (۱۸-۱۱) ────────────────────────────
+ *  کاربرِ واجد شرایط (عضو سابق، از قبل در سیستم ثبت شده) با یک کلیک
+ *  کالاهایش را «از سطح وب» به پنلش می‌آورد. روبروی کاربر هرگز نام منبع
+ *  نمی‌آید — همه‌جا «از وب / از سطح اینترنت» است. */
+export type WebImportMode = 'full' | 'prices';
+
+/** شمارنده‌های جلسهٔ ایمپورت — همان قرارداد بک‌اند */
+export interface WebImportCounters {
+  /** کل کالاهای پیدا‌شده در وب */
+  found: number;
+  /** کالای جدید ثبت‌شده (در انتظار تایید، همراه تصویر) */
+  created: number;
+  /** کالای موجود که قیمت/موجودی‌اش به‌روز شد یا به پنل اضافه شد */
+  updated: number;
+  unchanged: number;
+  /** کالای رهاشده که از حساب جامد به کاربر منتقل شد */
+  reassigned: number;
+  skippedDeleted: number;
+  skippedNew: number;
+  skippedOwner: number;
+  imagesDone: number;
+  imagesFailed: number;
+  profileDone: number;
+  itemErrors: number;
+}
+
+/** وضعیت زندهٔ جلسهٔ ایمپورت — درصد/فاز/گزارش */
+export interface WebImportProgress {
+  status: 'running' | 'done' | 'failed' | 'missing';
+  mode: WebImportMode;
+  phase: 'search' | 'profile' | 'gallery' | 'products' | 'done' | string;
+  /** ۰ تا ۱۰۰ */
+  percent: number;
+  processed: number;
+  total: number;
+  counters: WebImportCounters;
+  /** چند خط آخر گزارش زنده (فارسی، بدون نام منبع) */
+  log: string[];
+  /** گام ناموفق بود — فرانت بعد از مکث دوباره می‌پرسد */
+  retry?: boolean;
+  message?: string;
+}

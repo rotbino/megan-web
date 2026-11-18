@@ -18,23 +18,26 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
   BarChart3,
+  Globe,
   ImageIcon,
   Layers,
   MoreVertical,
   Pencil,
   Plus,
   RefreshCw,
+  Sparkles,
   Trash2,
   TrendingUp,
   Users,
 } from 'lucide-react';
-import { useDeleteMyProduct, useMyProducts, usePanelProfile } from '@/lib/mock/hooks';
+import { useDeleteMyProduct, useMyProducts, usePanelProfile, useWebImportStatus } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
 import { LadderPayDialog } from '@/components/panel/ladder-pay-dialog';
 import { DeleteProductDialog } from '@/components/panel/delete-product-dialog';
 import { QuickPriceModal } from '@/components/panel/quick-price-modal';
+import { WebImportModal } from '@/components/panel/web-import-modal';
 import { CatalogSettingsButton } from '@/components/panel/catalog/catalog-settings-button';
 import { REJECTION_REASONS } from '@/lib/mock/data';
 import { priceFa, stockFa, toFa } from '@/lib/format';
@@ -137,6 +140,11 @@ function MyProductsPageInner() {
   const { data: profile } = usePanelProfile();
   const { toast } = useToast();
   const remove = useDeleteMyProduct();
+  // «ثبت گروهی محصول» (۱۸-۱۱) — فقط اعضای سابقِ از پیش ثبت‌شده دکمه را
+  // می‌بینند؛ بقیه اصلاً چنین دکمه‌ای ندارند
+  const { data: webImportStatus } = useWebImportStatus();
+  const importEligible = webImportStatus?.eligible === true;
+  const [webImportOpen, setWebImportOpen] = useState(false);
 
   const tabParam = searchParams.get('tab');
   const [tab, setTab] = useState<ProductStatus>(isTabKey(tabParam) ? tabParam : 'confirmed');
@@ -164,6 +172,8 @@ function MyProductsPageInner() {
   // دکمهٔ «تغییر قیمت گروهی» فقط با بیش از یک آگهی (خواسته مالک ۴-۱۱) —
   // با یک آگهی ویرایش تکی خودش کفایت می‌کند
   const activeCount = data.items.filter((p) => p.status !== 'deleted').length;
+  // کاربر واجد شرایط با صفر کالای نمایشی → CTA بزرگ ایمپورت (به‌جای حالت خالی)
+  const showImportCta = importEligible && data.items.length === 0;
 
   const changeTab = (key: ProductStatus) => {
     setTab(key);
@@ -188,6 +198,19 @@ function MyProductsPageInner() {
           {/* تنظیمات کاتالوگ (خواستهٔ ۱۰-۱۱ دور ۳) — آیدی لینک/برند/رنگ/آیکون
               کاتالوگ (همان صفحهٔ عمومی فروشنده) */}
           <CatalogSettingsButton />
+          {/* ثبت گروهی (۱۸-۱۱) — نارنجی و در چشم‌تر از «ثبت محصول» تا کاربرِ
+              واجد شرایط ترغیب شود اول همین را بزند؛ غیرِ او اصلاً نمی‌بیند */}
+          {importEligible && (
+            <Button
+              size="sm"
+              onClick={() => setWebImportOpen(true)}
+              title="کالاهایتان را از سطح وب پیدا و یک‌جا به ایمچ اضافه کنید"
+              className="h-9 rounded-md bg-emphasis text-xs text-emphasis-foreground shadow-[0_2px_10px_rgba(249,115,22,0.4)] transition-all hover:bg-emphasis-deep hover:shadow-[0_3px_14px_rgba(249,115,22,0.5)]"
+            >
+              <Sparkles size={15} />
+              ثبت گروهی محصول
+            </Button>
+          )}
           <Button asChild size="sm" className="rounded-md text-xs h-9">
             <Link href="/panel/products/new">
               <Plus size={16} />
@@ -243,13 +266,45 @@ function MyProductsPageInner() {
 
       {/* لیست آگهی‌ها */}
       {items.length === 0 ? (
-        <PanelEmptyState
-          icon={ImageIcon}
-          title={tab === 'confirmed' ? 'محصول تایید شده ای ندارید.' : `موردی در «${STATUS_LABEL[tab]}» ندارید.`}
-          hint="برای ثبت محصول جدید در ایمچ، از طریق دکمه ثبت محصول اقدام کنید."
-          actionLabel="ثبت محصول"
-          actionHref="/panel/products/new"
-        />
+        showImportCta ? (
+          /* کاربر واجد شرایط با پنل خالی — طعم‌دهی به «ایمپورت از وب» (۱۸-۱۱):
+             انگار ایمچ کل وب را برایش می‌گرداند؛ بدون نام هیچ منبعی */
+          <div className="relative overflow-hidden rounded-lg border border-emphasis/25 bg-emphasis-soft p-5 sm:p-6">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 start-1/2 w-40 -translate-x-1/2 text-emphasis/10"
+            >
+              <Globe className="size-full" strokeWidth={0.6} />
+            </div>
+            <div className="relative flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-start">
+              <div className="min-w-0">
+                <h2 className="flex items-center justify-center gap-2 text-base font-extrabold text-emphasis-deep sm:justify-start">
+                  <Sparkles size={18} className="shrink-0" />
+                  کالاهایتان را از وب بیاورید
+                </h2>
+                <p className="mt-1.5 max-w-xl text-xs leading-6 text-muted-foreground sm:text-[13px]">
+                اگر در سایت‌ها و پلتفرم‌های عمده‌فروشی کالایی ثبت کرده‌اید، ایمچ آن‌ها را پیدا می‌کند و با قیمت، موجودی، حداقل سفارش و تصاویر، یک‌جا همین‌جا ثبت می‌کند.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => setWebImportOpen(true)}
+                className="h-10 shrink-0 rounded-md bg-emphasis px-5 text-sm font-bold text-emphasis-foreground shadow-[0_2px_10px_rgba(249,115,22,0.4)] transition-all hover:bg-emphasis-deep"
+              >
+                <Globe size={16} />
+                جستجو و ایمپورت از وب
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <PanelEmptyState
+            icon={ImageIcon}
+            title={tab === 'confirmed' ? 'محصول تایید شده ای ندارید.' : `موردی در «${STATUS_LABEL[tab]}» ندارید.`}
+            hint="برای ثبت محصول جدید در ایمچ، از طریق دکمه ثبت محصول اقدام کنید."
+            actionLabel="ثبت محصول"
+            actionHref="/panel/products/new"
+          />
+        )
       ) : (
         <div className="space-y-3">
           {items.map((p) => {
@@ -418,6 +473,21 @@ function MyProductsPageInner() {
 
       {/* مدال سریع آپدیت قیمت (۷-۱۱ دور هفدهم) — از «آپدیت قیمت» و بج انقضا */}
       <QuickPriceModal product={priceTarget} onClose={() => setPriceTarget(null)} />
+
+      {/* مدال «ثبت گروهی محصول» (۱۸-۱۱) — ایمپورت از وب؛ فقط کاربر واجد شرایط */}
+      {importEligible && (
+        <WebImportModal
+          open={webImportOpen}
+          onClose={() => setWebImportOpen(false)}
+          onFinished={(counters) => {
+            // بعد از ایمپورت: اگر کالای تازه‌ای تاییدشده نیست، تب «در انتظار تایید»
+            // را خودکار انتخاب کن تا کاربر کالاهایش را همان‌جا ببیند
+            if (counters.created > 0 && counters.updated + counters.reassigned === 0) {
+              changeTab('pending');
+            }
+          }}
+        />
+      )}
 
       {/* دیالوگ تأیید حذف (خواسته مالک ۳-۱۱) — حذف نرم با حفظ سوابق */}
       <DeleteProductDialog

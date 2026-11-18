@@ -282,6 +282,17 @@ export function useMyProducts(enabled = true) {
   });
 }
 
+/** واجد شرایط بودن «ثبت گروهی محصول» (۱۸-۱۱) — فقط اعضای سابقِ از پیش
+ *  ثبت‌شده دکمه را می‌بینند؛ خطا/401 بی‌صدا eligible:false است. */
+export function useWebImportStatus() {
+  return useQuery({
+    queryKey: ['web-import-status'],
+    queryFn: api.getWebImportStatus,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+}
+
 // ─── پیگیری‌ها — CRM کوچک ایمچ ────────────────────────────────────────
 
 /** پرونده‌های پیگیری من — تعداد و خلاصه قیف هر پرونده؛ kind: فقط همان
