@@ -2247,17 +2247,19 @@ export async function getMySavedBuyerBooks(): Promise<SavedBuyerBookRow[]> {
   }
 }
 
-// ─── ثبت گروهی محصول — ایمپورت از وب (۱۸-۱۱) ──────────────────────────────
+// ─── ایمپورت از وب (۱۸-۱۱) ─────────────────────────────────────────────────
 
 /**
- * آیا کاربر واجد شرایط «ثبت گروهی محصول» است؟ (بک: عضو سابقِ از پیش ثبت‌شده)
- * 401/خطا → بی‌صدا eligible:false — کاربر لاگین‌نشده دکمه را نمی‌بیند.
+ * وضعیت «ایمپورت از وب» کاربر (بک: عضو سابقِ از پیش ثبت‌شده).
+ * eligible = این امکان برای حسابش فعال است؛ imported = دست‌کم یک جلسهٔ
+ * ایمپورت را تمام کرده («ثبت محصول جدید» تا آن لحظه قفل است — ۱۸-۱۱ دور ۲).
+ * 401/خطا → بی‌صدا eligible:false — کاربر لاگین‌نشده این امکان را نمی‌بیند.
  */
-export async function getWebImportStatus(): Promise<{ eligible: boolean }> {
+export async function getWebImportStatus(): Promise<{ eligible: boolean; imported: boolean }> {
   try {
-    return await apiFetch<{ eligible: boolean }>('/products/webImportStatus', {});
+    return await apiFetch<{ eligible: boolean; imported: boolean }>('/products/webImportStatus', {});
   } catch {
-    return { eligible: false };
+    return { eligible: false, imported: false };
   }
 }
 

@@ -9,7 +9,7 @@
  */
 
 import { useState } from 'react';
-import { Wallet } from 'lucide-react';
+import { TrendingUp, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { NeedPackageModal } from '@/components/shared/need-package-modal';
@@ -61,6 +61,14 @@ export function LadderPayDialog({
           </DialogHeader>
 
           <div className="space-y-4 text-sm">
+            {/* جای کادر تبلیغ حذف‌شده از بالای لیست محصولات (۱۸-۱۱ دور ۲ —
+                مالک): متن دقیق مالک داخل خود مودال نردبان — جایی که تصمیم
+                خرید گرفته می‌شود */}
+            <p className="flex items-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3.5 py-3 text-xs font-bold leading-5 text-primary">
+              <TrendingUp size={16} className="shrink-0" />
+              آگهی های نردبان شده حتی بالاتر از آگهی های ویژه قرار می گیرند.
+            </p>
+
             {/* انتخاب مدت نردبان — چیپ‌های ۱ تا ۴ ماه */}
             <div>
               <p className="mb-2 text-xs font-bold">مدت نردبان را انتخاب کنید:</p>

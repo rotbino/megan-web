@@ -282,8 +282,9 @@ export function useMyProducts(enabled = true) {
   });
 }
 
-/** واجد شرایط بودن «ثبت گروهی محصول» (۱۸-۱۱) — فقط اعضای سابقِ از پیش
- *  ثبت‌شده دکمه را می‌بینند؛ خطا/401 بی‌صدا eligible:false است. */
+/** وضعیت «ایمپورت از وب» (۱۸-۱۱) — فقط اعضای سابقِ از پیش ثبت‌شده؛
+ * imported = ایمپورت را تمام کرده و «ثبت محصول جدید» باز است.
+ * خطا/401 بی‌صدا eligible:false است. */
 export function useWebImportStatus() {
   return useQuery({
     queryKey: ['web-import-status'],

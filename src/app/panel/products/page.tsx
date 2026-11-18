@@ -1,14 +1,16 @@
 'use client';
 
 /**
- * محصولات من — تب‌های وضعیت (تایید شده/در انتظار تایید/حذف شده/رد شده).
- * کارت خلوت (خواسته مالک ۷-۱۱ دور هفدهم): بج وضعیت، خط دسته/موقعیت، بازدید
- * و «به‌روزرسانی … پیش» حذف شدند (وضعیت را تب می‌گوید، بازدید در آمار است)؛
- * به‌جای زمان به‌روزرسانی، اگر قیمت از پنجرهٔ اعتبارش گذشته باشد بج قابل‌کلیک
- * «قیمت منقضی شده» می‌نشیند که مدال سریع آپدیت قیمت را باز می‌کند — همان
- * مدالی که دکمهٔ ظریف «آپدیت قیمت» زیر کارت هم باز می‌کند.
- * دکمهٔ نردبان فقط وقتی دیده می‌شود که آگهی نردبان نشده باشد؛ دکمه‌های زیر
- * کارت لینک‌مانند و ریز شده‌اند (خواسته مالک: کمتر جا بگیرد، گویا بماند).
+ * محصولات من — تب‌های وضعیت تخت و فلت (۱۸-۱۱ دور ۲ — بازطراحی مالک):
+ * تب‌های خالی (شمار ۰) اصلاً رندر نمی‌شوند؛ تب فعال با خط نارنجی زیرین و
+ * کل نوار با خط جداکننده از لیست جدا می‌شود. کادر تبلیغ نردبان از بالای
+ * لیست حذف شد (به مودال نردبان رفت) تا فرم خلوت‌تر باشد.
+ * «ثبت گروهی» حذف شد: دکمهٔ «ثبت محصول» برای اعضای واجد شرایط مدال
+ * «ثبت محصول» (ایمپورت از وب + ثبت محصول جدید قفل‌شده تا اولین ایمپورت)
+ * را باز می‌کند؛ کاربر عادی مستقیم به فرم می‌رود.
+ * کارت خلوت (خواسته مالک ۷-۱۱ دور هفدهم): بج وضعیت، خط دسته/موقعیت،
+ * بازدید و «به‌روزرسانی … پیش» حذف شدند؛ اگر قیمت از پنجرهٔ اعتبارش
+ * گذشته باشد بج قابل‌کلیک «قیمت منقضی شده» می‌نشیند.
  * حذف = زیر دکمهٔ سه‌نقطه + دیالوگ تأیید + حذف نرم با حفظ سوابق.
  */
 
@@ -42,7 +44,7 @@ import { CatalogSettingsButton } from '@/components/panel/catalog/catalog-settin
 import { REJECTION_REASONS } from '@/lib/mock/data';
 import { priceFa, stockFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { Product, ProductStatus } from '@/lib/types';
+import type { Product, ProductStatus, WebImportMode } from '@/lib/types';
 
 const TABS: { key: ProductStatus; label: string }[] = [
   { key: 'confirmed', label: 'تایید شده' },
@@ -140,11 +142,22 @@ function MyProductsPageInner() {
   const { data: profile } = usePanelProfile();
   const { toast } = useToast();
   const remove = useDeleteMyProduct();
-  // «ثبت گروهی محصول» (۱۸-۱۱) — فقط اعضای سابقِ از پیش ثبت‌شده دکمه را
-  // می‌بینند؛ بقیه اصلاً چنین دکمه‌ای ندارند
+  // «ایمپورت از وب» (۱۸-۱۱) — فقط اعضای سابقِ از پیش ثبت‌شده؛ بقیه
+  // دکمهٔ «ثبت محصول»شان مستقیم به فرم می‌رود
   const { data: webImportStatus } = useWebImportStatus();
   const importEligible = webImportStatus?.eligible === true;
   const [webImportOpen, setWebImportOpen] = useState(false);
+  // حالت شروع خودکار مدال — CTA حالت خالی مستقیم full می‌زند؛ دکمهٔ
+  // «ثبت محصول» نمای انتخاب را نشان می‌دهد (undefined)
+  const [webImportAuto, setWebImportAuto] = useState<WebImportMode | undefined>(undefined);
+  const openImport = (mode?: WebImportMode) => {
+    setWebImportAuto(mode);
+    setWebImportOpen(true);
+  };
+  const closeImport = () => {
+    setWebImportOpen(false);
+    setWebImportAuto(undefined);
+  };
 
   const tabParam = searchParams.get('tab');
   const [tab, setTab] = useState<ProductStatus>(isTabKey(tabParam) ? tabParam : 'confirmed');
@@ -167,13 +180,29 @@ function MyProductsPageInner() {
     return <div className="h-64 animate-pulse rounded-lg border bg-card" />;
   }
 
-  const items = data.items.filter((p) => p.status === tab);
+  // تب‌های قابل‌مشاهده (۱۸-۱۱ دور ۲ — مالک: تب خالی دیده نشود): فقط تب‌هایی
+  // که چیزی در آن‌هاست رندر می‌شوند؛ تب فعال اگر مخفی شد (مثلاً بعد از حذف
+  // آخرین آیتم) اولین تبِ پُر جایگزین می‌شود؛ یک تبِ تنها هم کل نوار را
+  // مخفی می‌کند — با یک تب، تب‌ویو بی‌معنی است و فرم خلوت می‌ماند
+  const tabCounts = TABS.map(({ key, label }) => ({
+    key,
+    label,
+    count: data.items.filter((p) => p.status === key).length,
+  }));
+  const visibleTabs = tabCounts.filter((t) => t.count > 0);
+  const activeTab: ProductStatus = visibleTabs.some((t) => t.key === tab)
+    ? tab
+    : (visibleTabs[0]?.key ?? 'confirmed');
+
+  const items = data.items.filter((p) => p.status === activeTab);
   const balance = profile?.userInfo.walletBalance ?? 0;
   // دکمهٔ «تغییر قیمت گروهی» فقط با بیش از یک آگهی (خواسته مالک ۴-۱۱) —
   // با یک آگهی ویرایش تکی خودش کفایت می‌کند
   const activeCount = data.items.filter((p) => p.status !== 'deleted').length;
-  // کاربر واجد شرایط با صفر کالای نمایشی → CTA بزرگ ایمپورت (به‌جای حالت خالی)
-  const showImportCta = importEligible && data.items.length === 0;
+  // کاربر واجد شرایطی که هنوز ایمپورت نزده با صفر کالای نمایشی → CTA بزرگ
+  // ایمپورت (به‌جای حالت خالی)؛ بعد از ایمپورت، حالت خالی معمولی می‌آید
+  const showImportCta =
+    importEligible && webImportStatus?.imported !== true && data.items.length === 0;
 
   const changeTab = (key: ProductStatus) => {
     setTab(key);
@@ -198,57 +227,67 @@ function MyProductsPageInner() {
           {/* تنظیمات کاتالوگ (خواستهٔ ۱۰-۱۱ دور ۳) — آیدی لینک/برند/رنگ/آیکون
               کاتالوگ (همان صفحهٔ عمومی فروشنده) */}
           <CatalogSettingsButton />
-          {/* ثبت گروهی (۱۸-۱۱) — نارنجی و در چشم‌تر از «ثبت محصول» تا کاربرِ
-              واجد شرایط ترغیب شود اول همین را بزند؛ غیرِ او اصلاً نمی‌بیند */}
-          {importEligible && (
+          {/* ثبت محصول (۱۸-۱۱ دور ۲): عضو واجد شرایط → مدال (ایمپورت از وب /
+              ثبت جدید قفل‌شده تا اولین ایمپورت)؛ کاربر عادی → مستقیم فرم */}
+          {importEligible ? (
             <Button
               size="sm"
-              onClick={() => setWebImportOpen(true)}
-              title="کالاهایتان را از سطح وب پیدا و یک‌جا به ایمچ اضافه کنید"
-              className="h-9 rounded-md bg-emphasis text-xs text-emphasis-foreground shadow-[0_2px_10px_rgba(249,115,22,0.4)] transition-all hover:bg-emphasis-deep hover:shadow-[0_3px_14px_rgba(249,115,22,0.5)]"
+              onClick={() => openImport()}
+              title="روش ثبت را انتخاب کنید — ایمپورت از وب یا ثبت دستی"
+              className="h-9 rounded-md text-xs"
             >
-              <Sparkles size={15} />
-              ثبت گروهی محصول
-            </Button>
-          )}
-          <Button asChild size="sm" className="rounded-md text-xs h-9">
-            <Link href="/panel/products/new">
               <Plus size={16} />
               ثبت محصول
-            </Link>
-          </Button>
+            </Button>
+          ) : (
+            <Button asChild size="sm" className="rounded-md text-xs h-9">
+              <Link href="/panel/products/new">
+                <Plus size={16} />
+                ثبت محصول
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* نکته نردبان — عین باسکول */}
-      <div className="flex items-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-4 py-3 text-xs leading-5 text-primary">
-        <TrendingUp size={16} className="shrink-0" />
-        با استفاده از نردبان، محصول شما در صدر لیست محصولات — حتی بالاتر از آگهی‌های ویژه — قرار می‌گیرد.
-      </div>
-
-      {/* تب‌ها */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {TABS.map(({ key, label }) => {
-          const count = data.items.filter((p) => p.status === key).length;
-          const active = tab === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => changeTab(key)}
-              className={cn(
-                'flex shrink-0 items-center gap-1.5 rounded-md border px-3.5 py-2 text-xs font-bold transition-colors',
-                active ? 'border-primary bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:border-primary/40',
-              )}
-            >
-              {label} <span className={cn('font-num rounded-full px-1.5 py-0.5 text-[10px]', active ? 'bg-primary-foreground/20' : 'bg-secondary')}>({toFa(count)})</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* تب‌های وضعیت (۱۸-۱۱ دور ۲ — مالک): تبویوی فلت و ساده؛ تب خالی مخفی؛
+          خط نارنجی زیر تب فعال؛ خود نوار با خط جداکننده از لیست جدا می‌شود.
+          کادر تبلیغ نردبان از این‌جا به مودال نردبان رفت (فرم خلوت‌تر) */}
+      {visibleTabs.length > 1 && (
+        <div className="flex items-center gap-4 overflow-x-auto border-b border-border">
+          {visibleTabs.map(({ key, label, count }) => {
+            const active = activeTab === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => changeTab(key)}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'relative shrink-0 py-2.5 text-xs transition-colors',
+                  active ? 'font-extrabold text-foreground' : 'font-bold text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {label}
+                <span
+                  className={cn(
+                    'font-num ms-1.5 text-[10px] font-bold',
+                    active ? 'text-emphasis' : 'text-muted-foreground/70',
+                  )}
+                >
+                  ({toFa(count)})
+                </span>
+                {active && (
+                  <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-emphasis" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* دلایل رد شدن — فقط تب رد شده */}
-      {tab === 'rejected' && (
+      {activeTab === 'rejected' && (
         <PanelCard className="border-red-200 bg-red-50/50">
           <p className="flex items-center gap-1.5 text-sm font-extrabold text-red-600">
             <AlertTriangle size={16} /> دلایل رد شدن محصولات
@@ -288,7 +327,7 @@ function MyProductsPageInner() {
               </div>
               <Button
                 size="sm"
-                onClick={() => setWebImportOpen(true)}
+                onClick={() => openImport('full')}
                 className="h-10 shrink-0 rounded-md bg-emphasis px-5 text-sm font-bold text-emphasis-foreground shadow-[0_2px_10px_rgba(249,115,22,0.4)] transition-all hover:bg-emphasis-deep"
               >
                 <Globe size={16} />
@@ -299,7 +338,7 @@ function MyProductsPageInner() {
         ) : (
           <PanelEmptyState
             icon={ImageIcon}
-            title={tab === 'confirmed' ? 'محصول تایید شده ای ندارید.' : `موردی در «${STATUS_LABEL[tab]}» ندارید.`}
+            title={activeTab === 'confirmed' ? 'محصول تایید شده ای ندارید.' : `موردی در «${STATUS_LABEL[activeTab]}» ندارید.`}
             hint="برای ثبت محصول جدید در ایمچ، از طریق دکمه ثبت محصول اقدام کنید."
             actionLabel="ثبت محصول"
             actionHref="/panel/products/new"
@@ -474,11 +513,13 @@ function MyProductsPageInner() {
       {/* مدال سریع آپدیت قیمت (۷-۱۱ دور هفدهم) — از «آپدیت قیمت» و بج انقضا */}
       <QuickPriceModal product={priceTarget} onClose={() => setPriceTarget(null)} />
 
-      {/* مدال «ثبت گروهی محصول» (۱۸-۱۱) — ایمپورت از وب؛ فقط کاربر واجد شرایط */}
+      {/* مدال «ثبت محصول» (۱۸-۱۱ دور ۲) — ایمپورت از وب + ثبت جدیدِ
+          قفل‌شده تا اولین ایمپورت؛ فقط کاربر واجد شرایط */}
       {importEligible && (
         <WebImportModal
           open={webImportOpen}
-          onClose={() => setWebImportOpen(false)}
+          onClose={closeImport}
+          autoMode={webImportAuto}
           onFinished={(counters) => {
             // بعد از ایمپورت: اگر کالای تازه‌ای تاییدشده نیست، تب «در انتظار تایید»
             // را خودکار انتخاب کن تا کاربر کالاهایش را همان‌جا ببیند

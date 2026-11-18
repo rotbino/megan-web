@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   ArrowRight,
+  Globe,
   ImageIcon,
   ImagePlus,
   PartyPopper,
@@ -29,7 +30,7 @@ import {
   Trash2,
   TrendingUp,
 } from 'lucide-react';
-import { useCities, useMyProducts, usePanelProfile, useProvinces, useSubmitProduct } from '@/lib/mock/hooks';
+import { useCities, useMyProducts, usePanelProfile, useProvinces, useSubmitProduct, useWebImportStatus } from '@/lib/mock/hooks';
 import { retryProductPhotos } from '@/lib/mock/api';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ProductStepper } from '@/components/panel/product-form/stepper';
 import { CategoryCascade } from '@/components/panel/product-form/category-cascade';
+import { WebImportModal } from '@/components/panel/web-import-modal';
 import { PanelCard } from '@/components/panel/panel-parts';
 import { UnitInput } from '@/components/shared/unit-input';
 import { PRODUCT_FEATURE_KEYS } from '@/lib/mock/data';
@@ -104,6 +106,26 @@ export default function RegisterProductPage() {
   const { data: provinces } = useProvinces();
   const { data: profile } = usePanelProfile();
   const submit = useSubmitProduct();
+  // گیت «اول ایمپورت» (۱۸-۱۱ دور ۲ — مالک): عضو واجد شرایطی که هنوز ایمپورت
+  // نزده، فرم ثبت دستی را نمی‌بیند (مستقیم هم که آدرس را باز کند) — اول
+  // کالاهایش را از وب جمع‌آوری کند؛ بعد از ایمپورت قفل خودش باز می‌شود.
+  // gateHold: لحظهٔ «done» وضعیت از سرور برمی‌گردد و قفل باز می‌شود؛ ولی
+  // مدال نباید همان لحظه از زیر پای کاربر unmount شود — قفل تا بسته‌شدن
+  // مدال نگه داشته می‌شود تا خلاصهٔ ایمپورت را ببیند و بعد فرم بیاید
+  const { data: webImportStatus, isLoading: importStatusLoading } = useWebImportStatus();
+  const importLocked =
+    !importStatusLoading && webImportStatus?.eligible === true && webImportStatus?.imported !== true;
+  const [importOpen, setImportOpen] = useState(false);
+  const [gateHold, setGateHold] = useState(false);
+  const gateActive = importLocked || (gateHold && importOpen);
+  const openGateImport = () => {
+    setGateHold(true);
+    setImportOpen(true);
+  };
+  const closeGateImport = () => {
+    setGateHold(false);
+    setImportOpen(false);
+  };
 
   const [step, setStep] = useState(0);
   const [maxReached, setMaxReached] = useState(0);
@@ -369,6 +391,39 @@ export default function RegisterProductPage() {
   // خطای ولیدیشن مرحله — derived: به محض اصلاح ورودی همان لحظه پاک می‌شود
   // (خواسته مالک ۳-۱۱)؛ error فقط پیام‌های لحظه‌ای (مثل رد تصویر) است
   const shownStepError = attempted ? stepError(step) : null;
+
+  // ─── گیت «اول ایمپورت» — قبل از فرم (۱۸-۱۱ دور ۲) ───
+  if (gateActive) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <div className="relative overflow-hidden rounded-lg border border-emphasis/25 bg-emphasis-soft p-6 text-center sm:p-8">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 start-1/2 w-40 -translate-x-1/2 text-emphasis/10"
+          >
+            <Globe className="size-full" strokeWidth={0.6} />
+          </div>
+          <div className="relative flex flex-col items-center gap-3">
+            <span className="grid size-12 place-items-center rounded-xl bg-emphasis text-emphasis-foreground shadow-[0_2px_10px_rgba(249,115,22,0.35)]">
+              <Globe size={24} />
+            </span>
+            <h1 className="text-base font-extrabold text-emphasis-deep">اول کالاهایتان را از وب جمع‌آوری کنید</h1>
+            <p className="max-w-md text-xs leading-6 text-muted-foreground sm:text-[13px]">
+              اگر در سایت‌ها و پلتفرم‌های عمده‌فروشی کالایی ثبت کرده‌اید، ایمچ آن‌ها را پیدا می‌کند و با قیمت، موجودی، حداقل سفارش و تصاویر، یک‌جا همین‌جا ثبت می‌کند. پس از پایان جمع‌آوری، ثبت محصول جدید برای شما باز می‌شود.
+            </p>
+            <Button
+              onClick={openGateImport}
+              className="mt-1 h-10 rounded-md bg-emphasis px-6 text-sm font-bold text-emphasis-foreground shadow-[0_2px_10px_rgba(249,115,22,0.4)] transition-all hover:bg-emphasis-deep"
+            >
+              <Globe size={16} />
+              جستجو و ایمپورت از وب
+            </Button>
+          </div>
+        </div>
+        <WebImportModal open={importOpen} onClose={closeGateImport} autoMode="full" />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">

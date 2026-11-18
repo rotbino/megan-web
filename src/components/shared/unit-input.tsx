@@ -48,6 +48,7 @@ export function UnitInput({
                               maxLength = 12,
                               className,
                               inputClassName,
+                              unitOutside,
                           }: {
     /** رشته ارقام با جداکننده هزارگان (فونت FaNum ارقام را فارسی نشان می‌دهد) */
     value: string;
@@ -64,12 +65,19 @@ export function UnitInput({
     className?: string;
     /** کلاس اضافهٔ خودِ Input — مثلاً هم‌قدسازی ارتفاع با بقیهٔ فیلدهای فرم */
     inputClassName?: string;
+    /** واحد «بیرون» اینپوت (۱۸-۱۱ دور ۲ — درخواست مالک: عدد وسط‌چین واقعی و
+     *  بدون تصادم با واحد در ستون‌های باریک): 'desktop' فقط در lg+ واحد را
+     *  بیرون می‌برد و در موبایل مثل قبل داخل می‌گذارد؛ 'always' همه‌جا.
+     *  بیرون‌رفتن واحد یعنی مرکزِ متن دقیقاً مرکز جعبهٔ عدد است و هرگز به
+     *  واحد نمی‌چسبد. */
+    unitOutside?: 'desktop' | 'always';
 }) {
     const digits = Number(value.replace(/[^\d]/g, '')) || 0;
     const badge = unitBadgeText(digits, kind, unit);
+    const outside = unitOutside === 'always' || unitOutside === 'desktop';
 
     return (
-        <div className={cn('relative', className)}>
+        <div className={cn('relative', outside && 'flex items-center gap-1.5', className)}>
             <Input
                 id={id}
                 dir="ltr"
@@ -80,7 +88,8 @@ export function UnitInput({
                     // وسط‌چین واقعی عدد: پدینگ متقارن — قبلاً ps-3/pe-20 ناهمگون بود و
                     // مرکز متن را روی واحدِ گوشهٔ چپ می‌انداخت (تداخل موبایل — خواسته مالک)
                     'font-num h-13 text-center text-base font-bold tabular-nums md:h-14 md:text-lg',
-                    unit && 'px-4',
+                    unit && !outside && 'px-4',
+                    unit && outside && 'flex-1 px-3',
                     invalid && 'border-red-400 focus-visible:ring-red-300',
                     inputClassName,
                 )}
@@ -92,9 +101,25 @@ export function UnitInput({
                 }}
             />
             {unit && (
-                <span className="font-num pointer-events-none absolute inset-y-0 left-3 flex items-center text-[13px] font-bold text-muted-foreground md:text-sm">
-          {unit}
-        </span>
+                <span
+                    className={cn(
+                        'font-num pointer-events-none absolute inset-y-0 left-3 flex items-center text-[13px] font-bold text-muted-foreground md:text-sm',
+                        outside === 'desktop' && 'lg:hidden',
+                        outside === 'always' && 'hidden',
+                    )}
+                >
+                    {unit}
+                </span>
+            )}
+            {unit && outside && (
+                <span
+                    className={cn(
+                        'font-num pointer-events-none shrink-0 items-center whitespace-nowrap text-[12px] font-bold text-muted-foreground',
+                        unitOutside === 'desktop' ? 'hidden lg:flex' : 'flex',
+                    )}
+                >
+                    {unit}
+                </span>
             )}
             {badge && (
                 <span

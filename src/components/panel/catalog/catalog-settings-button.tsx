@@ -28,7 +28,6 @@ import {
   Loader2,
   Palette,
   PhoneOff,
-  Store,
   Users,
   X,
 } from 'lucide-react';
@@ -51,7 +50,6 @@ import { toFa } from '@/lib/format';
 import {
   CATALOG_COLORS,
   CATALOG_ICONS,
-  catalogIcon,
   catalogIdError,
   isValidBrandColor,
 } from '@/lib/catalog-brand';
@@ -154,8 +152,6 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
   const idBlocked = !!formatError || idStatus.kind === 'taken' || idStatus.kind === 'checking';
   const canSave = dirty && !idBlocked && !updateSettings.isPending;
 
-  const previewAccent = colorDraft || 'var(--primary)';
-  const previewIcon = catalogIcon(iconDraft);
   // لینک کاتالوگ از location صفحهٔ فعلی ساخته می‌شود — نه دامنهٔ کانفیگ
   // (خواستهٔ مالک ۱۰-۱۱ دور ۴؛ قبلاً imach.example.com می‌آمد)
   const origin = useOrigin();
@@ -198,23 +194,25 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
         variant="outline"
         className={cn('h-9 rounded-md text-xs', className)}
         onClick={() => setOpen(true)}
+        title="آیدی لینک، برند، رنگ و آیکون صفحهٔ عمومی شما"
       >
         <BookOpen size={15} />
-        تنظیمات کاتالوگ
+        کاتالوگ
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        {/* چیدمان ستونی: هدر ثابت + بدنهٔ اسکرول‌شونده (فقط عمودی — بدون
-            اسکرول افقی) + فوتر فیکس پایین (خواستهٔ مالک ۱۰-۱۱ دور ۴) */}
-        <DialogContent dir="rtl" className="flex max-h-[88dvh] flex-col overflow-hidden sm:max-w-lg">
+        {/* چیدمان ستونی: هدر ثابت + بدنهٔ اسکرول‌شونده (فقط عمودی) + فوتر
+            فیکس پایین (خواستهٔ مالک ۱۰-۱۱ دور ۴). بدنهٔ ساده‌شده (۱۸-۱۱ دور ۲
+            — مالک: «فرم ساده‌تر»): بخش‌های مو با خط جداکننده به‌جای کارت‌های
+            تو‌در‌تو؛ متن‌های کمکی حذف شدند و پیش‌نمایش حذف شد */}
+        <DialogContent dir="rtl" className="flex max-h-[88dvh] flex-col overflow-hidden sm:max-w-md">
           <DialogHeader className="shrink-0 text-start">
             <DialogTitle className="flex items-center gap-2 text-base">
               <BookOpen size={18} className="text-primary" />
-              تنظیمات کاتالوگ
+              کاتالوگ
             </DialogTitle>
             <DialogDescription className="text-start leading-5">
-              کاتالوگ شما همان صفحهٔ عمومی‌تان است؛ با ثبت هر محصول خودش به‌روز
-              می‌شود. این‌جا آیدی لینک، نام برند، رنگ و آیکون آن را شخصی کنید.
+              صفحهٔ عمومی شما — آیدی لینک، برند و ظاهر آن را شخصی کنید.
             </DialogDescription>
           </DialogHeader>
 
@@ -226,13 +224,10 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
           ) : (
             <>
               {/* ── بدنه — تنها همین بخش اسکرول می‌خورد (عمودی) ── */}
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden pb-1">
-              {/* ── آیدی و لینک کاتالوگ ── */}
-              <div className="space-y-2.5 rounded-md border border-primary/25 bg-primary/5 p-4">
-                <p className="flex items-center gap-2 text-sm font-extrabold text-primary">
-                  <Bookmark size={16} />
-                  آیدی و لینک کاتالوگ شما
-                </p>
+              <div className="min-h-0 flex-1 divide-y overflow-y-auto overflow-x-hidden pb-1">
+              {/* ── آیدی و لینک ── */}
+              <div className="pb-3.5">
+                <p className="mb-2 text-xs font-extrabold">آیدی و لینک کاتالوگ</p>
                 <div className="flex items-center gap-2">
                   <span
                     dir="ltr"
@@ -254,7 +249,7 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
                   />
                 </div>
                 {/* وضعیت آیدی — فرمت / آزاد / گرفته‌شده / در حال بررسی */}
-                <div className="min-h-5 text-[11px] leading-5">
+                <div className="mt-1.5 min-h-5 text-[11px] leading-5">
                   {formatError ? (
                     <span className="flex items-center gap-1 text-destructive">
                       <X size={12} className="shrink-0" />
@@ -277,23 +272,20 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
                     </span>
                   ) : (
                     <span className="text-muted-foreground">
-                      فقط حروف کوچک لاتین، رقم و خط تیره (-)؛ بین ۳ تا ۳۰ نویسه.
+                      حروف کوچک لاتین، رقم و خط تیره (۳ تا ۳۰ نویسه)
                     </span>
                   )}
                 </div>
                 {/* هشدار تغییر آیدی — لینک قبلی می‌میرد؛ فقط وقتی آیدی عوض شده */}
                 {!formatError && idDraft !== currentCatalogId && idStatus.kind !== 'taken' && (
-                  <p className="flex items-center gap-1 text-[11px] leading-5 text-amber-600 dark:text-amber-400">
+                  <p className="mt-1 flex items-center gap-1 text-[11px] leading-5 text-amber-600 dark:text-amber-400">
                     <Bookmark size={11} className="shrink-0" />
-                    با ذخیرهٔ آیدی جدید، لینک قبلی (‏{currentCatalogId}‏) از کار می‌افتد؛ لینک‌هایی که قبلاً فرستاده‌اید را به‌روز کنید.
+                    با ذخیرهٔ آیدی جدید، لینک قبلی (‏{currentCatalogId}‏) از کار می‌افتد.
                   </p>
                 )}
-                <p className="text-[11.5px] leading-5 text-muted-foreground">
-                  لینک کاتالوگ برای مشتری‌هایتان؛ با هر تغییری در محصولات، خودش
-                  به‌روز می‌شود.
-                </p>
-                <div className="flex items-center gap-1.5 rounded-md border bg-card px-3 py-2.5">
-                  <span dir="ltr" className="min-w-0 flex-1 truncate font-mono text-xs">
+                {/* لینک + کپی + مشاهده — یک ردیف فشرده */}
+                <div className="mt-2 flex items-center gap-1.5">
+                  <span dir="ltr" className="min-w-0 flex-1 truncate rounded-md border bg-card px-3 py-2 font-mono text-xs">
                     {catalogUrl || '…'}
                   </span>
                   <button
@@ -301,26 +293,20 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
                     onClick={copyLink}
                     aria-label="کپی لینک کاتالوگ"
                     title="کپی لینک"
-                    className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    className="grid size-9 shrink-0 place-items-center rounded-md border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                   >
-                    <Copy size={14} />
+                    <Copy size={15} />
                   </button>
+                  <Button asChild size="icon" variant="outline" className="size-9 shrink-0 rounded-md" aria-label="مشاهده کاتالوگ" title="مشاهده کاتالوگ">
+                    <Link href={`/c/${settings.catalogId}`} target="_blank">
+                      <ExternalLink size={15} />
+                    </Link>
+                  </Button>
                 </div>
-                <Button asChild size="sm" variant="outline" className="h-9 w-full rounded-md text-xs">
-                  <Link href={`/c/${settings.catalogId}`} target="_blank">
-                    <ExternalLink size={14} />
-                    مشاهده کاتالوگ
-                  </Link>
-                </Button>
               </div>
 
               {/* ── برند و ظاهر ── */}
-              <div className="space-y-3 rounded-md border bg-card p-4">
-                <p className="flex items-center gap-2 text-sm font-bold">
-                  <Palette size={15} className="text-primary" />
-                  برند و ظاهر کاتالوگ
-                </p>
-
+              <div className="space-y-3 py-3.5">
                 {/* نام برند */}
                 <div className="space-y-1.5">
                   <label htmlFor="catalog-brand-name" className="text-xs font-bold">
@@ -334,9 +320,6 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
                     className="h-10 rounded-md text-sm"
                     autoComplete="off"
                   />
-                  <p className="text-[10.5px] text-muted-foreground">
-                    خالی بماند = نام خودتان. این نام در هدر و عنوان کاتالوگ می‌آید.
-                  </p>
                 </div>
 
                 {/* آیکون برند */}
@@ -428,55 +411,18 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
                     </label>
                   </div>
                 </div>
-
-                {/* پیش‌نمایش زندهٔ هدر — حسِ مالکیت */}
-                <div className="space-y-1.5">
-                  <p className="text-xs font-bold">پیش‌نمایش</p>
-                  <div
-                    className="flex items-center gap-2.5 rounded-lg border px-3 py-2.5"
-                    style={{ borderColor: colorDraft ? `${colorDraft}55` : undefined }}
-                  >
-                    <span
-                      className="grid size-9 shrink-0 place-items-center rounded-lg text-white shadow-sm"
-                      style={{ backgroundColor: previewAccent }}
-                    >
-                      <previewIcon.Icon size={18} strokeWidth={2.2} />
-                    </span>
-                    <div className="min-w-0 leading-tight">
-                      <p className="truncate text-sm font-extrabold">
-                        {nameDraft.trim() || `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'نام شما'}
-                      </p>
-                      <p
-                        className="mt-0.5 flex items-center gap-1 text-[10.5px] font-medium text-muted-foreground"
-                        style={colorDraft ? { color: colorDraft } : undefined}
-                      >
-                        <BookOpen size={10} />
-                        کاتالوگ آنلاین
-                      </p>
-                    </div>
-                    <span
-                      className="ms-auto flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[11px] font-bold text-white shadow-sm"
-                      style={{ backgroundColor: previewAccent }}
-                    >
-                      <Store size={12} />
-                      اشتراک گذاری
-                    </span>
-                  </div>
-                </div>
               </div>
 
               {/* ── دکمهٔ تماس (خواستهٔ مالک ۱۱-۱۱) — کلید مستقل کاتالوگ؛
-                  خاموش = خریداران در کاتالوگ فقط دکمهٔ چت را می‌بینند. سوییچ
-                  «امکان تماس» پروفایل و کلید دفتر خرید جدا اعمال می‌شوند ── */}
-              <div className="flex items-start justify-between gap-3 rounded-md border bg-card p-3.5">
+                  خاموش = خریداران در کاتالوگ فقط دکمهٔ چت را می‌بینند ── */}
+              <div className="flex items-start justify-between gap-3 py-3.5">
                 <div className="min-w-0">
                   <label htmlFor="catalog-allow-calls" className="flex items-center gap-1.5 text-xs font-bold">
                     <PhoneOff size={14} className="text-muted-foreground/70" />
                     دکمهٔ تماس در کاتالوگ
                   </label>
-                  <p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">
-                    اگر خاموش کنید، خریداران در کاتالوگ شما فقط می‌توانند چت کنند؛
-                    شمارهٔ شما هرگز نمایش داده نمی‌شود.
+                  <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+                    خاموش = خریداران فقط چت می‌کنند؛ شمارهٔ شما نمایش داده نمی‌شود.
                   </p>
                 </div>
                 <Switch
@@ -489,10 +435,10 @@ export function CatalogSettingsButton({ className }: { className?: string }) {
               </div>
 
               {/* ── ذخیره‌کنندگان ── */}
-              <div className="flex items-center justify-between gap-3 rounded-md border bg-card p-4">
+              <div className="flex items-center justify-between gap-3 pt-3.5">
                 <p className="flex items-center gap-2 text-xs font-bold">
                   <Users size={15} className="text-primary" />
-                  ذخیره کنندگان کاتالوگ شما
+                  ذخیره‌کنندگان کاتالوگ
                   <span className="font-num text-[13px] font-extrabold text-primary">
                     {toFa(savers?.count ?? 0)}
                   </span>

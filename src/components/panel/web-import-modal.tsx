@@ -1,33 +1,42 @@
 'use client';
 
 /**
- * مدال «ثبت گروهی محصول» (خواستهٔ مالک ۱۸-۱۱) — تنها برای کاربران واجد
- * شرایط (اعضای سابقِ از پیش ثبت‌شده؛ دکمهٔ ورودی در صفحهٔ محصولات است).
+ * مدال «ثبت محصول» (۱۸-۱۱ دور ۲ — بازطراحی مالک) — تنها نقطهٔ ورود ثبت کالا
+ * برای کاربران واجد شرایط (اعضای سابقِ از پیش ثبت‌شده).
  *
- * سه نما:
- *   choose  — انتخاب روش: «ایمپورت از وب» (اصلی)، «به‌روزرسانی قیمت و
- *             موجودی از وب»، «ایمپورت از فایل اکسل» (به‌زودی)
+ * نماها:
+ *   choose  — دو کارت: «ایمپورت از وب» (اصلی — نارنجی) و «ثبت محصول جدید».
+ *             کارت دوم تا وقتی کاربر ایمپورت را انجام نداده قفل است
+ *             (خواستهٔ مالک: کاربر مجبور شود اول ایمپورت را بزند).
+ *             «ایمپورت از اکسل» و «به‌روزرسانی از وب» حذف شدند (خلوت‌تر —
+ *             آپدیت از وب به صفحهٔ تغییر قیمت گروهی رفت).
  *   running — نوار درصد + فاز جاری + گزارش زنده + شمارنده‌ها؛ حلقهٔ
  *             step سمت کلاینت می‌چرخد (هر گام در بک ≤ ~۱۰ث)
  *   done    — پیام پایانی (جملهٔ دقیق مالک) + خلاصهٔ اعداد؛ بازگشت به لیست
+ *
+ * autoMode: شروع خودکار بدون نمای انتخاب — حالت خالی لیست ('full' مستقیم
+ * از CTA) و صفحهٔ تغییر قیمت گروهی ('prices' از دکمهٔ «آپدیت از وب»).
  *
  * ⚠️ هیچ‌جا نام منبع (باسکول) نمی‌آید — کاربر حس می‌کند ایمچ کل وب را
  * برایش می‌گردد. خطاها هم عمومی‌اند («اتصال به وب…»).
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
   CheckCircle2,
-  FileSpreadsheet,
   Globe,
   Loader2,
+  Lock,
+  Plus,
   RefreshCw,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { startWebImport, stepWebImport } from '@/lib/mock/api';
+import { useWebImportStatus } from '@/lib/mock/hooks';
 import { toFa } from '@/lib/format';
 import type { WebImportMode, WebImportProgress } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -58,27 +67,38 @@ export function WebImportModal({
   open,
   onClose,
   onFinished,
+  autoMode,
 }: {
   open: boolean;
   onClose: () => void;
   /** بعد از اتمام موفق — صفحه لیست/پروفایل را تازه می‌کند و تب را هدایت می‌کند */
   onFinished?: (counters: WebImportProgress['counters']) => void;
+  /** شروع خودکار این حالت با باز شدن مدال (بدون نمای انتخاب) */
+  autoMode?: WebImportMode;
 }) {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [view, setView] = useState<View>('choose');
   const [progress, setProgress] = useState<WebImportProgress | null>(null);
   const [pausing, setPausing] = useState(false); // خطای پیاپی — توقف با تلاش دوبارهٔ دستی
   const aliveRef = useRef(true);
   const loopingRef = useRef(false);
+  // قفل «ثبت محصول جدید» تا پایان اولین ایمپورت (۱۸-۱۱ دور ۲ — مالک:
+  // کاربر مجبور شود اول ایمپورت را بزند؛ بعد از done باز می‌شود)
+  const { data: webImportStatus } = useWebImportStatus();
+  const importDone = webImportStatus?.imported === true;
 
-  // بازشدن مدال → نمای انتخاب؛ بسته‌شدن → حلقهٔ گام با unmount متوقف می‌شود
+  // بازشدن مدال → نمای انتخاب (یا شروع خودکار autoMode)؛ بسته‌شدن → حلقهٔ
+  // گام با unmount متوقف می‌شود
   useEffect(() => {
     if (open) {
       setView('choose');
       setProgress(null);
       setPausing(false);
+      if (autoMode) void start(autoMode);
     }
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, autoMode]);
 
   // نبض حیات حلقه — با بسته‌شدن مدال (unmount) false می‌شود
   useEffect(() => {
@@ -116,6 +136,8 @@ export function WebImportModal({
           setView('done');
           queryClient.invalidateQueries({ queryKey: ['panel-my-products'] });
           queryClient.invalidateQueries({ queryKey: ['panel-profile'] });
+          // مهر imported تازه شود → قفل «ثبت محصول جدید» باز می‌شود
+          queryClient.invalidateQueries({ queryKey: ['web-import-status'] });
           onFinished?.(p.counters);
           return;
         }
@@ -163,8 +185,15 @@ export function WebImportModal({
     void runLoop();
   };
 
+  /** ثبت محصول جدید — فقط بعد از اولین ایمپورت */
+  const goNewProduct = () => {
+    onClose();
+    router.push('/panel/products/new');
+  };
+
   const c = progress?.counters;
   const foundNothing = view === 'done' && (c?.found ?? 0) === 0;
+  const isPrices = (progress?.mode ?? autoMode) === 'prices';
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -176,11 +205,24 @@ export function WebImportModal({
             {view === 'done' && !foundNothing && <CheckCircle2 size={18} className="text-emerald-600" />}
             {view === 'done' && foundNothing && <Globe size={18} className="text-muted-foreground" />}
             {view === 'failed' && <AlertTriangle size={18} className="text-red-500" />}
-            {view === 'choose' ? 'ثبت گروهی محصول' : view === 'running' ? 'در حال جمع‌آوری از وب' : view === 'done' ? (foundNothing ? 'جستجو کامل شد' : 'ایمپورت انجام شد') : 'جمع‌آوری کامل نشد'}
+            {view === 'choose'
+              ? 'ثبت محصول'
+              : view === 'running'
+                ? isPrices
+                  ? 'در حال به‌روزرسانی از وب'
+                  : 'در حال جمع‌آوری از وب'
+                : view === 'done'
+                  ? foundNothing
+                    ? 'جستجو کامل شد'
+                    : 'ایمپورت انجام شد'
+                  : 'جمع‌آوری کامل نشد'}
           </DialogTitle>
+          {view === 'choose' && (
+            <DialogDescription className="text-start leading-5">روش ثبت را انتخاب کنید.</DialogDescription>
+          )}
         </DialogHeader>
 
-        {/* ─── نمای انتخاب ─── */}
+        {/* ─── نمای انتخاب — دو کارت، خلوت (۱۸-۱۱ دور ۲) ─── */}
         {view === 'choose' && (
           <div className="space-y-2.5">
             <button
@@ -199,40 +241,40 @@ export function WebImportModal({
               </span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => void start('prices')}
-              className="group flex w-full items-start gap-3 rounded-lg border bg-card p-4 text-start transition-colors hover:border-primary/40"
-            >
-              <span className="grid size-10 shrink-0 place-items-center rounded-md bg-secondary text-foreground">
-                <RefreshCw size={18} />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-extrabold">به‌روزرسانی قیمت و موجودی از وب</span>
-                <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                  آخرین قیمت، حداقل سفارش و موجودی کالاهای فعلی‌تان از وب خوانده و در ایمچ به‌روز می‌شود.
+            {/* ثبت محصول جدید — تا پایان اولین ایمپورت قفل (خواستهٔ مالک) */}
+            {importDone ? (
+              <button
+                type="button"
+                onClick={goNewProduct}
+                className="group flex w-full items-start gap-3 rounded-lg border bg-card p-4 text-start transition-colors hover:border-primary/40"
+              >
+                <span className="grid size-10 shrink-0 place-items-center rounded-md bg-secondary text-foreground">
+                  <Plus size={20} />
                 </span>
-              </span>
-            </button>
-
-            <div
-              aria-disabled
-              className="flex w-full cursor-not-allowed items-start gap-3 rounded-lg border border-dashed bg-card/50 p-4 opacity-60"
-              title="به‌زودی"
-            >
-              <span className="grid size-10 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground">
-                <FileSpreadsheet size={18} />
-              </span>
-              <span className="min-w-0">
-                <span className="flex items-center gap-2 text-sm font-extrabold text-muted-foreground">
-                  ایمپورت از فایل اکسل
-                  <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold">به‌زودی</span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-extrabold">ثبت محصول جدید</span>
+                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                    فرم ثبت دستی — تصویر، قیمت و مشخصات را خودتان وارد می‌کنید.
+                  </span>
                 </span>
-                <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                  کالاهایتان را از فایل اکسل بارگذاری و یک‌جا ثبت کنید.
+              </button>
+            ) : (
+              <div
+                aria-disabled
+                className="flex w-full cursor-not-allowed items-start gap-3 rounded-lg border border-dashed bg-card/50 p-4 opacity-70"
+                title="ابتدا کالاهایتان را از وب جمع‌آوری کنید"
+              >
+                <span className="grid size-10 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground">
+                  <Lock size={18} />
                 </span>
-              </span>
-            </div>
+                <span className="min-w-0">
+                  <span className="block text-sm font-extrabold text-muted-foreground">ثبت محصول جدید</span>
+                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                    برای ثبت محصول جدید، ابتدا کالاهایتان را از وب جمع‌آوری کنید.
+                  </span>
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -345,9 +387,15 @@ export function WebImportModal({
               <Button type="button" variant="outline" size="sm" className="rounded-md text-xs" onClick={onClose}>
                 بستن
               </Button>
-              <Button type="button" size="sm" className="rounded-md bg-emphasis text-xs text-emphasis-foreground hover:bg-emphasis-deep" onClick={onClose}>
-                مشاهده کالاها
-              </Button>
+              {foundNothing ? (
+                <Button type="button" size="sm" className="rounded-md bg-emphasis text-xs text-emphasis-foreground hover:bg-emphasis-deep" onClick={goNewProduct}>
+                  <Plus size={13} /> ثبت محصول جدید
+                </Button>
+              ) : (
+                <Button type="button" size="sm" className="rounded-md bg-emphasis text-xs text-emphasis-foreground hover:bg-emphasis-deep" onClick={onClose}>
+                  مشاهده کالاها
+                </Button>
+              )}
             </div>
           </div>
         )}
