@@ -1,10 +1,15 @@
 import type { Metadata } from 'next';
+import { Header } from '@/components/layout/header';
+import { Footer } from '@/components/layout/footer';
 import { SellersFeed } from '@/components/sellers/sellers-feed';
 
 /**
  * صفحهٔ «فروشندگان» خریدار (خواستهٔ مالک ۱۸-۱۱) — فید شخصی‌شدهٔ آگهی‌های
  * فروش بر اساس درخواست‌های خرید دوره‌ای و فوری کاربر؛ دادهٔ شخصی است →
  * ایندکس موتور جستجو ممنوع (عین صفحات پنل).
+ *
+ * (بازخورد مالک ۱۸-۱۱ دور ۲): هدر/فوتر سایت مثل بقیهٔ صفحات عمومی
+ * (الگوی /services) — قبلاً صفحهٔ /sellers بدون هدر بود.
  */
 export const metadata: Metadata = {
   title: 'فروشندگان مطابق درخواست‌های خرید شما | ایمچ',
@@ -14,5 +19,13 @@ export const metadata: Metadata = {
 };
 
 export default function SellersPage() {
-  return <SellersFeed />;
+  return (
+    <>
+      <Header />
+      <main className="flex-1">
+        <SellersFeed />
+      </main>
+      <Footer />
+    </>
+  );
 }
