@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FileText, Store } from 'lucide-react';
+import { Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/mock/auth';
 import { CarryFilters } from '@/components/shared/carry-filters';
@@ -13,6 +13,7 @@ import {
   BuyersIcon,
   MessagesIcon,
   MyAccountIcon,
+  SellersIcon,
 } from '@/components/shared/buskool-icons';
 
 /**
@@ -22,7 +23,7 @@ import {
  *
  * ترتیب از راست به چپ (مثل دیجی‌کالا — بازار لبه راست، ایمچ من لبه چپ):
  *   فروشنده: بازار، خریداران (پیشنهادی با امتیاز تطابق)، ثبت محصول، پیام‌ها، ایمچ من
- *   خریدار:  بازار، درخواست‌ها (فروشندگان پیشنهادی هر ردیف — ۱۱-۱۱)، ثبت درخواست، پیام‌ها، ایمچ من
+ *   خریدار:  بازار، فروشندگان (فید مطابق درخواست‌های خرید — ۱۸-۱۱)، ثبت درخواست، پیام‌ها، ایمچ من
  *   لاگین‌نشده: بازار، خریداران، درخواست‌ها، ثبت محصول، ایمچ من — بدون پیام‌ها
  *
  * «بازار» = لیست محصولات (نام قبلی: فروشندگان) — خواناتر (خواسته مالک).
@@ -40,14 +41,14 @@ interface NavItem {
 const isMarket = (p: string) => p === '/product-list' || p.startsWith('/product-list/');
 const isMessages = (p: string) => p === '/panel/messages' || p.startsWith('/panel/messages/');
 const isSuggestedBuyers = (p: string) => p.startsWith('/panel/suggested-buyers');
-const isMyRequests = (p: string) => p.startsWith('/panel/my-requests');
+const isSellersFeed = (p: string) => p === '/sellers' || p.startsWith('/sellers/');
 
 /** ایمچ من = /panel + صفحات پنلی که آیتم اختصاصی ندارند (fallback) */
 const isMyAimach = (p: string) =>
   p === '/panel' ||
   (p.startsWith('/panel/') &&
     !isSuggestedBuyers(p) &&
-    !isMyRequests(p) &&
+    !isSellersFeed(p) &&
     !p.startsWith('/panel/products/new') &&
     !p.startsWith('/panel/buy-requests/new') &&
     !isMessages(p));
@@ -68,22 +69,22 @@ const sellerItems: NavItem[] = [
   { href: '/panel', label: 'ایمچ من', Icon: MyAccountIcon, match: isMyAimach },
 ];
 
-/** منوی خریدار — جایگزین‌های نقش‌محور (خواستهٔ مالک ۱۱-۱۱ دور ۳: «فروشندگان»
- *  حذف شد؛ پیشنهادی‌ها حالا دکمهٔ هر ردیف «درخواست‌های خرید من»‌اند و مستقیم
- *  به لیست محصولات همان دسته با سورت تطابق نیاز می‌روند) */
+/** منوی خریدار — جایگزین‌های نقش‌محور (خواستهٔ مالک ۱۸-۱۱): «فروشندگان»
+ *  فید آگهی‌های مطابق درخواست‌های خرید او (دوره‌ای + فوری) است؛ درخواست‌ها
+ *  از «ایمچ من» و کاشی‌های پنل در دسترس می‌مانند */
 const buyerItems: NavItem[] = [
   { href: '/product-list', label: 'بازار', Icon: Store, match: isMarket },
-  { href: '/panel/my-requests', label: 'درخواست‌ها', Icon: FileText, match: isMyRequests },
+  { href: '/sellers', label: 'فروشندگان', Icon: SellersIcon, match: isSellersFeed },
   { href: '/panel/buy-requests/new', label: 'ثبت درخواست', Icon: AddProductIcon, match: (p) => p === '/panel/buy-requests/new' },
   { href: '/panel/messages', label: 'پیام ها', Icon: MessagesIcon, match: isMessages },
   { href: '/panel', label: 'ایمچ من', Icon: MyAccountIcon, match: isMyAimach },
 ];
 
-/** لاگین‌نشده — هر دو لینک خریداران و درخواست‌ها، بدون پیام‌ها (خواسته مالک) */
+/** لاگین‌نشده — هر دو لینک خریداران و فروشندگان، بدون پیام‌ها (خواسته مالک) */
 const loggedOutItems: NavItem[] = [
   { href: '/product-list', label: 'بازار', Icon: Store, match: isMarket },
   { href: '/buyers', label: 'خریداران', Icon: BuyersIcon, match: (p) => p === '/buyers' || p.startsWith('/buyers/') || p === '/buyAd-requests' || p.startsWith('/buyAd-requests/') },
-  { href: '/panel/my-requests', label: 'درخواست‌ها', Icon: FileText, match: () => false },
+  { href: '/sellers', label: 'فروشندگان', Icon: SellersIcon, match: isSellersFeed },
   { href: '/panel/products/new', label: 'ثبت محصول', Icon: AddProductIcon, match: () => false },
   { href: '/panel', label: 'ایمچ من', Icon: MyAccountIcon, match: () => false },
 ];

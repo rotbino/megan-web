@@ -8,12 +8,13 @@ import type { QueryClient } from '@tanstack/react-query';
 import { ensureChatSocket, onChatEvent } from '@/lib/api/socket';
 import { useBaseData } from '@/lib/base-data';
 import * as api from './api';
-import type { Paged, ChatFileMeta, ChatMessage } from './api';
+import type { Paged, ChatFileMeta, ChatMessage, SellersFeedQuery, SellersFeedResult } from './api';
 import type { BuyRequest, CityMarketQuery, FollowFolder, FollowFolderKind, FollowItem, FollowPriority, FollowStatus, FollowTargetType, Product, ProductQuery } from '@/lib/types';
 
 const qk = {
   products: (q: ProductQuery) => ['products', q] as const,
   cityMarket: (q: CityMarketQuery) => ['city-market', q] as const,
+  sellersFeed: (q: Omit<SellersFeedQuery, 'page'>) => ['sellers-feed', q] as const,
   product: (id: number) => ['product', id] as const,
   categoryTree: ['category-tree'] as const,
   provinces: ['provinces'] as const,
@@ -73,6 +74,24 @@ export function useInfiniteProducts(
       lastPage.page < lastPage.pageCount ? lastPage.page + 1 : undefined,
     ...(initialData ? { initialData: { pages: [initialData], pageParams: [initialData.page] } } : {}),
     placeholderData: keepPreviousData, // تعویض نرم فیلتر بدون پرش اسکلتون
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * فید «فروشندگان» خریدار با اسکرول بی‌پایان (خواستهٔ مالک ۱۸-۱۱) —
+ * getSellersFeed با auth؛ 401 → صفحهٔ مهمان (queryFn خطا نمی‌دهد، null
+ * صفحه‌ی اول یعنی «وارد نشده»).
+ */
+export function useSellersFeed(query: Omit<SellersFeedQuery, 'page'>) {
+  return useInfiniteQuery({
+    queryKey: qk.sellersFeed(query),
+    queryFn: ({ pageParam }: { pageParam: number }): Promise<SellersFeedResult | null> =>
+      api.getSellersFeed({ ...query, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage: SellersFeedResult | null) =>
+      lastPage && lastPage.page < lastPage.pageCount ? lastPage.page + 1 : undefined,
+    placeholderData: keepPreviousData, // تعویض نرم چیپ/سورت بدون پرش اسکلتون
     staleTime: 60_000,
   });
 }

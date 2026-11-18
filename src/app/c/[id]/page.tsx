@@ -20,6 +20,7 @@ import { ProductCard } from '@/components/products/product-card';
 import { ShareBox } from '@/components/shared/share-box';
 import { RatingStars } from '@/components/shared/rating-stars';
 import { CatalogSaversBox } from '@/components/products/catalog-savers';
+import { CatalogViewPing } from '@/components/shared/catalog-view-ping';
 import { apiBase } from '@/lib/api/client';
 import { stockFa, toFa } from '@/lib/format';
 import { fallbackBusinessDesc } from '@/lib/seller-text';
@@ -217,6 +218,8 @@ export default async function CatalogPage({ params }: Props) {
         brandColor={settings.brandColor}
         sharePath={sharePath}
       />
+      {/* ردپای بازدید کاتالوگ — برای فید «فروشندگان» و شخصی‌سازی (۱۸-۱۱) */}
+      <CatalogViewPing userName={user.userName} />
       <main className="flex-1">
         {/* ─── کارت یکپارچه هدر کاتالوگ — عین باسکول (cp-header-main-container) ───
             بنر + هویت فروشنده + نوار لینک بخش‌ها همه یک کارت‌اند؛ سایه نرم

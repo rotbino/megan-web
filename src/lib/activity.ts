@@ -3,10 +3,12 @@
 /**
  * ثبت فعالیت کاربر — کلاینت سبک (fire-and-forget) به بک‌اند.
  *
- * سه منبع ثبت (خواسته مالک ۳۰-۱۰):
+ * چهار منبع ثبت (خواسته مالک ۳۰-۱۰ + ۱۸-۱۱):
  *  • search — جستجوی کاربر (صفحه /product-list/search/[q])
  *  • category_view — انتخاب دسته از سایدبار/مگامنو (صفحه دسته)
  *  • page_view — بازدید صفحات (بین‌برگ پایدار در layout)
+ *  • catalog_view — بازدید کاتالوگ فروشنده /c/{id} (۱۸-۱۱: ردپای
+ *    «کاتالوگ کدام کاربر را دیده» برای تطابق و شخصی‌سازی)
  *
  * نشست مهمان: uuid در localStorage — بینندگان مهمان در آمار تجمیع می‌شوند.
  * توکن کاربر واردشده (اگر هست) ضمیمه می‌شود تا فعالیت به او نسبت داده شود.
@@ -35,9 +37,11 @@ const pinged = new Set<string>();
 const BOT_RE = /bot|crawl|spider|slurp|bingpreview|lighthouse|headless|phantom|puppeteer|playwright|pagespeed/i;
 
 export interface ActivityInput {
-  type: 'search' | 'category_view' | 'page_view';
+  type: 'search' | 'category_view' | 'page_view' | 'catalog_view';
   q?: string;
   categoryName?: string;
+  /** userName فروشندهٔ صاحب کاتالوگ (type=catalog_view) */
+  catalogUserName?: string;
   path?: string;
 }
 
@@ -70,6 +74,7 @@ export function logActivity(input: ActivityInput, dedupeKey?: string): void {
       type: input.type,
       ...(input.q ? { q: input.q } : {}),
       ...(input.categoryName ? { categoryName: input.categoryName } : {}),
+      ...(input.catalogUserName ? { catalogUserName: input.catalogUserName } : {}),
       ...(input.path ? { path: input.path } : {}),
       sessionId: anonSessionId(),
     }),

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {ArrowRight, ChevronDown, FileText, LayoutGrid, Plus, Search, Sparkles} from 'lucide-react';
+import {ArrowRight, ChevronDown, LayoutGrid, Plus, Search, Sparkles} from 'lucide-react';
 import { BrandLogo } from '@/components/shared/brand';
 import { HeaderUserMenu } from '@/components/layout/header-user-menu';
 import { TasksBell } from '@/components/shared/tasks-bell';
@@ -39,7 +39,8 @@ import type { Category } from '@/lib/types';
  * بعد از ورود (خواسته مالک): لینک ورود/ثبت‌نام حذف و به جایش آواتار + نام و
  * نام خانوادگی + آیکون دراپ‌داون می‌آید (منوی کانتکست نقش‌محور).
  * سیستم با نقش کاربر تطبیق می‌یابد: فروشنده → لینک «خریداران»، خریدار → لینک
- * «فروشندگان» (پیشنهادی)؛ هر دو + بدون آیکون پیام‌ها وقتی لاگین نیست.
+ * «فروشندگان» (فید مطابق درخواست‌های خریدش — خواستهٔ مالک ۱۸-۱۱)؛ هر دو +
+ * بدون آیکون پیام‌ها وقتی لاگین نیست.
  * موبایل: [لوگو | جستجو] — آواتار کاربر از هدر موبایل حذف شد تا جعبه جستجو
  *         جا داشته باشد (خواسته مالک ۸-۱۱)؛ حساب کاربری و منوی نقش‌محور از
  *         نوار پایین («ایمچ من») در دسترس است. ناوبری اصلی از نوار پایین.
@@ -321,14 +322,15 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
           {user ? (
             <>
               {/* فروشنده → خریداران پنل (سورت امتیاز تطابق — خواسته مالک ۴-۱۱) /
-                  خریدار → درخواست‌های خرید من (خواستهٔ مالک ۱۱-۱۱: فروشندگان
-                  پیشنهادی حالا دکمهٔ هر ردیف همین صفحه است، لینک جدا اضافی بود) */}
+                  خریدار → صفحهٔ «فروشندگان» (خواستهٔ مالک ۱۸-۱۱): فید آگهی‌های
+                  فروشِ مطابق درخواست‌های خرید خودش — درخواست‌ها از «ایمچ من»
+                  و کاشی‌های پنل در دسترس است */}
               <Link
-                href={isSeller ? '/panel/buyers' : '/panel/my-requests'}
+                href={isSeller ? '/panel/buyers' : '/sellers'}
                 className="flex min-w-20 flex-col items-center rounded-md px-2.5 py-1 text-sm text-secondary-foreground hover:bg-accent hover:text-foreground"
               >
-                {isSeller ? <BuyersIcon size={24} /> : <FileText size={24} />}
-                <span className="mt-1">{isSeller ? 'خریداران' : 'درخواست‌ها'}</span>
+                {isSeller ? <BuyersIcon size={24} /> : <SellersIcon size={24} />}
+                <span className="mt-1">{isSeller ? 'خریداران' : 'فروشندگان'}</span>
               </Link>
               <span className="mx-1 h-9 w-px bg-border" aria-hidden />
               {/* زنگولهٔ کارهای مهم (خواستهٔ مالک ۱۱-۱۱ دور ۴) — سرنخ سررسیده،

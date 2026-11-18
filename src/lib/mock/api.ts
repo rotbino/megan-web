@@ -254,6 +254,53 @@ export async function getCategoryTree(): Promise<Category[]> {
   return raw.map(toCategory);
 }
 
+// ─── فید «فروشندگان» خریدار (خواستهٔ مالک ۱۸-۱۱) ────────────────────────────
+
+/** کوئری فید — سورت پیش‌فرض تطابق؛ دسته فقط داخل مجموعهٔ درخواست‌های خود کاربر */
+export interface SellersFeedQuery {
+  sort?: 'match' | 'related' | 'newest';
+  categorySlug?: string;
+  provinceId?: number;
+  cityId?: number;
+  s?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/** پاسخ فید — عین Paged<Product> + پرچم وجود درخواست + چیپ‌های دسته */
+export interface SellersFeedResult extends Paged<Product> {
+  /** false = کاربر هنوز درخواست خریدی ثبت نکرده؛ فرانت پیام ثبت درخواست نشان می‌دهد */
+  hasRequests: boolean;
+  /** دسته‌های برگِ نیازهای کاربر (یا ردپای فعالیت در فالبک) — چیپ فیلتر */
+  categories: { slug: string; name: string }[];
+}
+
+/** فید شخصی‌شدهٔ فروشندگان — ورود لازم؛ خطای 401 بی‌صدا null برمی‌گرداند
+ *  تا صفحهٔ مهمان پیام ورود را نشان دهد */
+export async function getSellersFeed(query: SellersFeedQuery = {}): Promise<SellersFeedResult | null> {
+  try {
+    const raw = await apiFetch<
+      { items: RawProduct[]; total: number; page: number; pageCount: number; hasRequests: boolean; categories: { slug: string; name: string }[] }
+    >(
+      '/products/getSellersFeed',
+      {
+        sort: query.sort,
+        categorySlug: query.categorySlug,
+        provinceId: query.provinceId,
+        cityId: query.cityId,
+        s: query.s,
+        page: query.page,
+        pageSize: query.pageSize,
+      },
+      { auth: true },
+    );
+    return { ...raw, items: raw.items.map(toProduct) };
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 401) return null;
+    throw e; // خطای شبکه/سرور → کوئری retry کند
+  }
+}
+
 // ─── SSR/ISR — فقط برای Server Components صفحات عمومی (F2) ──────────────────
 // کش دادهٔ نکست با revalidate؛ در خطا null برمی‌گردند تا صفحه با کلاینت‌رندر ادامه دهد.
 
