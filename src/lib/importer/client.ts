@@ -701,6 +701,9 @@ export interface ProductFilesParams {
   watermark?: 'yes' | 'no' | 'all';
   /** فقط تصاویر این آگهی — لینک عمیق «N عکس» از صفحهٔ آگهی‌ها */
   productId?: number;
+  /** سورت بر تاریخ خودِ آگهی (باسکول) — پیش‌فرض productCreated = زمان ثبت
+   *  (خواستهٔ مالک ۱۹-۱۱ عصر)؛ productUpdated = آخرین ویرایش آگهی */
+  sort?: 'productCreated' | 'productUpdated';
   page?: number;
   pageSize?: number;
 }

@@ -13,10 +13,18 @@
  *
  *   • کلیک روی تصویر = اندازهٔ اصلی در تب جدید (برای دیدن دقیق واترمارک)
  *   • کاش واترمارک‌دار با قاب کهربایی — در شبکهٔ اسکن چشم می‌افتد
- *   • صفحه/فیلتر در URL (?page=…&wm=…) — لینک مستقیم و اشتراک‌گذاری
+ *   • صفحه/فیلتر/سورت در URL (?page=…&wm=…&sort=…) — لینک مستقیم و اشتراک‌گذاری
+ *
+ * سورت و چیدمان اسکن (خواستهٔ مالک ۱۹-۱۱ عصر): باسکول ۱-۲ سال پیش
+ * واترمارک اضافه کرده — تصاویر بر اساس تاریخ خودِ آگهی (باسکول) مرتب
+ * می‌شوند، نه تاریخ فایل (که همگی «زمان ایمپورت»‌اند). پیش‌فرض = زمان
+ * ثبت؛ گزینهٔ دوم = آخرین ویرایش (برای بررسی اینکه آیا آگهی‌های
+ * ویرایش‌شده هم واترمارک گرفته‌اند یا فقط تازه‌ثبت‌شده‌ها). تصویر کامل
+ * و بدون برش (object-contain) تا واترمارک گوشه‌ها دیده شود؛ ۵ کاش در
+ * ردیف × ۲ ردیف = ۱۰ تصویر در صفحه — پنجرهٔ اسکن بدون اسکرول عمودی.
  */
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -39,15 +47,32 @@ import { cn } from '@/lib/utils';
 
 type WmFilter = 'all' | 'yes' | 'no';
 
+/** سورت بر تاریخ خودِ آگهی (باسکول) — زمان ثبت (پیش‌فرض) / آخرین ویرایش */
+type SortKey = 'productCreated' | 'productUpdated';
+
 const WM_TABS: Array<{ key: WmFilter; label: string }> = [
   { key: 'all', label: 'همهٔ تصاویر' },
   { key: 'yes', label: 'واترمارک‌دار' },
   { key: 'no', label: 'بدون واترمارک' },
 ];
 
+const SORT_TABS: Array<{ key: SortKey; label: string; hint: string }> = [
+  { key: 'productCreated', label: 'جدیدترین ثبت', hint: 'تصاویر بر اساس زمان ثبت آگهی در باسکول' },
+  { key: 'productUpdated', label: 'جدیدترین ویرایش', hint: 'تصاویر بر اساس آخرین ویرایش آگهی در باسکول' },
+];
+
 function isWmKey(v: string | null): v is WmFilter {
   return v === 'all' || v === 'yes' || v === 'no';
 }
+
+function isSortKey(v: string | null): v is SortKey {
+  return v === 'productCreated' || v === 'productUpdated';
+}
+
+/** پنجرهٔ اسکن: ۵ کاش در ردیف × ۲ ردیف — بدون اسکرول عمودی (۱۹-۱۱ عصر) */
+const PAGE_SIZE = 10;
+/** شبکهٔ کاشی — دسکتاپ دقیقاً ۵ ستون (شش‌تایی حذف شد تا کاش‌ها بزرگ‌تر باشند) */
+const GRID_CLS = 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5';
 
 export function ProductImagesManager() {
   return (
@@ -64,39 +89,37 @@ function ProductImagesManagerInner() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // ── صفحه/فیلتر از URL — لینک مستقیم و back-forward ──
+  // ── URL = منبع حقیقت واحد (بدون state آینه‌ای — رفع set-state-in-effect):
+  // صفحه/فیلتر/سورت مستقیم از searchParams خوانده می‌شوند و «تغییر» یعنی
+  // navigate با کوئری تازه — لینک مستقیم و back-forward ذاتاً کار می‌کند.
   // ?q=<شناسهٔ آگهی> = لینک عمیق «N عکس» از صفحهٔ آگهی‌ها (سازگاری با قدیم)
-  const [page, setPage] = useState(() => Math.max(1, parseInt(sp.get('page') ?? '1', 10) || 1));
-  const [wm, setWm] = useState<WmFilter>(() => (isWmKey(sp.get('wm')) ? (sp.get('wm') as WmFilter) : 'all'));
-  const [productId, setProductId] = useState<number | null>(() => {
-    const q = parseInt(sp.get('q') ?? '', 10);
-    return Number.isFinite(q) && q > 0 ? q : null;
-  });
+  const page = Math.max(1, parseInt(sp.get('page') ?? '1', 10) || 1);
+  const wm: WmFilter = isWmKey(sp.get('wm')) ? (sp.get('wm') as WmFilter) : 'all';
+  const sort: SortKey = isSortKey(sp.get('sort')) ? (sp.get('sort') as SortKey) : 'productCreated';
+  const q = parseInt(sp.get('q') ?? '', 10);
+  const productId = Number.isFinite(q) && q > 0 ? q : null;
 
-  useEffect(() => {
+  /** تغییر پارامترها — URL تازه ساخته و جایگزین می‌شود (بدون اسکرول) */
+  const navigate = (next: { page?: number; wm?: WmFilter; sort?: SortKey; productId?: number | null }) => {
+    const w = next.wm ?? wm;
+    const s = next.sort ?? sort;
+    const p = next.page ?? page;
+    const pid = next.productId !== undefined ? next.productId : productId;
     const qs = new URLSearchParams();
-    if (wm !== 'all') qs.set('wm', wm);
-    if (productId != null) qs.set('q', String(productId));
-    if (page > 1) qs.set('page', String(page));
+    if (w !== 'all') qs.set('wm', w);
+    if (s !== 'productCreated') qs.set('sort', s);
+    if (pid != null) qs.set('q', String(pid));
+    if (p > 1) qs.set('page', String(p));
     router.replace(qs.size ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [router, pathname, wm, page, productId]);
-
-  useEffect(() => {
-    const nextP = Math.max(1, parseInt(sp.get('page') ?? '1', 10) || 1);
-    const nextWm = isWmKey(sp.get('wm')) ? (sp.get('wm') as WmFilter) : 'all';
-    const nq = parseInt(sp.get('q') ?? '', 10);
-    const nextQ = Number.isFinite(nq) && nq > 0 ? nq : null;
-    setPage((cur) => (cur !== nextP ? nextP : cur));
-    setWm((cur) => (cur !== nextWm ? nextWm : cur));
-    setProductId((cur) => (cur !== nextQ ? nextQ : cur));
-  }, [sp]);
+  };
 
   // پارامترهای لیست — react-query کلید را ساختاری هش می‌کند؛ نیازی به memo نیست
   const params: ProductFilesParams = {
     ...(wm !== 'all' ? { watermark: wm } : {}),
     ...(productId != null ? { productId } : {}),
+    sort,
     page,
-    pageSize: 60,
+    pageSize: PAGE_SIZE,
   };
 
   const { data, isLoading, isFetching, refetch } = useQuery({
@@ -182,10 +205,7 @@ function ProductImagesManagerInner() {
             <button
               key={c.key}
               type="button"
-              onClick={() => {
-                setWm(c.key);
-                setPage(1);
-              }}
+              onClick={() => navigate({ wm: c.key, page: 1 })}
               className={cn(
                 'rounded-lg border bg-card p-2.5 text-start transition-colors hover:border-primary/40',
                 wm === c.key && 'border-primary/60 bg-primary/[0.04]',
@@ -200,18 +220,15 @@ function ProductImagesManagerInner() {
         </div>
       ) : null}
 
-      {/* تب‌های فیلتر واترمارک — فلت با خط زیرین، الگوی پنل */}
-      <div className="flex flex-wrap items-center gap-4 border-b border-border">
+      {/* تب‌های فیلتر واترمارک — فلت با خط زیرین، الگوی پنل؛ + سورت تاریخ آگهی */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border">
         {WM_TABS.map(({ key, label }) => {
           const active = wm === key;
           return (
             <button
               key={key}
               type="button"
-              onClick={() => {
-                setWm(key);
-                setPage(1);
-              }}
+              onClick={() => navigate({ wm: key, page: 1 })}
               aria-current={active ? 'page' : undefined}
               className={cn(
                 'relative shrink-0 py-2.5 text-xs transition-colors',
@@ -223,15 +240,42 @@ function ProductImagesManagerInner() {
             </button>
           );
         })}
+        {/* سورت بر تاریخ خودِ آگهی (باسکول — ۱۹-۱۱ عصر): پیش‌فرض زمان ثبت؛
+            تغییر سورت صفحه را به اول برمی‌گرداند */}
+        <div
+          className="ms-auto flex shrink-0 items-center gap-0.5 rounded-full border bg-card p-0.5"
+          role="radiogroup"
+          aria-label="مرتب‌سازی تصاویر"
+        >
+          <span className="px-1.5 text-[10px] font-bold text-muted-foreground">سورت</span>
+          {SORT_TABS.map(({ key, label, hint }) => {
+            const active = sort === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                title={hint}
+                onClick={() => navigate({ sort: key, page: 1 })}
+                className={cn(
+                  'rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors',
+                  active
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
         {/* لینک عمیق «N عکس» از صفحهٔ آگهی‌ها — چیپ قابل حذف */}
         {productId != null && (
           <button
             type="button"
-            onClick={() => {
-              setProductId(null);
-              setPage(1);
-            }}
-            className="ms-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-bold text-primary transition-colors hover:bg-primary/15"
+            onClick={() => navigate({ productId: null, page: 1 })}
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-bold text-primary transition-colors hover:bg-primary/15"
             title="فقط تصاویر این آگهی — کلیک = حذف فیلتر"
           >
             فقط آگهی #{toFa(productId)} ✕
@@ -239,10 +283,10 @@ function ProductImagesManagerInner() {
         )}
       </div>
 
-      {/* شبکهٔ تصاویر */}
+      {/* شبکهٔ تصاویر — ۵ در ردیف؛ تصویر کامل و بدون برش تا واترمارک گوشه‌ها دیده شود */}
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {Array.from({ length: 18 }).map((_, i) => (
+        <div className={GRID_CLS}>
+          {Array.from({ length: PAGE_SIZE }).map((_, i) => (
             <Skeleton key={i} className="aspect-square w-full rounded-lg" />
           ))}
         </div>
@@ -259,7 +303,7 @@ function ProductImagesManagerInner() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        <div className={GRID_CLS}>
           {rows.map((f) => (
             <figure
               key={f.id}
@@ -275,22 +319,27 @@ function ProductImagesManagerInner() {
                 title="اندازهٔ اصلی در تب جدید — برای دیدن دقیق واترمارک"
                 className="group relative block aspect-square bg-secondary"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* کامل و بدون برش (object-contain) — واترمارک گوشه‌ها قطع نشود؛
+                    زوم هاور هم حذف شد چون همان گوشه‌ها را می‌بُرید */}
                 <img
                   src={f.thumbUrl ?? f.url}
                   alt={`تصویر فایل ${f.id}`}
                   loading="lazy"
-                  className="size-full object-cover transition-transform group-hover:scale-[1.03]"
+                  className="size-full object-contain"
                 />
                 <span className="absolute end-1.5 top-1.5 grid size-6 place-items-center rounded-md bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100">
                   <ExternalLink size={12} />
                 </span>
               </a>
-              <figcaption className="space-y-1.5 p-2">
-                <p className="truncate font-mono text-[9.5px] text-muted-foreground" dir="ltr" title={`File ID: ${f.id}`}>
+              <figcaption className="flex items-center justify-between gap-1 px-2 py-1.5">
+                <p
+                  className="truncate font-mono text-[9.5px] text-muted-foreground"
+                  dir="ltr"
+                  title={`File ID: ${f.id}`}
+                >
                   {f.id}
                 </p>
-                <label className="flex cursor-pointer items-center justify-between gap-1 text-[11px] font-bold">
+                <label className="flex shrink-0 cursor-pointer items-center gap-1 text-[10px] font-bold">
                   واترمارک
                   <Switch
                     checked={f.hasWatermark}
@@ -305,17 +354,17 @@ function ProductImagesManagerInner() {
         </div>
       )}
 
-      {/* صفحه‌بندی */}
+      {/* صفحه‌بندی — ناوبری اصلی پنجرهٔ اسکن (۱۰ تصویر = ۲ ردیف در هر صفحه) */}
       {!isLoading && pageCount > 1 && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2">
+        <div className="flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2.5">
           <Button
             size="sm"
             variant="outline"
-            className="h-8 gap-1 rounded-[10px] px-3 text-[11.5px]"
+            className="h-9 gap-1 rounded-[10px] px-4 text-xs"
             disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            onClick={() => navigate({ page: Math.max(1, page - 1) })}
           >
-            <ChevronRight size={14} /> قبلی
+            <ChevronRight size={15} /> ۱۰ تصویر قبلی
           </Button>
           <p className="text-[11.5px] font-bold tabular-nums text-muted-foreground">
             صفحهٔ {toFa(page)} از {toFa(pageCount)}
@@ -323,11 +372,11 @@ function ProductImagesManagerInner() {
           <Button
             size="sm"
             variant="outline"
-            className="h-8 gap-1 rounded-[10px] px-3 text-[11.5px]"
+            className="h-9 gap-1 rounded-[10px] px-4 text-xs"
             disabled={page >= pageCount}
-            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+            onClick={() => navigate({ page: Math.min(pageCount, page + 1) })}
           >
-            بعدی <ChevronLeft size={14} />
+            ۱۰ تصویر بعدی <ChevronLeft size={15} />
           </Button>
         </div>
       )}
