@@ -64,19 +64,23 @@ export default function BulkPricePage() {
           price: p.minSalePrice ? p.minSalePrice.toLocaleString('en-US') : '',
           stock: p.stock ? p.stock.toLocaleString('en-US') : '',
           minOrder: p.minSaleAmount ? p.minSaleAmount.toLocaleString('en-US') : '',
-          // اعتبار خارج از بازهٔ انتخابی (ایمپورتی‌های ۳۶۵۰) خالی شروع می‌شود؛
-          // خالی = بدون تغییر → ارسال نمی‌شود و همان قبلی می‌ماند (رفع ۱۹-۱۱)
-          validity: (p.priceValidityDays ?? 3) <= 365 ? String(p.priceValidityDays ?? 3) : '',
+          // اعتبار خارج از بازهٔ انتخابی ۱..۳۰ (ایمپورتی‌های ۳۶۵۰ و هر رکورد
+          // بالای ۳۰) خالی شروع می‌شود؛ خالی = بدون تغییر → ارسال نمی‌شود و
+          // همان قبلی می‌ماند (سقف ۳۰ روز = یک ماه — خواسته مالک ۱۹-۱۱ عصر)
+          validity:
+            (p.priceValidityDays ?? 3) >= 1 && (p.priceValidityDays ?? 3) <= 30
+              ? String(p.priceValidityDays ?? 3)
+              : '',
         })),
     );
   }
 
-  /** اعتبارِ واردشدهٔ معتبر (۱..۳۶۵) — خالی/۰ یعنی «دست نخورده» و اصلاً ارسال
-   *  نمی‌شود تا سرور همان قبلی را نگه دارد؛ برای آگهی ایمپورتی با اعتبار
-   *  ۱۰ ساله (۳۶۵۰) هم همین‌طور است که سقف ولیدیشن سرور است (رفع ۱۹-۱۱) */
+  /** اعتبارِ واردشدهٔ معتبر (۱..۳۰) — خالی/۰ یعنی «دست نخورده» و اصلاً ارسال
+   *  نمی‌شود تا سرور همان قبلی را نگه دارد؛ سقف ۳۰ روز = حداکثر یک ماه
+   *  (خواسته مالک ۱۹-۱۱ عصر — ولیدیشن سرور Max 30) */
   const validityOf = (r: Row): number | undefined => {
     const v = num(r.validity);
-    return v >= 1 ? Math.min(v, 365) : undefined;
+    return v >= 1 ? Math.min(v, 30) : undefined;
   };
 
   /** آیا ستون اعتبار این ردیف واقعاً عوض شده؟ (واردشده ≠ مقدار فعلی سرور) */
@@ -265,7 +269,7 @@ export default function BulkPricePage() {
                       <UnitInput
                         kind="plain"
                         value={r.validity}
-                        onValueChange={(v) => patchRow(r.id, { validity: v })}
+                        onValueChange={(v) => patchRow(r.id, { validity: num(v) > 30 ? '30' : v })}
                         unit="روز"
                         ariaLabel={`اعتبار قیمت ${r.productName}`}
                         inputClassName="h-11 md:h-12 md:text-base"
@@ -297,7 +301,7 @@ export default function BulkPricePage() {
                     <b className="text-primary">{toFa(changed.length)}</b> آگهی تغییر یافته
                   </>
                 ) : (
-                  'اعتبار قیمت: پنجره‌ای که بعد از آن، بدون آپدیت، آگهی «قیمت منقضی شده» می‌گیرد (پیش‌فرض ۳ روز — خالی بگذارید یعنی همان اعتبار فعلی بماند).'
+                  'اعتبار قیمت: پنجره‌ای که بعد از آن، بدون آپدیت، آگهی «قیمت منقضی شده» می‌گیرد (پیش‌فرض ۳ روز، حداکثر ۳۰ روز — خالی بگذارید یعنی همان اعتبار فعلی بماند).'
                 )}
               </p>
               <Button
