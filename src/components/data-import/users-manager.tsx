@@ -34,6 +34,7 @@ import {
   Crown,
   ExternalLink,
   Eye,
+  Globe,
   Loader2,
   RefreshCcw,
   Search,
@@ -161,6 +162,7 @@ function UsersManagerInner() {
   const [login, setLogin] = useState<string>(ANY);
   const [contacted, setContacted] = useState<string>(ANY);
   const [failed, setFailed] = useState<string>(ANY);
+  const [selfImport, setSelfImport] = useState<string>(ANY);
   const [staleDays, setStaleDays] = useState<string>(ANY);
   const [sort, setSort] = useState<string>('lastLogin');
   const [dir, setDir] = useState<'asc' | 'desc'>('desc');
@@ -214,6 +216,7 @@ function UsersManagerInner() {
       ...(login !== ANY ? { login: login as ImportedUsersParams['login'] } : {}),
       ...(contacted !== ANY ? { contacted: contacted as 'yes' | 'no' } : {}),
       ...(failed !== ANY ? { failed: failed as 'yes' | 'no' } : {}),
+      ...(selfImport !== ANY ? { selfImport: selfImport as 'yes' | 'no' } : {}),
       ...(staleDays !== ANY ? { staleDays: Number(staleDays) } : {}),
       ...(createdFrom || createdTo
         ? { createdFrom: createdFrom ?? undefined, createdTo: createdTo ?? undefined }
@@ -223,7 +226,7 @@ function UsersManagerInner() {
       page,
       pageSize,
     }),
-    [debounced, source, premium, packageType, login, contacted, failed, staleDays, createdFrom, createdTo, sort, dir, page],
+    [debounced, source, premium, packageType, login, contacted, failed, selfImport, staleDays, createdFrom, createdTo, sort, dir, page],
   );
 
   const { data, isLoading, isFetching, refetch } = useQuery({
@@ -298,6 +301,7 @@ function UsersManagerInner() {
     setContacted(ANY);
     setFailed(ANY);
     setStaleDays(ANY);
+    setSelfImport(ANY);
     setSort('lastLogin');
     setDir('desc');
     setCreatedFrom(null);
@@ -337,12 +341,13 @@ function UsersManagerInner() {
 
       {/* کارت‌های آماری */}
       {summary ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
           {[
             { label: 'کل', value: summary.total, hint: 'همهٔ کاربران' },
             { label: 'از باسکول', value: summary.buskool, hint: 'ایمپورت‌شده' },
             { label: 'ثبت‌نام خودی', value: summary.native, hint: 'خودشان آمده‌اند' },
             { label: 'ویژهٔ باسکول', value: summary.premiumBuskool, hint: 'کاندیدای دعوت به پرداخت', accent: true },
+            { label: 'ایمپورت خودی', value: summary.selfImported, hint: 'خودشان از وب آورده‌اند — کاربران واقعی ایچ', accent: true },
             { label: 'بعد از تماس آمدند', value: summary.cameAfterContact, hint: `از ${toFa(summary.contacted)} تماس‌گرفته` },
             { label: 'هرگز وارد نشده', value: summary.neverLoggedIn, hint: summary.failed ? `+ ${toFa(summary.failed)} ایمپورت ناقص` : 'کاندیدای پاک‌سازی' },
           ].map((c) => (
@@ -445,6 +450,15 @@ function UsersManagerInner() {
               <SelectItem value={ANY}>ایمپورت ناقص: همه</SelectItem>
               <SelectItem value="yes">ناقص/شکست‌خورده</SelectItem>
               <SelectItem value="no">سالم</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={selfImport} onValueChange={(v) => { setSelfImport(v); setPage(1); }}>
+            <SelectTrigger className="h-8 w-[150px] rounded-[10px] text-[11.5px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ANY}>ایمپورت خودی: همه</SelectItem>
+              <SelectItem value="yes">خودش ایمپورت کرده</SelectItem>
+              <SelectItem value="no">ایمپورت نکرده</SelectItem>
             </SelectContent>
           </Select>
 
@@ -588,6 +602,15 @@ function UsersManagerInner() {
                   </td>
                   <td className="hidden p-2 align-middle md:table-cell">
                     <SourceChip row={row} />
+                    {/* (۱۹-۱۱) خودش ایمپورت از وب را انجام داده — ردّ پایهٔ کاربر واقعی ایچ */}
+                    {row.selfImported && (
+                      <span
+                        className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9.5px] font-bold text-emerald-700"
+                        title="خودش با دکمهٔ «ایمپورت از وب» کالاهایش را آورده — جلسهٔ کامل‌شده"
+                      >
+                        <Globe size={10} /> ایمپورت خودی
+                      </span>
+                    )}
                     {/* دلیل شکست ایمپورت (۱۵-۱۱) — خطای رکورد ذخیره می‌شود تا بعداً رسیدگی شود */}
                     {row.failedImport && (
                       <p

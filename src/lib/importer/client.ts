@@ -349,6 +349,9 @@ export interface ImportedUserRow {
   lastLoginAt: string | null;
   b: BUserDoc | null;
   productsCount: number;
+  /** (۱۹-۱۱) خودش با دکمهٔ «ایمپورت از وب» ایمپورت را کامل کرده — ردّ پایهٔ
+   *  «کاربر واقعی ایچ»: حداقل یک جلسهٔ WebImportSession done دارد */
+  selfImported: boolean;
 }
 
 export interface ImportedUsersSummary {
@@ -361,6 +364,8 @@ export interface ImportedUsersSummary {
   contacted: number;
   cameAfterContact: number;
   failed: number;
+  /** (۱۹-۱۱) خودشان ایمپورت از وب را کامل کرده‌اند — کاربران واقعی ایچ */
+  selfImported: number;
   needsMigration: number;
 }
 
@@ -381,6 +386,8 @@ export interface ImportedUsersParams {
   login?: 'ever' | 'never' | 'after-contact';
   contacted?: 'yes' | 'no';
   failed?: 'yes' | 'no';
+  /** (۱۹-۱۱) ایمپورت از وب با دست خود کاربر — جلسهٔ کامل‌شده */
+  selfImport?: 'yes' | 'no';
   staleDays?: number;
   /** بازهٔ تاریخ ثبت‌نام — ISO میلادی (خواستهٔ مالک ۱۵-۱۱) */
   createdFrom?: string;
@@ -656,6 +663,48 @@ export interface ReplaceImageResult {
   productId: string | null;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// «فقط تصاویر» — شکار واترمارک (خواستهٔ مالک ۱۹-۱۱): هر کاش فقط خودِ تصویر +
+// شناسهٔ فایل + سوییچ واترمارک؛ نه عنوان آگهی نه هیچ دادهٔ دیگر. آینهٔ
+// قرارداد بک‌اند: imported-products.service.ts (ProductFileRow/…)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface ProductFileRow {
+  /** ObjectId ردیف File — زیر تصویر نمایش داده می‌شود */
+  id: string;
+  url: string;
+  thumbUrl: string | null;
+  hasWatermark: boolean;
+  /** id آگهیِ صاحب تصویر (رشته) */
+  relatedId: string | null;
+  size: number;
+  createdAt: string;
+}
+
+export interface ProductFilesSummary {
+  total: number;
+  watermarked: number;
+  clean: number;
+}
+
+export interface ProductFilesList {
+  rows: ProductFileRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  summary: ProductFilesSummary;
+}
+
+export interface ProductFilesParams {
+  /** فیلتر واترمارک — مبنای جداکردن لیست علامت‌خورده‌ها برای پاک‌سازی */
+  watermark?: 'yes' | 'no' | 'all';
+  /** فقط تصاویر این آگهی — لینک عمیق «N عکس» از صفحهٔ آگهی‌ها */
+  productId?: number;
+  page?: number;
+  pageSize?: number;
+}
+
 /** fetch با توکن ادمین برای بدنهٔ multipart (بدون Content-Type — مرورگر boundary می‌گذارد) */
 async function adminFetchForm(path: string, form: FormData): Promise<Response> {
   let token = '';
@@ -710,4 +759,18 @@ export const productImagesApi = {
       json<ReplaceImageResult>(r),
     );
   },
+};
+
+/** (۱۹-۱۱) «فقط تصاویر» — کاش‌های تنها برای شکار واترمارک */
+export const productFilesApi = {
+  list: (params: ProductFilesParams) =>
+    adminFetch(`importer/product-files${toQuery(params as Record<string, unknown>)}`).then((r) =>
+      json<ProductFilesList>(r),
+    ),
+
+  /** تیک واترمارک روی یک فایل — File.hasWatermark در دیتابیس ترو/فالس می‌شود */
+  setWatermark: (id: string, hasWatermark: boolean) =>
+    adminFetch(`importer/product-files/${id}/watermark`, { hasWatermark }).then((r) =>
+      json<{ id: string; hasWatermark: boolean }>(r),
+    ),
 };

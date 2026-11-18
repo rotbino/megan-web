@@ -20,6 +20,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
   BarChart3,
+  Eye,
+  EyeOff,
   Globe,
   ImageIcon,
   Layers,
@@ -32,7 +34,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
-import { useDeleteMyProduct, useMyProducts, usePanelProfile, useWebImportStatus } from '@/lib/mock/hooks';
+import { useDeleteMyProduct, useMyProducts, usePanelProfile, useSetMyProductVisibility, useWebImportStatus } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { PanelCard, PanelEmptyState } from '@/components/panel/panel-parts';
@@ -53,6 +55,12 @@ const TABS: { key: ProductStatus; label: string }[] = [
   { key: 'rejected', label: 'رد شده' },
 ];
 
+/** (۱۹-۱۱) تب «عدم نمایش» — شبه‌وضعیت جدا از status: آگهیِ پنهان‌شدهٔ موقتِ
+ *  مالک (ownerPaused) در هیچ‌کدام از تب‌های وضعیت نیست و فقط همین‌جاست؛
+ *  هر وقت خواست با «نمایش» برمی‌گرداند */
+type TabKey = ProductStatus | 'paused';
+const PAUSED_LABEL = 'عدم نمایش';
+
 const STATUS_LABEL: Record<ProductStatus, string> = {
   confirmed: 'تایید شده',
   pending: 'در انتظار تایید',
@@ -60,15 +68,32 @@ const STATUS_LABEL: Record<ProductStatus, string> = {
   deleted: 'حذف شده',
 };
 
-function isTabKey(v: string | null): v is ProductStatus {
-  return v === 'confirmed' || v === 'pending' || v === 'rejected' || v === 'deleted';
+function isTabKey(v: string | null): v is TabKey {
+  return v === 'confirmed' || v === 'pending' || v === 'rejected' || v === 'deleted' || v === 'paused';
 }
 
 /** دکمهٔ سه‌نقطهٔ ردیف آگهی (خواسته مالک ۳-۱۱) — «حذف» زندگی‌اش اینجاست،
  *  نه دکمهٔ مستقیم؛ «ویرایش» هم زیر همین منو رفت (خواسته مالک ۴-۱۱ —
- *  ردیف شلوغ بود و ویرایش به‌ندرت لازم می‌شود). کلیک بیرون یا Escape منو
- *  را می‌بندد (الگوی book-record-card). */
-function RowMenu({ editHref, canDelete, onDelete }: { editHref: string; canDelete: boolean; onDelete: () => void }) {
+ *  ردیف شلوغ بود و ویرایش به‌ندرت لازم می‌شود). «عدم نمایش» موقت هم اینجاست
+ *  (۱۹-۱۱) — بازگشت‌پذیر، برخلاف حذف. کلیک بیرون یا Escape منو
+ *  را می‌بندد (الگوی book-record-card).
+ *  ۱۹-۱۱: ms-auto حذف شد — سه‌نقطه کنار بقیهٔ دکمه‌های ردیف می‌نشیند تا
+ *  کاربر متوجه مسیر ویرایش/حذف/عدم‌نمایش شود (خواستهٔ مالک). */
+function RowMenu({
+  editHref,
+  canDelete,
+  onDelete,
+  paused,
+  canPause,
+  onToggleVisibility,
+}: {
+  editHref: string;
+  canDelete: boolean;
+  onDelete: () => void;
+  paused: boolean;
+  canPause: boolean;
+  onToggleVisibility: () => void;
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLSpanElement>(null);
 
@@ -90,7 +115,7 @@ function RowMenu({ editHref, canDelete, onDelete }: { editHref: string; canDelet
   }, [menuOpen]);
 
   return (
-    <span ref={menuRef} className="relative ms-auto">
+    <span ref={menuRef} className="relative">
       <button
         type="button"
         aria-label="گزینه‌های بیشتر"
@@ -115,6 +140,20 @@ function RowMenu({ editHref, canDelete, onDelete }: { editHref: string; canDelet
             <Pencil size={14} />
             ویرایش آگهی
           </Link>
+          {canPause && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false);
+                onToggleVisibility();
+              }}
+              className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-xs font-medium transition-colors hover:bg-secondary"
+            >
+              {paused ? <Eye size={14} /> : <EyeOff size={14} />}
+              {paused ? 'نمایش آگهی' : 'عدم نمایش آگهی'}
+            </button>
+          )}
           {canDelete && (
             <button
               type="button"
@@ -160,7 +199,7 @@ function MyProductsPageInner() {
   };
 
   const tabParam = searchParams.get('tab');
-  const [tab, setTab] = useState<ProductStatus>(isTabKey(tabParam) ? tabParam : 'confirmed');
+  const [tab, setTab] = useState<TabKey>(isTabKey(tabParam) ? tabParam : 'confirmed');
   // لینک عمقی ?tab=pending (دکمه موفقیت ثبت) — الگوی «تنظیم state هنگام رندر»
   // برای همگام‌سازی با URL بدون effect (مثل فرم‌های دیگر ایمچ)
   const [lastParam, setLastParam] = useState<string | null>(tabParam);
@@ -175,6 +214,23 @@ function MyProductsPageInner() {
   // هدف مدال سریع آپدیت قیمت (۷-۱۱ دور هفدهم) — دکمهٔ «آپدیت قیمت» و بج
   // «قیمت منقضی شده» هر دو همین مودال را باز می‌کنند
   const [priceTarget, setPriceTarget] = useState<Product | null>(null);
+  // «عدم نمایش» موقت (۱۹-۱۱) — بازگشت‌پذیر؛ بدون دیالوگ تأیید
+  const visibility = useSetMyProductVisibility();
+  const toggleVisibility = (p: Product) => {
+    const visible = p.ownerPaused === true;
+    visibility.mutate(
+      { id: p.id, visible },
+      {
+        onSuccess: () =>
+          toast({
+            description: visible
+              ? `آگهی «${p.productName}» دوباره نمایش داده می‌شود.`
+              : `آگهی «${p.productName}» از نمایش خارج شد — در تب «${PAUSED_LABEL}» است.`,
+          }),
+        onError: (err: Error) => toast({ description: err.message, variant: 'destructive' }),
+      },
+    );
+  };
 
   if (isLoading || !data) {
     return <div className="h-64 animate-pulse rounded-lg border bg-card" />;
@@ -183,18 +239,27 @@ function MyProductsPageInner() {
   // تب‌های قابل‌مشاهده (۱۸-۱۱ دور ۲ — مالک: تب خالی دیده نشود): فقط تب‌هایی
   // که چیزی در آن‌هاست رندر می‌شوند؛ تب فعال اگر مخفی شد (مثلاً بعد از حذف
   // آخرین آیتم) اولین تبِ پُر جایگزین می‌شود؛ یک تبِ تنها هم کل نوار را
-  // مخفی می‌کند — با یک تب، تب‌ویو بی‌معنی است و فرم خلوت می‌ماند
+  // مخفی می‌کند — با یک تب، تب‌ویو بی‌معنی است و فرم خلوت می‌ماند.
+  // (۱۹-۱۱) آگهی‌های «عدم نمایش» از تب‌های وضعیت کنارند و تب خودشان را
+  // آخرِ نوار می‌گیرند (فقط وقتی حداقل یکی هست).
   const tabCounts = TABS.map(({ key, label }) => ({
-    key,
+    key: key as TabKey,
     label,
-    count: data.items.filter((p) => p.status === key).length,
+    count: data.items.filter((p) => p.status === key && !p.ownerPaused).length,
   }));
-  const visibleTabs = tabCounts.filter((t) => t.count > 0);
-  const activeTab: ProductStatus = visibleTabs.some((t) => t.key === tab)
+  const pausedCount = data.items.filter((p) => p.ownerPaused && p.status !== 'deleted').length;
+  const visibleTabs: Array<{ key: TabKey; label: string; count: number }> = [
+    ...tabCounts.filter((t) => t.count > 0),
+    ...(pausedCount > 0 ? [{ key: 'paused' as const, label: PAUSED_LABEL, count: pausedCount }] : []),
+  ];
+  const activeTab: TabKey = visibleTabs.some((t) => t.key === tab)
     ? tab
     : (visibleTabs[0]?.key ?? 'confirmed');
 
-  const items = data.items.filter((p) => p.status === activeTab);
+  const items =
+    activeTab === 'paused'
+      ? data.items.filter((p) => p.ownerPaused && p.status !== 'deleted')
+      : data.items.filter((p) => p.status === activeTab && !p.ownerPaused);
   const balance = profile?.userInfo.walletBalance ?? 0;
   // دکمهٔ «تغییر قیمت گروهی» فقط با بیش از یک آگهی (خواسته مالک ۴-۱۱) —
   // با یک آگهی ویرایش تکی خودش کفایت می‌کند
@@ -204,7 +269,7 @@ function MyProductsPageInner() {
   const showImportCta =
     importEligible && webImportStatus?.imported !== true && data.items.length === 0;
 
-  const changeTab = (key: ProductStatus) => {
+  const changeTab = (key: TabKey) => {
     setTab(key);
     // آدرس هم‌گام شود — refresh/back دقیقاً همان تب را نشان می‌دهد
     router.replace(`/panel/products?tab=${key}`, { scroll: false });
@@ -338,7 +403,7 @@ function MyProductsPageInner() {
         ) : (
           <PanelEmptyState
             icon={ImageIcon}
-            title={activeTab === 'confirmed' ? 'محصول تایید شده ای ندارید.' : `موردی در «${STATUS_LABEL[activeTab]}» ندارید.`}
+            title={activeTab === 'confirmed' ? 'محصول تایید شده ای ندارید.' : `موردی در «${activeTab === 'paused' ? PAUSED_LABEL : STATUS_LABEL[activeTab]}» ندارید.`}
             hint="برای ثبت محصول جدید در ایمچ، از طریق دکمه ثبت محصول اقدام کنید."
             actionLabel="ثبت محصول"
             actionHref="/panel/products/new"
@@ -350,7 +415,7 @@ function MyProductsPageInner() {
             /* آگهی تاییدشده — لینک عمومی روی عکس/عنوان (خواسته مالک ۴-۱۱):
                فروشنده محصولش را از دید بقیه کاربران ببیند */
             const publicHref =
-              p.status === 'confirmed'
+              p.status === 'confirmed' && !p.ownerPaused
                 ? `/product-view/${p.slug}/${p.categoryName}/${p.id}`
                 : null;
             return (
@@ -395,6 +460,12 @@ function MyProductsPageInner() {
                     )}
                     {p.isLadder && (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">نردبان فعال</span>
+                    )}
+                    {/* «عدم نمایش» (۱۹-۱۱) — بج خنثی: فعلاً از دید عمومی کنار است */}
+                    {p.ownerPaused && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+                        <EyeOff size={11} /> {PAUSED_LABEL}
+                      </span>
                     )}
                     {/* قیمت منقضی (۷-۱۱ دور هفدهم) — جای «به‌روزرسانی … پیش» نشست؛
                         کلیک = مدال سریع آپدیت قیمت */}
@@ -469,7 +540,19 @@ function MyProductsPageInner() {
                 >
                   <Users size={13} /> خریداران
                 </Link>
-                {p.status === 'confirmed' && !p.isLadder && (
+                {/* (۱۹-۱۱) در تب «عدم نمایش» — بازگشت با یک کلیک؛ برجسته تا
+                    کاربر راه برگرداندن را گم نکند */}
+                {p.ownerPaused && (
+                  <button
+                    type="button"
+                    onClick={() => toggleVisibility(p)}
+                    title={`«${p.productName}» دوباره در ایمچ نمایش داده می‌شود`}
+                    className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700 transition-colors hover:bg-emerald-100"
+                  >
+                    <Eye size={13} /> نمایش دوباره
+                  </button>
+                )}
+                {p.status === 'confirmed' && !p.isLadder && !p.ownerPaused && (
                   <button
                     type="button"
                     onClick={() => setLadderProduct(p)}
@@ -479,10 +562,13 @@ function MyProductsPageInner() {
                     <TrendingUp size={13} /> نردبان
                   </button>
                 )}
-                {/* ویرایش + حذف زیر سه‌نقطه (خواسته مالک ۴-۱۱ — ردیف خلوت‌تر) */}
+                {/* ویرایش + حذف + عدم نمایش زیر سه‌نقطه (خواسته مالک ۴-۱۱ + ۱۹-۱۱) */}
                 <RowMenu
                   editHref={`/panel/products/edit/${p.id}`}
                   canDelete={p.status !== 'deleted'}
+                  paused={p.ownerPaused === true}
+                  canPause={p.status !== 'deleted'}
+                  onToggleVisibility={() => toggleVisibility(p)}
                   onDelete={() => setDeleteTarget(p)}
                 />
               </div>

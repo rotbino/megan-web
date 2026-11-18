@@ -4,25 +4,19 @@
  * تغییر قیمت گروهی (خواسته مالک ۴-۱۱) — لیست آگهی‌های فعال خودم برای
  * آپدیت سریع همه در یک صفحه:
  *  • دسکتاپ: عین اکسل — ردیف‌های زیر هم، چهار اینپوت کنار هم در همان ردیف؛
- *    ستون‌ها پهن‌تر شدند و واحد «بیرون» اینپوت می‌نشیند (۱۸-۱۱ دور ۲ —
- *    درخواست مالک: عدد وسط‌چین واقعی، نه چسبیده به واحد) — mobile همان
- *    واحدِ داخلِ فیلد را نگه می‌دارد (جای کافی هست).
- *  • «آپدیت از وب» (۱۸-۱۱ دور ۲): فقط اعضای واجد شرایط — قیمت/موجودی/
- *    حداقل سفارش همهٔ ردیف‌ها از وب خوانده می‌شود؛ بعد از پایان، جدول با
- *    مقادیر تازه دوباره پر می‌شود.
+ *    ستون‌ها پهن (۱۹-۱۱: واحدِ خودِ UnitInput داخل فیلد کافی است — واحد
+ *    بیرونیِ دور دوم حذف شد چون دوتایی شده بود)
  *  • موبایل: کارت‌های جمع‌وجور با سه اینپوت (دو تا کنار هم + حداقل سفارش)
  *  • فقط ردیف‌های تغییر یافته ذخیره می‌شوند؛ بدون تایید مجدد (وضعیت حفظ می‌شود)
  */
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Check, Globe, Loader2, Save } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useBulkUpdatePrices, useMyProducts, useWebImportStatus } from '@/lib/mock/hooks';
+import { ArrowRight, Check, Loader2, Save } from 'lucide-react';
+import { useBulkUpdatePrices, useMyProducts } from '@/lib/mock/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { PanelCard } from '@/components/panel/panel-parts';
-import { WebImportModal } from '@/components/panel/web-import-modal';
 import { UnitInput } from '@/components/shared/unit-input';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -48,19 +42,13 @@ interface Row {
 }
 
 export default function BulkPricePage() {
-  const queryClient = useQueryClient();
   const { data, isLoading } = useMyProducts();
   const save = useBulkUpdatePrices();
   const { toast } = useToast();
-  // «آپدیت از وب» فقط برای اعضای واجد شرایط (۱۸-۱۱ دور ۲)
-  const { data: webImportStatus } = useWebImportStatus();
-  const importEligible = webImportStatus?.eligible === true;
-  const [webUpdateOpen, setWebUpdateOpen] = useState(false);
 
   const [rows, setRows] = useState<Row[] | null>(null);
 
-  // فرم یک‌بار از دیتای سرور پر می‌شود (الگوی controlled-late) — یا بعد از
-  // «آپدیت از وب» دوباره (rows=null → seed تازه از دادهٔ refetch شده)
+  // فرم یک‌بار از دیتای سرور پر می‌شود (الگوی controlled-late)
   if (!isLoading && data && rows === null) {
     setRows(
       data.items
@@ -110,16 +98,6 @@ export default function BulkPricePage() {
   const patchRow = (id: number, p: Partial<Row>) =>
     setRows((rs) => rs?.map((r) => (r.id === id ? { ...r, ...p } : r)) ?? rs);
 
-  /** پایان «آپدیت از وب»: دادهٔ تازه از سرور + پر شدن دوبارهٔ جدول.
-   *  invalidate پس از refetch فعال resolve می‌شود؛ بعد rows=null → seed تازه */
-  const onWebUpdateFinished = async () => {
-    try {
-      await queryClient.invalidateQueries({ queryKey: ['panel-my-products'] });
-    } finally {
-      setRows(null);
-    }
-  };
-
   const persist = async () => {
     if (changed.length === 0) return;
     if (hasBad) {
@@ -163,7 +141,7 @@ export default function BulkPricePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
-      {/* سربرگ + «آپدیت از وب» (فقط اعضای واجد شرایط — ۱۸-۱۱ دور ۲) */}
+      {/* سربرگ */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Button
@@ -180,17 +158,6 @@ export default function BulkPricePage() {
           </Button>
           <h1 className="text-base font-extrabold sm:text-lg">تغییر قیمت گروهی</h1>
         </div>
-        {importEligible && (
-          <Button
-            size="sm"
-            onClick={() => setWebUpdateOpen(true)}
-            title="قیمت، موجودی و حداقل سفارش کالاهایتان از وب خوانده و در ایمچ به‌روز می‌شود"
-            className="h-9 rounded-md bg-emphasis text-xs text-emphasis-foreground shadow-[0_2px_10px_rgba(249,115,22,0.35)] transition-all hover:bg-emphasis-deep"
-          >
-            <Globe size={15} />
-            آپدیت از وب
-          </Button>
-        )}
       </div>
 
       {rows.length === 0 ? (
@@ -229,9 +196,8 @@ export default function BulkPricePage() {
                   {/* عنوان */}
                   <p className="truncate px-0.5 text-sm font-bold lg:py-1">{r.productName}</p>
 
-                  {/* اینپوت‌ها — دسکتاپ: هر اینپوت مستقیم در ستون خودش (display:contents)
-                      و واحد بیرون فیلد (۱۸-۱۱ دور ۲ — وسط‌چین واقعی، بدون تصادم)؛
-                      موبایل: دو‌تا کنار هم در دو ردیف، واحد داخل فیلد مثل قبل */}
+                  {/* اینپوت‌ها — دسکتاپ: هر اینپوت مستقیم در ستون خودش (display:contents)؛
+                      واحد داخل فیلد می‌ماند (خودِ UnitInput) — موبایل: دو‌تا کنار هم */}
                   <div className="mt-2.5 grid grid-cols-2 gap-2.5 lg:mt-0 lg:contents">
                     <div>
                       <span className="mb-1 block text-[10px] font-bold text-muted-foreground lg:hidden">
@@ -244,7 +210,6 @@ export default function BulkPricePage() {
                         unit="تومان"
                         ariaLabel={`قیمت ${r.productName}`}
                         invalid={badPrice(r)}
-                        unitOutside="desktop"
                         inputClassName="h-11 md:h-12 md:text-base"
                       />
                     </div>
@@ -258,7 +223,6 @@ export default function BulkPricePage() {
                         onValueChange={(v) => patchRow(r.id, { stock: v })}
                         unit={r.unit}
                         ariaLabel={`موجودی ${r.productName}`}
-                        unitOutside="desktop"
                         inputClassName="h-11 md:h-12 md:text-base"
                       />
                     </div>
@@ -272,7 +236,6 @@ export default function BulkPricePage() {
                         onValueChange={(v) => patchRow(r.id, { minOrder: v })}
                         unit={r.unit}
                         ariaLabel={`حداقل سفارش ${r.productName}`}
-                        unitOutside="desktop"
                         inputClassName="h-11 md:h-12 md:text-base"
                       />
                     </div>
@@ -287,7 +250,6 @@ export default function BulkPricePage() {
                         onValueChange={(v) => patchRow(r.id, { validity: v })}
                         unit="روز"
                         ariaLabel={`اعتبار قیمت ${r.productName}`}
-                        unitOutside="desktop"
                         inputClassName="h-11 md:h-12 md:text-base"
                       />
                     </div>
@@ -338,17 +300,6 @@ export default function BulkPricePage() {
             </div>
           </div>
         </>
-      )}
-
-      {/* «آپدیت از وب» (۱۸-۱۱ دور ۲) — حالت prices: فقط به‌روزرسانی قیمت/
-          موجودی/حداقل سفارش؛ شروع خودکار با باز شدن؛ پایان = seed دوباره */}
-      {importEligible && (
-        <WebImportModal
-          open={webUpdateOpen}
-          onClose={() => setWebUpdateOpen(false)}
-          autoMode="prices"
-          onFinished={() => void onWebUpdateFinished()}
-        />
       )}
     </div>
   );

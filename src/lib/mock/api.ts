@@ -70,6 +70,8 @@ interface RawProduct {
   priceValidityDays?: number;
   priceUpdatedAt?: string;
   priceExpired?: boolean;
+  /** (۱۹-۱۱) عدم نمایش موقت به دست مالک — تب «عدم نمایش» پنل */
+  ownerPaused?: boolean;
   createdAt: string;
   updatedAt: string;
   photos: string[];
@@ -955,6 +957,13 @@ export async function retryProductPhotos(
 export async function deleteMyProduct(id: number): Promise<{ ok: true }> {
   await apiFetch('/products/deleteMyProduct', { id });
   return { ok: true };
+}
+
+/** (۱۹-۱۱) «عدم نمایش» موقت آگهی خودم — visible=false از نما/جستجوی عمومی
+ *  کنار می‌رود (تب «عدم نمایش» پنل)؛ visible=true دوباره نمایش */
+export async function setMyProductVisibility(id: number, visible: boolean): Promise<{ id: number; ownerPaused: boolean }> {
+  const r = await apiFetch<{ id: number; ownerPaused: boolean }>('/products/setMyProductVisibility', { id, visible });
+  return r;
 }
 
 /** جزئیات کامل آگهی خودم برای پیش‌پر کردن فرم ویرایش — واقعی */

@@ -1,278 +1,54 @@
 'use client';
 
 /**
- * تصاویر آگهی‌ها — صفحهٔ «دیتا ایمپورت → تصاویر آگهی‌ها» (خواستهٔ مالک ۱۳-۱۱،
- * بازطراحی ۱۵-۱۱ ردیفی، بازطراحی ۱۶-۱۱ عصر گروهی).
- * هدف: سریع‌ترین اسکن برای یافتن تصاویر واترمارک‌دار باسکول + «تعویض درجا»:
+ * تصاویر آگهی‌ها — صفحهٔ «دیتا ایمپورت → تصاویر آگهی‌ها»
+ * (خواستهٔ مالک ۱۳-۱۱؛ بازطراحی کامل ۱۹-۱۱: «فقط تصاویر»).
  *
- *   گردش‌کار مالک: تصویر را باز می‌کند و ذخیره می‌کند → در Paint واترمارک باسکول
- *   را پاک می‌کند → دکمهٔ «آپلود نسخهٔ اصلاح‌شده» → فایل جدید روی «همان کلید»
- *   (همان نام/مسیر/URL) نوشته می‌شود و تامبنیل هم از روی تصویر تازه در همان
- *   کلید تامبنیل بازساخته می‌شود. نمایش با ?v=<آخرین تعویض> کش را می‌شکند.
+ * مرحلهٔ ۱ شکار واترمارک (خواستهٔ مالک ۱۹-۱۱): به‌جای کارت‌های آگهی، فقط
+ * خودِ تصاویر از جدول فایل‌ها می‌آیند — نه عنوان، نه فروشنده، نه هیچ دادهٔ
+ * دیگری. زیر هر تصویر: شناسهٔ فایل + سوییچ «واترمارک». تیک ادمین یعنی این
+ * تصویر واترمارک دارد → File.hasWatermark در دیتابیس ترو می‌شود. با فیلتر
+ * «واترمارک‌دار» لیست علامت‌خورده‌ها یک‌جا جدا می‌شود — پایهٔ کار پاک‌سازی
+ * (هوش مصنوعی/دستی) در مرحلهٔ بعد.
  *
- * بازطراحی ۱۶-۱۱ عصر (خواستهٔ مالک):
- *   • کارت گروهی: هر آگهی یک کارت با «همهٔ» عکس‌هایش کنار هم — چیدمان قبلی هر
- *     عکس را ردیف جدا می‌داد و آگهی چندعکسه چندبار تکرار می‌شد؛ حالا هیچ
- *     عکسی از قلم نمی‌افتد چون کل گالری آگهی یک‌جا دیده می‌شود.
- *   • عکس‌ها بزرگ: ۳۰۰×۳۰۰ (اصل فایل — نه تامبنیل — تا واترمارک واضح باشد).
- *   • صفحه‌بندی بر «آگهی» (نه بر فایل) — عکس‌های یک آگهی بین دو صفحه نمی‌شکافند.
- *   • سورت‌های محصولی: آپدیت/ثبت/شناسه + تعداد عکس + حجم کل گالری.
- *
- * میراث ۱۵-۱۱: سورت پیش‌فرض آخرین آپدیت نزولی؛ ۵۰ رکورد در هر صفحه؛ آدرس یکتا
- * برای هر صفحه (?page=… + فیلترها در URL)؛ فیلتر بازهٔ زمانی + دکمه‌های سریع +
- * ۶ ماه شمسی اخیر.
+ *   • کلیک روی تصویر = اندازهٔ اصلی در تب جدید (برای دیدن دقیق واترمارک)
+ *   • کاش واترمارک‌دار با قاب کهربایی — در شبکهٔ اسکن چشم می‌افتد
+ *   • صفحه/فیلتر در URL (?page=…&wm=…) — لینک مستقیم و اشتراک‌گذاری
  */
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
+import { Suspense, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  BadgeCheck,
   ChevronLeft,
   ChevronRight,
-  Download,
+  ExternalLink,
   Images,
-  Info,
   Loader2,
-  PackageOpen,
   RefreshCcw,
-  Replace,
-  Search,
+  ShieldAlert,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import {
-  API_BASE,
-  productImagesApi,
-  type ProductImageGroupPhoto,
-  type ProductImageGroupRow,
-  type ProductImagesParams,
-} from '@/lib/importer/client';
-import { dateFa, timeAgoFa, toFa } from '@/lib/format';
+import { productFilesApi, type ProductFileRow, type ProductFilesParams } from '@/lib/importer/client';
+import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { DateRangeFilter, type DateRangeField } from './date-range-filter';
 
-const ANY = '__any__';
-const MAX_FILE_MB = 5;
-const MIN_FILE_KB = 4;
-const ACCEPTED = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+type WmFilter = 'all' | 'yes' | 'no';
 
-/** ۵۰ آگهی در هر صفحه (صفحه‌بندی گروهی بر آگهی — نه بر فایل) */
-const PAGE_SIZE = 50;
-
-/** اندازهٔ نمایش هر عکس (خواستهٔ مالک ۱۶-۱۱ عصر: «خیلی بزرگتر، مثلا ۳۰۰×۳۰۰») */
-const PHOTO_BOX = 'size-[300px]';
-
-/** سورت‌های گروهی — همه بر آگهی (نه بر فایل) */
-const SORT_OPTIONS = [
-  { value: 'productUpdated', label: 'مرتب: آخرین آپدیت آگهی' },
-  { value: 'productCreated', label: 'مرتب: تاریخ ثبت آگهی' },
-  { value: 'productId', label: 'مرتب: شناسهٔ آگهی' },
-  { value: 'photoCount', label: 'مرتب: تعداد عکس آگهی' },
-  { value: 'size', label: 'مرتب: حجم کل تصاویر آگهی' },
-] as const;
-const SORT_VALUES = new Set(SORT_OPTIONS.map((o) => o.value as string));
-
-/** فیلد هدف بازهٔ زمانی — روی تاریخ‌های خودِ آگهی (باسکول) */
-const DATE_FIELDS: DateRangeField[] = [
-  { value: 'updated', label: 'تاریخ آپدیت آگهی' },
-  { value: 'created', label: 'تاریخ ثبت آگهی' },
+const WM_TABS: Array<{ key: WmFilter; label: string }> = [
+  { key: 'all', label: 'همهٔ تصاویر' },
+  { key: 'yes', label: 'واترمارک‌دار' },
+  { key: 'no', label: 'بدون واترمارک' },
 ];
 
-function imgSrc(url: string): string {
-  return url.startsWith('http') ? url : `${API_BASE}${url}`;
+function isWmKey(v: string | null): v is WmFilter {
+  return v === 'all' || v === 'yes' || v === 'no';
 }
 
-/** cache-buster نمایش — بعد از هر تعویض درجا، URL یکسان کش مرورگر را می‌شکند */
-function vSrc(url: string, updatedAt: string): string {
-  const v = new Date(updatedAt).getTime();
-  if (Number.isNaN(v)) return imgSrc(url);
-  return `${imgSrc(url)}${url.includes('?') ? '&' : '?'}v=${v}`;
-}
-
-// ═══════════════════════════════ سلول عکس (۳۰۰×۳۰۰) ═══════════════════════════════
-
-/**
- * یک عکس از گالری آگهی — اصل فایل (نه تامبنیل) در جعبهٔ ۳۰۰×۳۰۰ تا واترمارک
- * باسکول واضح دیده شود؛ کلیک = بازکردن اصل برای ذخیره/ویرایش؛ دکمه‌های
- * آپلود/دانلود زیر عکس، همیشه دم‌دست (موبایل بدون hover هم).
- */
-function PhotoCell({
-  photo,
-  replacing,
-  onPickFile,
-}: {
-  photo: ProductImageGroupPhoto;
-  replacing: boolean;
-  onPickFile: (id: string) => void;
-}) {
-  // اصل فایل — تامبنیل ۳۷۵px برای جعبهٔ ۳۰۰px کیفیت کافی برای شکار واترمارک ندارد
-  const main = vSrc(photo.url, photo.updatedAt);
-
-  return (
-    <figure className="w-[300px] shrink-0">
-      <a
-        href={main}
-        target="_blank"
-        rel="noreferrer"
-        title="بازکردن تصویر اصلی (ذخیره کنید، در پینت واترمارک باسکول را پاک کنید و با دکمهٔ آپلود زیرش جایگزین کنید)"
-        className={cn(
-          'relative block overflow-hidden rounded-md border bg-white',
-          PHOTO_BOX,
-          photo.replacedAt && 'border-emerald-300',
-        )}
-      >
-        <img
-          src={main}
-          alt={photo.name}
-          className="h-full w-full object-contain"
-          loading="lazy"
-        />
-        {photo.replacedAt ? (
-          <span
-            className="absolute start-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-emerald-500/90 px-1.5 py-0.5 text-[9px] font-bold text-white"
-            title={`تعویض‌شده: ${dateFa(photo.replacedAt)} (${timeAgoFa(photo.replacedAt)})`}
-          >
-            <BadgeCheck size={9} /> اصلاح‌شده
-          </span>
-        ) : null}
-        {/* لایهٔ آپلود */}
-        {replacing ? (
-          <span className="absolute inset-0 grid place-items-center bg-background/70 backdrop-blur-[1px]">
-            <Loader2 size={26} className="animate-spin text-primary" />
-          </span>
-        ) : null}
-      </a>
-      {/* مشخصات + عملیات زیر عکس — بدون هیچ بج باسکول روی عکس */}
-      <figcaption className="mt-1 flex items-center justify-between gap-1">
-        <p className="truncate text-[10px] text-muted-foreground">
-          {photo.width && photo.height ? `${toFa(photo.width)}×${toFa(photo.height)}` : ''}
-          {photo.width && photo.height ? ' • ' : ''}
-          {toFa(Math.round(photo.size / 1024))}KB
-        </p>
-        <span className="flex shrink-0 items-center gap-1">
-          <Button
-            size="sm"
-            className="h-7 gap-1 rounded-md px-2 text-[10.5px] font-bold"
-            disabled={replacing}
-            onClick={() => onPickFile(photo.id)}
-            title="فایل اصلاح‌شده (بدون واترمارک باسکول) را انتخاب کنید — همان نام و مسیر جایگزین می‌شود"
-          >
-            {replacing ? <Loader2 size={10} className="animate-spin" /> : <Replace size={10} />}
-            آپلود اصلاح‌شده
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="size-7 shrink-0 rounded-md p-0"
-            asChild
-            title="ذخیرهٔ تصویر اصلی برای ویرایش"
-          >
-            <a href={main} target="_blank" rel="noreferrer" download>
-              <Download size={12} />
-            </a>
-          </Button>
-        </span>
-      </figcaption>
-    </figure>
-  );
-}
-
-// ═══════════════════════════════ کارت آگهی (گروهی) ═══════════════════════════════
-
-/** یک آگهی = یک کارت: سربرگ مشخصات + همهٔ عکس‌های گالری کنار هم */
-function ProductCard({
-  row,
-  uploadingId,
-  onPickFile,
-}: {
-  row: ProductImageGroupRow;
-  uploadingId: string | null;
-  onPickFile: (id: string) => void;
-}) {
-  const { product, owner } = row;
-  const productHref = `/product-view/${product.slug}/-/${product.id}`;
-  const anyReplaced = row.photos.some((p) => p.replacedAt);
-  const allReplaced = row.photos.length > 0 && row.photos.every((p) => p.replacedAt);
-
-  return (
-    <div className="space-y-2.5 rounded-lg border bg-card p-3 transition-colors hover:border-primary/40">
-      {/* سربرگ: مشخصات آگهی — یک نگاه، همهٔ اطلاعات */}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]">
-        <a
-          href={productHref}
-          target="_blank"
-          rel="noreferrer"
-          className="text-[13px] font-bold hover:text-primary hover:underline"
-          title={product.name}
-        >
-          {product.name}
-        </a>
-        <a
-          href={productHref}
-          target="_blank"
-          rel="noreferrer"
-          className="text-[11.5px] font-bold text-muted-foreground hover:text-primary hover:underline"
-          dir="ltr"
-          title={`آگهی #${toFa(product.id)} — بازکردن صفحهٔ آگهی (پیشگیری از قاطی‌شدن آگهی‌های هم‌نام)`}
-        >
-          #{toFa(product.id)}
-        </a>
-        {anyReplaced ? (
-          <span
-            className={cn(
-              'inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold text-white',
-              allReplaced ? 'bg-emerald-500/90' : 'bg-emerald-500/60',
-            )}
-            title={allReplaced ? 'همهٔ عکس‌های این آگهی اصلاح شده‌اند' : 'حداقل یک عکس این آگهی اصلاح شده است'}
-          >
-            <BadgeCheck size={9} /> {allReplaced ? 'کامل اصلاح‌شده' : 'اصلاح‌شده دارد'}
-          </span>
-        ) : null}
-        <span className="mx-0.5 h-3.5 w-px bg-border" aria-hidden />
-        <span className="truncate text-muted-foreground">
-          {owner ? (owner.name || `@${owner.userName}`) : '—'}
-        </span>
-        <span className="text-muted-foreground/70">•</span>
-        <span className="truncate text-muted-foreground" title={`ثبت: ${dateFa(product.createdAt)} — آپدیت: ${dateFa(product.updatedAt)}`}>
-          ثبت {dateFa(product.createdAt)} • آپدیت {dateFa(product.updatedAt)} ({timeAgoFa(product.updatedAt)})
-        </span>
-        <span className="text-muted-foreground/70">•</span>
-        <span className="shrink-0 font-bold text-primary">
-          {toFa(row.photoCount)} عکس
-        </span>
-        <span className="text-muted-foreground/70">•</span>
-        <span className="shrink-0 text-muted-foreground">{toFa(Math.round(row.totalSize / 1024))}KB</span>
-      </div>
-
-      {/* همهٔ عکس‌های گالری این آگهی — ۳۰۰×۳۰۰، هیچ‌کدام از قلم نمی‌افتد */}
-      <div className="flex flex-wrap gap-2.5">
-        {row.photos.map((photo) => (
-          <PhotoCell
-            key={photo.id}
-            photo={photo}
-            replacing={uploadingId === photo.id}
-            onPickFile={onPickFile}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════ صفحه ═══════════════════════════════
-
-/** فیلترها و صفحه‌بندی در URL — نیاز به Suspense دارد (الگوی buy-requests) */
 export function ProductImagesManager() {
   return (
     <Suspense>
@@ -284,188 +60,87 @@ export function ProductImagesManager() {
 function ProductImagesManagerInner() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const targetIdRef = useRef<string | null>(null);
-
   const sp = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
 
-  // ── وضعیت — مقدار اولیه از URL (لینک مستقیم/اشتراک) ──
-  // سورت‌های legacy فایلی (createdAt/updatedAt/newest/oldest) → productUpdated
-  const initSort = () => {
-    const v = sp.get('sort') ?? 'productUpdated';
-    return SORT_VALUES.has(v) ? v : 'productUpdated';
-  };
-  const [search, setSearch] = useState(() => sp.get('q') ?? '');
-  const [debounced, setDebounced] = useState(() => (sp.get('q') ?? '').trim());
-  const [source, setSource] = useState<string>(() => sp.get('src') ?? 'all');
-  const [replaced, setReplaced] = useState<string>(() => sp.get('rep') ?? ANY);
-  const [sort, setSort] = useState<string>(initSort);
-  const [dir, setDir] = useState<'asc' | 'desc'>(() => (sp.get('dir') === 'asc' ? 'asc' : 'desc'));
-  const [dateField, setDateField] = useState<string>(() => (sp.get('fld') === 'created' ? 'created' : 'updated'));
-  const [from, setFrom] = useState<string | null>(() => sp.get('from'));
-  const [to, setTo] = useState<string | null>(() => sp.get('to'));
+  // ── صفحه/فیلتر از URL — لینک مستقیم و back-forward ──
+  // ?q=<شناسهٔ آگهی> = لینک عمیق «N عکس» از صفحهٔ آگهی‌ها (سازگاری با قدیم)
   const [page, setPage] = useState(() => Math.max(1, parseInt(sp.get('page') ?? '1', 10) || 1));
-  const [jumpTo, setJumpTo] = useState('');
+  const [wm, setWm] = useState<WmFilter>(() => (isWmKey(sp.get('wm')) ? (sp.get('wm') as WmFilter) : 'all'));
+  const [productId, setProductId] = useState<number | null>(() => {
+    const q = parseInt(sp.get('q') ?? '', 10);
+    return Number.isFinite(q) && q > 0 ? q : null;
+  });
 
-  // debounce جستجو → q
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setDebounced(search.trim());
-      setPage(1);
-    }, 400);
-    return () => clearTimeout(t);
-  }, [search]);
-
-  // ── هر صفحه آدرس یکتا (خواستهٔ مالک ۱۵-۱۱): نوشتن وضعیت در URL ──
   useEffect(() => {
     const qs = new URLSearchParams();
-    if (debounced) qs.set('q', debounced);
-    if (source !== 'all') qs.set('src', source);
-    if (replaced !== ANY) qs.set('rep', replaced);
-    if (sort !== 'productUpdated') qs.set('sort', sort);
-    if (dir !== 'desc') qs.set('dir', dir);
-    if (dateField !== 'updated') qs.set('fld', dateField);
-    if (from) qs.set('from', from);
-    if (to) qs.set('to', to);
+    if (wm !== 'all') qs.set('wm', wm);
+    if (productId != null) qs.set('q', String(productId));
     if (page > 1) qs.set('page', String(page));
     router.replace(qs.size ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [router, pathname, debounced, source, replaced, sort, dir, dateField, from, to, page]);
+  }, [router, pathname, wm, page, productId]);
 
-  // ── خواندن از URL — ویرایش دستی آدرس/دکمه‌های back-forward ──
   useEffect(() => {
-    const nextQ = sp.get('q') ?? '';
     const nextP = Math.max(1, parseInt(sp.get('page') ?? '1', 10) || 1);
-    const nextSortRaw = sp.get('sort') ?? 'productUpdated';
-    const nextSort = SORT_VALUES.has(nextSortRaw) ? nextSortRaw : 'productUpdated';
-    const nextDir = sp.get('dir') === 'asc' ? 'asc' : 'desc';
-    const nextSrc = sp.get('src') ?? 'all';
-    const nextRep = sp.get('rep') ?? ANY;
-    const nextFld = sp.get('fld') === 'created' ? 'created' : 'updated';
-    const nextFrom = sp.get('from');
-    const nextTo = sp.get('to');
+    const nextWm = isWmKey(sp.get('wm')) ? (sp.get('wm') as WmFilter) : 'all';
+    const nq = parseInt(sp.get('q') ?? '', 10);
+    const nextQ = Number.isFinite(nq) && nq > 0 ? nq : null;
     setPage((cur) => (cur !== nextP ? nextP : cur));
-    setSort((cur) => (cur !== nextSort ? nextSort : cur));
-    setDir((cur) => (cur !== nextDir ? nextDir : cur));
-    setSource((cur) => (cur !== nextSrc ? nextSrc : cur));
-    setReplaced((cur) => (cur !== nextRep ? nextRep : cur));
-    setDateField((cur) => (cur !== nextFld ? nextFld : cur));
-    setFrom((cur) => (cur !== nextFrom ? nextFrom : cur));
-    setTo((cur) => (cur !== nextTo ? nextTo : cur));
-    setDebounced((cur) => (cur !== nextQ.trim() ? nextQ.trim() : cur));
-    setSearch((cur) => (cur !== nextQ ? nextQ : cur));
+    setWm((cur) => (cur !== nextWm ? nextWm : cur));
+    setProductId((cur) => (cur !== nextQ ? nextQ : cur));
   }, [sp]);
 
-  // ── پارامترهای API (گروهی — صفحه‌بندی بر آگهی) ──
-  const params: ProductImagesParams = useMemo(
-    () => ({
-      ...(debounced ? { q: debounced } : {}),
-      ...(source !== 'all' ? { source: source as ProductImagesParams['source'] } : {}),
-      ...(replaced !== ANY ? { replaced: replaced as 'yes' | 'no' } : {}),
-      sort: sort as ProductImagesParams['sort'],
-      dir,
-      ...(from || to
-        ? dateField === 'updated'
-          ? { updatedFrom: from ?? undefined, updatedTo: to ?? undefined }
-          : { createdFrom: from ?? undefined, createdTo: to ?? undefined }
-        : {}),
-      page,
-      pageSize: PAGE_SIZE,
-    }),
-    [debounced, source, replaced, sort, dir, dateField, from, to, page],
-  );
+  // پارامترهای لیست — react-query کلید را ساختاری هش می‌کند؛ نیازی به memo نیست
+  const params: ProductFilesParams = {
+    ...(wm !== 'all' ? { watermark: wm } : {}),
+    ...(productId != null ? { productId } : {}),
+    page,
+    pageSize: 60,
+  };
 
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['product-images-grouped', params],
-    queryFn: () => productImagesApi.listGrouped(params),
+    queryKey: ['product-files', params],
+    queryFn: () => productFilesApi.list(params),
     placeholderData: keepPreviousData,
+  });
+
+  // ── تیک واترمارک — optimistic؛ خطا = بازگشت + توست ──
+  const mark = useMutation({
+    mutationFn: ({ id, hasWatermark }: { id: string; hasWatermark: boolean }) =>
+      productFilesApi.setWatermark(id, hasWatermark),
+    onMutate: async ({ id, hasWatermark }) => {
+      await queryClient.cancelQueries({ queryKey: ['product-files'] });
+      const snapshots = queryClient.getQueriesData<{ rows: ProductFileRow[]; summary: { total: number; watermarked: number; clean: number } }>({ queryKey: ['product-files'] });
+      for (const [key, value] of snapshots) {
+        if (!value) continue;
+        queryClient.setQueryData(key, {
+          ...value,
+          rows: value.rows.map((r) => (r.id === id ? { ...r, hasWatermark } : r)),
+          summary: {
+            ...value.summary,
+            watermarked: value.summary.watermarked + (hasWatermark ? 1 : -1),
+            clean: value.summary.clean + (hasWatermark ? -1 : 1),
+          },
+        });
+      }
+      return { snapshots };
+    },
+    onError: (err: Error, _v, ctx) => {
+      for (const [key, value] of ctx?.snapshots ?? []) queryClient.setQueryData(key, value);
+      toast({ description: err.message || 'ثبت علامت واترمارک ناموفق بود.', variant: 'destructive' });
+    },
+    onSuccess: (_r, { hasWatermark }) => {
+      toast({ description: hasWatermark ? 'علامت واترمارک ثبت شد.' : 'علامت واترمارک برداشته شد.' });
+    },
   });
 
   const rows = data?.rows ?? [];
   const summary = data?.summary;
   const pageCount = data?.pageCount ?? 1;
 
-  // ── تعویض درجا ──
-  const [uploadingId, setUploadingId] = useState<string | null>(null);
-  const replaceMutation = useMutation({
-    mutationFn: ({ id, file }: { id: string; file: File }) => productImagesApi.replace(id, file),
-    onMutate: ({ id }) => setUploadingId(id),
-    onSuccess: () => {
-      toast({
-        title: 'تصویر جایگزین شد',
-        description: 'کلید نسخه‌دار تازه ساخته شد — تصویر و تامبنیل با URL جدید، کش‌ها فوری می‌شکنند.',
-      });
-      void queryClient.invalidateQueries({ queryKey: ['product-images-grouped'] });
-    },
-    onError: (err) => {
-      toast({
-        title: 'جایگزینی ناموفق بود',
-        description: err instanceof Error ? err.message : 'خطای نامشخص',
-        variant: 'destructive',
-      });
-    },
-    onSettled: () => setUploadingId(null),
-  });
-
-  const onPickFile = (id: string) => {
-    targetIdRef.current = id;
-    fileInputRef.current?.click();
-  };
-
-  const onFileChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    const id = targetIdRef.current;
-    // مقدار را ریست کنیم تا انتخاب همان فایل دوباره هم event بدهد
-    e.target.value = '';
-    if (!file || !id) return;
-    if (!ACCEPTED.includes(file.type)) {
-      toast({ title: 'فقط jpeg / png / webp پذیرفته می‌شود', variant: 'destructive' });
-      return;
-    }
-    if (file.size < MIN_FILE_KB * 1024) {
-      toast({ title: `حجم فایل باید حداقل ${toFa(MIN_FILE_KB)} کیلوبایت باشد`, variant: 'destructive' });
-      return;
-    }
-    if (file.size > MAX_FILE_MB * 1024 * 1024) {
-      toast({ title: `حجم فایل نباید از ${toFa(MAX_FILE_MB)} مگابایت بیشتر باشد`, variant: 'destructive' });
-      return;
-    }
-    replaceMutation.mutate({ id, file });
-  };
-
-  const resetFilters = () => {
-    setSearch('');
-    setDebounced('');
-    setSource('all');
-    setReplaced(ANY);
-    setSort('productUpdated');
-    setDir('desc');
-    setDateField('updated');
-    setFrom(null);
-    setTo(null);
-    setPage(1);
-  };
-
-  const jump = (e: React.FormEvent) => {
-    e.preventDefault();
-    const n = parseInt(jumpTo, 10);
-    if (!Number.isNaN(n) && n >= 1) setPage(Math.min(n, pageCount));
-    setJumpTo('');
-  };
-
   return (
     <div className="mx-auto max-w-7xl space-y-4">
-      {/* ورودی فایل مخفی — تعویض درجا */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        onChange={onFileChosen}
-        aria-label="انتخاب فایل تصویر اصلاح‌شده"
-      />
-
       {/* سربرگ */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
@@ -475,7 +150,9 @@ function ProductImagesManagerInner() {
           <div>
             <h1 className="text-base font-extrabold">تصاویر آگهی‌ها</h1>
             <p className="text-[11px] text-muted-foreground">
-              {data ? `${toFa(data.total)} آگهی مطابق فیلترها — همهٔ عکس‌های هر آگهی یک‌جا` : 'یافتن واترمارک باسکول و تعویض درجا'}
+              {data
+                ? `${toFa(data.total)} تصویر${wm !== 'all' ? ' مطابق فیلتر' : ''} — تیک بزنید یعنی واترمارک دارد`
+                : 'شکار واترمارک — فقط تصاویر، بدون هیچ دادهٔ دیگر'}
             </p>
           </div>
         </div>
@@ -492,183 +169,168 @@ function ProductImagesManagerInner() {
         </div>
       </div>
 
-      {/* راهنمای گردش‌کار */}
-      <div className="flex items-start gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3.5 py-2.5 text-[11.5px] leading-6">
-        <Info size={15} className="mt-0.5 shrink-0 text-primary" />
-        <p>
-          <b>گردش‌کار پاک‌کردن واترمارک باسکول:</b> هر کارت یک آگهی است با <b>همهٔ عکس‌هایش</b> — عکسی از قلم نمی‌افتد.
-          روی هر عکس کلیک کنید و اصلی را ذخیره کنید → در Paint واترمارک باسکول را پاک کنید → «آپلود اصلاح‌شده» زیر همان
-          عکس را بزنید. فایل جدید <b>در همان نام و همان مسیر</b> جایگزین می‌شود (URL عوض نمی‌شود) و <b>تامبنیل هم دقیقاً
-          به همین شکل</b> از روی تصویر تازه بازساخته می‌شود. واترمارک آیمچِ داخل پیکسل‌ها حفظ می‌شود و دوباره روی آن نمی‌نشیند.
-        </p>
-      </div>
-
-      {/* کارت‌های آماری */}
+      {/* کارت‌های آماری + فیلتر — کلیک روی کارت = اعمال همان فیلتر */}
       {summary ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {[
-            { label: 'کل تصاویر', value: summary.total, hint: 'گالری همهٔ آگهی‌ها' },
-            { label: 'از باسکول', value: summary.buskool, hint: 'کاندیدای بررسی واترمارک', accent: true },
-            { label: 'اصلاح‌شده', value: summary.replaced, hint: 'تعویض‌شده توسط ادمین', ok: true },
-            { label: 'باقی‌ماندهٔ کار', value: summary.buskoolRemaining, hint: 'باسکولی‌های هنوز بررسی/اصلاح‌نشده' },
-          ].map((c) => (
-            <div
-              key={c.label}
+        <div className="grid grid-cols-3 gap-2">
+          {(
+            [
+              { key: 'all' as WmFilter, label: 'کل تصاویر', value: summary.total, icon: Images, cls: '' },
+              { key: 'yes' as WmFilter, label: 'واترمارک‌دار', value: summary.watermarked, icon: ShieldAlert, cls: 'text-amber-600' },
+              { key: 'no' as WmFilter, label: 'بدون واترمارک', value: summary.clean, icon: ShieldCheck, cls: 'text-emerald-600' },
+            ]
+          ).map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => {
+                setWm(c.key);
+                setPage(1);
+              }}
               className={cn(
-                'rounded-lg border bg-card p-2.5',
-                c.accent && 'border-primary/30 bg-primary/5',
-                c.ok && 'border-emerald-300/60 bg-emerald-50/40',
+                'rounded-lg border bg-card p-2.5 text-start transition-colors hover:border-primary/40',
+                wm === c.key && 'border-primary/60 bg-primary/[0.04]',
               )}
-              title={c.hint}
             >
-              <p className="text-[10px] text-muted-foreground">{c.label}</p>
-              <p
-                className={cn(
-                  'mt-0.5 text-base font-extrabold tabular-nums',
-                  c.accent && 'text-primary',
-                  c.ok && 'text-emerald-600',
-                )}
-              >
-                {toFa(c.value)}
+              <p className={cn('flex items-center gap-1.5 text-[10px] text-muted-foreground', c.cls)}>
+                <c.icon size={12} /> {c.label}
               </p>
-            </div>
+              <p className={cn('mt-0.5 text-base font-extrabold tabular-nums', c.cls)}>{toFa(c.value)}</p>
+            </button>
           ))}
         </div>
       ) : null}
 
-      {/* فیلترها */}
-      <div className="space-y-2.5 rounded-lg border bg-card p-3">
-        <div className="relative">
-          <Search size={15} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="جستجو: نام آگهی، شناسهٔ آگهی، نام/شماره/یوزرنیم فروشنده…"
-            className="h-9 rounded-md pe-9"
-            maxLength={60}
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Select value={source} onValueChange={(v) => { setSource(v); setPage(1); }}>
-            <SelectTrigger className="h-8 w-[125px] rounded-[10px] text-[11.5px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">همهٔ منابع</SelectItem>
-              <SelectItem value="buskool">از باسکول</SelectItem>
-              <SelectItem value="native">خودی</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={replaced} onValueChange={(v) => { setReplaced(v); setPage(1); }}>
-            <SelectTrigger className="h-8 w-[165px] rounded-[10px] text-[11.5px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ANY}>وضعیت اصلاح: همه</SelectItem>
-              <SelectItem value="no">عکس اصلاح‌نشده دارد</SelectItem>
-              <SelectItem value="yes">عکس اصلاح‌شده دارد</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <span className="mx-1 h-5 w-px bg-border" aria-hidden />
-
-          <Select value={sort} onValueChange={(v) => { setSort(v); setPage(1); }}>
-            <SelectTrigger className="h-8 w-[185px] rounded-[10px] text-[11.5px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {SORT_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 rounded-[10px] px-2.5 text-[11px]"
-            onClick={() => { setDir(dir === 'desc' ? 'asc' : 'desc'); setPage(1); }}
-            title={dir === 'desc' ? 'نزولی (جدید→قدیم) — کلیک: صعودی' : 'صعودی (قدیم→جدید) — کلیک: نزولی'}
+      {/* تب‌های فیلتر واترمارک — فلت با خط زیرین، الگوی پنل */}
+      <div className="flex flex-wrap items-center gap-4 border-b border-border">
+        {WM_TABS.map(({ key, label }) => {
+          const active = wm === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => {
+                setWm(key);
+                setPage(1);
+              }}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                'relative shrink-0 py-2.5 text-xs transition-colors',
+                active ? 'font-extrabold text-foreground' : 'font-bold text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {label}
+              {active && <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-emphasis" />}
+            </button>
+          );
+        })}
+        {/* لینک عمیق «N عکس» از صفحهٔ آگهی‌ها — چیپ قابل حذف */}
+        {productId != null && (
+          <button
+            type="button"
+            onClick={() => {
+              setProductId(null);
+              setPage(1);
+            }}
+            className="ms-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-bold text-primary transition-colors hover:bg-primary/15"
+            title="فقط تصاویر این آگهی — کلیک = حذف فیلتر"
           >
-            {dir === 'desc' ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
-            {dir === 'desc' ? 'نزولی' : 'صعودی'}
-          </Button>
-
-          <Button size="sm" variant="ghost" className="h-8 rounded-[10px] px-2.5 text-[11px] text-muted-foreground" onClick={resetFilters}>
-            پاک‌کردن فیلترها
-          </Button>
-        </div>
+            فقط آگهی #{toFa(productId)} ✕
+          </button>
+        )}
       </div>
 
-      {/* فیلتر بازهٔ زمانی + دکمه‌های سریع + ماه‌های شمسی */}
-      <DateRangeFilter
-        fields={DATE_FIELDS}
-        field={dateField}
-        onFieldChange={(v) => { setDateField(v); setPage(1); }}
-        from={from}
-        to={to}
-        onChange={(r) => { setFrom(r.from); setTo(r.to); setPage(1); }}
-        months={6}
-      />
-
-      {/* آلبوم گروهی — هر آگهی یک کارت با همهٔ عکس‌هایش (۳۰۰×۳۰۰) */}
+      {/* شبکهٔ تصاویر */}
       {isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-80 w-full rounded-lg" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          {Array.from({ length: 18 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-square w-full rounded-lg" />
           ))}
         </div>
       ) : rows.length === 0 ? (
         <div className="grid place-items-center rounded-lg border bg-card py-16 text-center">
           <Images size={30} className="text-muted-foreground/40" />
-          <p className="mt-2 text-sm font-bold">آگهی‌ای مطابق فیلترها پیدا نشد</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">فیلترها را تغییر دهید یا عبارت دیگری جستجو کنید</p>
+          <p className="mt-2 text-sm font-bold">تصویری مطابق فیلتر پیدا نشد</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {productId != null
+              ? 'این آگهی تصویری ندارد یا شناسه اشتباه است'
+              : wm === 'yes'
+                ? 'هنوز هیچ تصویری علامت واترمارک نخورده — از تب «همهٔ تصاویر» علامت بزنید'
+                : 'فیلتر را تغییر دهید یا دوباره تلاش کنید'}
+          </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {rows.map((row) => (
-            <ProductCard
-              key={row.product.id}
-              row={row}
-              uploadingId={uploadingId}
-              onPickFile={onPickFile}
-            />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          {rows.map((f) => (
+            <figure
+              key={f.id}
+              className={cn(
+                'overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md',
+                f.hasWatermark && 'border-amber-400/80 ring-2 ring-amber-300/50',
+              )}
+            >
+              <a
+                href={f.url}
+                target="_blank"
+                rel="noreferrer"
+                title="اندازهٔ اصلی در تب جدید — برای دیدن دقیق واترمارک"
+                className="group relative block aspect-square bg-secondary"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={f.thumbUrl ?? f.url}
+                  alt={`تصویر فایل ${f.id}`}
+                  loading="lazy"
+                  className="size-full object-cover transition-transform group-hover:scale-[1.03]"
+                />
+                <span className="absolute end-1.5 top-1.5 grid size-6 place-items-center rounded-md bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                  <ExternalLink size={12} />
+                </span>
+              </a>
+              <figcaption className="space-y-1.5 p-2">
+                <p className="truncate font-mono text-[9.5px] text-muted-foreground" dir="ltr" title={`File ID: ${f.id}`}>
+                  {f.id}
+                </p>
+                <label className="flex cursor-pointer items-center justify-between gap-1 text-[11px] font-bold">
+                  واترمارک
+                  <Switch
+                    checked={f.hasWatermark}
+                    onCheckedChange={(v) => mark.mutate({ id: f.id, hasWatermark: v })}
+                    aria-label={`علامت واترمارک تصویر ${f.id}`}
+                    className={cn('data-[state=checked]:bg-amber-500')}
+                  />
+                </label>
+              </figcaption>
+            </figure>
           ))}
         </div>
       )}
 
-      {/* صفحه‌بندی — بر آگهی؛ هر صفحه آدرس یکتا (?page=…) */}
-      {pageCount > 1 && (
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <Button size="sm" variant="outline" className="h-8 rounded-md" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+      {/* صفحه‌بندی */}
+      {!isLoading && pageCount > 1 && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1 rounded-[10px] px-3 text-[11.5px]"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
             <ChevronRight size={14} /> قبلی
           </Button>
-          <span className="text-[11.5px] text-muted-foreground">
+          <p className="text-[11.5px] font-bold tabular-nums text-muted-foreground">
             صفحهٔ {toFa(page)} از {toFa(pageCount)}
-          </span>
-          <Button size="sm" variant="outline" className="h-8 rounded-md" disabled={page >= pageCount} onClick={() => setPage(page + 1)}>
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1 rounded-[10px] px-3 text-[11.5px]"
+            disabled={page >= pageCount}
+            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+          >
             بعدی <ChevronLeft size={14} />
           </Button>
-          <form onSubmit={jump} className="flex items-center gap-1">
-            <Input
-              value={jumpTo}
-              onChange={(e) => setJumpTo(e.target.value.replace(/[^0-9]/g, ''))}
-              inputMode="numeric"
-              placeholder="شمارهٔ صفحه"
-              className="h-8 w-24 rounded-md text-[11.5px]"
-              aria-label="پرش به شمارهٔ صفحه"
-            />
-            <Button size="sm" variant="outline" className="h-8 rounded-md text-[11px]" type="submit">
-              برو
-            </Button>
-          </form>
         </div>
       )}
-
-      {/* لینک بازگشت به آگهی‌ها */}
-      <p className="flex items-center justify-center gap-1.5 text-center text-[10.5px] text-muted-foreground">
-        <PackageOpen size={12} className="shrink-0" />
-        برای دیدن وضعیت خودِ آگهی‌ها (منبع، ورود فروشنده، ویرایش) به صفحهٔ{' '}
-        <Link href="/data-import/products" className="font-bold text-primary hover:underline">
-          آگهی‌ها
-        </Link>{' '}
-        بروید.
-      </p>
     </div>
   );
 }

@@ -318,7 +318,7 @@ export default function RegisterProductPage() {
           </span>
           <h1 className="mt-4 text-base font-extrabold">امکان ثبت محصول جدید را ندارید!</h1>
           <p className="mt-2 text-sm leading-7 text-muted-foreground">
-            ظرفیت بسته رایگان شما (۱۰ آگهی) تکمیل شده است. با خرید یکی از بسته‌های اشتراک ایمچ،
+            ظرفیت بسته رایگان شما (۲۰ آگهی) تکمیل شده است. با خرید یکی از بسته‌های اشتراک ایمچ،
             ثبت محصول برای شما نامحدود می‌شود.
           </p>
           <Button asChild className="mt-5 rounded-md">

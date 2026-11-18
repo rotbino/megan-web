@@ -98,6 +98,10 @@ export interface Product {
   /** قیمت منقضی است؟ (مهر + اعتبار < اکنون) — محاسبهٔ بک‌اند */
   priceExpired?: boolean;
 
+  /** (۱۹-۱۱) «عدم نمایش» موقت به دست مالک — از نما/جستجوی عمومی کنار است؛
+   *  فقط پنل خودش (تب «عدم نمایش») می‌بیند و هر وقت خواست برمی‌گرداند */
+  ownerPaused?: boolean;
+
   createdAt: string;
   updatedAt: string;
   photos: string[];

@@ -392,6 +392,18 @@ export function useDeleteMyProduct() {
   });
 }
 
+/** (۱۹-۱۱) «عدم نمایش» موقت آگهی خودم — تب «عدم نمایش» پنل؛ بازگشت با همان */
+export function useSetMyProductVisibility() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, visible }: { id: number; visible: boolean }) =>
+      api.setMyProductVisibility(id, visible),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['panel-my-products'] });
+    },
+  });
+}
+
 /** جزئیات آگهی خودم — پیش‌پر کردن فرم ویرایش */
 export function useMyProductDetail(id: number | null) {
   return useQuery({
