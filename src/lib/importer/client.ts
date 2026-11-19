@@ -793,13 +793,14 @@ export const productFilesApi = {
       json<{ id: string; hasWatermark: boolean | null }>(r),
     ),
 
-  /** (۱۹-۱۱) پیش‌نمایش حذف خودکار واترمارک باسکول — بدون هیچ تغییری */
+  /** (۱۹-۱۱) پیش‌نمایش حذف خودکار واترمارک باسکول — بدون هیچ تغییری.
+   * بدنهٔ {} لازم است تا adminFetch آن را POST بفرستد (GET روی مسیرِ @Post می‌افتد و 404 می‌شود) */
   wmPreview: (id: string) =>
-    adminFetch(`importer/product-files/${id}/wm-preview`).then((r) => json<WmPreviewResult>(r)),
+    adminFetch(`importer/product-files/${id}/wm-preview`, {}).then((r) => json<WmPreviewResult>(r)),
 
-  /** (۱۹-۱۱) اعمال حذف — تعویض درجا + مهر اصلاح */
+  /** (۱۹-۱۱) اعمال حذف — تعویض درجا + مهر اصلاح (بدنهٔ {} = POST) */
   wmApply: (id: string) =>
-    adminFetch(`importer/product-files/${id}/wm-apply`).then((r) => json<WmApplyResult>(r)),
+    adminFetch(`importer/product-files/${id}/wm-apply`, {}).then((r) => json<WmApplyResult>(r)),
 
   /** (۱۹-۱۱) دستهٔ بعدی صف — UI حلقه می‌زند تا صف خالی شود؛
    *  exclude = فایل‌هایی که در دورهای قبل «پیدا نشد/خطا» شدند تا حلقه گیر نکند */
