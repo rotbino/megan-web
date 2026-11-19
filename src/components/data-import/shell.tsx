@@ -20,6 +20,8 @@ import {
   LayoutDashboard,
   Loader2,
   Menu,
+  PanelRightClose,
+  PanelRightOpen,
   ShieldCheck,
   Users,
   X,
@@ -66,11 +68,37 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+/** کلید ذخیرهٔ وضعیت سایدبار (خواستهٔ مالک ۲۱-۱۱: قابل باز/بسته شدن) */
+const LS_SIDEBAR_KEY = 'di:sidebar-collapsed';
+
 export function DataImportShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [admin, setAdmin] = useState<AdminProfile | null>(null);
   const [state, setState] = useState<'checking' | 'ready' | 'denied' | 'forbidden'>('checking');
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // ── سایدبارِ قابل جمع‌شدن (خواستهٔ مالک ۲۱-۱۱): بستنش کل عرض صفحه را آزاد
+  //    می‌کند — مثلاً برای دیدن واترمارک تصاویرِ درشت‌تر؛ انتخاب در localStorage
+  //    می‌ماند. مقدار اولیه در همان رندر اول خوانده می‌شود (نه در effect) —
+  //    پوسته تا آماده‌شدن نشستِ ادمین فقط اسپینر رندر می‌کند، پس HTML اولیه
+  //    به collapsed حساس نیست و عدم‌تطابق hydration رخ نمی‌دهد.
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return localStorage.getItem(LS_SIDEBAR_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleSidebar = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    try {
+      localStorage.setItem(LS_SIDEBAR_KEY, next ? '1' : '0');
+    } catch {
+      /* حالت خصوصی */
+    }
+  };
 
   const deny = useCallback(() => {
     setState('denied');
@@ -184,16 +212,26 @@ export function DataImportShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* سایدبار دسکتاپ */}
+      {/* سایدبار دسکتاپ — قابل باز/بسته شدن (خواستهٔ مالک ۲۱-۱۱): بسته = بیرون
+          از دید می‌لغزد و عرض کامل برای محتوا آزاد می‌شود */}
       <aside
-        className="fixed inset-y-0 right-0 z-30 hidden w-60 flex-col border-e border-border bg-card lg:flex"
+        className={cn(
+          'fixed inset-y-0 right-0 z-30 hidden w-60 flex-col border-e border-border bg-card transition-transform duration-200 lg:flex',
+          collapsed && 'lg:translate-x-full',
+        )}
         aria-label="منوی دیتا ایمپورت"
+        aria-hidden={collapsed}
       >
         {sidebarInner}
       </aside>
 
-      {/* تاپ‌بار + دراور موبایل */}
-      <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-card px-3 lg:mr-60 lg:px-5">
+      {/* تاپ‌بار + دراور موبایل — با بسته‌شدن سایدبار تمام عرض می‌شود */}
+      <header
+        className={cn(
+          'sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-card px-3 transition-[margin] duration-200 lg:mr-60 lg:px-5',
+          collapsed && 'lg:mr-0',
+        )}
+      >
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
@@ -201,6 +239,16 @@ export function DataImportShell({ children }: { children: React.ReactNode }) {
           className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-secondary lg:hidden"
         >
           <Menu size={21} />
+        </button>
+        {/* کلید باز/بستن سایدبار دسکتاپ (خواستهٔ مالک ۲۱-۱۱) */}
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          aria-label={collapsed ? 'باز کردن سایدبار دیتا ایمپورت' : 'بستن سایدبار دیتا ایمپورت'}
+          title={collapsed ? 'باز کردن سایدبار' : 'بستن سایدبار — عرض کامل برای آگهی‌ها'}
+          className="hidden size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-secondary lg:grid"
+        >
+          {collapsed ? <PanelRightOpen size={19} /> : <PanelRightClose size={19} />}
         </button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold">بخش دیتا ایمپورت</p>
@@ -244,8 +292,15 @@ export function DataImportShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* محتوا */}
-      <main className="min-h-screen min-w-0 p-3 sm:p-4 lg:mr-60 lg:p-6">{children}</main>
+      {/* محتوا — با بسته‌شدن سایدبار تمام عرض صفحه آزاد می‌شود (خواستهٔ مالک ۲۱-۱۱) */}
+      <main
+        className={cn(
+          'min-h-screen min-w-0 p-3 transition-[margin] duration-200 sm:p-4 lg:mr-60 lg:p-6',
+          collapsed && 'lg:mr-0',
+        )}
+      >
+        {children}
+      </main>
     </div>
   );
 }

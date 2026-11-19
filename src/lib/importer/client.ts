@@ -798,9 +798,17 @@ export const productFilesApi = {
   wmPreview: (id: string) =>
     adminFetch(`importer/product-files/${id}/wm-preview`, {}).then((r) => json<WmPreviewResult>(r)),
 
-  /** (۱۹-۱۱) اعمال حذف — تعویض درجا + مهر اصلاح (بدنهٔ {} = POST) */
+  /** (۱۹-۱۱) اعمال حذف — تعویض درجا + مهر اصلاح (بدنهٔ {} = POST)؛
+   *  (۲۱-۱۱) قابل فراخوانی موازی — ده‌ها اصلاح همزمان، هر کدام مستقل */
   wmApply: (id: string) =>
     adminFetch(`importer/product-files/${id}/wm-apply`, {}).then((r) => json<WmApplyResult>(r)),
+
+  /** (۲۱-۱۱) «بررسی شد» گروهی — مهر بررسی روی همهٔ تصاویر دستهٔ فعلی:
+   *  دیگر هرگز در صفحهٔ بررسی لود نمی‌شوند و دستهٔ بعدی جای آن‌ها را می‌گیرد */
+  reviewBatch: (ids: string[]) =>
+    adminFetch('importer/product-files/review-batch', { ids }).then((r) =>
+      json<{ updated: number }>(r),
+    ),
 
   /** (۱۹-۱۱) دستهٔ بعدی صف — UI حلقه می‌زند تا صف خالی شود؛
    *  exclude = فایل‌هایی که در دورهای قبل «پیدا نشد/خطا» شدند تا حلقه گیر نکند */
