@@ -280,6 +280,7 @@ const COUNTER_LABELS: Record<string, string> = {
   imagesFailed: 'تصویر ناموفق',
   relatedsDownloaded: 'تصویر کسب‌وکار',
   relatedsFailed: 'تصویر کسب‌وکار ناموفق',
+  wmCleaned: 'واترمارک پاک‌شده',
   usersDone: 'کاربر موفق',
   usersFailed: 'کاربر خطادار',
   usersSkipped: 'ردشده (قبلاً)',
