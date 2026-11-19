@@ -792,4 +792,51 @@ export const productFilesApi = {
     adminFetch(`importer/product-files/${id}/watermark`, { hasWatermark }).then((r) =>
       json<{ id: string; hasWatermark: boolean | null }>(r),
     ),
+
+  /** (۱۹-۱۱) پیش‌نمایش حذف خودکار واترمارک باسکول — بدون هیچ تغییری */
+  wmPreview: (id: string) =>
+    adminFetch(`importer/product-files/${id}/wm-preview`).then((r) => json<WmPreviewResult>(r)),
+
+  /** (۱۹-۱۱) اعمال حذف — تعویض درجا + مهر اصلاح */
+  wmApply: (id: string) =>
+    adminFetch(`importer/product-files/${id}/wm-apply`).then((r) => json<WmApplyResult>(r)),
+
+  /** (۱۹-۱۱) دستهٔ بعدی صف — UI حلقه می‌زند تا صف خالی شود؛
+   *  exclude = فایل‌هایی که در دورهای قبل «پیدا نشد/خطا» شدند تا حلقه گیر نکند */
+  wmBatch: (limit = 5, exclude?: string[]) =>
+    adminFetch('importer/product-files/wm-batch', { limit, exclude }).then((r) => json<WmBatchResult>(r)),
 };
+
+/** نتیجهٔ پیش‌نمایش/اعمال حذف واترمارک (بک‌اند: buskool-wm.service) */
+export interface WmPreviewResult {
+  status: 'removed' | 'not_found';
+  score: number | null;
+  evidence: number | null;
+  scale: number | null;
+  box: { x: number; y: number; w: number; h: number } | null;
+  ms: number;
+  /** برش «قبل (بالا) | بعد (پایین)» دور واترمارک — data URL */
+  compareDataUrl?: string;
+  /** کل تصویر پاک‌شده — data URL */
+  afterDataUrl?: string;
+}
+
+export interface WmApplyResult extends WmPreviewResult {
+  file: ProductFileRow | null;
+  skipped?: string;
+}
+
+export interface WmBatchItem {
+  id: string;
+  relatedId: string | null;
+  status: 'removed' | 'not_found' | 'error' | 'skipped';
+  score?: number | null;
+  ms?: number;
+  error?: string;
+}
+
+export interface WmBatchResult {
+  results: WmBatchItem[];
+  counts: { removed: number; notFound: number; error: number; skipped: number };
+  remaining: number;
+}

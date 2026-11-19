@@ -14,20 +14,19 @@
  * تب «باقی‌مانده» فقط بررسی‌نشده‌ها را نشان می‌دهد؛ «بررسی‌شده» =
  * سوییچ «ندارد» روشن‌شده‌ها؛ «اصلاح واترمارک» = واترمارکشان حذف شده.
  *
+ * مرحلهٔ ۲ حذف خودکار (خواستهٔ مالک ۱۹-۱۱): دکمهٔ «اصلاح واترمارک» زیر هر
+ * تصویر → پیش‌نمایش «قبل | بعد» بدون تغییر چیزی؛ اگر راضی بودی «اعمال»
+ * تصویر را درجا (کلید نسخه‌دار تازه در آروان) تعویض می‌کند. دکمهٔ
+ * «اصلاح خودکار همه» در سربرگ هم صف واترمارک‌دارها را دسته‌دسته پردازش
+ * می‌کند — الگوریتم همان تمپلیت دوتنهٔ جفت طلایی است که داخل خود بک‌اند
+ * اجرا می‌شود (پورت TS ابزار پایتون).
+ *
  *   • کلیک روی تصویر = اندازهٔ اصلی در تب جدید (برای دیدن دقیق واترمارک)
  *   • کاش واترمارک‌دار با قاب کهربایی — در شبکهٔ اسکن چشم می‌افتد
  *   • صفحه/فیلتر/سورت در URL (?page=…&wm=…&sort=…) — لینک مستقیم و اشتراک‌گذاری
- *
- * سورت و چیدمان اسکن (خواستهٔ مالک ۱۹-۱۱ عصر): باسکول ۱-۲ سال پیش
- * واترمارک اضافه کرده — تصاویر بر اساس تاریخ خودِ آگهی (باسکول) مرتب
- * می‌شوند، نه تاریخ فایل (که همگی «زمان ایمپورت»‌اند). پیش‌فرض = زمان
- * ثبت؛ گزینهٔ دوم = آخرین ویرایش (برای بررسی اینکه آیا آگهی‌های
- * ویرایش‌شده هم واترمارک گرفته‌اند یا فقط تازه‌ثبت‌شده‌ها). تصویر کامل
- * و بدون برش (object-contain) تا واترمارک گوشه‌ها دیده شود؛ ۵ کاش در
- * ردیف × ۲ ردیف = ۱۰ تصویر در صفحه — پنجرهٔ اسکن بدون اسکرول عمودی.
  */
 
-import { Suspense } from 'react';
+import { Suspense, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -40,12 +39,29 @@ import {
   RefreshCcw,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
+  Square,
+  Wand2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { productFilesApi, type ProductFilesList, type ProductFilesParams } from '@/lib/importer/client';
+import {
+  productFilesApi,
+  type ProductFileRow,
+  type ProductFilesList,
+  type ProductFilesParams,
+  type WmPreviewResult,
+} from '@/lib/importer/client';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -202,6 +218,109 @@ function ProductImagesManagerInner() {
     },
   });
 
+  // ── حذف خودکار واترمارک باسکول (خواستهٔ مالک ۱۹-۱۱: «دکمه در تب واترمارک
+  //    که همه را اصلاح کند + جدا زیر هر تصویر که نتیجه را روی یکی ببینی») ──
+  const [wmFix, setWmFix] = useState<{
+    row: ProductFileRow;
+    loading: boolean;
+    result: WmPreviewResult | null;
+    error?: string;
+    showFull?: boolean;
+  } | null>(null);
+  const [wmApplying, setWmApplying] = useState(false);
+
+  const openPreview = async (row: ProductFileRow) => {
+    setWmFix({ row, loading: true, result: null });
+    try {
+      const result = await productFilesApi.wmPreview(row.id);
+      setWmFix({ row, loading: false, result });
+    } catch (e) {
+      setWmFix({ row, loading: false, result: null, error: (e as Error).message });
+    }
+  };
+
+  const applyPreviewed = async () => {
+    if (!wmFix?.row) return;
+    setWmApplying(true);
+    try {
+      const r = await productFilesApi.wmApply(wmFix.row.id);
+      toast({
+        description:
+          r.status === 'removed' && r.file
+            ? 'اعمال شد — واترمارک حذف و تصویر جایگزین شد؛ به تب «اصلاح واترمارک» رفت.'
+            : r.status === 'not_found'
+              ? 'واترمارک باسکول پیدا نشد — این تصویر را دستی بررسی کن.'
+              : 'تعویض انجام نشد (کلید ذخیره‌سازی ندارد).',
+        variant: r.status === 'removed' && r.file ? undefined : 'destructive',
+      });
+      setWmFix(null);
+      await queryClient.invalidateQueries({ queryKey: ['product-files'] });
+    } catch (e) {
+      toast({ description: (e as Error).message || 'اعمال ناموفق بود.', variant: 'destructive' });
+    } finally {
+      setWmApplying(false);
+    }
+  };
+
+  // ── «اصلاح خودکار همه» — حلقهٔ دسته‌ای؛ فایل‌های not_found/خطادار از
+  //    دورهای بعدی کنار گذاشته می‌شوند تا حلقه گیر نکند ──
+  const [batch, setBatch] = useState<{
+    running: boolean;
+    processed: number;
+    removed: number;
+    notFound: number;
+    errors: number;
+    remaining: number | null;
+    done?: boolean;
+  } | null>(null);
+  const batchRunRef = useRef(false);
+
+  const startBatch = async () => {
+    if (batchRunRef.current) return;
+    batchRunRef.current = true;
+    setBatch({ running: true, processed: 0, removed: 0, notFound: 0, errors: 0, remaining: null });
+    const exclude: string[] = [];
+    try {
+      let stuck = 0;
+      while (batchRunRef.current) {
+        const r = await productFilesApi.wmBatch(5, exclude.length ? exclude : undefined);
+        // فایل‌هایی که بدون تشخیص/خطا ماندند را کنار بگذار (دستکاری DB نمی‌شوند)
+        for (const it of r.results) {
+          if (it.status !== 'removed') exclude.push(it.id);
+        }
+        setBatch((b) =>
+          b && {
+            ...b,
+            processed: b.processed + r.results.length,
+            removed: b.removed + r.counts.removed,
+            notFound: b.notFound + r.counts.notFound,
+            errors: b.errors + r.counts.error,
+            remaining: r.remaining,
+          },
+        );
+        if (r.remaining <= 0 || r.results.length === 0) break;
+        // دو دستهٔ پیاپی بدون هیچ پیشرفت = گیر (همهٔ باقی‌مانده خطادارند) → توقف
+        if (r.counts.removed === 0 && r.counts.notFound === 0 && r.counts.error > 0) {
+          stuck++;
+          if (stuck >= 2) break;
+        } else {
+          stuck = 0;
+        }
+      }
+      toast({ description: 'پردازش صف تمام شد — لیست به‌روز شد.' });
+    } catch (e) {
+      toast({ description: (e as Error).message || 'پردازش دسته ناموفق بود.', variant: 'destructive' });
+    } finally {
+      batchRunRef.current = false;
+      setBatch((b) => b && { ...b, running: false, done: true });
+      void queryClient.invalidateQueries({ queryKey: ['product-files'] });
+    }
+  };
+
+  const stopBatch = () => {
+    batchRunRef.current = false;
+  };
+
   const rows = data?.rows ?? [];
   const summary = data?.summary;
   const pageCount = data?.pageCount ?? 1;
@@ -225,6 +344,20 @@ function ProductImagesManagerInner() {
         </div>
         <div className="flex items-center gap-2">
           {isFetching && !isLoading ? <Loader2 size={15} className="animate-spin text-muted-foreground" /> : null}
+          {/* «اصلاح خودکار همه» (خواستهٔ مالک ۱۹-۱۱): صفِ واترمارک‌دارها را
+              دسته‌دسته پردازش می‌کند — همان الگوریتم، داخل خود بک‌اند */}
+          <Button
+            size="sm"
+            className="h-9 gap-1.5 rounded-[10px] px-3 text-[11.5px]"
+            disabled={batch?.running}
+            onClick={() => void startBatch()}
+            title="همهٔ تصاویر علامت‌خوردهٔ «واترمارک دارد» را خودکار اصلاح می‌کند — پیش از تعویض، نتیجهٔ چند مورد را با دکمهٔ زیر تصاویر ببین"
+          >
+            {batch?.running ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+            {batch?.running
+              ? `در حال اصلاح… ${batch.remaining != null ? toFa(batch.remaining) : ''}`
+              : `اصلاح خودکار${summary && summary.watermarked > 0 ? ` (${toFa(summary.watermarked)})` : ''}`}
+          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -235,6 +368,37 @@ function ProductImagesManagerInner() {
           </Button>
         </div>
       </div>
+
+      {/* نوار پیشرفت «اصلاح خودکار» — شمارنده‌های زنده + توقف */}
+      {batch ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-3.5 py-2.5">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] font-bold tabular-nums">
+            {batch.running ? (
+              <span className="flex items-center gap-1.5 text-primary">
+                <Loader2 size={14} className="animate-spin" /> در حال پردازش صف…
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-emerald-600">
+                <BadgeCheck size={14} /> پردازش صف تمام شد
+              </span>
+            )}
+            <span>پردازش‌شده: {toFa(batch.processed)}</span>
+            <span className="text-emerald-600">حذف‌شده: {toFa(batch.removed)}</span>
+            <span className="text-amber-600">پیدا نشد: {toFa(batch.notFound)}</span>
+            {batch.errors > 0 ? <span className="text-destructive">خطا: {toFa(batch.errors)}</span> : null}
+            <span className="text-muted-foreground">باقی‌ماندهٔ صف: {batch.remaining != null ? toFa(batch.remaining) : '—'}</span>
+          </div>
+          {batch.running ? (
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-[10px] px-3 text-[11px]" onClick={stopBatch}>
+              <Square size={12} /> توقف
+            </Button>
+          ) : (
+            <Button size="sm" variant="ghost" className="h-8 rounded-[10px] px-3 text-[11px]" onClick={() => setBatch(null)}>
+              بستن
+            </Button>
+          )}
+        </div>
+      ) : null}
 
       {/* کارت‌های آماری + فیلتر — کلیک روی کارت = اعمال همان فیلتر.
           «کل تصاویر» = باقی‌مانده (بدون اصلاح‌شده‌ها) — هم‌راستا با تب «همه» */}
@@ -402,10 +566,8 @@ function ProductImagesManagerInner() {
                   #{f.relatedId ? toFaPlain(f.relatedId) : '—'}
                 </p>
                 {/* دو سوییچ بزرگ «دارد/ندارد» در دو طرف با فاصله (خواستهٔ مالک ۱۹-۱۱
-                    شب): کنار هم نگذاشته شد تا کلیک اشتباه رخ ندهد. هرکدام روشن شود
-                    = بررسی همان لحظه ثبت و تصویر از لیست باقی‌مانده خارج می‌شود؛
-                    خاموش‌کردن سوییچ = پس‌گرفتن بررسی و بازگشت به باقی‌مانده.
-                    راست: «دارد» (کهربایی — صف حذف) | چپ: «ندارد» (سبز — تمیز) */}
+                    شب): کنار هم نگذاشته شد تا کلیک اشتباه رخ ندهد. راست: «دارد»
+                    (کهربایی — صف حذف) | چپ: «ندارد» (سبز — تمیز) */}
                 <div className="flex items-center justify-between gap-1">
                   <label
                     className="flex cursor-pointer select-none items-center gap-1.5"
@@ -434,6 +596,19 @@ function ProductImagesManagerInner() {
                     <span className="text-[11px] font-extrabold">ندارد</span>
                   </label>
                 </div>
+                {/* «اصلاح واترمارک» — تست روی همین تصویر: پیش‌نمایش قبل/بعد بدون
+                    تغییر؛ اگر راضی بودی «اعمال» تعویض درجا می‌کند (خواستهٔ مالک ۱۹-۱۱) */}
+                {!f.fixedAt ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 w-full gap-1 rounded-[9px] px-2 text-[10.5px] font-extrabold"
+                    onClick={() => void openPreview(f)}
+                    title="پیش‌نمایش حذف واترمارک روی همین تصویر — چیزی ذخیره نمی‌شود تا خودت تأیید کنی"
+                  >
+                    <Wand2 size={12} /> اصلاح واترمارک
+                  </Button>
+                ) : null}
               </figcaption>
             </figure>
           ))}
@@ -466,6 +641,124 @@ function ProductImagesManagerInner() {
           </Button>
         </div>
       )}
+
+      {/* مودال پیش‌نمایش حذف واترمارک — «قبل | بعد» + اعمال (خواستهٔ مالک ۱۹-۱۱) */}
+      <Dialog open={!!wmFix} onOpenChange={(v) => (!v || !wmApplying ? setWmFix(null) : undefined)}>
+        <DialogContent className="max-w-2xl">
+          {wmFix ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-sm">
+                  <Wand2 size={15} className="text-primary" />
+                  پیش‌نمایش حذف واترمارک — آگهی #{wmFix.row.relatedId ? toFaPlain(wmFix.row.relatedId) : '—'}
+                </DialogTitle>
+                <DialogDescription className="text-[11px]">
+                  چیزی ذخیره نشده — فقط بعد از تأییدِ تو تصویر اصلی تعویض می‌شود.
+                </DialogDescription>
+              </DialogHeader>
+
+              {wmFix.loading ? (
+                <div className="grid place-items-center rounded-lg border bg-card py-16">
+                  <Loader2 size={26} className="animate-spin text-primary" />
+                  <p className="mt-3 text-xs font-bold text-muted-foreground">
+                    دانلود و پردازش تصویر… (چند ثانیه)
+                  </p>
+                </div>
+              ) : wmFix.error ? (
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-xs font-bold text-destructive">
+                  {wmFix.error}
+                </div>
+              ) : wmFix.result?.status === 'not_found' ? (
+                <div className="space-y-2 rounded-lg border border-amber-300/60 bg-amber-50 p-4 dark:bg-amber-950/30">
+                  <p className="flex items-center gap-2 text-xs font-extrabold text-amber-700 dark:text-amber-400">
+                    <ShieldAlert size={15} /> واترمارک باسکول در این تصویر پیدا نشد
+                  </p>
+                  <p className="text-[11px] leading-5 text-muted-foreground">
+                    این تصویر را دستی بررسی کن (کلیک روی تصویر = اندازهٔ اصلی). اگر واترمارک دارد اما پیدا
+                    نشد، با Paint پاک کن و از «تعویض» بالا آپلود کن.
+                  </p>
+                  {wmFix.result.score != null ? (
+                    <p className="font-mono text-[10px] text-muted-foreground">
+                      score={String(wmFix.result.score)} evidence={String(wmFix.result.evidence)} · {toFa(wmFix.result.ms)}ms
+                    </p>
+                  ) : null}
+                </div>
+              ) : wmFix.result ? (
+                <div className="space-y-3">
+                  {/* برش قبل/بعد — بالا: قبل، پایین: بعد */}
+                  {wmFix.showFull && wmFix.result.afterDataUrl ? (
+                    <figure className="space-y-1.5">
+                      <img
+                        src={wmFix.result.afterDataUrl}
+                        alt="تصویر پاک‌شده"
+                        className="max-h-[52vh] w-full rounded-lg border object-contain"
+                      />
+                      <figcaption className="text-center text-[10.5px] font-bold text-muted-foreground">
+                        کل تصویر بعد از حذف واترمارک
+                      </figcaption>
+                    </figure>
+                  ) : wmFix.result.compareDataUrl ? (
+                    <figure className="space-y-1.5">
+                      <span className="block rounded-t-lg border border-b-0 bg-secondary/60 py-1 text-center text-[10.5px] font-extrabold">
+                        قبل
+                      </span>
+                      <img
+                        src={wmFix.result.compareDataUrl}
+                        alt="مقایسهٔ قبل و بعد"
+                        className="w-full rounded-lg border object-contain"
+                      />
+                      <figcaption className="text-center text-[10.5px] font-bold text-muted-foreground">
+                        بعد — بزرگ‌نمایی ×۲ · امتیاز تشخیص {String(wmFix.result.score)} · مطمئن{' '}
+                        {String(wmFix.result.evidence)} · {toFa(wmFix.result.ms)} میلی‌ثانیه
+                      </figcaption>
+                    </figure>
+                  ) : null}
+
+                  <div className="flex items-center justify-between">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 rounded-[9px] px-2 text-[10.5px] font-bold text-muted-foreground"
+                      onClick={() =>
+                        setWmFix((s) => (s ? { ...s, showFull: !s.showFull } : s))
+                      }
+                    >
+                      {wmFix.showFull ? 'نمایش مقایسهٔ قبل/بعد' : 'نمایش کل تصویر پاک‌شده'}
+                    </Button>
+                    <p className="font-mono text-[10px] text-muted-foreground" title="مکان واترمارک روی تصویر اصلی">
+                      box: {String(wmFix.result.box?.x)}, {String(wmFix.result.box?.y)} ·{' '}
+                      {String(wmFix.result.box?.w)}×{String(wmFix.result.box?.h)}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 rounded-[10px] px-4 text-xs"
+                  disabled={wmApplying}
+                  onClick={() => setWmFix(null)}
+                >
+                  بستن
+                </Button>
+                {wmFix.result?.status === 'removed' ? (
+                  <Button
+                    size="sm"
+                    className="h-9 gap-1.5 rounded-[10px] px-4 text-xs"
+                    disabled={wmApplying}
+                    onClick={() => void applyPreviewed()}
+                  >
+                    {wmApplying ? <Loader2 size={13} className="animate-spin" /> : <BadgeCheck size={14} />}
+                    تأیید و اعمال روی سایت
+                  </Button>
+                ) : null}
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
