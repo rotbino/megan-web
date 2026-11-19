@@ -76,6 +76,12 @@ function isSortKey(v: string | null): v is SortKey {
   return v === 'productCreated' || v === 'productUpdated';
 }
 
+/** رقم‌های رشتهٔ عددی → فارسی، بدون جداکنندهٔ هزارگان (شناسهٔ باسکول: 333430 → ۳۳۳۴۳۰) */
+function toFaPlain(digits: string): string {
+  const fa = '۰۱۲۳۴۵۶۷۸۹';
+  return digits.replace(/\d/g, (d) => fa[Number(d)]);
+}
+
 /** پنجرهٔ اسکن: ۵ کاش در ردیف × ۲ ردیف — بدون اسکرول عمودی (۱۹-۱۱ عصر) */
 const PAGE_SIZE = 10;
 /** شبکهٔ کاشی — دسکتاپ دقیقاً ۵ ستون (شش‌تایی حذف شد تا کاش‌ها بزرگ‌تر باشند) */
@@ -393,7 +399,7 @@ function ProductImagesManagerInner() {
                   className="truncate text-center font-mono text-[11px] font-extrabold tabular-nums text-foreground"
                   title={`File ID: ${f.id}`}
                 >
-                  #{f.relatedId ? toFa(Number(f.relatedId)) : '—'}
+                  #{f.relatedId ? toFaPlain(f.relatedId) : '—'}
                 </p>
                 {/* دو سوییچ بزرگ «دارد/ندارد» در دو طرف با فاصله (خواستهٔ مالک ۱۹-۱۱
                     شب): کنار هم نگذاشته شد تا کلیک اشتباه رخ ندهد. هرکدام روشن شود
