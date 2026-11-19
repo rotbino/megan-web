@@ -6,12 +6,13 @@
  *
  * مرحلهٔ ۱ شکار واترمارک (خواستهٔ مالک ۱۹-۱۱): به‌جای کارت‌های آگهی، فقط
  * خودِ تصاویر از جدول فایل‌ها می‌آیند — نه عنوان، نه فروشنده، نه هیچ دادهٔ
- * دیگری. زیر هر تصویر: شناسهٔ فایل + دو تیک «دارد/ندارد» (خواستهٔ مالک
- * ۱۹-۱۱ شب — به‌جای سوییچ): «دارد» → File.hasWatermark=true (صف حذف) |
- * «ندارد» → false = بررسی‌شده و خروج از لیست باقی‌مانده — لیست کم‌کم
- * خالی می‌شود و بررسی تکراری نمی‌شود؛ برداشتن تیک = null = بازگشت به
- * باقی‌مانده. تب «باقی‌مانده» فقط بررسی‌نشده‌ها را نشان می‌دهد؛
- * «بررسی‌شده» = تیک «ندارد» خورده‌ها؛ «اصلاح» = واترمارک حذف‌شده.
+ * دیگری. زیر هر تصویر: شناسهٔ عددی آگهی در باسکول + دو سوییچ بزرگ
+ * «دارد/ندارد» در دو طرف (خواستهٔ مالک ۱۹-۱۱ شب): «دارد» →
+ * File.hasWatermark=true (صف حذف) | «ندارد» → false = بررسی‌شده و خروج از
+ * لیست باقی‌مانده — لیست کم‌کم خالی می‌شود و بررسی تکراری نمی‌شود؛
+ * خاموش‌کردن سوییچ = null = بازگشت به باقی‌مانده (پس‌گرفتن بررسی).
+ * تب «باقی‌مانده» فقط بررسی‌نشده‌ها را نشان می‌دهد؛ «بررسی‌شده» =
+ * سوییچ «ندارد» روشن‌شده‌ها؛ «اصلاح واترمارک» = واترمارکشان حذف شده.
  *
  *   • کلیک روی تصویر = اندازهٔ اصلی در تب جدید (برای دیدن دقیق واترمارک)
  *   • کاش واترمارک‌دار با قاب کهربایی — در شبکهٔ اسکن چشم می‌افتد
@@ -41,8 +42,8 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { productFilesApi, type ProductFilesList, type ProductFilesParams } from '@/lib/importer/client';
 import { toFa } from '@/lib/format';
@@ -134,7 +135,7 @@ function ProductImagesManagerInner() {
     placeholderData: keepPreviousData,
   });
 
-  // ── دو تیک «دارد/ندارد» — optimistic؛ خطا = بازگشت + توست ──
+  // ── دو سوییچ «دارد/ندارد» — optimistic؛ خطا = بازگشت + توست ──
   // true = صف حذف | false = بررسی‌شده (خروج از باقی‌مانده) | null = پس‌گرفتن بررسی
   const mark = useMutation({
     mutationFn: ({ id, hasWatermark }: { id: string; hasWatermark: boolean | null }) =>
@@ -177,13 +178,13 @@ function ProductImagesManagerInner() {
     },
     onError: (err: Error, _v, ctx) => {
       for (const [key, value] of ctx?.snapshots ?? []) queryClient.setQueryData(key, value);
-      toast({ description: err.message || 'ثبت تیک واترمارک ناموفق بود.', variant: 'destructive' });
+      toast({ description: err.message || 'ثبت سوییچ واترمارک ناموفق بود.', variant: 'destructive' });
     },
     onSuccess: (_r, { hasWatermark }) => {
       toast({
         description:
           hasWatermark === true
-            ? 'ثبت شد: واترمارک دارد — در صف حذف قرار گرفت.'
+            ? 'ثبت شد: واترمارک دارد — در صف حذف قرار گرفت و از باقی‌مانده خارج شد.'
             : hasWatermark === false
               ? 'ثبت شد: بدون واترمارک — از لیست باقی‌مانده خارج شد.'
               : 'بررسی پس گرفته شد — فایل به باقی‌مانده برگشت.',
@@ -211,7 +212,7 @@ function ProductImagesManagerInner() {
             <h1 className="text-base font-extrabold">تصاویر آگهی‌ها</h1>
             <p className="text-[11px] text-muted-foreground">
               {data
-                ? `${toFa(data.total)} تصویر${wm !== 'all' ? ' مطابق فیلتر' : ''} — دو تیک «دارد/ندارد»: بررسی‌شده‌ها از لیست خارج می‌شوند`
+                ? `${toFa(data.total)} تصویر${wm !== 'all' ? ' مطابق فیلتر' : ''} — سوییچ «دارد/ندارد» هرکدام بزنی، بررسی‌شده و از لیست خارج می‌شود`
                 : 'شکار واترمارک — فقط تصاویر، بدون هیچ دادهٔ دیگر'}
             </p>
           </div>
@@ -385,42 +386,46 @@ function ProductImagesManagerInner() {
                   <ExternalLink size={12} />
                 </span>
               </a>
-              <figcaption className="space-y-1 px-2 py-1.5">
+              <figcaption className="space-y-1.5 px-2.5 py-2">
+                {/* شناسهٔ عددی آگهی در باسکول (خواستهٔ مالک ۱۹-۱۱ شب — به‌جای ObjectId
+                    فایل): همان شماره‌ای که آگهی در باسکول دارد؛ ObjectId در تولتیپ می‌ماند */}
                 <p
-                  className="truncate font-mono text-[9.5px] text-muted-foreground"
-                  dir="ltr"
+                  className="truncate text-center font-mono text-[11px] font-extrabold tabular-nums text-foreground"
                   title={`File ID: ${f.id}`}
                 >
-                  {f.id}
+                  #{f.relatedId ? toFa(Number(f.relatedId)) : '—'}
                 </p>
-                {/* دو تیک «دارد/ندارد» (خواستهٔ مالک ۱۹-۱۱ شب — به‌جای سوییچ):
-                    دارد = صف حذف (کهربایی) | ندارد = بررسی‌شده، خروج از باقی‌مانده
-                    (سبز) | برداشتن تیک = پس‌گرفتن بررسی و بازگشت به باقی‌مانده */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[9.5px] text-muted-foreground">واترمارک:</span>
+                {/* دو سوییچ بزرگ «دارد/ندارد» در دو طرف با فاصله (خواستهٔ مالک ۱۹-۱۱
+                    شب): کنار هم نگذاشته شد تا کلیک اشتباه رخ ندهد. هرکدام روشن شود
+                    = بررسی همان لحظه ثبت و تصویر از لیست باقی‌مانده خارج می‌شود؛
+                    خاموش‌کردن سوییچ = پس‌گرفتن بررسی و بازگشت به باقی‌مانده.
+                    راست: «دارد» (کهربایی — صف حذف) | چپ: «ندارد» (سبز — تمیز) */}
+                <div className="flex items-center justify-between gap-1">
                   <label
-                    className="flex cursor-pointer select-none items-center gap-1 text-[10px] font-bold"
-                    title="واترمارک دارد — وارد صف حذف می‌شود"
+                    className="flex cursor-pointer select-none items-center gap-1.5"
+                    title="واترمارک دارد — وارد صف حذف می‌شود و از باقی‌مانده خارج می‌شود"
                   >
-                    دارد
-                    <Checkbox
+                    <span className="text-[11px] font-extrabold">دارد</span>
+                    <Switch
+                      size="lg"
                       checked={f.hasWatermark === true}
-                      onCheckedChange={(v) => mark.mutate({ id: f.id, hasWatermark: v === true ? true : null })}
+                      onCheckedChange={(v) => mark.mutate({ id: f.id, hasWatermark: v ? true : null })}
                       aria-label={`واترمارک دارد: ${f.id}`}
-                      className="size-3.5 data-[state=checked]:border-amber-500 data-[state=checked]:bg-amber-500"
+                      className="data-[state=checked]:bg-amber-500 data-[state=unchecked]:bg-muted-foreground/25"
                     />
                   </label>
                   <label
-                    className="flex cursor-pointer select-none items-center gap-1 text-[10px] font-bold"
+                    className="flex cursor-pointer select-none items-center gap-1.5"
                     title="بررسی شد — واترمارک ندارد؛ از لیست باقی‌مانده خارج می‌شود"
                   >
-                    ندارد
-                    <Checkbox
+                    <Switch
+                      size="lg"
                       checked={f.hasWatermark === false && f.reviewedAt != null}
-                      onCheckedChange={(v) => mark.mutate({ id: f.id, hasWatermark: v === true ? false : null })}
+                      onCheckedChange={(v) => mark.mutate({ id: f.id, hasWatermark: v ? false : null })}
                       aria-label={`واترمارک ندارد: ${f.id}`}
-                      className="size-3.5 data-[state=checked]:border-emerald-500 data-[state=checked]:bg-emerald-500"
+                      className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-muted-foreground/25"
                     />
+                    <span className="text-[11px] font-extrabold">ندارد</span>
                   </label>
                 </div>
               </figcaption>
