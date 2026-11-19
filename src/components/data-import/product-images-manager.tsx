@@ -6,10 +6,12 @@
  *
  * مرحلهٔ ۱ شکار واترمارک (خواستهٔ مالک ۱۹-۱۱): به‌جای کارت‌های آگهی، فقط
  * خودِ تصاویر از جدول فایل‌ها می‌آیند — نه عنوان، نه فروشنده، نه هیچ دادهٔ
- * دیگری. زیر هر تصویر: شناسهٔ فایل + سوییچ «واترمارک». تیک ادمین یعنی این
- * تصویر واترمارک دارد → File.hasWatermark در دیتابیس ترو می‌شود. با فیلتر
- * «واترمارک‌دار» لیست علامت‌خورده‌ها یک‌جا جدا می‌شود — پایهٔ کار پاک‌سازی
- * (هوش مصنوعی/دستی) در مرحلهٔ بعد.
+ * دیگری. زیر هر تصویر: شناسهٔ فایل + دو تیک «دارد/ندارد» (خواستهٔ مالک
+ * ۱۹-۱۱ شب — به‌جای سوییچ): «دارد» → File.hasWatermark=true (صف حذف) |
+ * «ندارد» → false = بررسی‌شده و خروج از لیست باقی‌مانده — لیست کم‌کم
+ * خالی می‌شود و بررسی تکراری نمی‌شود؛ برداشتن تیک = null = بازگشت به
+ * باقی‌مانده. تب «باقی‌مانده» فقط بررسی‌نشده‌ها را نشان می‌دهد؛
+ * «بررسی‌شده» = تیک «ندارد» خورده‌ها؛ «اصلاح» = واترمارک حذف‌شده.
  *
  *   • کلیک روی تصویر = اندازهٔ اصلی در تب جدید (برای دیدن دقیق واترمارک)
  *   • کاش واترمارک‌دار با قاب کهربایی — در شبکهٔ اسکن چشم می‌افتد
@@ -39,10 +41,10 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { productFilesApi, type ProductFileRow, type ProductFilesParams } from '@/lib/importer/client';
+import { productFilesApi, type ProductFilesList, type ProductFilesParams } from '@/lib/importer/client';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -52,11 +54,11 @@ type WmFilter = 'all' | 'yes' | 'no' | 'fixed';
 type SortKey = 'productCreated' | 'productUpdated';
 
 const WM_TABS: Array<{ key: WmFilter; label: string }> = [
-  { key: 'all', label: 'همهٔ تصاویر' },
+  // «باقی‌مانده» = فقط بررسی‌نشده‌ها — هر تیک (دارد/ندارد) یعنی خروج از
+  // این لیست تا کم‌کم خالی شود و بررسی تکراری نباشد (خواستهٔ مالک ۱۹-۱۱ شب)
+  { key: 'all', label: 'باقی‌مانده' },
   { key: 'yes', label: 'واترمارک‌دار' },
-  { key: 'no', label: 'بدون واترمارک' },
-  // اصلاح‌شده‌ها — تب جدا تا لیست باقی‌مانده خلوت بماند (خواستهٔ مالک ۱۹-۱۱):
-  // تصویری که واترمارکش حذف شده دیگر در «همه» نمی‌آید
+  { key: 'no', label: 'بررسی‌شده' },
   { key: 'fixed', label: 'اصلاح واترمارک' },
 ];
 
@@ -132,33 +134,64 @@ function ProductImagesManagerInner() {
     placeholderData: keepPreviousData,
   });
 
-  // ── تیک واترمارک — optimistic؛ خطا = بازگشت + توست ──
+  // ── دو تیک «دارد/ندارد» — optimistic؛ خطا = بازگشت + توست ──
+  // true = صف حذف | false = بررسی‌شده (خروج از باقی‌مانده) | null = پس‌گرفتن بررسی
   const mark = useMutation({
-    mutationFn: ({ id, hasWatermark }: { id: string; hasWatermark: boolean }) =>
+    mutationFn: ({ id, hasWatermark }: { id: string; hasWatermark: boolean | null }) =>
       productFilesApi.setWatermark(id, hasWatermark),
-    onMutate: async ({ id, hasWatermark }) => {
+    onMutate: async ({ id, hasWatermark: next }) => {
       await queryClient.cancelQueries({ queryKey: ['product-files'] });
-      const snapshots = queryClient.getQueriesData<{ rows: ProductFileRow[]; summary: { total: number; watermarked: number; clean: number; fixed: number } }>({ queryKey: ['product-files'] });
+      const snapshots = queryClient.getQueriesData<ProductFilesList>({ queryKey: ['product-files'] });
+      const stamp = new Date().toISOString();
       for (const [key, value] of snapshots) {
         if (!value) continue;
-        queryClient.setQueryData(key, {
+        // گذار قبلی→بعدی: تعدیل کارت‌های آماری + خودِ کاش — «بررسی‌شده»
+        // یعنی مهر reviewedAt ست باشد (false خامِ ایمپورت بررسی‌شده نیست)
+        const row = value.rows.find((r) => r.id === id);
+        const prev: 'yes' | 'no' | null =
+          row?.hasWatermark === true ? 'yes' : row?.reviewedAt != null && row?.hasWatermark === false ? 'no' : null;
+        const nextKey: 'yes' | 'no' | null = next === true ? 'yes' : next === false ? 'no' : null;
+        const sum = value.summary;
+        queryClient.setQueryData<ProductFilesList>(key, {
           ...value,
-          rows: value.rows.map((r) => (r.id === id ? { ...r, hasWatermark } : r)),
-          summary: {
-            ...value.summary,
-            watermarked: value.summary.watermarked + (hasWatermark ? 1 : -1),
-            clean: value.summary.clean + (hasWatermark ? -1 : 1),
-          },
+          rows: value.rows.map((r) =>
+            r.id === id
+              ? {
+                  ...r,
+                  hasWatermark: next,
+                  reviewedAt: next === null ? null : r.reviewedAt ?? stamp,
+                }
+              : r,
+          ),
+          summary: sum
+            ? {
+                ...sum,
+                total: sum.total + (prev === null ? -1 : 0) + (nextKey === null ? 1 : 0),
+                watermarked: sum.watermarked + (prev === 'yes' ? -1 : 0) + (nextKey === 'yes' ? 1 : 0),
+                clean: sum.clean + (prev === 'no' ? -1 : 0) + (nextKey === 'no' ? 1 : 0),
+              }
+            : sum,
         });
       }
       return { snapshots };
     },
     onError: (err: Error, _v, ctx) => {
       for (const [key, value] of ctx?.snapshots ?? []) queryClient.setQueryData(key, value);
-      toast({ description: err.message || 'ثبت علامت واترمارک ناموفق بود.', variant: 'destructive' });
+      toast({ description: err.message || 'ثبت تیک واترمارک ناموفق بود.', variant: 'destructive' });
     },
     onSuccess: (_r, { hasWatermark }) => {
-      toast({ description: hasWatermark ? 'علامت واترمارک ثبت شد.' : 'علامت واترمارک برداشته شد.' });
+      toast({
+        description:
+          hasWatermark === true
+            ? 'ثبت شد: واترمارک دارد — در صف حذف قرار گرفت.'
+            : hasWatermark === false
+              ? 'ثبت شد: بدون واترمارک — از لیست باقی‌مانده خارج شد.'
+              : 'بررسی پس گرفته شد — فایل به باقی‌مانده برگشت.',
+      });
+    },
+    // تیک‌خورده از تب فعلی (باقی‌مانده/بررسی‌شده) خارج می‌شود → فچ تازه
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['product-files'] });
     },
   });
 
@@ -178,7 +211,7 @@ function ProductImagesManagerInner() {
             <h1 className="text-base font-extrabold">تصاویر آگهی‌ها</h1>
             <p className="text-[11px] text-muted-foreground">
               {data
-                ? `${toFa(data.total)} تصویر${wm !== 'all' ? ' مطابق فیلتر' : ''} — تیک بزنید یعنی واترمارک دارد`
+                ? `${toFa(data.total)} تصویر${wm !== 'all' ? ' مطابق فیلتر' : ''} — دو تیک «دارد/ندارد»: بررسی‌شده‌ها از لیست خارج می‌شوند`
                 : 'شکار واترمارک — فقط تصاویر، بدون هیچ دادهٔ دیگر'}
             </p>
           </div>
@@ -204,7 +237,7 @@ function ProductImagesManagerInner() {
             [
               { key: 'all' as WmFilter, label: 'باقی‌مانده', value: summary.total, icon: Images, cls: '' },
               { key: 'yes' as WmFilter, label: 'واترمارک‌دار', value: summary.watermarked, icon: ShieldAlert, cls: 'text-amber-600' },
-              { key: 'no' as WmFilter, label: 'بدون واترمارک', value: summary.clean, icon: ShieldCheck, cls: 'text-emerald-600' },
+              { key: 'no' as WmFilter, label: 'بررسی‌شده', value: summary.clean, icon: ShieldCheck, cls: 'text-emerald-600' },
               { key: 'fixed' as WmFilter, label: 'اصلاح واترمارک', value: summary.fixed, icon: BadgeCheck, cls: 'text-emerald-600' },
             ]
           ).map((c) => (
@@ -304,10 +337,12 @@ function ProductImagesManagerInner() {
             {productId != null
               ? 'این آگهی تصویری ندارد یا شناسه اشتباه است'
               : wm === 'yes'
-                ? 'هنوز هیچ تصویری علامت واترمارک نخورده — از تب «همهٔ تصاویر» علامت بزنید'
-                : wm === 'fixed'
-                  ? 'هنوز هیچ تصویری اصلاح نشده — تصاویری که واترمارکشان حذف شود اینجا می‌آیند'
-                  : 'فیلتر را تغییر دهید یا دوباره تلاش کنید'}
+                ? 'هنوز هیچ تصویری در صف حذف نیست — در تب «باقی‌مانده» تیک «دارد» بزنید'
+                : wm === 'no'
+                  ? 'هنوز چیزی «بررسی‌شده» نیست — تیک «ندارد» یعنی تمیز و خارج از لیست'
+                  : wm === 'fixed'
+                    ? 'هنوز هیچ تصویری اصلاح نشده — تصاویری که واترمارکشان حذف شود اینجا می‌آیند'
+                    : 'همه‌چیز بررسی شده — عالی!'}
           </p>
         </div>
       ) : (
@@ -317,7 +352,7 @@ function ProductImagesManagerInner() {
               key={f.id}
               className={cn(
                 'overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md',
-                f.hasWatermark && 'border-amber-400/80 ring-2 ring-amber-300/50',
+                f.hasWatermark === true && 'border-amber-400/80 ring-2 ring-amber-300/50',
                 // اصلاح‌شده = قاب سبز — در تب «اصلاح واترمارک» چشم می‌افتد (۱۹-۱۱)
                 f.fixedAt && 'border-emerald-400/80 ring-2 ring-emerald-300/50',
               )}
@@ -350,7 +385,7 @@ function ProductImagesManagerInner() {
                   <ExternalLink size={12} />
                 </span>
               </a>
-              <figcaption className="flex items-center justify-between gap-1 px-2 py-1.5">
+              <figcaption className="space-y-1 px-2 py-1.5">
                 <p
                   className="truncate font-mono text-[9.5px] text-muted-foreground"
                   dir="ltr"
@@ -358,15 +393,36 @@ function ProductImagesManagerInner() {
                 >
                   {f.id}
                 </p>
-                <label className="flex shrink-0 cursor-pointer items-center gap-1 text-[10px] font-bold">
-                  واترمارک
-                  <Switch
-                    checked={f.hasWatermark}
-                    onCheckedChange={(v) => mark.mutate({ id: f.id, hasWatermark: v })}
-                    aria-label={`علامت واترمارک تصویر ${f.id}`}
-                    className={cn('data-[state=checked]:bg-amber-500')}
-                  />
-                </label>
+                {/* دو تیک «دارد/ندارد» (خواستهٔ مالک ۱۹-۱۱ شب — به‌جای سوییچ):
+                    دارد = صف حذف (کهربایی) | ندارد = بررسی‌شده، خروج از باقی‌مانده
+                    (سبز) | برداشتن تیک = پس‌گرفتن بررسی و بازگشت به باقی‌مانده */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[9.5px] text-muted-foreground">واترمارک:</span>
+                  <label
+                    className="flex cursor-pointer select-none items-center gap-1 text-[10px] font-bold"
+                    title="واترمارک دارد — وارد صف حذف می‌شود"
+                  >
+                    دارد
+                    <Checkbox
+                      checked={f.hasWatermark === true}
+                      onCheckedChange={(v) => mark.mutate({ id: f.id, hasWatermark: v === true ? true : null })}
+                      aria-label={`واترمارک دارد: ${f.id}`}
+                      className="size-3.5 data-[state=checked]:border-amber-500 data-[state=checked]:bg-amber-500"
+                    />
+                  </label>
+                  <label
+                    className="flex cursor-pointer select-none items-center gap-1 text-[10px] font-bold"
+                    title="بررسی شد — واترمارک ندارد؛ از لیست باقی‌مانده خارج می‌شود"
+                  >
+                    ندارد
+                    <Checkbox
+                      checked={f.hasWatermark === false && f.reviewedAt != null}
+                      onCheckedChange={(v) => mark.mutate({ id: f.id, hasWatermark: v === true ? false : null })}
+                      aria-label={`واترمارک ندارد: ${f.id}`}
+                      className="size-3.5 data-[state=checked]:border-emerald-500 data-[state=checked]:bg-emerald-500"
+                    />
+                  </label>
+                </div>
               </figcaption>
             </figure>
           ))}

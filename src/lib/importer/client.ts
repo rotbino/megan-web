@@ -674,7 +674,12 @@ export interface ProductFileRow {
   id: string;
   url: string;
   thumbUrl: string | null;
-  hasWatermark: boolean;
+  /** true = واترمارک دارد (صف حذف) | false/null = ندارد یا بررسی‌نشده —
+   *  ملاک «بررسی‌شده بودن» reviewedAt است (ایمپورت پیش‌فرض false می‌گذارد) */
+  hasWatermark: boolean | null;
+  /** (۱۹-۱۱ شب) زمان بررسی — ست یعنی با یکی از دو تیک «دارد/ندارد» بررسی
+   *  شده و از لیست باقی‌مانده خارج است؛ null = هنوز بررسی نشده */
+  reviewedAt: string | null;
   /** (۱۹-۱۱) زمان اصلاح واترمارک — غیرnull یعنی تمیز شده و در تب «اصلاح واترمارک» است */
   fixedAt: string | null;
   /** id آگهیِ صاحب تصویر (رشته) */
@@ -684,9 +689,12 @@ export interface ProductFileRow {
 }
 
 export interface ProductFilesSummary {
-  /** باقی‌مانده = همه به‌جز اصلاح‌شده‌ها (تب «همه» همین را نشان می‌دهد) */
+  /** باقی‌مانده = فقط بررسی‌نشده‌ها — هر تیک (دارد/ندارد) فایل را از
+   *  لیست خارج می‌کند تا کم‌کم خالی شود (خواستهٔ مالک ۱۹-۱۱ شب) */
   total: number;
+  /** صف حذف = «دارد» تیک خورده */
   watermarked: number;
+  /** بررسی‌شده = «ندارد» تیک خورده (و هنوز اصلاح نشده) */
   clean: number;
   /** اصلاح‌شده‌ها — تب «اصلاح واترمارک» */
   fixed: number;
@@ -777,9 +785,11 @@ export const productFilesApi = {
       json<ProductFilesList>(r),
     ),
 
-  /** تیک واترمارک روی یک فایل — File.hasWatermark در دیتابیس ترو/فالس می‌شود */
-  setWatermark: (id: string, hasWatermark: boolean) =>
+  /** دو تیک «دارد/ندارد» (خواستهٔ مالک ۱۹-۱۱ شب):
+   *  true = واترمارک دارد (صف حذف) | false = بررسی‌شده بدون واترمارک |
+   *  null = پس‌گرفتن بررسی — بازگشت به لیست باقی‌مانده */
+  setWatermark: (id: string, hasWatermark: boolean | null) =>
     adminFetch(`importer/product-files/${id}/watermark`, { hasWatermark }).then((r) =>
-      json<{ id: string; hasWatermark: boolean }>(r),
+      json<{ id: string; hasWatermark: boolean | null }>(r),
     ),
 };
