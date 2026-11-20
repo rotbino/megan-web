@@ -41,12 +41,21 @@ import {
   Loader2,
   RefreshCcw,
   ShieldAlert,
+  Square,
   Upload,
   Wand2,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import {
   productFilesApi,
@@ -77,6 +86,14 @@ const LS_SIZE_KEY = 'pi:batch-size';
 const MAX_FILE_MB = 5;
 const MIN_FILE_KB = 4;
 const ACCEPTED_MIME = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'] as const;
+
+/** اصلاح گروهی (خواستهٔ مالک ۲۲-۱۱): «همه باهم» از دید کاربر — یک کلیک؛
+ * ولی موتور ۶ تصویر را همزمان می‌فرستد و بعدی‌ها را در صف خودکار نگه
+ * می‌دارد. چرا ۶؟ مرورگر روی HTTP/1.1 به‌هرحال حداکثر ~۶ اتصال همزمان به
+ * یک مبدأ باز می‌کند و بک‌اند هم برای هر تصویر ~ده‌ها مگابایت رم decode
+ * نگه می‌دارد — ۶ یعنی بیشترین سرعتِ ممکن بدون خطر کرش؛ نه ۱ در ثانیه
+ * (بسیار کند) نه ۱۰۰ همزمان (خطر اتمام رم بک‌اند). */
+const BULK_CONCURRENCY = 6;
 
 function isSortKey(v: string | null): v is SortKey {
   return v === 'productCreated' || v === 'productUpdated';
@@ -194,6 +211,17 @@ function ProductImagesManagerInner() {
   /** کاش‌های «پیدا نشد / خطا» — راهنمای کهربایی تا دوباره اصلاح یا بررسی شوند */
   const [failedIds, setFailedIds] = useState<Record<string, 'not_found' | 'error'>>({});
 
+  // ── اصلاح گروهی (خواستهٔ مالک ۲۲-۱۱): دکمهٔ بالای فرم = کلیک خودکارِ
+  //    «اصلاح» همهٔ تصاویر دسته؛ استخر ۶تایی با صف خودکار و قابل توقف ──
+  const [pool, setPool] = useState<{ total: number; done: number } | null>(null);
+  const poolAbortRef = useRef(false);
+  const poolActiveRef = useRef(false);
+  /** مشغول‌ها (اصلاح یا آپلود هر کاش) — ref تا استخر گروهی بدون stale-closure چک کند */
+  const busyRef = useRef<Set<string>>(new Set());
+  /** تازه‌ترین ردیف‌ها — چکِ زندهٔ «همین لحظه اصلاح شده؟» داخل worker استخر */
+  const rowsRef = useRef<ProductFileRow[]>([]);
+  rowsRef.current = rows;
+
   // ── اصلاح دستی (خواستهٔ مالک ۲۲-۱۱): وقتی خودکار می‌گوید «پیدا نشد» ولی
   //    تصویر واقعاً واترمارک دارد — دانلود ← پاک‌کردن در Paint ← آپلود.
   //    فایل تازه روی کلید نسخه‌دار تازه می‌نشیند و replaceInPlace هر دو مهر
@@ -202,8 +230,14 @@ function ProductImagesManagerInner() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const targetIdRef = useRef<string | null>(null);
 
-  const fixOne = async (row: ProductFileRow) => {
-    if (applyingIds.has(row.id) || row.fixedAt) return;
+  /** اصلاح یک تصویر — نتیجه را برمی‌گرداند تا استخر گروهی بشمارد؛
+   *  silent = بدون توست (حالت گروهی؛ خطاها در پنجرهٔ «بررسی شد» دیده می‌شوند) */
+  const fixOne = async (
+    row: ProductFileRow,
+    opts?: { silent?: boolean },
+  ): Promise<'removed' | 'not_found' | 'error' | 'skipped'> => {
+    if (busyRef.current.has(row.id) || row.fixedAt) return 'skipped';
+    busyRef.current.add(row.id);
     setApplyingIds((s) => new Set(s).add(row.id));
     setFailedIds((f) => {
       if (!(row.id in f)) return f;
@@ -234,20 +268,31 @@ function ProductImagesManagerInner() {
               : value.summary,
           });
         }
+        return 'removed';
       } else if (r.status === 'not_found') {
         setFailedIds((f) => ({ ...f, [row.id]: 'not_found' }));
-        toast({
-          description: `واترمارک در تصویر #${row.relatedId ? toFaPlain(row.relatedId) : '—'} خودکار پیدا نشد — با دکمه‌های دانلود و آپلود همان کاش دستی اصلاحش کنید.`,
-          variant: 'destructive',
-        });
+        if (!opts?.silent) {
+          toast({
+            description: `واترمارک در تصویر #${row.relatedId ? toFaPlain(row.relatedId) : '—'} خودکار پیدا نشد — با دکمه‌های دانلود و آپلود همان کاش دستی اصلاحش کنید.`,
+            variant: 'destructive',
+          });
+        }
+        return 'not_found';
       } else {
         setFailedIds((f) => ({ ...f, [row.id]: 'error' }));
-        toast({ description: 'تعویض انجام نشد (فایل کلید ذخیره‌سازی ندارد).', variant: 'destructive' });
+        if (!opts?.silent) {
+          toast({ description: 'تعویض انجام نشد (فایل کلید ذخیره‌سازی ندارد).', variant: 'destructive' });
+        }
+        return 'error';
       }
     } catch (e) {
       setFailedIds((f) => ({ ...f, [row.id]: 'error' }));
-      toast({ description: (e as Error).message || 'اصلاح ناموفق بود.', variant: 'destructive' });
+      if (!opts?.silent) {
+        toast({ description: (e as Error).message || 'اصلاح ناموفق بود.', variant: 'destructive' });
+      }
+      return 'error';
     } finally {
+      busyRef.current.delete(row.id);
       setApplyingIds((s) => {
         const next = new Set(s);
         next.delete(row.id);
@@ -282,7 +327,8 @@ function ProductImagesManagerInner() {
   //    را می‌گیرد و از باقی‌مانده خارج می‌شود؛ invalidate نمی‌زنیم تا کاش
   //    جایش نپرد و آمار دستی تعدیل شود ──
   const uploadManual = async (row: ProductFileRow, file: File) => {
-    if (uploadingIds.has(row.id) || applyingIds.has(row.id)) return;
+    if (busyRef.current.has(row.id)) return;
+    busyRef.current.add(row.id);
     setUploadingIds((s) => new Set(s).add(row.id));
     try {
       // همان اندپوینت اثبات‌شدهٔ «تعویض درجا» — مهر بررسی و اصلاح هر دو
@@ -329,6 +375,7 @@ function ProductImagesManagerInner() {
     } catch (e) {
       toast({ description: (e as Error).message || 'آپلود ناموفق بود.', variant: 'destructive' });
     } finally {
+      busyRef.current.delete(row.id);
       setUploadingIds((s) => {
         const next = new Set(s);
         next.delete(row.id);
@@ -365,11 +412,69 @@ function ProductImagesManagerInner() {
     void uploadManual(row, file);
   };
 
+  // ── استخر اصلاح گروهی (خواستهٔ مالک ۲۲-۱۱): یک کلیک بالای فرم = کلیک
+  //    خودکارِ دکمهٔ اصلاحِ همهٔ تصاویر دسته — ۶ همزمان (سقف اتصال مرورگر)،
+  //    بعدی‌ها در صف خودکار؛ پیشرفت روی دکمه؛ کلیک دوباره = توقف صف
+  //    (در جریان‌ها تمام می‌شوند)؛ در پایان یک توست خلاصه ──
+  const runPool = async (targets: ProductFileRow[]) => {
+    if (poolActiveRef.current) return;
+    const list = targets.filter((r) => !r.fixedAt);
+    if (!list.length) return;
+    poolAbortRef.current = false;
+    poolActiveRef.current = true;
+    setPool({ total: list.length, done: 0 });
+    let next = 0;
+    let ok = 0;
+    let nf = 0;
+    let err = 0;
+    const worker = async () => {
+      for (;;) {
+        if (poolAbortRef.current) return;
+        const i = next++;
+        if (i >= list.length) return;
+        const snap = list[i]!;
+        // وضعیت زنده: شاید همان لحظه دستی جایگزین/اصلاح شده — رد شو
+        const fresh = rowsRef.current.find((r) => r.id === snap.id) ?? snap;
+        if (fresh.fixedAt || busyRef.current.has(fresh.id)) {
+          setPool((p) => (p ? { ...p, done: p.done + 1 } : p));
+          continue;
+        }
+        const outcome = await fixOne(fresh, { silent: true });
+        if (outcome === 'removed') ok += 1;
+        else if (outcome === 'not_found') nf += 1;
+        else if (outcome === 'error') err += 1;
+        setPool((p) => (p ? { ...p, done: p.done + 1 } : p));
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(BULK_CONCURRENCY, list.length) }, () => worker()),
+    );
+    poolActiveRef.current = false;
+    setPool(null);
+    if (!poolAbortRef.current) {
+      toast({
+        description:
+          `اصلاح گروهی تمام شد — ${toFa(ok)} تصویر تمیز شد` +
+          (nf > 0
+            ? `، ${toFa(nf)} واترمارک پیدا نشد (با «بررسی شد» پنجرهٔ دستی‌شان باز می‌شود)`
+            : '') +
+          (err > 0 ? `، ${toFa(err)} خطا` : '') +
+          '.',
+      });
+    }
+  };
+
   // ── «بررسی شد» (خواستهٔ مالک ۲۱-۱۱): مهر گروهی روی همهٔ دستهٔ فعلی —
   //    هرگز دوباره لود نمی‌شوند؛ دستهٔ بعدی جای آن‌ها را می‌گیرد ──
   const [confirming, setConfirming] = useState(false);
+
+  // ── مدال بزرگ خطاها (خواستهٔ مالک ۲۲-۱۱): «بررسی شد» اگر تصویرِ خطاخورده
+  //    در دسته مانده باشد اول این پنجره را باز می‌کند — همان‌جا تلاش مجدد یا
+  //    دانلود/ویرایش/آپلود دستی؛ در پایان «بررسی شد» نهایی دسته را می‌بندد ──
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalIds, setModalIds] = useState<string[]>([]);
   const confirmBatch = async () => {
-    if (confirming || applyingIds.size > 0 || uploadingIds.size > 0) return;
+    if (confirming || applyingIds.size > 0 || uploadingIds.size > 0 || pool) return;
     const ids = rows.map((r) => r.id);
     if (!ids.length) return;
     setConfirming(true);
@@ -379,6 +484,8 @@ function ProductImagesManagerInner() {
         description: `این دسته بررسی شد (${toFa(r.updated)} تصویر) — دستهٔ بعدیِ نیازمند بررسی لود می‌شود.`,
       });
       setFailedIds({});
+      setModalOpen(false);
+      setModalIds([]);
       await refetch();
     } catch (e) {
       toast({ description: (e as Error).message || 'ثبت بررسی ناموفق بود.', variant: 'destructive' });
@@ -402,6 +509,28 @@ function ProductImagesManagerInner() {
   const allDone = !isLoading && !isFetching && rows.length === 0;
   /** اصلاح خودکار + آپلود دستی در جریان — «بررسی شد» تا پایانشان قفل است */
   const inFlight = applyingIds.size + uploadingIds.size;
+  /** اصلاح‌نشده‌های این دسته — هدف «اصلاح گروهی» */
+  const unfixedCount = rows.filter((r) => !r.fixedAt).length;
+  /** خطاهای زندهٔ دسته — «بررسی شد» با وجودشان اول پنجرهٔ خطاها را باز می‌کند */
+  const failedRows = rows.filter((r) => !r.fixedAt && failedIds[r.id]);
+
+  /** «بررسی شد» (۲۲-۱۱): اگر خطا مانده → اول پنجرهٔ بزرگ خطاها؛ وگرنه بستن مستقیم */
+  const onRequestReview = () => {
+    if (confirming || inFlight > 0 || pool) return;
+    if (failedRows.length > 0) {
+      setModalIds(failedRows.map((r) => r.id));
+      setModalOpen(true);
+      return;
+    }
+    void confirmBatch();
+  };
+
+  /** کاش‌های پنجرهٔ خطاها — وضعیت زنده از کش: با اصلاح (دستی یا خودکار)
+   *  همان لحظه سبز و تیک‌دار می‌شوند و از شمارندهٔ «هنوز خطا دارد» کم می‌شوند */
+  const modalTiles = modalIds
+    .map((id) => rows.find((r) => r.id === id))
+    .filter((r): r is ProductFileRow => !!r);
+  const modalUnfixed = modalTiles.filter((r) => !r.fixedAt);
 
   return (
     <div className="mx-auto max-w-[1700px] space-y-4">
@@ -433,6 +562,25 @@ function ProductImagesManagerInner() {
         </div>
         <div className="flex items-center gap-2">
           {isFetching && !isLoading ? <Loader2 size={15} className="animate-spin text-muted-foreground" /> : null}
+          {/* اصلاح گروهی (خواستهٔ مالک ۲۲-۱۱): یک کلیک = کلیک خودکار «اصلاح»
+              همهٔ تصاویر دسته — استخر ۶تایی با صف خودکار؛ حین کار = توقف */}
+          <Button
+            size="sm"
+            className="h-9 gap-1.5 rounded-[10px] px-3 text-[11.5px] font-extrabold"
+            disabled={isLoading || confirming || (!pool && unfixedCount === 0)}
+            onClick={() => (pool ? (poolAbortRef.current = true) : void runPool(rows))}
+            title="دکمهٔ اصلاحِ همهٔ تصاویر این دسته را یک‌جا می‌زند — ۶ تصویر همزمان اصلاح می‌شود و بعدی‌ها خودکار در صف می‌روند؛ حین کار همین دکمه صف را متوقف می‌کند"
+          >
+            {pool ? (
+              <>
+                <Square size={13} /> توقف — {toFa(pool.done)} از {toFa(pool.total)}
+              </>
+            ) : (
+              <>
+                <Zap size={13} /> اصلاح گروهی ({toFa(unfixedCount)})
+              </>
+            )}
+          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -446,9 +594,9 @@ function ProductImagesManagerInner() {
 
       {/* راهنمای گردش‌کار — ساده */}
       <div className="rounded-lg border border-primary/25 bg-primary/5 px-3.5 py-2.5 text-[11.5px] leading-6">
-        <b>گردش‌کار:</b> ۱) تصاویر واترمارک‌دار را با «اصلاح واترمارک» تمیز کنید — هر چند تا که خواستید <b>همزمان</b> بزنید؛
-        ۲) اگر خودکار گفت «پیدا نشد» ولی تصویر واقعاً واترمارک دارد: با دکمهٔ <b>دانلود</b> تصویر را بگیرید، در Paint واترمارک را پاک کنید و با دکمهٔ <b>آپلود</b> همان کاش جایگزینش کنید؛
-        ۳) پایین صفحه «بررسی شد» را بزنید تا کل این دسته برای همیشه بسته شود و <b>دستهٔ بعدی</b> جای آن را بگیرد — آن‌قدر ادامه دهید تا دیگر هیچ تصویری نیازمند بررسی نماند.
+        <b>گردش‌کار:</b> ۱) با <b>اصلاح گروهی</b> بالای صفحه همهٔ تصاویر این دسته را یک‌جا بزنید — ۶ تصویر همزمان اصلاح می‌شود و بقیه خودکار پشت‌سرهم می‌آیند (دکمه‌های تکی هم مثل قبل مستقل کار می‌کنند)؛
+        ۲) اگر خودکار گفت «پیدا نشد» ولی تصویر واقعاً واترمارک دارد: با <b>دانلود</b> بگیرید، در Paint پاک کنید و با <b>آپلود</b> جایگزین کنید؛
+        ۳) <b>بررسی شد</b> را بزنید — اگر تصویر خطاخورده‌ای مانده باشد، پنجرهٔ بزرگ خطاها باز می‌شود: همان‌جا تلاش مجدد یا اصلاح دستی کنید و در پایان دسته را ببندید تا <b>دستهٔ بعدی</b> بیاید؛ آن‌قدر ادامه دهید تا هیچ تصویری نیازمند بررسی نماند.
       </div>
 
       {/* نوار وضعیت + انتخاب اندازهٔ دسته + سورت — بدون تب و بدون صفحه‌بندی */}
@@ -714,17 +862,19 @@ function ProductImagesManagerInner() {
               <p className="mt-0.5 text-[10.5px] leading-5 text-muted-foreground">
                 {inFlight > 0
                   ? 'صبر کنید تا اصلاح‌ها و آپلودهای در جریان تمام شود.'
-                  : remaining > rows.length
-                    ? `بعد از این دسته ${toFa(Math.max(0, remaining - rows.length))} تصویر دیگر مانده است.`
-                    : 'این آخرین دسته است — با بستنش کار تمام می‌شود.'}
+                  : failedRows.length > 0
+                    ? `${toFa(failedRows.length)} تصویر خطا خورده — با «بررسی شد» پنجرهٔ اصلاح دستی‌شان باز می‌شود.`
+                    : remaining > rows.length
+                      ? `بعد از این دسته ${toFa(Math.max(0, remaining - rows.length))} تصویر دیگر مانده است.`
+                      : 'این آخرین دسته است — با بستنش کار تمام می‌شود.'}
               </p>
             </div>
             <Button
               size="lg"
               className="h-10 shrink-0 gap-2 rounded-[10px] px-5 text-[13px] font-extrabold"
               disabled={inFlight > 0 || confirming}
-              onClick={() => void confirmBatch()}
-              title="یعنی همهٔ این دسته بررسی شدند و دیگر هرگز لود نمی‌شوند — دستهٔ بعدیِ نیازمند بررسی جای آن‌ها را می‌گیرد"
+              onClick={() => onRequestReview()}
+              title="همهٔ این دسته بررسی شدند و دیگر هرگز لود نمی‌شوند — اگر خطاخورده‌ای مانده باشد، اول پنجرهٔ بزرگ خطاها برای اصلاح دستی باز می‌شود"
             >
               {confirming ? (
                 <>
@@ -739,6 +889,194 @@ function ProductImagesManagerInner() {
           </div>
         </div>
       )}
+
+      {/* ── مدال بزرگ خطاها (خواستهٔ مالک ۲۲-۱۱) ── «بررسی شد» با وجودِ
+          خطاخورده، اول این پنجره را باز می‌کند: هر کاش «دوباره اصلاح»
+          خودکار + «دانلود ← ویرایش در Paint ← آپلود» دستی؛ وضعیت زنده است
+          و سبز می‌شود؛ دکمهٔ پایین = همان «بررسی شد» نهایی: کل دسته (با
+          خطاخورده‌ها) مهر می‌خورد و دستهٔ بعدی می‌آید ── */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="flex max-h-[92vh] w-[96vw] max-w-[1200px] flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="border-b bg-amber-50/60 px-5 py-4 text-right sm:text-right">
+            <DialogTitle className="flex items-center gap-2 text-base font-extrabold">
+              <ShieldAlert size={18} className="shrink-0 text-amber-600" />
+              {toFa(modalTiles.length)} تصویر خطا خورد — اصلاح دستی
+            </DialogTitle>
+            <DialogDescription className="text-[11.5px] leading-6">
+              خودکار در این تصاویر واترمارک را پیدا نکرد یا خطا داد. هر کدام را که خواستید همین‌جا دستی اصلاح کنید:{' '}
+              <b>دانلود</b> ← پاک‌کردن واترمارک در Paint ← <b>آپلود</b>؛ یا «دوباره اصلاح» بزنید. در پایان، «بررسی شد» را بزنید تا
+              خطاخورده‌ها هم مهر بخورند و دستهٔ بعدی بیاید.
+            </DialogDescription>
+            {modalUnfixed.length > 1 && (
+              <div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5 rounded-[9px] border-amber-400/70 px-3 text-[11px] font-extrabold text-amber-700 hover:text-amber-800"
+                  disabled={!!pool || confirming}
+                  onClick={() => (pool ? (poolAbortRef.current = true) : void runPool(modalUnfixed))}
+                  title="همهٔ خطاخورده‌های این پنجره را دوباره به اصلاح خودکار می‌فرستد — ۶ تصویر همزمان؛ حین کار همین دکمه صف را متوقف می‌کند"
+                >
+                  {pool ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" /> در جریان — {toFa(pool.done)} از {toFa(pool.total)} (توقف)
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCcw size={12} /> تلاش مجدد همهٔ خطاها ({toFa(modalUnfixed.length)})
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </DialogHeader>
+
+          {/* گرید خطاها — اسکرول داخلی؛ تصاویر درشت تا واترمارک واضح دیده شود */}
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {modalTiles.map((f) => {
+                const applying = applyingIds.has(f.id);
+                const uploading = uploadingIds.has(f.id);
+                const fail = failedIds[f.id];
+                return (
+                  <figure
+                    key={f.id}
+                    className={cn(
+                      'overflow-hidden rounded-lg border bg-card',
+                      f.fixedAt
+                        ? 'border-emerald-400/80 ring-2 ring-emerald-300/50'
+                        : 'border-amber-400/80 ring-2 ring-amber-300/50',
+                    )}
+                  >
+                    <a
+                      href={f.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="اندازهٔ اصلی در تب جدید — برای دیدن دقیق واترمارک"
+                      className="group relative block aspect-square bg-secondary"
+                    >
+                      <img
+                        src={f.thumbUrl ?? f.url}
+                        alt={`تصویر فایل ${f.id}`}
+                        loading="lazy"
+                        className="size-full object-contain"
+                      />
+                      {f.fixedAt && (
+                        <span
+                          className="absolute start-1.5 top-1.5 grid size-7 place-items-center rounded-md bg-emerald-600/85 text-white"
+                          title="اصلاح شد"
+                        >
+                          <BadgeCheck size={15} />
+                        </span>
+                      )}
+                      {(applying || uploading) && (
+                        <span className="absolute inset-0 grid place-items-center bg-background/60 backdrop-blur-[1px]">
+                          <Loader2 size={26} className="animate-spin text-primary" />
+                        </span>
+                      )}
+                      <span className="absolute end-1.5 top-1.5 grid size-7 place-items-center rounded-md bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                        <ExternalLink size={13} />
+                      </span>
+                    </a>
+                    <figcaption className="space-y-1.5 px-2.5 py-2">
+                      <p
+                        className="truncate text-center font-mono text-[11.5px] font-extrabold tabular-nums text-foreground"
+                        title={`File ID: ${f.id}`}
+                      >
+                        #{f.relatedId ? toFaPlain(f.relatedId) : '—'}
+                      </p>
+                      {f.fixedAt ? (
+                        <p className="flex h-8 items-center justify-center gap-1 rounded-[9px] bg-emerald-50 px-2 text-[10.5px] font-extrabold text-emerald-700">
+                          <BadgeCheck size={12} /> اصلاح شد
+                        </p>
+                      ) : (
+                        <>
+                          <p className="rounded-md bg-amber-50 px-1.5 py-1 text-center text-[9.5px] font-bold leading-4 text-amber-700">
+                            {fail === 'not_found'
+                              ? 'خودکار پیدا نکرد — دانلود، پاک‌کردن، آپلود'
+                              : 'خطا — دوباره تلاش یا اصلاح دستی'}
+                          </p>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 min-w-0 flex-1 gap-1 rounded-[9px] border-amber-400/70 px-2 text-[11px] font-extrabold text-amber-700 hover:text-amber-800"
+                              disabled={applying || uploading || confirming || !!pool}
+                              onClick={() => void fixOne(f)}
+                              title="یک‌بار دیگر اصلاح خودکار را روی همین تصویر امتحان کنید"
+                            >
+                              {applying ? (
+                                <Loader2 size={12} className="animate-spin" />
+                              ) : (
+                                <RefreshCcw size={12} />
+                              )}{' '}
+                              دوباره اصلاح
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="size-8 shrink-0 rounded-[9px] border-amber-400/70 p-0 text-amber-700 hover:text-amber-800"
+                              title="دانلود تصویر اصلی — در Paint واترمارک را پاک کنید و با دکمهٔ کناری آپلود کنید"
+                              aria-label="دانلود تصویر اصلی"
+                              onClick={() => void downloadOriginal(f)}
+                            >
+                              <Download size={13} />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="size-8 shrink-0 rounded-[9px] border-amber-400/70 p-0 text-amber-700 hover:text-amber-800"
+                              disabled={applying || uploading || confirming || !!pool}
+                              title="آپلود فایل اصلاح‌شدهٔ دستی — همین تصویر جایگزین می‌شود، تیک «اصلاح شد» می‌خورد و از صف خارج می‌شود"
+                              aria-label="آپلود نسخهٔ اصلاح‌شده"
+                              onClick={() => onPickFile(f.id)}
+                            >
+                              {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </figcaption>
+                  </figure>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* پایین مدال: شمارندهٔ زنده + «بررسی شد» نهایی = بستن کل دسته */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-card px-5 py-3.5">
+            <div className="min-w-0">
+              <p className="text-xs font-extrabold tabular-nums">
+                {modalUnfixed.length > 0
+                  ? `${toFa(modalUnfixed.length)} تصویر هنوز خطا دارد`
+                  : 'همهٔ خطاها اصلاح شد — عالی!'}
+              </p>
+              <p className="mt-0.5 text-[10.5px] leading-5 text-muted-foreground">
+                {modalUnfixed.length > 0
+                  ? 'می‌توانید همین‌طور هم دسته را ببندید — خطاخورده‌ها هم مهر بررسی می‌خورند و از صف خارج می‌شوند.'
+                  : 'حالا دسته را ببندید تا دستهٔ بعدیِ نیازمند بررسی جای آن را بگیرد.'}
+              </p>
+            </div>
+            <Button
+              size="lg"
+              className="h-10 shrink-0 gap-2 rounded-[10px] px-5 text-[13px] font-extrabold"
+              disabled={inFlight > 0 || confirming || !!pool}
+              onClick={() => void confirmBatch()}
+              title="مهر گروهی بررسی روی کل این دسته (شامل خطاخورده‌ها) — دستهٔ بعدی جای آن را می‌گیرد"
+            >
+              {confirming ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" /> در حال ثبت…
+                </>
+              ) : (
+                <>
+                  <BadgeCheck size={16} /> بررسی شد — بستن این دسته ({toFa(rows.length)} تصویر)
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
