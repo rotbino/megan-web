@@ -22,6 +22,9 @@
  *      اصلی + دکمهٔ آپلود نسخهٔ اصلاح‌شده روی «هر» کاش — فایل تازه روی کلید
  *      نسخه‌دار تازه می‌نشیند و replaceInPlace هر دو مهر بررسی و اصلاح را
  *      می‌زند؛ یعنی تیک «اصلاح شد» همان‌جا می‌خورد و از صف خارج می‌شود.
+ *   ۵. (۲۰-۱۱) پیست عکس جایگزین: برش با ابزار اسکرین‌شات (Snipaste و…) ←
+ *      Ctrl+V داخل پنجرهٔ پیست ← تایید — همان تعویض درجا، بدون رفت‌وبرگشت
+ *      به Paint و دیسک.
  *
  *   • کلیک روی تصویر = اندازهٔ اصلی در تب جدید (برای دیدن دقیق واترمارک)
  *   • تصاویر بزرگ‌تر از قبل نمایش داده می‌شوند (خواستهٔ مالک ۲۱-۱۱)
@@ -35,6 +38,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BadgeCheck,
+  ClipboardPaste,
   Download,
   ExternalLink,
   Images,
@@ -273,7 +277,7 @@ function ProductImagesManagerInner() {
         setFailedIds((f) => ({ ...f, [row.id]: 'not_found' }));
         if (!opts?.silent) {
           toast({
-            description: `واترمارک در تصویر #${row.relatedId ? toFaPlain(row.relatedId) : '—'} خودکار پیدا نشد — با دکمه‌های دانلود و آپلود همان کاش دستی اصلاحش کنید.`,
+            description: `واترمارک در تصویر #${row.relatedId ? toFaPlain(row.relatedId) : '—'} خودکار پیدا نشد — با دکمهٔ پیست همان کاش را دستی اصلاح کنید (برش ← Ctrl+V).`,
             variant: 'destructive',
           });
         }
@@ -412,6 +416,97 @@ function ProductImagesManagerInner() {
     void uploadManual(row, file);
   };
 
+  // ── پیست عکس جایگزین (خواستهٔ مالک ۲۰-۱۱): برش با ابزار اسکرین‌شات
+  //    (Snipaste و…) → Ctrl+V داخل پنجرهٔ پیست → تایید؛ همان تعویض درجای
+  //    اثبات‌شده — بدون رفت‌وبرگشت به Paint و دیسک ──
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteTargetId, setPasteTargetId] = useState<string | null>(null);
+  const [pasteFile, setPasteFile] = useState<File | null>(null);
+  const [pastePreviewUrl, setPastePreviewUrl] = useState<string | null>(null);
+  const [pasteError, setPasteError] = useState<string | null>(null);
+  const pastePreviewRef = useRef<string | null>(null);
+
+  const resetPasteState = () => {
+    if (pastePreviewRef.current) {
+      URL.revokeObjectURL(pastePreviewRef.current);
+      pastePreviewRef.current = null;
+    }
+    setPastePreviewUrl(null);
+    setPasteFile(null);
+    setPasteError(null);
+  };
+  const openPaste = (id: string) => {
+    resetPasteState();
+    setPasteTargetId(id);
+    setPasteOpen(true);
+  };
+  const closePaste = () => {
+    resetPasteState();
+    setPasteTargetId(null);
+    setPasteOpen(false);
+  };
+
+  /** گوش‌دادن به Ctrl+V فقط وقتی پنجرهٔ پیست باز است — تصویر کلیپ‌بورد را
+   *  می‌گیرد، با همان قواعد بک‌اند اعتبارسنجی و پیش‌نمایش می‌کند */
+  useEffect(() => {
+    if (!pasteOpen) return;
+    const onPaste = (e: ClipboardEvent) => {
+      const dt = e.clipboardData;
+      if (!dt) return;
+      e.preventDefault();
+      const file =
+        Array.from(dt.files).find((f) => f.type.startsWith('image/')) ??
+        Array.from(dt.items)
+          .filter((it) => it.kind === 'file' && it.type.startsWith('image/'))
+          .map((it) => it.getAsFile())
+          .find((f): f is File => !!f) ??
+        null;
+      if (!file) {
+        setPasteFile(null);
+        setPasteError('تصویری در حافظه نیست — اول در ابزار برش، عکس را کپی (Ctrl+C) کنید.');
+        return;
+      }
+      if (!(ACCEPTED_MIME as readonly string[]).includes(file.type)) {
+        setPasteFile(null);
+        setPasteError(`قالب «${file.type || 'نامشخص'}» پذیرفته نمی‌شود — فقط jpeg / png / webp.`);
+        return;
+      }
+      if (file.size < MIN_FILE_KB * 1024) {
+        setPasteFile(null);
+        setPasteError(`حجم تصویر باید حداقل ${toFa(MIN_FILE_KB)} کیلوبایت باشد.`);
+        return;
+      }
+      if (file.size > MAX_FILE_MB * 1024 * 1024) {
+        setPasteFile(null);
+        setPasteError(`حجم تصویر بیشتر از ${toFa(MAX_FILE_MB)} مگابایت است — برش کوچک‌تری بگیرید.`);
+        return;
+      }
+      setPasteFile(file);
+      setPasteError(null);
+      if (pastePreviewRef.current) URL.revokeObjectURL(pastePreviewRef.current);
+      const url = URL.createObjectURL(file);
+      pastePreviewRef.current = url;
+      setPastePreviewUrl(url);
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, [pasteOpen]);
+
+  /** تایید پیست — همان uploadManual اثبات‌شده: تعویض درجا + مهر بررسی/اصلاح */
+  const confirmPaste = () => {
+    const id = pasteTargetId;
+    const file = pasteFile;
+    if (!id || !file) return;
+    const row = rowsRef.current.find((r) => r.id === id);
+    closePaste();
+    if (!row) {
+      toast({ description: 'این تصویر دیگر در دسته نیست — لیست تازه شد.', variant: 'destructive' });
+      void refetch();
+      return;
+    }
+    void uploadManual(row, file);
+  };
+
   // ── استخر اصلاح گروهی (خواستهٔ مالک ۲۲-۱۱): یک کلیک بالای فرم = کلیک
   //    خودکارِ دکمهٔ اصلاحِ همهٔ تصاویر دسته — ۶ همزمان (سقف اتصال مرورگر)،
   //    بعدی‌ها در صف خودکار؛ پیشرفت روی دکمه؛ کلیک دوباره = توقف صف
@@ -531,6 +626,8 @@ function ProductImagesManagerInner() {
     .map((id) => rows.find((r) => r.id === id))
     .filter((r): r is ProductFileRow => !!r);
   const modalUnfixed = modalTiles.filter((r) => !r.fixedAt);
+  /** کاش هدفِ پنجرهٔ پیست — وضعیت زنده از کش */
+  const pasteTarget = rows.find((r) => r.id === pasteTargetId) ?? null;
 
   return (
     <div className="mx-auto max-w-[1700px] space-y-4">
@@ -595,7 +692,7 @@ function ProductImagesManagerInner() {
       {/* راهنمای گردش‌کار — ساده */}
       <div className="rounded-lg border border-primary/25 bg-primary/5 px-3.5 py-2.5 text-[11.5px] leading-6">
         <b>گردش‌کار:</b> ۱) با <b>اصلاح گروهی</b> بالای صفحه همهٔ تصاویر این دسته را یک‌جا بزنید — ۶ تصویر همزمان اصلاح می‌شود و بقیه خودکار پشت‌سرهم می‌آیند (دکمه‌های تکی هم مثل قبل مستقل کار می‌کنند)؛
-        ۲) اگر خودکار گفت «پیدا نشد» ولی تصویر واقعاً واترمارک دارد: با <b>دانلود</b> بگیرید، در Paint پاک کنید و با <b>آپلود</b> جایگزین کنید؛
+        ۲) اگر خودکار پیدا نکرد یا لکه‌ای جا ماند: با ابزار برش (Snipaste و…) ناحیهٔ تمیز را کپی کنید و با دکمهٔ <b>پیست</b> همان کاش جایگزین کنید (یا <b>دانلود</b>/<b>آپلود</b> فایل)؛
         ۳) <b>بررسی شد</b> را بزنید — اگر تصویر خطاخورده‌ای مانده باشد، پنجرهٔ بزرگ خطاها باز می‌شود: همان‌جا تلاش مجدد یا اصلاح دستی کنید و در پایان دسته را ببندید تا <b>دستهٔ بعدی</b> بیاید؛ آن‌قدر ادامه دهید تا هیچ تصویری نیازمند بررسی نماند.
       </div>
 
@@ -772,20 +869,21 @@ function ProductImagesManagerInner() {
                   >
                     #{f.relatedId ? toFaPlain(f.relatedId) : '—'}
                   </p>
-                  {/* «پیدا نشد» — مسیر دستی همان کاش (خواستهٔ مالک ۲۲-۱۱) */}
+                    {/* «پیدا نشد» — مسیر دستی همان کاش (خواستهٔ مالک ۲۲-۱۱) */}
                   {fail === 'not_found' && !f.fixedAt ? (
                     <p className="rounded-md bg-amber-50 px-1.5 py-1 text-center text-[9.5px] font-bold leading-4 text-amber-700">
-                      خودکار پیدا نشد — دانلود، پاک‌کردن در Paint، آپلود دستی
+                      خودکار پیدا نشد — پیست، دانلود یا آپلود دستی
                     </p>
                   ) : null}
-                  {/* ردیف عملیات: اصلاح خودکار + دانلود + آپلود دستی — هر کدام مستقل */}
-                  <div className="flex items-center gap-1">
+                  {/* ردیف عملیات: اصلاح خودکار + دانلود + آپلود + پیست — هر کدام مستقل.
+                      موبایل: دکمهٔ اصلی تمام‌عرض ردیف اول، آیکون‌ها ردیف دوم (کاش‌ها باریک‌اند) */}
+                  <div className="flex flex-wrap items-center gap-1">
                     {!f.fixedAt ? (
                       <Button
                         size="sm"
                         variant="outline"
                         className={cn(
-                          'h-8 min-w-0 flex-1 gap-1 rounded-[9px] px-2 text-[11px] font-extrabold',
+                          'h-8 min-w-0 basis-full gap-1 rounded-[9px] px-2 text-[11px] font-extrabold sm:basis-0 sm:flex-1',
                           fail && 'border-amber-400/70 text-amber-700 hover:text-amber-800',
                         )}
                         disabled={applying || uploading || confirming}
@@ -807,39 +905,56 @@ function ProductImagesManagerInner() {
                         )}
                       </Button>
                     ) : (
-                      <p className="flex h-8 min-w-0 flex-1 items-center justify-center gap-1 rounded-[9px] bg-emerald-50 px-2 text-[10.5px] font-extrabold text-emerald-700">
+                      <p className="flex h-8 min-w-0 basis-full items-center justify-center gap-1 rounded-[9px] bg-emerald-50 px-2 text-[10.5px] font-extrabold text-emerald-700 sm:basis-0 sm:flex-1">
                         <BadgeCheck size={12} /> اصلاح شد
                       </p>
                     )}
-                    {/* دانلود تصویر اصلی برای ویرایش دستی (۲۲-۱۱) */}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className={cn(
-                        'size-8 shrink-0 rounded-[9px] p-0',
-                        fail && 'border-amber-400/70 text-amber-700 hover:text-amber-800',
-                      )}
-                      title="دانلود تصویر اصلی — در Paint واترمارک را پاک کنید و با دکمهٔ کناری آپلود کنید"
-                      aria-label="دانلود تصویر اصلی"
-                      onClick={() => void downloadOriginal(f)}
-                    >
-                      <Download size={13} />
-                    </Button>
-                    {/* آپلود نسخهٔ اصلاح‌شدهٔ دستی (۲۲-۱۱) — همان کاش جایگزین می‌شود */}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className={cn(
-                        'size-8 shrink-0 rounded-[9px] p-0',
-                        fail && 'border-amber-400/70 text-amber-700 hover:text-amber-800',
-                      )}
-                      disabled={applying || uploading || confirming}
-                      title="آپلود فایل اصلاح‌شدهٔ دستی — همین تصویر جایگزین می‌شود، تیک «اصلاح شد» می‌خورد و از صف خارج می‌شود"
-                      aria-label="آپلود نسخهٔ اصلاح‌شده"
-                      onClick={() => onPickFile(f.id)}
-                    >
-                      {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-                    </Button>
+                    <div className="flex w-full items-center justify-center gap-1 sm:w-auto sm:justify-start">
+                      {/* دانلود تصویر اصلی برای ویرایش دستی (۲۲-۱۱) */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className={cn(
+                          'size-8 shrink-0 rounded-[9px] p-0',
+                          fail && 'border-amber-400/70 text-amber-700 hover:text-amber-800',
+                        )}
+                        title="دانلود تصویر اصلی — برای ویرایش و آپلود مجدد"
+                        aria-label="دانلود تصویر اصلی"
+                        onClick={() => void downloadOriginal(f)}
+                      >
+                        <Download size={13} />
+                      </Button>
+                      {/* آپلود نسخهٔ اصلاح‌شدهٔ دستی (۲۲-۱۱) — همان کاش جایگزین می‌شود */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className={cn(
+                          'size-8 shrink-0 rounded-[9px] p-0',
+                          fail && 'border-amber-400/70 text-amber-700 hover:text-amber-800',
+                        )}
+                        disabled={applying || uploading || confirming}
+                        title="آپلود فایل اصلاح‌شدهٔ دستی — همین تصویر جایگزین می‌شود، تیک «اصلاح شد» می‌خورد و از صف خارج می‌شود"
+                        aria-label="آپلود نسخهٔ اصلاح‌شده"
+                        onClick={() => onPickFile(f.id)}
+                      >
+                        {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                      </Button>
+                      {/* پیست عکس از حافظه (۲۰-۱۱): برش با ابزار اسکرین‌شات ← Ctrl+V */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className={cn(
+                          'size-8 shrink-0 rounded-[9px] p-0',
+                          fail && 'border-amber-400/70 text-amber-700 hover:text-amber-800',
+                        )}
+                        disabled={applying || uploading || confirming}
+                        title="پیست عکس از حافظه — با ابزار برش (Snipaste و…) ناحیهٔ تمیز را بزنید، بعد این‌جا Ctrl+V؛ سریع‌ترین راه اصلاح دستی"
+                        aria-label="پیست عکس جایگزین از حافظه"
+                        onClick={() => openPaste(f.id)}
+                      >
+                        <ClipboardPaste size={13} />
+                      </Button>
+                    </div>
                   </div>
                 </figcaption>
               </figure>
@@ -904,7 +1019,7 @@ function ProductImagesManagerInner() {
             </DialogTitle>
             <DialogDescription className="text-[11.5px] leading-6">
               خودکار در این تصاویر واترمارک را پیدا نکرد یا خطا داد. هر کدام را که خواستید همین‌جا دستی اصلاح کنید:{' '}
-              <b>دانلود</b> ← پاک‌کردن واترمارک در Paint ← <b>آپلود</b>؛ یا «دوباره اصلاح» بزنید. در پایان، «بررسی شد» را بزنید تا
+              <b>پیست</b> (برش با ابزار اسکرین‌شات ← Ctrl+V) یا <b>دانلود</b> ← ویرایش ← <b>آپلود</b>؛ یا «دوباره اصلاح» بزنید. در پایان، «بررسی شد» را بزنید تا
               خطاخورده‌ها هم مهر بخورند و دستهٔ بعدی بیاید.
             </DialogDescription>
             {modalUnfixed.length > 1 && (
@@ -993,14 +1108,14 @@ function ProductImagesManagerInner() {
                         <>
                           <p className="rounded-md bg-amber-50 px-1.5 py-1 text-center text-[9.5px] font-bold leading-4 text-amber-700">
                             {fail === 'not_found'
-                              ? 'خودکار پیدا نکرد — دانلود، پاک‌کردن، آپلود'
+                              ? 'خودکار پیدا نکرد — پیست یا دانلود/آپلود دستی'
                               : 'خطا — دوباره تلاش یا اصلاح دستی'}
                           </p>
-                          <div className="flex items-center gap-1">
+                          <div className="flex flex-wrap items-center gap-1">
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-8 min-w-0 flex-1 gap-1 rounded-[9px] border-amber-400/70 px-2 text-[11px] font-extrabold text-amber-700 hover:text-amber-800"
+                              className="h-8 min-w-0 basis-full gap-1 rounded-[9px] border-amber-400/70 px-2 text-[11px] font-extrabold text-amber-700 hover:text-amber-800 sm:basis-0 sm:flex-1"
                               disabled={applying || uploading || confirming || !!pool}
                               onClick={() => void fixOne(f)}
                               title="یک‌بار دیگر اصلاح خودکار را روی همین تصویر امتحان کنید"
@@ -1012,27 +1127,40 @@ function ProductImagesManagerInner() {
                               )}{' '}
                               دوباره اصلاح
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="size-8 shrink-0 rounded-[9px] border-amber-400/70 p-0 text-amber-700 hover:text-amber-800"
-                              title="دانلود تصویر اصلی — در Paint واترمارک را پاک کنید و با دکمهٔ کناری آپلود کنید"
-                              aria-label="دانلود تصویر اصلی"
-                              onClick={() => void downloadOriginal(f)}
-                            >
-                              <Download size={13} />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="size-8 shrink-0 rounded-[9px] border-amber-400/70 p-0 text-amber-700 hover:text-amber-800"
-                              disabled={applying || uploading || confirming || !!pool}
-                              title="آپلود فایل اصلاح‌شدهٔ دستی — همین تصویر جایگزین می‌شود، تیک «اصلاح شد» می‌خورد و از صف خارج می‌شود"
-                              aria-label="آپلود نسخهٔ اصلاح‌شده"
-                              onClick={() => onPickFile(f.id)}
-                            >
-                              {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-                            </Button>
+                            <div className="flex w-full items-center justify-center gap-1 sm:w-auto sm:justify-start">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="size-8 shrink-0 rounded-[9px] border-amber-400/70 p-0 text-amber-700 hover:text-amber-800"
+                                title="دانلود تصویر اصلی — برای ویرایش و آپلود مجدد"
+                                aria-label="دانلود تصویر اصلی"
+                                onClick={() => void downloadOriginal(f)}
+                              >
+                                <Download size={13} />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="size-8 shrink-0 rounded-[9px] border-amber-400/70 p-0 text-amber-700 hover:text-amber-800"
+                                disabled={applying || uploading || confirming || !!pool}
+                                title="آپلود فایل اصلاح‌شدهٔ دستی — همین تصویر جایگزین می‌شود، تیک «اصلاح شد» می‌خورد و از صف خارج می‌شود"
+                                aria-label="آپلود نسخهٔ اصلاح‌شده"
+                                onClick={() => onPickFile(f.id)}
+                              >
+                                {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="size-8 shrink-0 rounded-[9px] border-amber-400/70 p-0 text-amber-700 hover:text-amber-800"
+                                disabled={applying || uploading || confirming || !!pool}
+                                title="پیست عکس از حافظه — با ابزار برش (Snipaste و…) ناحیهٔ تمیز را بزنید، بعد این‌جا Ctrl+V"
+                                aria-label="پیست عکس جایگزین از حافظه"
+                                onClick={() => openPaste(f.id)}
+                              >
+                                <ClipboardPaste size={13} />
+                              </Button>
+                            </div>
                           </div>
                         </>
                       )}
@@ -1074,6 +1202,104 @@ function ProductImagesManagerInner() {
                 </>
               )}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── پیست عکس جایگزین (خواستهٔ مالک ۲۰-۱۱) ── برش با ابزار اسکرین‌شات
+          (Snipaste و…) ← Ctrl+V همین‌جا ← تایید: همان تعویض درجای اثبات‌شده،
+          مهر بررسی + اصلاح، تیک سبز همان کاش — بدون رفت‌وبرگشت به Paint ── */}
+      <Dialog open={pasteOpen} onOpenChange={(o) => (o ? setPasteOpen(true) : closePaste())}>
+        <DialogContent className="flex max-h-[92vh] w-[96vw] max-w-[780px] flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="border-b px-5 py-4 text-right sm:text-right">
+            <DialogTitle className="flex items-center gap-2 text-base font-extrabold">
+              <ClipboardPaste size={18} className="shrink-0 text-primary" />
+              پیست عکس جایگزین
+              {pasteTarget?.relatedId ? (
+                <span className="font-mono text-muted-foreground">#{toFaPlain(pasteTarget.relatedId)}</span>
+              ) : null}
+            </DialogTitle>
+            <DialogDescription className="text-[11.5px] leading-6">
+              با ابزار برش (Snipaste، اسکرین‌شات ویندوز و…) ناحیهٔ تمیزشده را بزنید تا در حافظه کپی شود؛ بعد این‌جا{' '}
+              <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-bold">Ctrl+V</kbd> بزنید و
+              «آپلود و جایگزینی» را بزنید — همین تصویر با نسخهٔ شما عوض می‌شود و تیک «اصلاح شد» می‌خورد.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* مقایسهٔ کنار‌به‌کنار: تصویر فعلی ↔ ناحیهٔ پیست */}
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <figure className="overflow-hidden rounded-lg border bg-card">
+                <a
+                  href={pasteTarget?.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="اندازهٔ اصلی در تب جدید"
+                  className="block aspect-square bg-secondary"
+                >
+                  {/* فقط وقتی هدف هست رندر شود — src خالی هنگام بسته‌شدن، خطای کنسول می‌دهد */}
+                  {pasteTarget ? (
+                    <img
+                      src={pasteTarget.thumbUrl ?? pasteTarget.url}
+                      alt="تصویر فعلی"
+                      className="size-full object-contain"
+                    />
+                  ) : null}
+                </a>
+                <figcaption className="px-2.5 py-1.5 text-center text-[10.5px] font-bold text-muted-foreground">
+                  تصویر فعلی
+                </figcaption>
+              </figure>
+              <div className="flex flex-col gap-2">
+                <div className="grid aspect-square place-items-center overflow-hidden rounded-lg border-2 border-dashed bg-secondary/50 p-2">
+                  {pastePreviewUrl ? (
+                    <img src={pastePreviewUrl} alt="تصویر پیست‌شده" className="size-full object-contain" />
+                  ) : (
+                    <div className="grid place-items-center gap-2 text-center text-muted-foreground">
+                      <ClipboardPaste size={30} className="opacity-60" />
+                      <p className="text-[11.5px] font-bold">اینجا Ctrl+V بزنید</p>
+                      <p className="max-w-[230px] text-[10.5px] leading-5">
+                        عکس برش‌خورده از حافظهٔ کامپیوتر همین‌جا می‌چسبد و پیش‌نمایشش را می‌بینید
+                      </p>
+                    </div>
+                  )}
+                </div>
+                {pasteError ? (
+                  <p className="rounded-md bg-destructive/10 px-2 py-1.5 text-center text-[10.5px] font-bold text-destructive">
+                    {pasteError}
+                  </p>
+                ) : null}
+                {pasteFile ? (
+                  <p className="text-center text-[10.5px] font-bold text-emerald-600">
+                    آمادهٔ جایگزینی — {toFa(Math.round(pasteFile.size / 1024))} کیلوبایت
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          {/* پایین پنجره: راهنما + تایید */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-card px-5 py-3.5">
+            <p className="text-[10.5px] leading-5 text-muted-foreground">
+              می‌توانید چند بار پیست کنید — هر پیست تازه جای قبلی را می‌گیرد.
+            </p>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                variant="outline"
+                className="h-9 rounded-[10px] px-4 text-[12px] font-extrabold"
+                onClick={closePaste}
+              >
+                انصراف
+              </Button>
+              <Button
+                className="h-9 gap-2 rounded-[10px] px-4 text-[12px] font-extrabold"
+                disabled={!pasteFile}
+                onClick={confirmPaste}
+                title="همین تصویر جایگزین می‌شود، تیک «اصلاح شد» می‌خورد و از صف خارج می‌شود"
+              >
+                <Upload size={14} /> آپلود و جایگزینی
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
