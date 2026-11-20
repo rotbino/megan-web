@@ -135,6 +135,9 @@ export interface ImportPreview {
     id: string;
     phone: string;
     userName: string;
+    /** (۲۰-۱۱) هویت دوگانه — یوزرنیم آیمچ مستقل + یوزرنیم/احراز باسکول */
+    bUserName: string | null;
+    bVerified: boolean;
     firstName: string;
     lastName: string;
     isVerified: boolean;
@@ -335,6 +338,8 @@ export interface ImportedUserRow {
   role: string;
   isActive: boolean;
   isVerified: boolean;
+  /** (۲۰-۱۱) احراز باسکول — دادهٔ رفتاری، بدون اعتبار در آیمچ */
+  bVerified: boolean;
   failedImport: boolean;
   /** دلیل آخرین شکست ایمپورت (۱۵-۱۱) — از profile.bImportError؛ null = بدون ثبت */
   importError: { message: string; sig: string; at: string } | null;
@@ -367,6 +372,8 @@ export interface ImportedUsersSummary {
   /** (۱۹-۱۱) خودشان ایمپورت از وب را کامل کرده‌اند — کاربران واقعی ایچ */
   selfImported: number;
   needsMigration: number;
+  /** (۲۰-۱۱) هنوز جداسازی هویت آیمچ/باسکول نشده — دکمهٔ «جداسازی هویت» */
+  needsIdentityFix: number;
 }
 
 export interface ImportedUsersList {
@@ -410,6 +417,7 @@ export interface ImportedUserDetail {
     role: string;
     isActive: boolean;
     isVerified: boolean;
+    bVerified: boolean;
     isBuyer: boolean;
     isSeller: boolean;
     avatarUrl: string | null;
@@ -473,7 +481,27 @@ export const importedUsersApi = {
     adminFetch('importer/migrate-b', { adminPhone }).then((r) =>
       json<{ migrated: number; premiumFixed: number }>(r),
     ),
+
+  /** (۲۰-۱۱) جداسازی هویت آیمچ از باسکول — احراز باسکول → bVerified،
+   *  isVerified همه false، یوزرنیم آیمچِ برابر باسکول → تصادفی یکتا */
+  fixIdentity: (adminPhone: string) =>
+    adminFetch('importer/fix-identity', { adminPhone }).then((r) =>
+      json<FixIdentityResult>(r),
+    ),
 };
+
+export interface FixIdentityResult {
+  totalUsers: number;
+  buskoolUsers: number;
+  renamedUserNames: number;
+  renameFailed: number;
+  /** چند کاربر احرازِ باسکول‌شان در b_verified ثبت شد */
+  bVerifiedSet: number;
+  /** چند is_verified کپی‌شده از باسکول false شد */
+  verifiedCleared: number;
+  /** پرونده‌های احراز واقعاً تأییدشده که دست نخوردند */
+  approvedKept: number;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // مدیریت آگهی‌های ایمپورت‌شده — «دیتا ایمپورت → آگهی‌ها» + «تصاویر آگهی‌ها»

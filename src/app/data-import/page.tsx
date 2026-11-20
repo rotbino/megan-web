@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   DatabaseZap,
+  Fingerprint,
   Loader2,
   PackageSearch,
   RefreshCcw,
@@ -41,6 +42,7 @@ export default function DataImportOverviewPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [migrating, setMigrating] = useState(false);
+  const [fixingIdentity, setFixingIdentity] = useState(false);
 
   const { data: stats } = useQuery({ queryKey: ['importer-stats'], queryFn: importerApi.stats });
   const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useQuery({
@@ -69,6 +71,31 @@ export default function DataImportOverviewPage() {
       });
     } finally {
       setMigrating(false);
+    }
+  };
+
+  const runFixIdentity = async () => {
+    setFixingIdentity(true);
+    try {
+      const res = await importedUsersApi.fixIdentity(ADMIN_PHONE);
+      toast({
+        title: 'جداسازی هویت آیمچ از باسکول انجام شد',
+        description:
+          `${toFa(res.renamedUserNames)} یوزرنیم آیمچ تصادفی شد` +
+          `${res.renameFailed ? ` (${toFa(res.renameFailed)} ناموفق)` : ''}` +
+          ` — ${toFa(res.verifiedCleared)} احرازِ کپی‌شده از باسکول برداشته شد (به bVerified رفت)` +
+          `${res.approvedKept ? ` — ${toFa(res.approvedKept)} پروندهٔ احراز واقعی محفوظ ماند` : ''}`,
+      });
+      await refetchSummary();
+      void queryClient.invalidateQueries({ queryKey: ['imported-users'] });
+    } catch (err) {
+      toast({
+        title: 'جداسازی هویت ناموفق بود',
+        description: err instanceof Error ? err.message : 'خطای نامشخص',
+        variant: 'destructive',
+      });
+    } finally {
+      setFixingIdentity(false);
     }
   };
 
@@ -117,6 +144,31 @@ export default function DataImportOverviewPage() {
           <Button size="sm" className="gap-1.5 rounded-[10px]" onClick={() => void runMigration()} disabled={migrating}>
             {migrating ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
             {migrating ? 'در حال مهاجرت…' : 'مهاجرت ساختار b'}
+          </Button>
+        </div>
+      )}
+
+      {/* هشدار جداسازی هویت (۲۰-۱۱) */}
+      {s && s.needsIdentityFix > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-sky-300/60 bg-sky-50 p-3.5">
+          <div className="flex items-start gap-2.5">
+            <Fingerprint size={18} className="mt-0.5 shrink-0 text-sky-600" />
+            <div>
+              <p className="text-[13px] font-bold text-sky-800">
+                {toFa(s.needsIdentityFix)} کاربر هنوز هویت آیمچ/باسکول جداسازی نشده دارند
+              </p>
+              <p className="mt-0.5 max-w-2xl text-[11px] leading-5 text-sky-700">
+                یوزرنیم آیمچِ این کاربران همان یوزرنیم باسکولشان است و احرازِ باسکول به اشتباه در اعتبار آیمچ نشسته.
+                با جداسازی: یوزرنیم آیمچ تصادفی و یکتا می‌شود (یوزرنیم باسکول در bUserName می‌ماند — کلید ایمپورت‌ها و
+                آپدیت قیمت‌های بعدی)، احراز باسکول فقط به bVerified می‌رود و isVerified همه false می‌شود؛ از این به بعد
+                احراز واقعی فقط با ارسال مدارک + تأیید ادمین. لینک‌های قدیمی پروفایل که با یوزرنیم باسکول ساخته شده بودند
+                بعد از اجرا کار نمی‌کنند (خواستهٔ خودمان — یوزرنیم باسکول دیگر نباید دیده شود).
+              </p>
+            </div>
+          </div>
+          <Button size="sm" className="gap-1.5 rounded-[10px]" onClick={() => void runFixIdentity()} disabled={fixingIdentity}>
+            {fixingIdentity ? <Loader2 size={14} className="animate-spin" /> : <Fingerprint size={14} />}
+            {fixingIdentity ? 'در حال جداسازی…' : 'جداسازی هویت آیمچ/باسکول'}
           </Button>
         </div>
       )}

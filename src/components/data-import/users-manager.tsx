@@ -588,6 +588,14 @@ function UsersManagerInner() {
                         <p className="flex items-center gap-1 truncate font-bold">
                           {fullName(row)}
                           {row.isVerified && <BadgeCheck size={12} className="shrink-0 text-verified" aria-label="احرازشده" />}
+                          {row.bVerified && !row.isVerified && (
+                            <span
+                              title="احراز شده در باسکول — فقط دادهٔ رفتاری؛ در اعتبار آیمچ اثری ندارد"
+                              className="inline-flex shrink-0"
+                            >
+                              <BadgeCheck size={12} className="text-amber-500" aria-label="احرازشده در باسکول" />
+                            </span>
+                          )}
                           {!row.isActive && (
                             <span className="inline-flex items-center gap-0.5 rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-600">
                               <Ban size={9} /> غیرفعال
@@ -837,11 +845,15 @@ function DetailDialog({ id, onClose }: { id: string; onClose: () => void }) {
               <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11.5px] sm:grid-cols-3">
                 <Info label="نام" value={fullName(u)} />
                 <Info label="موبایل" value={u.phone} ltr />
+                <Info label="یوزرنیم آیمچ" value={`@${u.userName}`} ltr />
                 <Info label="جنسیت" value={u.sex ?? '—'} />
                 <Info label="شهر" value={u.cityName ?? u.provinceName ?? '—'} />
                 <Info label="نقش" value={u.role === 'ADMIN' ? 'ادمین' : u.isSeller ? 'فروشنده' : 'خریدار'} />
                 <Info label="وضعیت" value={u.isActive ? 'فعال' : 'غیرفعال'} />
-                <Info label="احراز هویت" value={u.isVerified ? 'شده' : 'نشده'} />
+                <Info
+                  label="احراز هویت آیمچ"
+                  value={u.isVerified ? 'شده (مدارک + تأیید ادمین)' : 'نشده'}
+                />
                 <Info label="کیف پول" value={priceFa(u.walletBalance)} />
                 <Info label="بستهٔ آیمچ" value={u.activePakageType > 0 ? PKG_LABELS[u.activePakageType] ?? '—' : 'رایگان'} />
                 <Info label="ثبت‌نام" value={dateFa(u.createdAt)} />
@@ -876,7 +888,10 @@ function DetailDialog({ id, onClose }: { id: string; onClose: () => void }) {
                   <Info label="ایمپورت" value={dateFa(b.importedAt)} />
                   <Info label="بسته" value={b.premium.packageTitle} />
                   <Info label="تماس/دعوت" value={b.contactedAt ? dateFa(b.contactedAt) : 'هنوز نه'} />
-                  <Info label="احراز باسکول" value={b.isVerified ? 'شده' : 'نشده'} />
+                  <Info
+                    label="احراز باسکول"
+                    value={u.bVerified || b.isVerified ? 'شده (فقط دادهٔ رفتاری)' : 'نشده'}
+                  />
                   <Info label="نقش باسکول" value={b.isSeller ? (b.isBuyer ? 'خریدار و فروشنده' : 'فروشنده') : b.isBuyer ? 'خریدار' : '—'} />
                   <Info label="کیف پول باسکول" value={priceFa(b.walletBalance)} />
                   <Info label="دامنهٔ فعالیت" value={b.activityDomain ?? '—'} />

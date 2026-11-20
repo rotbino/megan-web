@@ -58,6 +58,14 @@ export function PreviewPanel({ preview }: { preview: ImportPreview }) {
                 احراز هویت شده
               </span>
             )}
+            {user.bVerified && (
+              <span
+                className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700"
+                title="این فیلد فقط دادهٔ رفتاری باسکول است — در اعتبار آیمچ اثری ندارد و تا ارسال مدارک + تأیید ادمین، کاربر احراز‌شده نیست"
+              >
+                احراز شده در باسکول
+              </span>
+            )}
             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
               {packageLabel}
             </span>
@@ -69,7 +77,14 @@ export function PreviewPanel({ preview }: { preview: ImportPreview }) {
           </div>
           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <span dir="ltr" className="font-mono">{user.phone}</span>
-            <span>@{user.userName}</span>
+            <span>
+              ایمچ: <span dir="ltr" className="font-mono">@{user.userName}</span>
+            </span>
+            {user.bUserName && (
+              <span>
+                باسکول: <span dir="ltr" className="font-mono">@{user.bUserName}</span>
+              </span>
+            )}
             <span>ایمچ #{user.id.slice(-8)}</span>
             <span>باسکول #{(user.bUserId ?? 0).toLocaleString('fa-IR')}</span>
             <span>عضویت: {dateFa(user.createdAt)}</span>
