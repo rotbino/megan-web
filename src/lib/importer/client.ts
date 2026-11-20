@@ -483,21 +483,23 @@ export const importedUsersApi = {
     ),
 
   /** (۲۰-۱۱) جداسازی هویت آیمچ از باسکول — احراز باسکول → bVerified،
-   *  isVerified همه false، یوزرنیم آیمچِ برابر باسکول → تصادفی یکتا */
-  fixIdentity: (adminPhone: string) =>
-    adminFetch('importer/fix-identity', { adminPhone }).then((r) =>
+   *  isVerified همه false، یوزرنیم آیمچِ برابر باسکول → تصادفی یکتا.
+   *  سرورلس: هر فراخوانی حداکثر ۵۰۰ نفر — حلقه تا done:true */
+  fixIdentity: (adminPhone: string, batch?: number) =>
+    adminFetch(`importer/fix-identity${batch ? `?batch=${batch}` : ''}`, { adminPhone }).then((r) =>
       json<FixIdentityResult>(r),
     ),
 };
 
 export interface FixIdentityResult {
-  totalUsers: number;
-  buskoolUsers: number;
   renamedUserNames: number;
   renameFailed: number;
-  /** چند کاربر احرازِ باسکول‌شان در b_verified ثبت شد */
+  /** هنوز مانده — فراخوانی بعدی را بزن */
+  remaining: number;
+  done: boolean;
+  /** چند کاربر احرازِ باسکول‌شان در b_verified ثبت شد (نخستین فراخوانی) */
   bVerifiedSet: number;
-  /** چند is_verified کپی‌شده از باسکول false شد */
+  /** چند is_verified کپی‌شده از باسکول false شد (نخستین فراخوانی) */
   verifiedCleared: number;
   /** پرونده‌های احراز واقعاً تأییدشده که دست نخوردند */
   approvedKept: number;

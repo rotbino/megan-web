@@ -42,7 +42,7 @@ export default function DataImportOverviewPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [migrating, setMigrating] = useState(false);
-  const [fixingIdentity, setFixingIdentity] = useState(false);
+  const [identityProgress, setIdentityProgress] = useState<string | null>(null);
 
   const { data: stats } = useQuery({ queryKey: ['importer-stats'], queryFn: importerApi.stats });
   const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useQuery({
@@ -75,16 +75,27 @@ export default function DataImportOverviewPage() {
   };
 
   const runFixIdentity = async () => {
-    setFixingIdentity(true);
+    setIdentityProgress('شروع جداسازی هویت…');
     try {
-      const res = await importedUsersApi.fixIdentity(ADMIN_PHONE);
+      // سرورلس: هر فراخوانی یک دسته (۵۰۰ نفر) — حلقه تا اتمام (سقف ایمنی ۶۰ دسته)
+      let totalRenamed = 0;
+      let totalFailed = 0;
+      let first: Awaited<ReturnType<typeof importedUsersApi.fixIdentity>> | null = null;
+      for (let i = 0; i < 60; i++) {
+        const res = await importedUsersApi.fixIdentity(ADMIN_PHONE);
+        if (!first) first = res;
+        totalRenamed += res.renamedUserNames;
+        totalFailed += res.renameFailed;
+        if (res.done || (res.renamedUserNames === 0 && res.remaining === 0)) break;
+        setIdentityProgress(`در حال جداسازی… ${toFa(totalRenamed)} یوزرنیم تصادفی شد — ${toFa(res.remaining)} مانده`);
+      }
       toast({
         title: 'جداسازی هویت آیمچ از باسکول انجام شد',
         description:
-          `${toFa(res.renamedUserNames)} یوزرنیم آیمچ تصادفی شد` +
-          `${res.renameFailed ? ` (${toFa(res.renameFailed)} ناموفق)` : ''}` +
-          ` — ${toFa(res.verifiedCleared)} احرازِ کپی‌شده از باسکول برداشته شد (به bVerified رفت)` +
-          `${res.approvedKept ? ` — ${toFa(res.approvedKept)} پروندهٔ احراز واقعی محفوظ ماند` : ''}`,
+          `${toFa(totalRenamed)} یوزرنیم آیمچ تصادفی شد` +
+          `${totalFailed ? ` (${toFa(totalFailed)} ناموفق)` : ''}` +
+          (first ? ` — ${toFa(first.verifiedCleared)} احرازِ کپی‌شده از باسکول برداشته شد (به bVerified رفت)` : '') +
+          (first?.approvedKept ? ` — ${toFa(first.approvedKept)} پروندهٔ احراز واقعی محفوظ ماند` : ''),
       });
       await refetchSummary();
       void queryClient.invalidateQueries({ queryKey: ['imported-users'] });
@@ -95,7 +106,7 @@ export default function DataImportOverviewPage() {
         variant: 'destructive',
       });
     } finally {
-      setFixingIdentity(false);
+      setIdentityProgress(null);
     }
   };
 
@@ -166,9 +177,9 @@ export default function DataImportOverviewPage() {
               </p>
             </div>
           </div>
-          <Button size="sm" className="gap-1.5 rounded-[10px]" onClick={() => void runFixIdentity()} disabled={fixingIdentity}>
-            {fixingIdentity ? <Loader2 size={14} className="animate-spin" /> : <Fingerprint size={14} />}
-            {fixingIdentity ? 'در حال جداسازی…' : 'جداسازی هویت آیمچ/باسکول'}
+          <Button size="sm" className="gap-1.5 rounded-[10px]" onClick={() => void runFixIdentity()} disabled={!!identityProgress}>
+            {identityProgress ? <Loader2 size={14} className="animate-spin" /> : <Fingerprint size={14} />}
+            {identityProgress ?? 'جداسازی هویت آیمچ/باسکول'}
           </Button>
         </div>
       )}
