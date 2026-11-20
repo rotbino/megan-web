@@ -879,3 +879,98 @@ export interface WmBatchResult {
   counts: { removed: number; notFound: number; error: number; skipped: number };
   remaining: number;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// آپدیت قیمت‌ها + کاربران جدید باسکول — «دیتا ایمپورت → آپدیت» (۲۱-۱۱).
+// آینهٔ قرارداد بک‌اند: price-update.service.ts — گام‌محور و سرورلس‌پسند؛
+// فرانت حلقهٔ بچ‌های ۱۰۰۰تایی را با ۵ ثانیه فاصله می‌چرخاند (گارد سرور هم هست).
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** کاربر باسکولِ تازه‌ثبت‌نام که هنوز در ایمچ نیست — از user_info آیتم‌های لیست */
+export interface ScanNewUser {
+  bUserId: number;
+  bUserName: string;
+  firstName: string;
+  lastName: string;
+  createdAt: string | null;
+  isVerified: boolean;
+  activePakageType: number;
+  sampleProductId: number;
+  sampleProductName: string;
+  sampleCategory: string | null;
+  samplePrice: number;
+  adsSeen: number;
+}
+
+export interface ScanResult {
+  from: number;
+  to: number;
+  fetched: number;
+  kept: number;
+  inImach: number;
+  updated: number;
+  unchanged: number;
+  notInImach: number;
+  usersSeen: number;
+  usersMissing: number;
+  newUsers: ScanNewUser[];
+  truncated: boolean;
+  at: string;
+}
+
+export interface PhoneBudgetInfo {
+  limit: number;
+  used: number;
+  remaining: number;
+}
+
+export interface ExtractUserResult {
+  exists: boolean;
+  phone?: string;
+  budget?: PhoneBudgetInfo;
+  imach?: { id: string; userName: string; bVerified: boolean };
+  note?: string;
+}
+
+/** json با پیام خطای تمیز — پیام فارسی بک‌اند بدون پیشوند فنی «HTTP 400 —»
+ *  (خطاهای این بخش همگی پیام‌های کارپسندِ سرویس‌اند، نه خطای شبکه‌ای) */
+async function jsonClean<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    let message = '';
+    try {
+      const body = await res.json();
+      message = body?.message ?? JSON.stringify(body).slice(0, 200);
+    } catch {
+      /* بدنهٔ متنی */
+    }
+    throw new Error(message || `HTTP ${res.status}`);
+  }
+  const body = (await res.json()) as { status?: boolean; data?: T };
+  return (body && typeof body === 'object' && 'data' in body ? body.data : (body as unknown)) as T;
+}
+
+export const updateApi = {
+  /** یک تکهٔ ۱۰۰۰تایی از جدیدترین آگهی‌های باسکول — آپدیت قیمت + شناسایی کاربر */
+  scan: (input: { adminPhone: string; from: number; to: number; updatePrices?: boolean; recentDays?: number }) =>
+    fetch(`${BASE}/update/scan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    }).then((r) => jsonClean<ScanResult>(r)),
+
+  /** شمارهٔ موبایل یک فروشندهٔ باسکول — هر کوکی ۲۰ شماره؛ سهمیه در پاسخ */
+  fetchPhone: (input: { adminPhone: string; sId: number; pId: number }) =>
+    fetch(`${BASE}/update/fetch-phone`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    }).then((r) => jsonClean<{ phone: string; budget: PhoneBudgetInfo }>(r)),
+
+  /** پیش‌ایمپورت یک یوزرنیم باسکول — چک موجود بودن + گرفتن شماره */
+  extractUser: (input: { adminPhone: string; userName: string }) =>
+    fetch(`${BASE}/update/extract-user`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    }).then((r) => jsonClean<ExtractUserResult>(r)),
+};
