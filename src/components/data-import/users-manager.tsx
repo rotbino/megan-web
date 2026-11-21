@@ -38,6 +38,7 @@ import {
   Loader2,
   RefreshCcw,
   Search,
+  Store,
   Trash2,
   UserCheck,
   UserMinus,
@@ -100,8 +101,18 @@ function fullName(u: { firstName: string; lastName: string; userName: string }):
   return n || `@${u.userName}`;
 }
 
-/** چیپ منبع کاربر — باسکول / ثبت‌نام خودی / کمکی(کامنت) */
+/** چیپ منبع کاربر — دیمت / باسکول / ثبت‌نام خودی / کمکی(کامنت) */
 function SourceChip({ row }: { row: ImportedUserRow }) {
+  if (row.importSource === 'daymat') {
+    return (
+      <Badge
+        className="bg-teal-500/10 font-bold text-teal-600 hover:bg-teal-500/10"
+        title={row.d?.businessName ? `بیزینس دیمت: ${String(row.d.businessName)}` : 'ایمپورت‌شده از دیمت'}
+      >
+        از دیمت
+      </Badge>
+    );
+  }
   if (row.bUserName) {
     return (
       <Badge className="bg-primary-soft font-bold text-primary hover:bg-primary-soft" title={`@${row.bUserName} در باسکول`}>
@@ -345,6 +356,7 @@ function UsersManagerInner() {
           {[
             { label: 'کل', value: summary.total, hint: 'همهٔ کاربران' },
             { label: 'از باسکول', value: summary.buskool, hint: 'ایمپورت‌شده' },
+            { label: 'از دیمت', value: summary.daymat, hint: 'مهاجرت دیمت — سوپرمارکت', teal: true },
             { label: 'ثبت‌نام خودی', value: summary.native, hint: 'خودشان آمده‌اند' },
             { label: 'ویژهٔ باسکول', value: summary.premiumBuskool, hint: 'کاندیدای دعوت به پرداخت', accent: true },
             { label: 'ایمپورت خودی', value: summary.selfImported, hint: 'خودشان از وب آورده‌اند — کاربران واقعی ایچ', accent: true },
@@ -354,15 +366,19 @@ function UsersManagerInner() {
             <button
               key={c.label}
               type="button"
-              onClick={() => setPage(1)}
+              onClick={() => {
+                setPage(1);
+                setSource(c.teal ? 'daymat' : 'all');
+              }}
               className={cn(
                 'rounded-lg border bg-card p-2.5 text-start transition-colors hover:border-primary/40',
                 c.accent && 'border-amber-300/70 bg-amber-50/50',
+                c.teal && 'border-teal-300/70 bg-teal-50/50',
               )}
               title={c.hint}
             >
               <p className="text-[10px] text-muted-foreground">{c.label}</p>
-              <p className={cn('mt-0.5 text-base font-extrabold tabular-nums', c.accent && 'text-amber-600')}>
+              <p className={cn('mt-0.5 text-base font-extrabold tabular-nums', c.accent && 'text-amber-600', c.teal && 'text-teal-600')}>
                 {toFa(c.value)}
               </p>
             </button>
@@ -401,6 +417,7 @@ function UsersManagerInner() {
             <SelectContent>
               <SelectItem value="all">همهٔ منابع</SelectItem>
               <SelectItem value="buskool">از باسکول</SelectItem>
+              <SelectItem value="daymat">از دیمت</SelectItem>
               <SelectItem value="native">ثبت‌نام خودی</SelectItem>
               <SelectItem value="stub">کمکی (کامنت)</SelectItem>
             </SelectContent>
@@ -868,6 +885,25 @@ function DetailDialog({ id, onClose }: { id: string; onClose: () => void }) {
                 </p>
               )}
             </section>
+
+            {/* سند دیمت (تسک ۳۵ — ۲۱-۱۱) */}
+            {u.d ? (
+              <section className="rounded-lg border border-teal-300/70 bg-teal-50/40 p-3">
+                <h3 className="mb-2 flex items-center gap-1.5 text-[12px] font-extrabold text-teal-700">
+                  <Store size={13} />
+                  داده‌های این کاربر در دیمت (سوپرمارکت)
+                </h3>
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11.5px] sm:grid-cols-3">
+                  <Info label="بیزینس دیمت" value={String(u.d.businessName ?? '—')} />
+                  <Info label="شناسه دیمت" value={String(u.d.daymatUserId ?? '—')} ltr />
+                  <Info label="ثبت‌نام دیمت" value={u.d.daymatCreatedAt ? dateFa(String(u.d.daymatCreatedAt)) : '—'} />
+                  <Info label="مهاجرت" value={u.d.importedAt ? dateFa(String(u.d.importedAt)) : '—'} />
+                  <Info label="تأیید موبایل دیمت" value={u.d.isPhoneVerified === true ? 'شده' : 'نشده'} />
+                  <Info label="پلن دیمت" value={String(u.d.membershipTier ?? '—')} />
+                  {u.d.bio ? <Info label="معرفی" value={String(u.d.bio)} /> : null}
+                </dl>
+              </section>
+            ) : null}
 
             {/* سند رفتار باسکول */}
             <section className={cn('rounded-lg border p-3', b?.premium.isPremium && 'border-amber-300/70 bg-amber-50/40')}>

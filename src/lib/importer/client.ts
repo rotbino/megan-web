@@ -355,8 +355,12 @@ export interface ImportedUserRow {
   b: BUserDoc | null;
   productsCount: number;
   /** (۱۹-۱۱) خودش با دکمهٔ «ایمپورت از وب» ایمپورت را کامل کرده — ردّ پایهٔ
-   *  «کاربر واقعی ایچ»: حداقل یک جلسهٔ WebImportSession done دارد */
+   *  «کاربر واقعی ایمچ»: حداقل یک جلسهٔ WebImportSession done دارد */
   selfImported: boolean;
+  /** (تسک ۳۵ — ۲۱-۱۱) منبع ایمپورت — 'buskool' | 'daymat' | null (بومی) */
+  importSource: string | null;
+  /** (تسک ۳۵) سند دیمت — { daymatUserId, businessName, … } | null */
+  d: Record<string, unknown> | null;
 }
 
 export interface ImportedUsersSummary {
@@ -364,6 +368,8 @@ export interface ImportedUsersSummary {
   buskool: number;
   native: number;
   stub: number;
+  /** (تسک ۳۵ — ۲۱-۱۱) ایمپورت‌شده از دیمت */
+  daymat: number;
   premiumBuskool: number;
   neverLoggedIn: number;
   contacted: number;
@@ -387,7 +393,7 @@ export interface ImportedUsersList {
 
 export interface ImportedUsersParams {
   q?: string;
-  source?: 'buskool' | 'native' | 'stub' | 'all';
+  source?: 'buskool' | 'native' | 'stub' | 'daymat' | 'all';
   premium?: 'yes' | 'no';
   packageType?: number;
   login?: 'ever' | 'never' | 'after-contact';
@@ -428,6 +434,8 @@ export interface ImportedUserDetail {
     cityName: string | null;
     profile: Record<string, unknown> | null;
     b: BUserDoc | null;
+    d: Record<string, unknown> | null;
+    importSource: string | null;
     failedImport: boolean;
     lastLoginAt: string | null;
     lastSeenAt: string | null;
