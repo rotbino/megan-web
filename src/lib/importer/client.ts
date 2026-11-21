@@ -892,6 +892,8 @@ export interface WmBatchResult {
 // آپدیت قیمت‌ها + کاربران جدید باسکول — «دیتا ایمپورت → آپدیت» (۲۱-۱۱).
 // آینهٔ قرارداد بک‌اند: price-update.service.ts — گام‌محور و سرورلس‌پسند؛
 // فرانت حلقهٔ بچ‌های ۱۰۰۰تایی را با ۵ ثانیه فاصله می‌چرخاند (گارد سرور هم هست).
+// نوسازی ۲۲-۱۱: کاربران جدید همان‌جا در دیتابیس ثبت می‌شوند («کاربران در
+// انتظار ایمپورت») — لیست از اندپوینت pending خوانده می‌شود و ماندگار است.
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** کاربر باسکولِ تازه‌ثبت‌نام که هنوز در ایمچ نیست — از user_info آیتم‌های لیست */
@@ -910,6 +912,30 @@ export interface ScanNewUser {
   adsSeen: number;
 }
 
+/** رکورد «کاربر در انتظار ایمپورت» — ردیف جدول صفحهٔ آپدیت (۲۲-۱۱)؛
+ *  ماندگار در دیتابیس؛ موبایل با دکمهٔ «گرفتن موبایل» روی همان رکورد ذخیره می‌شود */
+export interface PendingImportUser {
+  bUserId: number;
+  bUserName: string;
+  firstName: string;
+  lastName: string;
+  createdAt: string | null;
+  isVerified: boolean;
+  activePakageType: number;
+  /** شمارهٔ موبایل — null یعنی هنوز گرفته نشده (بدون موبایل ثبت شده) */
+  phone: string | null;
+  phoneTakenAt: string | null;
+  sampleProductId: number;
+  sampleProductName: string;
+  sampleCategory: string | null;
+  samplePrice: number;
+  adsSeen: number;
+  /** آخرین باری که در اسکن دیده شد */
+  lastSeenAt: string;
+  /** تاریخ ثبت رکورد در دیتابیس */
+  registeredAt: string;
+}
+
 export interface ScanResult {
   from: number;
   to: number;
@@ -921,6 +947,7 @@ export interface ScanResult {
   notInImach: number;
   usersSeen: number;
   usersMissing: number;
+  /** کاربران تازه‌ثبت‌نامِ غایب — همان‌ها در دیتابیس هم ثبت شدند */
   newUsers: ScanNewUser[];
   truncated: boolean;
   at: string;
@@ -958,7 +985,8 @@ async function jsonClean<T>(res: Response): Promise<T> {
 }
 
 export const updateApi = {
-  /** یک تکهٔ ۱۰۰۰تایی از جدیدترین آگهی‌های باسکول — آپدیت قیمت + شناسایی کاربر */
+  /** یک تکهٔ ۱۰۰۰تایی از جدیدترین آگهی‌های باسکول — آپدیت قیمت + شناسایی و
+   *  ثبت کاربران جدید در جدول «در انتظار ایمپورت» */
   scan: (input: { adminPhone: string; from: number; to: number; updatePrices?: boolean; recentDays?: number }) =>
     fetch(`${BASE}/update/scan`, {
       method: 'POST',
@@ -966,13 +994,23 @@ export const updateApi = {
       body: JSON.stringify(input),
     }).then((r) => jsonClean<ScanResult>(r)),
 
-  /** شمارهٔ موبایل یک فروشندهٔ باسکول — هر کوکی ۲۰ شماره؛ سهمیه در پاسخ */
-  fetchPhone: (input: { adminPhone: string; sId: number; pId: number }) =>
+  /** لیست «کاربران در انتظار ایمپورت» از دیتابیس — ماندگار بین جلسه‌ها؛
+   *  ایمپورت‌شده‌های کامل موقع خواندن خودکار از لیست خارج می‌شوند */
+  pending: (input: { adminPhone: string }) =>
+    fetch(`${BASE}/update/pending`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    }).then((r) => jsonClean<{ users: PendingImportUser[]; removedImported: number }>(r)),
+
+  /** شمارهٔ موبایل یک فروشندهٔ باسکول — هر کوکی ۲۰ شماره؛ سهمیه در پاسخ؛
+   *  با bUserName شماره روی رکورد «در انتظار ایمپورت» هم ذخیره می‌شود */
+  fetchPhone: (input: { adminPhone: string; sId: number; pId: number; bUserName?: string }) =>
     fetch(`${BASE}/update/fetch-phone`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
-    }).then((r) => jsonClean<{ phone: string; budget: PhoneBudgetInfo }>(r)),
+    }).then((r) => jsonClean<{ phone: string; budget: PhoneBudgetInfo; saved: boolean }>(r)),
 
   /** پیش‌ایمپورت یک یوزرنیم باسکول — چک موجود بودن + گرفتن شماره */
   extractUser: (input: { adminPhone: string; userName: string }) =>

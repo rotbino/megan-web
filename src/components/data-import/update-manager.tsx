@@ -1,25 +1,34 @@
 'use client';
 
 /**
- * آپدیت قیمت‌ها + کاربران جدید باسکول — صفحهٔ «دیتا ایمپورت → آپدیت»
- * (خواستهٔ مالک ۲۱-۱۱: «یک تیر برای دو نشان»).
+ * آپدیت قیمت‌ها + «کاربران در انتظار ایمپورت» — صفحهٔ «دیتا ایمپورت → آپدیت»
+ * (خواستهٔ مالک ۲۱-۱۱: «یک تیر برای دو نشان»؛ نوسازی ۲۲-۱۱: لیست ماندگار).
  *
  * یک دکمه = یک پاس کامل روی N هزار آگهی آخرِ باسکول (بدون کوکی، sort_by=RD):
  *   • هر بچ ۱۰۰۰تایی با یک فراخوانی به بک‌اند می‌رود (سرورلس‌پسند — هر تکه
  *     ≪ تایم‌اوت ۶۰ث) و همان‌جا: قیمت/موجودی/حداقل‌سفارش آگهی‌های موجود در
  *     ایمچ مقایسه و فقط متفاوت‌ها آپدیت می‌شوند + کاربران تازه‌ثبت‌نامِ غایب
- *     شناسایی می‌شوند (از همان user_info آیتم‌ها).
+ *     «همان‌جا در دیتابیس ثبت می‌شوند» (خواستهٔ مالک ۲۲-۱۱: یک بار که پیدا
+ *     شدیم دیگر توی دیتابیس داریمش — بدون موبایل).
  *   • بین بچ‌ها ۵ ثانیه وقفه (خواستهٔ مالک: «باسکول تشخیص ندهد ماشین هست») —
  *     شمارش معکوس روی دکمه + گارد سرور؛ حتی دابل‌کلیک/دو تب فاصله را نمی‌شکند.
  *   • گزارش زندهٔ هر بچ: گرفته‌شده / در ایمچ / آپدیت‌شده / بدون تغییر / آگهی
  *     جدید + جمع کل.
- *   • «کاربران جدید باسکول»: لیست یونیکِ بین بچ‌ها (تازه‌ثبت‌نام‌تر اول) با
- *     دکمهٔ «ایمپورت» روی هر کاربر: اول شمارهٔ موبایل (get_seller_phone_number
- *     با کوکی — هر کوکی ۲۰ شماره؛ شمارندهٔ سهمیه روی صفحه) بعد همان ایمپورت
- *     تک‌کاربرهٔ همیشگی با جاب و پیشرفت زنده. اگر کاربر از قبل وارد ایمچ
- *     شده بود، بدون گرفتن شماره رد می‌شود.
- *   • «استخراج تک‌کاربر»: یوزرنیم باسکول → چک bUserName در ایمچ → غایب =
- *     شماره + ایمپورت کامل (پروفایل/آگهی‌ها/تصاویر/کامنت‌ها) همان همیشه.
+ *
+ * «کاربران در انتظار ایمپورت» (۲۲-۱۱):
+ *   • جدول از دیتابیس خوانده می‌شود (اندپوینت pending) — ماندگار بین
+ *     جلسه‌ها/ریفرش‌ها؛ رکوردهای ایمپورت‌شدهٔ کامل موقع خواندن خودکار از
+ *     لیست خارج می‌شوند (خودترمیمی).
+ *   • دکمهٔ «گرفتن موبایل»: فقط شماره را از باسکول می‌گیرد (کوکی — هر کوکی
+ *     ۲۰ شماره؛ شمارندهٔ سهمیه روی صفحه) و روی رکورد همان کاربر ذخیره
+ *     می‌کند.
+ *   • دکمهٔ «ایمپورت»: اول رکورد کاربر را نگاه می‌کند — موبایل گرفته شده →
+ *     مستقیم ایمپورت کامل (دادهٔ کاربر، آگهی‌ها، کامنت‌ها و بقیه)؛ نگرفته →
+ *     اول موبایل از باسکول گرفته و ذخیره می‌شود و بلافاصله ایمپورت کامل
+ *     شروع می‌شود. با موفقیت، کاربر از لیست خارج می‌شود.
+ *
+ *   • «استخراج تک‌کاربر»: یوزرنیم باسکول → موجود = توست با یوزرنیم آیمچ بدون
+ *     تماس با باسکول؛ غایب = شماره + ایمپورت کامل.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -29,6 +38,7 @@ import {
   CircleAlert,
   Database,
   Loader2,
+  Phone,
   Play,
   RefreshCw,
   Search,
@@ -46,7 +56,7 @@ import {
   importerApi,
   updateApi,
   type ImportJob,
-  type ScanNewUser,
+  type PendingImportUser,
   type ScanResult,
 } from '@/lib/importer/client';
 import { dateFa, timeAgoFa, toFa } from '@/lib/format';
@@ -70,14 +80,12 @@ interface BatchRow {
   error?: string;
 }
 
-/** وضعیت هر کاربر جدید در لیست (دکمهٔ ایمپورت) */
+/** وضعیت هر کاربر در لیست (دکمه‌های موبایل/ایمپورت) */
 type UserState =
   | { kind: 'idle' }
-  | { kind: 'checking' }
   | { kind: 'phone' }
   | { kind: 'importing'; jobId: string }
   | { kind: 'done' }
-  | { kind: 'exists'; imachUserName: string }
   | { kind: 'error'; message: string };
 
 const runStatusLabel: Record<RunStatus, string> = {
@@ -109,14 +117,17 @@ export function UpdateManager() {
     batchesRef.current = batches;
   }, [batches]);
 
-  // ── کاربران جدید (یونیک بین بچ‌ها) ──
-  const [newUsers, setNewUsers] = useState<ScanNewUser[]>([]);
+  // ── کاربران در انتظار ایمپورت (لیست ماندگار از دیتابیس) ──
+  const [pendingUsers, setPendingUsers] = useState<PendingImportUser[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(true);
   const [userStates, setUserStates] = useState<Record<number, UserState>>({});
   const [budget, setBudget] = useState<{ limit: number; used: number; remaining: number } | null>(null);
 
-  // ── جاب ایمپورت در جریان (کاربر جدید یا تک‌کاربر) ──
+  // ── جاب ایمپورت در جریان (کاربر لیست یا تک‌کاربر) ──
   const [job, setJob] = useState<ImportJob | null>(null);
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** جاب در حال اجراست؟ — دکمه‌های ایمپورت دیگر ردیف‌ها قفل می‌شوند */
+  const importBusy = job?.status === 'running';
 
   // شمارش معکوس وقفهٔ بین بچ‌ها
   useEffect(() => {
@@ -131,6 +142,30 @@ export function UpdateManager() {
     },
     [],
   );
+
+  // ── بار اول: لیست «در انتظار ایمپورت» از دیتابیس ──
+  const loadPending = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setPendingLoading(true);
+      try {
+        const res = await updateApi.pending({ adminPhone: ADMIN_PHONE });
+        setPendingUsers(res.users);
+      } catch (err) {
+        toast({
+          title: 'خواندن لیست «در انتظار ایمپورت» ناموفق بود',
+          description: err instanceof Error ? err.message : 'خطای نامشخص',
+          variant: 'destructive',
+        });
+      } finally {
+        setPendingLoading(false);
+      }
+    },
+    [toast],
+  );
+
+  useEffect(() => {
+    void loadPending();
+  }, [loadPending]);
 
   // ── جمع کل پاس ──
   const totals = useMemo(() => {
@@ -147,15 +182,6 @@ export function UpdateManager() {
     }
     return t;
   }, [batches]);
-
-  /** ادغام یونیک کاربران جدید بین بچ‌ها — تازه‌ثبت‌نام‌تر اول */
-  const mergeUsers = useCallback((incoming: ScanNewUser[]) => {
-    setNewUsers((prev) => {
-      const map = new Map(prev.map((u) => [u.bUserId, u]));
-      for (const u of incoming) if (!map.has(u.bUserId)) map.set(u.bUserId, u);
-      return [...map.values()].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
-    });
-  }, []);
 
   // ── حلقهٔ اصلی پاس — startFrom برای «تلاش مجدد از بچ خطاخورده» ──
   const runScan = useCallback(
@@ -186,7 +212,9 @@ export function UpdateManager() {
             recentDays,
           });
           setBatches((bs) => bs.map((b) => (b.index === i ? { ...b, status: 'done', res } : b)));
-          if (res.newUsers.length) mergeUsers(res.newUsers);
+          // کاربر جدیدی پیدا و در دیتابیس ثبت شد؟ لیست ماندگار را بی‌صدا تازه کن
+          // (خودترمیمی هم همین‌جا انجام می‌شود: ایمپورت‌شده‌ها خارج می‌شوند)
+          if (res.newUsers.length) void loadPending({ silent: true });
         } catch (err) {
           const message = err instanceof Error ? err.message : 'خطای نامشخص';
           setBatches((bs) => bs.map((b) => (b.index === i ? { ...b, status: 'error', error: message } : b)));
@@ -221,7 +249,7 @@ export function UpdateManager() {
         description: `${toFa(t.updated)} آگهی قیمتش تازه شد`,
       });
     },
-    [mergeUsers, recentDays, toast],
+    [loadPending, recentDays, toast],
   );
 
   const stopScan = () => {
@@ -248,7 +276,7 @@ export function UpdateManager() {
     void tick();
   }, []);
 
-  /** شروع ایمپورت کامل یک کاربر باسکولی (بعد از گرفتن شماره) — پول با فراخواننده */
+  /** شروع ایمپورت کامل یک کاربر باسکولی — پول با فراخواننده */
   const startImport = useCallback(
     async (userName: string, phone?: string) => {
       const { jobId } = await importerApi.startSingle({ adminPhone: ADMIN_PHONE, userName, phone });
@@ -257,24 +285,60 @@ export function UpdateManager() {
     [],
   );
 
-  // ── دکمهٔ ایمپورت هر کاربر جدید ──
-  const importUser = useCallback(
-    async (u: ScanNewUser) => {
-      setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'checking' } }));
+  /** به‌روزرسانی موبایل یک ردیف پس از «گرفتن موبایل» (بدون تازه‌کردن کل لیست) */
+  const patchPendingPhone = useCallback((bUserId: number, phone: string, phoneTakenAt: string) => {
+    setPendingUsers((prev) =>
+      prev.map((u) => (u.bUserId === bUserId ? { ...u, phone, phoneTakenAt } : u)),
+    );
+  }, []);
+
+  // ── دکمهٔ «گرفتن موبایل»: فقط شماره می‌گیرد و روی رکورد ذخیره می‌کند ──
+  const takePhone = useCallback(
+    async (u: PendingImportUser) => {
+      setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'phone' } }));
       try {
-        // اگر از قبل وارد ایمچ شده، بدون گرفتن شماره رد شو (خواستهٔ مالک)
-        const ex = await updateApi.extractUser({ adminPhone: ADMIN_PHONE, userName: u.bUserName });
-        if (ex.exists) {
-          setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'exists', imachUserName: ex.imach?.userName ?? '' } }));
-          return;
-        }
-        setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'phone' } }));
-        const { phone, budget: b } = await updateApi.fetchPhone({
+        const res = await updateApi.fetchPhone({
           adminPhone: ADMIN_PHONE,
           sId: u.bUserId,
           pId: u.sampleProductId,
+          bUserName: u.bUserName,
         });
-        setBudget(b);
+        setBudget(res.budget);
+        patchPendingPhone(u.bUserId, res.phone, new Date().toISOString());
+        setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'idle' } }));
+        toast({
+          title: `موبایل @${u.bUserName} گرفته شد`,
+          description: `${res.phone} — روی رکوردش در دیتابیس ذخیره شد؛ دکمهٔ ایمپورت دیگر سهمیه نمی‌سوزاند`,
+        });
+      } catch (err) {
+        setUserStates((s) => ({
+          ...s,
+          [u.bUserId]: { kind: 'error', message: err instanceof Error ? err.message : 'خطای نامشخص' },
+        }));
+      }
+    },
+    [patchPendingPhone, toast],
+  );
+
+  // ── دکمهٔ «ایمپورت»: موبایل داشت → مستقیم؛ نداشت → موبایل + بلافاصله ایمپورت ──
+  const importUser = useCallback(
+    async (u: PendingImportUser) => {
+      try {
+        // ۱) موبایلِ قبلاً گرفته‌شده؟ — مستقیم سراغ ایمپورت کامل (بدون باسکول‌زدن برای شماره)
+        let phone = u.phone ?? undefined;
+        if (!phone) {
+          setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'phone' } }));
+          const res = await updateApi.fetchPhone({
+            adminPhone: ADMIN_PHONE,
+            sId: u.bUserId,
+            pId: u.sampleProductId,
+            bUserName: u.bUserName,
+          });
+          setBudget(res.budget);
+          patchPendingPhone(u.bUserId, res.phone, new Date().toISOString());
+          phone = res.phone;
+        }
+        // ۲) ایمپورت کامل — دادهٔ کاربر، آگهی‌ها، کامنت‌ها و بقیه
         setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'importing', jobId: '' } }));
         const jobId = await startImport(u.bUserName, phone);
         pollJob(jobId);
@@ -286,10 +350,10 @@ export function UpdateManager() {
         }));
       }
     },
-    [startImport],
+    [patchPendingPhone, pollJob, startImport],
   );
 
-  // وقتی جاب تمام شد، وضعیت کاربر مربوط را به‌روز کن
+  // وقتی جاب تمام شد، وضعیت کاربر مربوط را به‌روز کن و از لیست خارجش کن
   useEffect(() => {
     if (!job || job.status === 'running') return;
     const entry = Object.entries(userStates).find(([, v]) => v.kind === 'importing');
@@ -298,10 +362,14 @@ export function UpdateManager() {
     const id = Number(uid);
     if (job.status === 'done') {
       setUserStates((s) => ({ ...s, [id]: { kind: 'done' } }));
-      setNewUsers((prev) => prev.filter((u) => u.bUserId !== id));
+      setPendingUsers((prev) => prev.filter((u) => u.bUserId !== id));
+      toast({ title: `@${job.userName} کامل ایمپورت شد`, description: 'از لیست «در انتظار ایمپورت» خارج شد' });
+      // خودترمیمی: هر رکورد دیگری که در همین حین ایمپورت شده باشد هم خارج شود
+      void loadPending({ silent: true });
     }
     // خطا/توقف: پیام روی پنل جاب دیده می‌شود — دکمه برای تلاش مجدد برمی‌گردد
     else setUserStates((s) => ({ ...s, [id]: { kind: 'idle' } }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job?.status]);
 
   return (
@@ -316,8 +384,8 @@ export function UpdateManager() {
             آپدیت قیمت‌ها
           </h1>
           <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-            آپدیت قیمت/موجودی/حداقل‌سفارش آخرین آگهی‌های باسکول در ایمچ + شناسایی کاربران جدید — از همان یک
-            لیست، بدون کوکی و با وقفهٔ ۵ ثانیه‌ای بین هر ۱٬۰۰۰تا
+            آپدیت قیمت/موجودی/حداقل‌سفارش آخرین آگهی‌های باسکول در ایمچ + شناسایی و ثبت کاربران جدید — از
+            همان یک لیست، بدون کوکی و با وقفهٔ ۵ ثانیه‌ای بین هر ۱٬۰۰۰تا
           </p>
         </div>
         {budget && (
@@ -471,25 +539,41 @@ export function UpdateManager() {
         </section>
       )}
 
-      {/* ─── کاربران جدید باسکول ─── */}
+      {/* ─── کاربران در انتظار ایمپورت ─── */}
       <section className="rounded-lg border bg-card p-4">
         <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h3 className="flex items-center gap-2 text-sm font-extrabold">
             <Users size={15} className="text-primary" />
-            کاربران جدید باسکول
+            کاربران در انتظار ایمپورت
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary tabular-nums">
-              {toFa(newUsers.length)}
+              {toFa(pendingUsers.length)}
             </span>
           </h3>
-          <p className="text-[11px] text-muted-foreground">
-            تازه‌ثبت‌نام‌هایی که در ایمچ نیستند — دکمهٔ ایمپورت: اول شمارهٔ موبایل، بعد ایمپورت کامل
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-[11px] text-muted-foreground">
+              تازه‌ثبت‌نام‌های باسکول — بی‌درنگ و «بدون موبایل» در دیتابیس ثبت شده‌اند؛ لیست ماندگار است
+            </p>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 gap-1 rounded-md px-2 text-[11px] text-muted-foreground"
+              onClick={() => void loadPending()}
+              disabled={pendingLoading}
+            >
+              {pendingLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+              تازه‌سازی
+            </Button>
+          </div>
         </header>
 
-        {newUsers.length === 0 ? (
+        {pendingLoading && pendingUsers.length === 0 ? (
+          <div className="grid place-items-center rounded-md border border-dashed p-6 text-muted-foreground">
+            <Loader2 className="size-5 animate-spin" />
+          </div>
+        ) : pendingUsers.length === 0 ? (
           <p className="rounded-md border border-dashed p-6 text-center text-xs leading-6 text-muted-foreground">
-            هنوز کاربر جدیدی شناسایی نشده — «شروع آپدیت» را بزنید؛ کاربران تازه‌ثبت‌نامِ باسکول که آگهی
-            دارند و در ایمچ نیستند همین‌جا فهرست می‌شوند.
+            هنوز کاربری در انتظار ایمپورت نیست — «شروع آپدیت» را بزنید؛ کاربران تازه‌ثبت‌نامِ باسکول که
+            آگهی دارند و در ایمچ نیستند، همان‌جا در دیتابیس ثبت و همین‌جا فهرست می‌شوند.
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -499,13 +583,14 @@ export function UpdateManager() {
                   <th className="px-2 py-2 font-medium">کاربر باسکول</th>
                   <th className="px-2 py-2 font-medium">نام</th>
                   <th className="px-2 py-2 font-medium">ثبت‌نام</th>
+                  <th className="px-2 py-2 font-medium">موبایل</th>
                   <th className="px-2 py-2 font-medium">نمونه آگهی</th>
                   <th className="px-2 py-2 font-medium">آگهی‌ها</th>
                   <th className="px-2 py-2 font-medium"></th>
                 </tr>
               </thead>
               <tbody>
-                {newUsers.map((u) => {
+                {pendingUsers.map((u) => {
                   const st = userStates[u.bUserId] ?? { kind: 'idle' };
                   return (
                     <tr key={u.bUserId} className="border-b last:border-0 hover:bg-secondary/40">
@@ -532,7 +617,25 @@ export function UpdateManager() {
                           '—'
                         )}
                       </td>
-                      <td className="max-w-[220px] px-2 py-2.5">
+                      <td className="px-2 py-2.5">
+                        {u.phone ? (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 font-bold text-emerald-700"
+                            dir="ltr"
+                            title={
+                              u.phoneTakenAt
+                                ? `گرفته‌شده ${dateFa(u.phoneTakenAt)} (${timeAgoFa(u.phoneTakenAt)}) — روی رکورد ذخیره است`
+                                : 'روی رکورد ذخیره است'
+                            }
+                          >
+                            <Phone size={11} />
+                            {u.phone}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="max-w-[200px] px-2 py-2.5">
                         <p className="truncate" title={u.sampleProductName}>
                           {u.sampleProductName}
                         </p>
@@ -540,7 +643,13 @@ export function UpdateManager() {
                       </td>
                       <td className="px-2 py-2.5 tabular-nums text-muted-foreground">{toFa(u.adsSeen)}</td>
                       <td className="px-2 py-2.5">
-                        <UserImportButton state={st} onImport={() => void importUser(u)} />
+                        <UserRowActions
+                          user={u}
+                          state={st}
+                          importBusy={importBusy}
+                          onTakePhone={() => void takePhone(u)}
+                          onImport={() => void importUser(u)}
+                        />
                       </td>
                     </tr>
                   );
@@ -549,6 +658,12 @@ export function UpdateManager() {
             </table>
           </div>
         )}
+        <p className="mt-3 text-[10px] leading-5 text-muted-foreground">
+          «گرفتن موبایل» فقط شماره را می‌گیرد و روی رکورد کاربر ذخیره می‌کند (هر کوکی باسکول ۲۰ شماره).
+          «ایمپورت» اول رکورد را نگاه می‌کند: موبایل داشته باشد مستقیم ایمپورت کامل (پروفایل، آگهی‌ها،
+          تصاویر، کامنت‌ها) شروع می‌شود؛ نداشته باشد اول موبایل گرفته و ذخیره می‌شود و بلافاصله ایمپورت
+          کامل انجام می‌شود. کاربر ایمپورت‌شده از این لیست خارج می‌شود.
+        </p>
       </section>
 
       <SingleUserExtract onPhone={(b) => setBudget(b)} onStartImport={startImport} pollJob={pollJob} />
@@ -563,16 +678,22 @@ function totalsLabel(bs: BatchRow[]) {
   return t;
 }
 
-// ═══════════════════ دکمهٔ ایمپورت هر کاربر ═══════════════════
+// ═══════════════════ دکمه‌های هر ردیف ═══════════════════
 
-function UserImportButton({ state, onImport }: { state: UserState; onImport: () => void }) {
+function UserRowActions({
+  user,
+  state,
+  importBusy,
+  onTakePhone,
+  onImport,
+}: {
+  user: PendingImportUser;
+  state: UserState;
+  importBusy: boolean;
+  onTakePhone: () => void;
+  onImport: () => void;
+}) {
   switch (state.kind) {
-    case 'checking':
-      return (
-        <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <Loader2 size={13} className="animate-spin" /> بررسی…
-        </span>
-      );
     case 'phone':
       return (
         <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -591,37 +712,52 @@ function UserImportButton({ state, onImport }: { state: UserState; onImport: () 
           <CheckCircle2 size={14} /> ایمپورت شد
         </span>
       );
-    case 'exists':
-      return (
-        <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <CheckCircle2 size={14} className="text-muted-foreground" /> از قبل در ایمچ
-          {state.imachUserName ? (
-            <b dir="ltr" className="text-foreground">
-              @{state.imachUserName}
-            </b>
-          ) : null}
-        </span>
-      );
     case 'error':
       return (
         <div className="flex flex-col items-end gap-1">
-          <Button size="sm" variant="outline" className="h-7 gap-1.5 rounded-md text-[11px]" onClick={onImport}>
-            <UserPlus size={13} /> تلاش مجدد
-          </Button>
-          <span className="max-w-[220px] truncate text-[10px] text-red-600" title={state.message}>
+          <div className="flex gap-1.5">
+            {!user.phone && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1.5 rounded-md text-[11px]"
+                onClick={onTakePhone}
+              >
+                <Phone size={13} /> گرفتن موبایل
+              </Button>
+            )}
+            <Button size="sm" variant="outline" className="h-7 gap-1.5 rounded-md text-[11px]" onClick={onImport}>
+              <UserPlus size={13} /> تلاش مجدد
+            </Button>
+          </div>
+          <span className="max-w-[240px] truncate text-[10px] text-red-600" title={state.message}>
             {state.message}
           </span>
         </div>
       );
     default:
       return (
-        <Button
-          size="sm"
-          className="h-7 gap-1.5 rounded-md text-[11px]"
-          onClick={onImport}
-        >
-          <UserPlus size={13} /> ایمپورت
-        </Button>
+        <div className="flex gap-1.5">
+          {!user.phone && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1.5 rounded-md text-[11px]"
+              onClick={onTakePhone}
+            >
+              <Phone size={13} /> گرفتن موبایل
+            </Button>
+          )}
+          <Button
+            size="sm"
+            className="h-7 gap-1.5 rounded-md text-[11px]"
+            onClick={onImport}
+            disabled={importBusy}
+            title={importBusy ? 'یک جاب ایمپورت در حال اجراست' : undefined}
+          >
+            <UserPlus size={13} /> ایمپورت
+          </Button>
+        </div>
       );
   }
 }
