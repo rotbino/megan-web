@@ -15,6 +15,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   ArrowRight,
   Boxes,
+  DatabaseBackup,
   DatabaseZap,
   Images,
   LayoutDashboard,
@@ -35,6 +36,7 @@ const NAV_ITEMS = [
   { href: '/data-import', label: 'نمای کلی', Icon: LayoutDashboard },
   { href: '/data-import/buskool', label: 'ایمپورتر باسکول', Icon: DatabaseZap },
   { href: '/data-import/update', label: 'آپدیت', Icon: RefreshCw },
+  { href: '/data-import/backup', label: 'بک‌آپ دیتابیس', Icon: DatabaseBackup },
   { href: '/data-import/users', label: 'مدیریت کاربران', Icon: Users },
   { href: '/data-import/products', label: 'آگهی‌ها', Icon: Boxes },
   { href: '/data-import/product-images', label: 'تصاویر آگهی‌ها', Icon: Images },

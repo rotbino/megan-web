@@ -1798,3 +1798,66 @@ export async function fetchAdsReport(filters: AdsReportFilters = {}): Promise<Ad
     attrs: filters.attrs && Object.keys(filters.attrs).length ? filters.attrs : undefined,
   });
 }
+
+// ─── بک‌آپ دیتابیس (تسک ۳۳ — ۲۱-۱۱) ─────────────────────────────────────────
+
+export interface BackupCollectionInfo {
+  name: string;
+  type: 'collection' | 'view';
+  count: number | null;
+}
+
+export interface BackupDatabaseInfo {
+  name: string;
+  dataBytes: number;
+  storageBytes: number;
+  collections: BackupCollectionInfo[];
+}
+
+export interface BackupInfo {
+  server: { isVercel: boolean; platform: string; node: string; profile: string };
+  source: { url: string; ok: boolean; error: string | null };
+  local: { url: string; ok: boolean; error: string | null };
+  databases: BackupDatabaseInfo[];
+  localDatabases: BackupDatabaseInfo[];
+  currentJobId: string | null;
+}
+
+export interface BackupCollectionProgress {
+  name: string;
+  type: 'collection' | 'view';
+  status: 'pending' | 'copying' | 'indexes' | 'done' | 'error';
+  sourceCount: number;
+  copied: number;
+  destCount: number | null;
+  verified: boolean | null;
+  indexesCreated: number;
+  error?: string;
+}
+
+export interface BackupJob {
+  id: string;
+  database: string;
+  targetDatabase: string;
+  status: 'running' | 'done' | 'done_with_errors' | 'error';
+  startedAt: string;
+  finishedAt: string | null;
+  totalCopied: number;
+  collections: BackupCollectionProgress[];
+  error?: string;
+}
+
+/** دیتابیس‌های سرور ابری و لوکال + وضعیت اتصال هر دو */
+export function fetchBackupInfo(): Promise<BackupInfo> {
+  return adminFetch<BackupInfo>('/admin/backup/getInfo', {});
+}
+
+/** شروع انتقال کامل یک دیتابیس ابری به دیتابیس هم‌نام در مونگوی لوکال */
+export function startBackupTransfer(database: string): Promise<{ jobId: string }> {
+  return adminFetch<{ jobId: string }>('/admin/backup/transfer', { database });
+}
+
+/** وضعیت لحظه‌ای جاب انتقال — پیشرفت کالکشن‌به‌کالکشن */
+export function fetchBackupJob(jobId: string): Promise<BackupJob> {
+  return adminFetch<BackupJob>('/admin/backup/getJob', { jobId });
+}
