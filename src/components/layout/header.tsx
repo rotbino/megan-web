@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {ArrowRight, ChevronDown, LayoutGrid, Plus, Search, Sparkles} from 'lucide-react';
 import { BrandLogo } from '@/components/shared/brand';
 import { HeaderUserMenu } from '@/components/layout/header-user-menu';
@@ -50,8 +50,40 @@ import type { Category } from '@/lib/types';
  */
 export function Header({ backButton = false }: { backButton?: boolean }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user } = useAuth();
-  const [q, setQ] = useState('');
+
+  // ── آینهٔ مسیر در جعبهٔ جستجو (خواستهٔ مالک ۲۳-۱۱) ────────────────────
+  // «همزمان با سرچ، کلمهٔ واردشده در سرچ‌باکس بماند و به محض حذف فیلتر
+  // جستجو پاک شود»: منبع حقیقت، مسیر سئو /product-list/search/[q] است —
+  // عبارت فعال از URL خوانده می‌شود؛ حذف چیپ جستجو/«حذف همهٔ فیلترها» که
+  // به /product-list برمی‌گردد، جعبه را همان لحظه خالی می‌کند.
+  const routeTerm = useMemo(() => {
+    if (!pathname?.startsWith('/product-list/search/')) return '';
+    const seg = pathname.slice('/product-list/search/'.length).split('/')[0] ?? '';
+    try {
+      return decodeURIComponent(seg);
+    } catch {
+      return seg;
+    }
+  }, [pathname]);
+  const [q, setQ] = useState(routeTerm);
+
+  // هم‌نمایی زنده با مسیر — جستجوی تازه از هدر، حذف فیلتر، خروج از خانوادهٔ
+  // جستجو … همهٔ تغییرِ عبارت فعال، بی‌درنگ در جعبه منعکس می‌شود. پیوندهای
+  // کهنهٔ /product-list?s= (پل F5) هم هنگام هر تغییر مسیر آینه می‌شوند.
+  useEffect(() => {
+    let term = routeTerm;
+    if (
+      !term &&
+      typeof window !== 'undefined' &&
+      window.location.pathname.startsWith('/product-list')
+    ) {
+      term = new URLSearchParams(window.location.search).get('s') ?? '';
+    }
+    setQ((cur) => (cur !== term ? term : cur));
+  }, [routeTerm]);
+
   const [focused, setFocused] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
   const [activeRoot, setActiveRoot] = useState<number | null>(null);
@@ -191,7 +223,10 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
     const value = (term ?? q).trim();
     if (!value) return;
     setFocused(false);
-    setQ('');
+    // عبارت در جعبه می‌ماند (خواستهٔ مالک ۲۳-۱۱) — پاک‌شدن جعبه فقط با حذف
+    // فیلتر جستجو (چیپ ✕ یا «حذف همه») اتفاق می‌افتد؛ بعد از ناوبری، هم‌نماکنندهٔ
+    // مسیر عبارت را با نسخهٔ پاک‌سازی‌شدهٔ URL (stripSearchNoise) هم‌طرز می‌کند.
+    if (term) setQ(term); // کلیک روی پیشنهاد — همان لحظه در جعبه بنشیند
     // جستجو به مسیر سئو-پسند می‌رود — کلمات اضافه (عمده/خرید/شهر…) همان‌جا
     // حذف می‌شوند تا کاربر مستقیم به صفحه یکتای همان کالا برسد و نتیجه پُر باشد:
     // «خرید سیب زمینی عمده در تهران» → /product-list/search/سیب زمینی
