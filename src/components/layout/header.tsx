@@ -452,7 +452,9 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
             inert={barHidden ? true : undefined}
             className="relative  items-center gap-2.5 border-t border-border/60 nav-desktop:flex nav-desktop:gap-3 nav-desktop:px-6"
           >
-           {/* <button
+            {/* دسته بندی — مگامنوی قبلی برگشت (خواستهٔ مالک ۲۳-۱۱): باز شدن با
+                هاور/کلیک، شِورون چرخان؛ «سرویس‌ها» از این نوار حذف شد */}
+            <button
               type="button"
               onClick={openMega}
               onMouseEnter={openMega}
@@ -464,20 +466,9 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
               <LayoutGrid size={17} className="text-primary" />
               دسته بندی
               <ChevronDown size={14} className={cn('transition-transform', megaOpen && 'rotate-180')} />
-            </button>*/}
+            </button>
 
             <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
-
-            {/* سرویس‌های تخصصی ارزش‌افزوده (خواستهٔ مالک ۱۱-۱۲) — ریتو و
-                همخرید؛ صفحهٔ فرم ثبت‌نام فروشندگان */}
-            <Link
-              href="/services"
-              onClick={() => setMegaOpen(false)}
-              className="flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-            >
-              <LayoutGrid size={17} className="text-primary" />
-              سرویس‌ها
-            </Link>
 
             <Link
                 href={user ? '/panel/products/new' : '/register'}
