@@ -23,6 +23,15 @@ export interface PingInfo {
    *  null = بدون کوکی یا خطای شبکه — کوکی مهمان هم cookieSet:true می‌دهد
    *  ولی متن کامنت‌ها را باز نمی‌کند */
   cookieLoggedIn?: boolean | null;
+  /** (۲۲-۱۱ — ریشه‌یابی خطای «کوکی لاگین نیست») تشخیص ساختار کوکی:
+   *  hasRemember یعنی جفت‌های user_phone/user_password موجودند (سشن ۲ ساعته
+   *  خودش ترمیم می‌شود)؛ cleaned یعنی رشتهٔ Set-Cookie کپی شده بود و
+   *  خودکار پاک‌سازی شد */
+  cookieDiag?: {
+    hasRemember: boolean;
+    hasSession: boolean;
+    cleaned: boolean;
+  };
   adminPhone: string;
   /** درایور ذخیرهٔ عکس‌ها — local یعنی دیسک ./uploads، arvan یعنی ابر */
   storageDriver?: string;
@@ -371,6 +380,10 @@ export interface ImportedUsersSummary {
   /** (تسک ۳۵ — ۲۱-۱۱) ایمپورت‌شده از دیمت */
   daymat: number;
   premiumBuskool: number;
+  /** (۲۲-۱۱ — خواستهٔ مالک) تفکیک ویژه‌های باسکول بر اساس نوع بسته‌ای که
+   *  خریده‌اند (۱=دوماهه ۲=شش‌ماهه ۳=یک‌ساله) — مبنای برآورد درآمد باسکول
+   *  در کارت‌های بالای صفحهٔ مدیریت کاربران */
+  premiumPackages?: { packageType: number; title: string; count: number }[];
   neverLoggedIn: number;
   contacted: number;
   cameAfterContact: number;

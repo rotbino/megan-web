@@ -334,18 +334,31 @@ function StatusChips({
     {
       // سه حالت کوکی (۱۵-۱۱): بدون کوکی / کوکی لاگین‌شده / کوکی مهمان
       // (کوکی مهمان از باسکول پذیرفته می‌شود ولی متن کامنت‌ها را باز نمی‌کند)
+      // + تشخیص ساختار (۲۲-۱۱): فقط laravel_session بگذارد ۲ ساعت بعد می‌میرد —
+      // جفت‌های user_phone/user_password لازم‌اند تا سشن خودش ترمیم شود
       label: !ping?.cookieSet
         ? 'بدون کوکی باسکول'
         : ping.cookieLoggedIn === true
-          ? 'کوکی باسکول: لاگین‌شده'
+          ? ping.cookieDiag?.hasRemember
+            ? 'کوکی باسکول: لاگین + یادآور'
+            : 'کوکی باسکول: لاگین (بدون یادآور!)'
           : ping.cookieLoggedIn === false
             ? 'کوکی باسکول: بدون لاگین!'
             : 'کوکی باسکول تنظیم است',
-      ok: !ping?.cookieSet ? null : ping.cookieLoggedIn === false ? false : true,
+      ok: !ping?.cookieSet
+        ? null
+        : ping.cookieLoggedIn === false
+          ? false
+          : // لاگین ولی بدون جفت‌های یادآور — هشدار (کهربایی)، نه سبز (۲۲-۱۱)
+            ping.cookieLoggedIn === true && !ping.cookieDiag?.hasRemember
+            ? null
+            : true,
       hint: !ping?.cookieSet
         ? 'عمومی کار می‌کند؛ برای متن کامنت‌ها BUSKOOL_COOKIE را در .env بگذارید'
         : ping.cookieLoggedIn === true
-          ? 'متن کامل کامنت‌ها دریافت می‌شود'
+          ? ping.cookieDiag?.hasRemember
+            ? 'متن کامل کامنت‌ها دریافت می‌شود؛ جفت‌های user_phone/user_password هم هستند و سشنِ ۲ ساعته خودش ترمیم می‌شود'
+            : 'سشن الان لاگین است ولی جفت‌های user_phone و user_password در کوکی نیستند — بعد از ۲ ساعت یا با ری‌استارت، «کوکی لاگین نیست» می‌گیرید. کل هدر cookie مرورگر (هر سه جفت name=value) را در BUSKOOL_COOKIE بگذارید'
           : ping.cookieLoggedIn === false
             ? 'این کوکی سشن مهمان است و چیزی باز نمی‌کند — در buskool.com وارد حساب شوید و بعد از تب Network (درخواست XHR) کوکی تازه را کپی کنید'
             : 'وضعیت لاگین سشن نامشخص است — با اجرای ایمپورت یا اسکریپت refresh مشخص می‌شود',

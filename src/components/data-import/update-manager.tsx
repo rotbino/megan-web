@@ -837,7 +837,9 @@ function SingleUserExtract({
       <p className="mt-2.5 text-[10px] leading-5 text-muted-foreground">
         قبل از هر تماس با باسکول، یوزرنیم با کلید باسکولی (bUserName) در دیتابیس چک می‌شود — کاربر موجود
         هیچ درخواستی به باسکول نمی‌دهد و شماره‌اش هم گرفته نمی‌شود. شماره‌گیری موبایل با کوکی انجام
-        می‌شود و هر کوکی فقط ۲۰ شماره می‌دهد.
+        می‌شود و هر کوکی فقط ۲۰ شماره می‌دهد. در BUSKOOL_COOKIE «کل هدر cookie مرورگرِ لاگین‌شده»
+        بگذارید (هر سه جفت user_phone و user_password و laravel_session؛ فقط جفت‌های name=value
+        بدون expires/path) — با جفت‌های یادآور، سشنِ ۲ ساعتهٔ باسکول خودش ترمیم می‌شود.
       </p>
     </section>
   );

@@ -156,6 +156,148 @@ export function UsersManager() {
   );
 }
 
+// ═══════════════════ تفکیک بسته‌های ویژهٔ باسکول + برآورد درآمد ═══════════════════
+// (خواستهٔ مالک ۲۲-۱۱: «تعداد کاربران ویژه باسکول رو به تفکیک اینکه هر بسته رو
+// چند نفر خرید… درآمد باسکول از هر بسته رو حدس بزنم»)
+//
+// تعدادِ هر بسته از summary.premiumPackages (تجمیع روی b.premium.packageType)
+// می‌آید؛ قیمت هر بسته «قابل ویرایش» است (پیش‌فرض از ساختار پلن‌های هم‌شکل)
+// و در localStorage مرورگر مالک ذخیره می‌شود — درآمد = تعداد × قیمت.
+// ⚠️ برآورد فقط روی ویژه‌های باسکولِ شناسایی‌شده در ایمچ است (نمونهٔ کامل
+// جامعهٔ باسکول نیست) و packageType «بستهٔ فعالِ فعلی» است — تمدید یک کاربر
+// دوباره شمرده نمی‌شود.
+
+/** قیمت پیش‌فرض هر بسته (تومان) — قابل ویرایش در UI */
+const BK_PACKAGE_DEFAULT_PRICES: Record<number, number> = { 1: 199_000, 2: 499_000, 3: 799_000 };
+const BK_PRICES_KEY = 'imach:bk-package-prices';
+
+function loadBkPrices(): Record<number, number> {
+  try {
+    const raw = localStorage.getItem(BK_PRICES_KEY);
+    if (!raw) return { ...BK_PACKAGE_DEFAULT_PRICES };
+    const parsed = JSON.parse(raw) as Record<string, number>;
+    const out: Record<number, number> = { ...BK_PACKAGE_DEFAULT_PRICES };
+    for (const [k, v] of Object.entries(parsed)) {
+      const n = Number(v);
+      if (Number.isFinite(n) && n >= 0) out[Number(k)] = Math.floor(n);
+    }
+    return out;
+  } catch {
+    return { ...BK_PACKAGE_DEFAULT_PRICES };
+  }
+}
+
+function PremiumPackages({
+  packages,
+  total,
+  onPick,
+}: {
+  packages: { packageType: number; title: string; count: number }[];
+  total: number;
+  onPick: (packageType: number) => void;
+}) {
+  const [prices, setPrices] = useState<Record<number, number>>(() =>
+    typeof window === 'undefined' ? { ...BK_PACKAGE_DEFAULT_PRICES } : loadBkPrices(),
+  );
+
+  const setPrice = (packageType: number, value: number) => {
+    const safe = Math.max(0, Math.floor(value));
+    setPrices((prev) => {
+      const next = { ...prev, [packageType]: safe };
+      try {
+        localStorage.setItem(BK_PRICES_KEY, JSON.stringify(next));
+      } catch {
+        /* حالت خصوصی */
+      }
+      return next;
+    });
+  };
+
+  // ردیف‌ها data-driven (۲۲-۱۱): بسته‌های شناخته‌شده ۱/۲/۳ همیشه دیده شوند
+  // (حتی صفر) + هر کد دیگری که در داده باشد (مثل ۶ = سازمانی/سفارشی باسکول)
+  const rows = [
+    ...[1, 2, 3].map((t) => ({
+      t,
+      title: PKG_LABELS[t] ?? `بستهٔ ${toFa(t)}`,
+      count: packages.find((p) => p.packageType === t)?.count ?? 0,
+      price: prices[t] ?? 0,
+    })),
+    ...packages
+      .filter((p) => p.packageType > 3)
+      .map((p) => ({
+        t: p.packageType,
+        title: p.title || `بستهٔ کد ${toFa(p.packageType)}`,
+        count: p.count,
+        price: prices[p.packageType] ?? 0,
+      })),
+  ];
+  const totalRevenue = rows.reduce((s, r) => s + r.count * r.price, 0);
+  const unaccounted = total - rows.reduce((s, r) => s + r.count, 0);
+
+  return (
+    <section className="rounded-lg border border-amber-300/60 bg-amber-50/40 p-3.5">
+      <header className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex items-center gap-1.5 text-sm font-extrabold">
+          <Crown size={15} className="text-amber-500" />
+          ویژه‌های باسکول به تفکیک بسته — برآورد درآمد
+        </h3>
+        <p className="text-[10px] text-muted-foreground">
+          درآمد = تعداد × قیمت — قیمت‌ها قابل ویرایش‌اند و در مرورگر شما ذخیره می‌شوند
+        </p>
+      </header>
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+        {rows.map((r) => (
+          <div key={r.t} className="rounded-lg border bg-card p-3">
+            <button
+              type="button"
+              onClick={() => onPick(r.t)}
+              className="w-full text-start"
+              title="فیلتر لیست روی همین بسته"
+            >
+              <p className="flex items-center justify-between text-[11px] font-bold">
+                <span>بستهٔ {r.title}</span>
+                <Crown size={12} className="text-amber-500" />
+              </p>
+              <p className="mt-1 text-lg font-extrabold tabular-nums">
+                {toFa(r.count)} <span className="text-[10px] font-normal text-muted-foreground">نفر خریداری کرده</span>
+              </p>
+            </button>
+            <label className="mt-2 flex items-center justify-between gap-1.5 text-[10px] text-muted-foreground">
+              <span className="shrink-0">قیمت (تومان)</span>
+              <Input
+                type="number"
+                min={0}
+                step={1000}
+                dir="ltr"
+                className="h-7 w-24 rounded-md text-[11px]"
+                value={r.price}
+                onChange={(e) => setPrice(r.t, Number(e.target.value) || 0)}
+              />
+            </label>
+            <p className="mt-1.5 text-[12.5px] font-extrabold tabular-nums text-amber-700">
+              ≈ {priceFa(r.count * r.price)}
+            </p>
+          </div>
+        ))}
+        {/* جمع کل */}
+        <div className="rounded-lg border border-amber-300/70 bg-amber-100/50 p-3">
+          <p className="text-[11px] font-bold text-amber-800">جمع برآورد درآمد باسکول</p>
+          <p className="mt-1 text-lg font-extrabold tabular-nums text-amber-800">{priceFa(totalRevenue)}</p>
+          <p className="mt-1 text-[10px] leading-4 text-muted-foreground">
+            از {toFa(total)} ویژهٔ باسکولِ ایمپورت‌شده
+            {unaccounted > 0 ? ` — ${toFa(unaccounted)} نفر بستهٔ نامشخص/غیرپرداختی` : ''}
+          </p>
+        </div>
+      </div>
+      <p className="mt-2 text-[10px] leading-5 text-muted-foreground">
+        برآورد فقط روی ویژه‌های باسکولی است که در ایمچ شناسایی شده‌ایم (نه کل جامعهٔ باسکول)؛
+        «نفر خریداری کرده» یعنی این بسته الان بستهٔ فعال کاربر است — تمدیدِ یک کاربر دوباره
+        شمرده نمی‌شود و درآمد تمدیدها در این حدس نیست.
+      </p>
+    </section>
+  );
+}
+
 function UsersManagerInner() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -384,6 +526,19 @@ function UsersManagerInner() {
             </button>
           ))}
         </div>
+      ) : null}
+
+      {/* تفکیک بسته‌های ویژهٔ باسکول + برآورد درآمد (خواستهٔ مالک ۲۲-۱۱) */}
+      {summary && summary.premiumPackages && summary.premiumBuskool > 0 ? (
+        <PremiumPackages
+          packages={summary.premiumPackages}
+          total={summary.premiumBuskool}
+          onPick={(t) => {
+            setPage(1);
+            setPremium('yes');
+            setPackageType(String(t));
+          }}
+        />
       ) : null}
 
       {/* هشدار مهاجرت b */}
