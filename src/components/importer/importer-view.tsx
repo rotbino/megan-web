@@ -319,7 +319,7 @@ function StatusChips({
       ok: source ? source.connected : null,
       hint: source?.connected
         ? `${source.table} • ${source.imported?.toLocaleString('fa-IR') ?? '۰'} ایمپورت‌شده${source.failed ? ` • ${source.failed.toLocaleString('fa-IR')} ناقص` : ''}`
-        : (source?.reason ?? 'کالکشن user-pascal در دیتابیس فعلی یافت نشد'),
+        : (source?.reason ?? 'کالکشن user-buskool در دیتابیس فعلی یافت نشد'),
       icon: <Database size={13} />,
     },
     {
@@ -600,7 +600,7 @@ function SingleTesterCard({
           <Label htmlFor="bk-phone" className="flex items-center justify-between">
             شماره موبایل
             <span className="text-[10px] font-normal text-muted-foreground">
-              {source?.connected ? 'خالی = از جدول User-pascal' : 'دیتابیس منبع قطع — دستی وارد کنید'}
+              {source?.connected ? 'خالی = از جدول User-buskool' : 'دیتابیس منبع قطع — دستی وارد کنید'}
             </span>
           </Label>
           <Input
@@ -773,7 +773,7 @@ function ListImportCard({
         </span>
         <div>
           <h2 className="text-sm font-extrabold">
-            ایمپورت لیستی از کالکشن user-pascal{' '}
+            ایمپورت لیستی از کالکشن user-buskool{' '}
             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
               ابزار اصلی
             </span>
@@ -873,7 +873,7 @@ function ListImportCard({
         <p className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs leading-5 text-amber-800">
           <Ban size={14} className="mt-0.5 shrink-0" />
           دیتابیس منبع متصل نیست —{' '}
-          {source?.reason ?? 'کالکشن user-pascal در دیتابیس فعلی یافت نشد'}
+          {source?.reason ?? 'کالکشن user-buskool در دیتابیس فعلی یافت نشد'}
         </p>
       )}
       {error && <p className="mt-3 text-xs text-red-600">{error}</p>}

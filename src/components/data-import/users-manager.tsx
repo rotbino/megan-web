@@ -571,7 +571,7 @@ function UsersManagerInner() {
             <SelectTrigger className="h-8 w-[130px] rounded-[10px] text-[11.5px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">همهٔ منابع</SelectItem>
-              <SelectItem value="pascal">از پاسکال</SelectItem>
+              <SelectItem value="buskool">از پاسکال</SelectItem>
               <SelectItem value="daymat">از دیمت</SelectItem>
               <SelectItem value="native">ثبت‌نام خودی</SelectItem>
               <SelectItem value="stub">کمکی (کامنت)</SelectItem>

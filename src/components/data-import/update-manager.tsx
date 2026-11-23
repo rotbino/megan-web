@@ -46,6 +46,7 @@ import {
   ChevronRight,
   CircleAlert,
   Database,
+  KeyRound,
   Loader2,
   Phone,
   Play,
@@ -58,10 +59,12 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -71,9 +74,11 @@ import {
   ADMIN_PHONE,
   importerApi,
   updateApi,
+  isPascalCookieError,
   type ImportJob,
   type PendingImportUser,
   type ScanResult,
+  type SetPascalCookieResult,
 } from '@/lib/importer/client';
 import { dateFa, timeAgoFa, toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -145,6 +150,15 @@ export function UpdateManager() {
   // ── پیکربندی پاس ──
   const [batchCount, setBatchCount] = useState(10);
   const [recentDays, setRecentDays] = useState(10);
+
+  // ── مودال کوکی پاسکال (۲۳-۱۱ عصر) — خواستهٔ مالک: به‌جای ویرایش .env و
+  // ری‌استارت، خطای کوکی خودش مودال «تنظیم کوکی» را باز می‌کند؛ بعد از ذخیرهٔ
+  // موفق، همان دکمه‌ای که خطا داد خودکار دوباره اجرا می‌شود ──
+  const [cookieDialog, setCookieDialog] = useState<{
+    open: boolean;
+    reason?: string;
+    retry?: { kind: 'phone' | 'import'; user: PendingImportUser };
+  }>({ open: false });
 
   // ── وضعیت پاس ──
   const [status, setStatus] = useState<RunStatus>('idle');
@@ -391,10 +405,14 @@ export function UpdateManager() {
           description: `${res.phone} — روی رکوردش در دیتابیس ذخیره شد؛ دکمهٔ ایمپورت دیگر سهمیه نمی‌سوزاند`,
         });
       } catch (err) {
-        setUserStates((s) => ({
-          ...s,
-          [u.bUserId]: { kind: 'error', message: err instanceof Error ? err.message : 'خطای نامشخص' },
-        }));
+        const msg = err instanceof Error ? err.message : 'خطای نامشخص';
+        if (isPascalCookieError(err)) {
+          // خطای کوکی → مودال «تنظیم کوکی»؛ بعد از ذخیرهٔ موفق همین کار خودکار تکرار می‌شود
+          setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'idle' } }));
+          setCookieDialog({ open: true, reason: msg, retry: { kind: 'phone', user: u } });
+          return;
+        }
+        setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'error', message: msg } }));
       }
     },
     [patchPendingPhone, toast],
@@ -424,13 +442,16 @@ export function UpdateManager() {
         pollJob(jobId);
         setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'importing', jobId } }));
       } catch (err) {
-        setUserStates((s) => ({
-          ...s,
-          [u.bUserId]: { kind: 'error', message: err instanceof Error ? err.message : 'خطای نامشخص' },
-        }));
+        const msg = err instanceof Error ? err.message : 'خطای نامشخص';
+        if (isPascalCookieError(err)) {
+          setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'idle' } }));
+          setCookieDialog({ open: true, reason: msg, retry: { kind: 'import', user: u } });
+          return;
+        }
+        setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'error', message: msg } }));
       }
     },
-    [patchPendingPhone, pollJob, startImport],
+    [patchPendingPhone, pollJob, startImport, toast],
   );
 
   // وقتی جاب تمام شد، وضعیت کاربر مربوط را به‌روز کن و از لیست خارجش کن
@@ -451,6 +472,18 @@ export function UpdateManager() {
     else setUserStates((s) => ({ ...s, [id]: { kind: 'idle' } }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job?.status, loadPending]);
+
+  /** بعد از ذخیرهٔ موفقِ کوکی: سهمیه تازه + تکرار خودکار همان دکمه‌ای که خطا داد */
+  const onCookieSaved = useCallback(
+    (r: SetPascalCookieResult) => {
+      if (r.budget) setBudget(r.budget);
+      const retry = cookieDialog.retry;
+      setCookieDialog({ open: false });
+      if (retry?.kind === 'phone') void takePhone(retry.user);
+      else if (retry?.kind === 'import') void importUser(retry.user);
+    },
+    [cookieDialog.retry, takePhone, importUser],
+  );
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -633,6 +666,16 @@ export function UpdateManager() {
             <p className="text-[11px] text-muted-foreground">
               تازه‌ثبت‌نام‌های پاسکال — بی‌درنگ و «بدون موبایل» در دیتابیس ثبت شده‌اند؛ لیست ماندگار است
             </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1.5 rounded-md px-2 text-[11px]"
+              onClick={() => setCookieDialog({ open: true })}
+              title="کوکی مرورگرِ لاگین‌شدهٔ باسکول را همین‌جا بچسبانید — ذخیره و تست، بدون ری‌استارت"
+            >
+              <KeyRound size={12} />
+              تنظیم کوکی
+            </Button>
             <Button
               size="sm"
               variant="ghost"
@@ -868,13 +911,29 @@ export function UpdateManager() {
           «گرفتن موبایل» فقط شماره را می‌گیرد و روی رکورد کاربر ذخیره می‌کند (هر کوکی پاسکال ۲۰ شماره).
           «ایمپورت» اول رکورد را نگاه می‌کند: موبایل داشته باشد مستقیم ایمپورت کامل (پروفایل، آگهی‌ها،
           تصاویر، کامنت‌ها) شروع می‌شود؛ نداشته باشد اول موبایل گرفته و ذخیره می‌شود و بلافاصله ایمپورت
-          کامل انجام می‌شود. کاربر ایمپورت‌شده از این لیست خارج می‌شود. سشن کوکی پاسکال حالا خودکار زنده
-          می‌ماند — فقط وقتی خطای «کوکی لاگین نیست» دیدید، کوکی تازه در BUSKOOL_COOKIE بگذارید و بک‌اند
-          را ری‌استارت کنید.
+          کامل انجام می‌شود. کاربر ایمپورت‌شده از این لیست خارج می‌شود. اگر خطای «کوکی لاگین نیست» آمد،
+          مودال «تنظیم کوکی» خودش باز می‌شود — کوکی تازه را همان‌جا بچسبانید؛ ذخیره، تست و تکرار خودکارِ
+          همان دکمه انجام می‌شود (بدون ری‌استارت).
         </p>
       </section>
 
-      <SingleUserExtract onPhone={(b) => setBudget(b)} onStartImport={startImport} pollJob={pollJob} />
+      <SingleUserExtract
+        onPhone={(b) => setBudget(b)}
+        onStartImport={startImport}
+        pollJob={pollJob}
+        onCookieError={(msg) => setCookieDialog({ open: true, reason: msg })}
+      />
+
+      {/* مودال «تنظیم کوکی» — با خطای کوکی خودکار باز می‌شود؛ دکمهٔ «تنظیم کوکی» هم دارد */}
+      <PascalCookieDialog
+        open={cookieDialog.open}
+        onOpenChange={(o) => setCookieDialog((d) => ({ ...d, open: o }))}
+        reason={cookieDialog.reason}
+        retryLabel={
+          cookieDialog.retry ? (cookieDialog.retry.kind === 'phone' ? 'گرفتن موبایل' : 'ایمپورت') : undefined
+        }
+        onSaved={onCookieSaved}
+      />
     </div>
   );
 }
@@ -884,6 +943,162 @@ function totalsLabel(bs: BatchRow[]) {
   const t = { updated: 0 };
   for (const b of bs) if (b.res) t.updated += b.res.updated;
   return t;
+}
+
+// ═══════════════════ مودال «تنظیم کوکی پاسکال» (۲۳-۱۱ عصر) ═══════════════════
+
+/**
+ * خواستهٔ مالک: «اگر خطا داد یه مدال با تکست‌ایریا باز کن و از من بخوای
+ * کوکی یا هر چیزی که لازمه رو اونجا پیست کنم. و اوکی کنم و خودت پشت صحنه
+ * ست کنی. تا حد امکان کار منو راحت کن».
+ *
+ * • کوکی مرورگرِ لاگین‌شدهٔ باسکول همین‌جا بچسبد (هر سبک کپی: هدر کامل،
+ *   خط‌به‌خط، با Cookie:، حتی رمزگشایی‌شده از پنل Cookies — بک‌اند همه را
+ *   به یک شکل استاندارد می‌رساند).
+ * • «ذخیره و آزمایش» → بک‌اند همان لحظه ست می‌کند (بدون ری‌استارت)، در
+ *   .env ذخیره می‌کند و سنجش زندهٔ لاگین (/api/user) برمی‌گرداند.
+ * • نتیجه همان‌جا نمایش داده می‌شود؛ اگر لاگین بود و این مودال به‌خاطر
+ *   خطای «گرفتن موبایل / ایمپورت» باز شده باشد، همان کار «خودکار دوباره»
+ *   امتحان می‌شود.
+ */
+function PascalCookieDialog({
+  open,
+  onOpenChange,
+  reason,
+  retryLabel,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  /** پیام خطایی که مودال را باز کرد (خواندنش لازم نیست — فقط برای مرور) */
+  reason?: string;
+  /** اگر مودال به‌خاطر خطای یک دکمه باز شده، نام همان کار — بعد از ذخیرهٔ
+   *  موفق خودکار تکرار می‌شود */
+  retryLabel?: string;
+  /** loggedIn=true → فرانت عملِ شکست‌خورده را تکرار کند */
+  onSaved?: (r: SetPascalCookieResult) => void;
+}) {
+  const { toast } = useToast();
+  const [text, setText] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [result, setResult] = useState<SetPascalCookieResult | null>(null);
+
+  const save = useCallback(async () => {
+    const cookie = text.trim();
+    if (!cookie) return;
+    setSaving(true);
+    setResult(null);
+    try {
+      const r = await updateApi.setPascalCookie({ adminPhone: ADMIN_PHONE, cookie });
+      setResult(r);
+      if (r.loggedIn === true) {
+        toast({
+          title: 'کوکی پاسکال ذخیره شد',
+          description: `${r.message}${r.persisted ? ' — در .env هم ذخیره شد؛ ری‌استارت لازم نیست' : ''}`,
+        });
+        onSaved?.(r);
+        onOpenChange(false);
+        setText('');
+      } else {
+        toast({
+          title: 'کوکی ذخیره شد ولی هنوز مهمان شناخته می‌شود',
+          description: r.message,
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      toast({
+        title: 'ذخیرهٔ کوکی نشد',
+        description: err instanceof Error ? err.message : 'خطای نامشخص',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [text, toast, onSaved, onOpenChange]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl" dir="rtl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <KeyRound size={17} className="text-primary" />
+            تنظیم کوکی پاسکال
+          </DialogTitle>
+          <DialogDescription asChild>
+            <div className="space-y-3 text-right">
+              {reason && (
+                <p className="rounded-md border border-red-200 bg-red-50 p-2.5 text-[11px] leading-5 text-red-700">
+                  دلیل باز شدن: {reason.slice(0, 220)}
+                  {reason.length > 220 ? '…' : ''}
+                </p>
+              )}
+              <div className="rounded-md border bg-secondary/40 p-3 text-[11px] leading-6 text-muted-foreground">
+                <b className="text-foreground">کوکی را این‌طور بگیرید:</b>
+                <br />
+                ۱. در باسکول لاگین هستید؟ همین مرورگر را باز نگه دارید
+                <br />
+                ۲. کلید <b>F12</b> → زبانهٔ <b>Network</b> → روی سایت هر درخواستی کلیک کنید
+                <br />
+                ۳. در <b>Request Headers</b> ردیف <b dir="ltr">cookie</b> را پیدا کنید → روی مقدارش
+                راست‌کلیک → <b>Copy value</b> (کل مقدار؛ سه جفت: user_phone و user_password و
+                laravel_session)
+                <br />
+                ۴. همین‌جا بچسبانید و «ذخیره و آزمایش» را بزنید — ذخیره می‌شود، همین‌جا تست
+                می‌شود و {retryLabel ? <b className="text-foreground">«{retryLabel}» خودکار دوباره امتحان می‌شود</b> : 'نیازی به ری‌استارت نیست'}
+                <br />
+                <span className="text-[10px]">
+                  ⚠️ از پنل Application→Cookies کپی نکنید (مقدارهایش رمزگشایی‌اند) — اگر باز کپی
+                  کنید، خودکار اصلاح می‌شود. جفت‌های user_phone و user_password یادآورِ لاگین‌اند و
+                  تا ماه‌ها کار می‌کنند؛ laravel_session فقط ۲ ساعت عمر دارد و خودش تمدید می‌شود.
+                </span>
+              </div>
+              <Textarea
+                dir="ltr"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="user_phone=eyJ…%3D%3D; user_password=eyJ…%3D%3D; laravel_session=…"
+                className="min-h-[88px] rounded-md font-mono text-[11px] leading-5"
+                spellCheck={false}
+              />
+              {result && (
+                <div
+                  className={cn(
+                    'rounded-md border p-2.5 text-[11px] leading-6',
+                    result.loggedIn === true
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                      : 'border-amber-200 bg-amber-50 text-amber-800',
+                  )}
+                >
+                  <b>{result.loggedIn === true ? '✓ سشن لاگین شناخته شد' : '✗ هنوز مهمان'}</b>
+                  {' — '}
+                  {result.message}
+                  <br />
+                  جفت‌ها: user_phone {result.hints.hasRemember ? '✓' : '✗'} · user_password{' '}
+                  {result.hints.hasRemember ? '✓' : '✗'} · laravel_session{' '}
+                  {result.hints.hasSession ? '✓' : '✗'}
+                  {result.budget != null && (
+                    <>
+                      {' '}· سهمیهٔ شماره‌ها: {toFa(result.budget.remaining)} از {toFa(result.budget.limit)}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2">
+          <Button onClick={() => void save()} disabled={saving || !text.trim()} className="gap-2">
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />}
+            ذخیره و آزمایش
+          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            بستن
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // ═══════════════════ دکمه‌های هر ردیف ═══════════════════
@@ -1006,10 +1221,13 @@ function SingleUserExtract({
   onPhone,
   onStartImport,
   pollJob,
+  onCookieError,
 }: {
   onPhone: (b: { limit: number; used: number; remaining: number }) => void;
   onStartImport: (userName: string, phone?: string) => Promise<string>;
   pollJob: (id: string) => void;
+  /** خطای کوکی → مودال «تنظیم کوکی» باز شود (کوکبک والد) */
+  onCookieError?: (message: string) => void;
 }) {
   const { toast } = useToast();
   const [userName, setUserName] = useState('');
@@ -1034,9 +1252,15 @@ function SingleUserExtract({
       toast({ title: `ایمپورت @${name} شروع شد`, description: 'پیشرفت در پنل بالا' });
       setUserName('');
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'خطای نامشخص';
+      if (isPascalCookieError(err) && onCookieError) {
+        // کوکی → مودال باز شود؛ یوزرنیم در کادر مانده و کاربر دوباره «استخراج» می‌زند
+        onCookieError(msg);
+        return;
+      }
       toast({
         title: 'استخراج ناموفق بود',
-        description: err instanceof Error ? err.message : 'خطای نامشخص',
+        description: msg,
         variant: 'destructive',
       });
     } finally {
@@ -1075,11 +1299,12 @@ function SingleUserExtract({
       <p className="mt-2.5 text-[10px] leading-5 text-muted-foreground">
         قبل از هر تماس با پاسکال، یوزرنیم با کلید پاسکالی (bUserName) در دیتابیس چک می‌شود — کاربر موجود
         هیچ درخواستی به پاسکال نمی‌دهد و شماره‌اش هم گرفته نمی‌شود. شماره‌گیری موبایل با کوکی انجام
-        می‌شود و هر کوکی فقط ۲۰ شماره می‌دهد. در BUSKOOL_COOKIE «کل هدر cookie مرورگرِ لاگین‌شده»
-        بگذارید (هر سه جفت user_phone و user_password و laravel_session؛ فقط جفت‌های name=value بدون
-        expires/path) و بک‌اند را ری‌استارت کنید. سشنِ laravel_session فقط ۲ ساعت بی‌کار می‌ماند؛ بک‌اند
-        از این پس مثل مرورگر هر تمدیدِ سشن را نگه می‌دارد — اگر باز خطای «کوکی لاگین نیست» آمد، یعنی
-        کوکی کپی‌شده از پیش مُرده بوده و باید تازه کپی شود.
+        می‌شود و هر کوکی فقط ۲۰ شماره می‌دهد. اگر خطای «کوکی لاگین نیست» آمد، مودال «تنظیم کوکی» خودش
+        باز می‌شود — کل هدر cookie مرورگرِ لاگین‌شده (هر سه جفت user_phone و user_password و
+        laravel_session) را همان‌جا بچسبانید؛ ذخیره و تست هم همان‌جا انجام می‌شود و ری‌استارت لازم نیست.
+        سشنِ laravel_session فقط ۲ ساعت بی‌کار می‌ماند ولی بک‌اند مثل مرورگر هر تمدیدش را نگه می‌دارد
+        و جفت‌های یادآور (user_phone/user_password) سشن مرده را خودشان ترمیم می‌کنند — برای همین
+        برنامهٔ قدیمی با کوکی‌های ماه‌ها قدیمی هم کار می‌کرد.
       </p>
     </section>
   );

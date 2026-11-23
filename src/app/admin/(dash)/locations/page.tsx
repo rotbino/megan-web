@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils';
 import { toFa } from '@/lib/format';
 
 interface FormState {
-  pascalId?: number;
+  buskolId?: number;
   type: 'province' | 'city';
   name: string;
   enName: string;
@@ -57,7 +57,7 @@ function LocationDialog({
   const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState>(initial);
   const [error, setError] = useState('');
-  const isEdit = form.pascalId != null;
+  const isEdit = form.buskolId != null;
 
   const [lastOpen, setLastOpen] = useState(open);
   if (open !== lastOpen) {
@@ -71,7 +71,7 @@ function LocationDialog({
   const save = useMutation({
     mutationFn: () =>
       upsertLocation({
-        pascalId: form.pascalId,
+        buskolId: form.buskolId,
         type: form.type,
         name: form.name.trim(),
         ...(form.enName.trim() ? { enName: form.enName.trim() } : {}),
@@ -177,8 +177,8 @@ export default function AdminLocationsPage() {
   );
 
   const toggleActive = useMutation({
-    mutationFn: (input: { pascalId: number; type: 'province' | 'city'; active: boolean }) =>
-      setLocationActive(input.pascalId, input.type, input.active),
+    mutationFn: (input: { buskolId: number; type: 'province' | 'city'; active: boolean }) =>
+      setLocationActive(input.buskolId, input.type, input.active),
     onSuccess: (_d, input) => {
       void queryClient.invalidateQueries({ queryKey: ['admin-locations'] });
       toast({
@@ -262,7 +262,7 @@ export default function AdminLocationsPage() {
                     <button
                       type="button"
                       title={p.isActive ? 'غیرفعال کردن' : 'فعال کردن'}
-                      onClick={() => toggleActive.mutate({ pascalId: p.id, type: 'province', active: !p.isActive })}
+                      onClick={() => toggleActive.mutate({ buskolId: p.id, type: 'province', active: !p.isActive })}
                       className={cn(
                         'grid size-7 shrink-0 place-items-center rounded-sm transition-colors',
                         p.isActive
@@ -278,7 +278,7 @@ export default function AdminLocationsPage() {
                       onClick={() =>
                         setDialog({
                           open: true,
-                          initial: { pascalId: p.id, type: 'province', name: p.name, enName: p.enName ?? '' },
+                          initial: { buskolId: p.id, type: 'province', name: p.name, enName: p.enName ?? '' },
                         })
                       }
                       className="grid size-7 shrink-0 place-items-center rounded-sm text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
@@ -350,7 +350,7 @@ export default function AdminLocationsPage() {
                       <button
                         type="button"
                         title={c.isActive ? 'غیرفعال کردن' : 'فعال کردن'}
-                        onClick={() => toggleActive.mutate({ pascalId: c.id, type: 'city', active: !c.isActive })}
+                        onClick={() => toggleActive.mutate({ buskolId: c.id, type: 'city', active: !c.isActive })}
                         className={cn(
                           'grid size-7 shrink-0 place-items-center rounded-sm transition-colors',
                           c.isActive
@@ -367,7 +367,7 @@ export default function AdminLocationsPage() {
                           setDialog({
                             open: true,
                             initial: {
-                              pascalId: c.id,
+                              buskolId: c.id,
                               type: 'city',
                               name: c.name,
                               enName: c.enName ?? '',

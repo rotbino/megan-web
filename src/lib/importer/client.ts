@@ -294,7 +294,7 @@ async function adminFetch(path: string, body?: unknown): Promise<Response> {
 
 /** سند رفتار کاربر در پاسکال — آینهٔ BUserData بک‌اند (b-user-data.ts) */
 export interface BUserDoc {
-  source: 'pascal';
+  source: 'buskool';
   userName: string;
   userId: number;
   profileId: number | null;
@@ -366,7 +366,7 @@ export interface ImportedUserRow {
   /** (۱۹-۱۱) خودش با دکمهٔ «ایمپورت از وب» ایمپورت را کامل کرده — ردّ پایهٔ
    *  «کاربر واقعی ایمچ»: حداقل یک جلسهٔ WebImportSession done دارد */
   selfImported: boolean;
-  /** (تسک ۳۵ — ۲۱-۱۱) منبع ایمپورت — 'pascal' | 'daymat' | null (بومی) */
+  /** (تسک ۳۵ — ۲۱-۱۱) منبع ایمپورت — 'buskool' | 'daymat' | null (بومی) */
   importSource: string | null;
   /** (تسک ۳۵) سند دیمت — { daymatUserId, businessName, … } | null */
   d: Record<string, unknown> | null;
@@ -406,7 +406,7 @@ export interface ImportedUsersList {
 
 export interface ImportedUsersParams {
   q?: string;
-  source?: 'pascal' | 'native' | 'stub' | 'daymat' | 'all';
+  source?: 'buskool' | 'native' | 'stub' | 'daymat' | 'all';
   premium?: 'yes' | 'no';
   packageType?: number;
   login?: 'ever' | 'never' | 'after-contact';
@@ -551,7 +551,7 @@ export interface ImportedListingRow {
   createdAt: string;
   updatedAt: string;
   priceUpdatedAt: string | null;
-  source: 'pascal' | 'native';
+  source: 'buskool' | 'native';
   owner: {
     id: string;
     userName: string;
@@ -588,7 +588,7 @@ export interface ImportedListingsList {
 
 export interface ImportedListingsParams {
   q?: string;
-  source?: 'pascal' | 'native' | 'all';
+  source?: 'buskool' | 'native' | 'all';
   ownerLogin?: 'ever' | 'never';
   edited?: 'yes' | 'no';
   status?: 'pending' | 'confirmed' | 'rejected' | 'deleted' | 'all';
@@ -618,7 +618,7 @@ export interface ProductImageRow {
   updatedAt: string;
   width: number | null;
   height: number | null;
-  source: 'pascal' | 'native';
+  source: 'buskool' | 'native';
   importedFrom: string | null;
   /** URL اصلی فایل در پاسکال (قبل از rehost) */
   originalUrl: string | null;
@@ -655,7 +655,7 @@ export interface ProductImagesList {
 
 export interface ProductImagesParams {
   q?: string;
-  source?: 'pascal' | 'native' | 'all';
+  source?: 'buskool' | 'native' | 'all';
   replaced?: 'yes' | 'no';
   /** حالت گروهی (۱۶-۱۱ عصر): هر آگهی یک ردیف با همهٔ عکس‌هایش */
   group?: 'product';
@@ -980,18 +980,61 @@ export interface ExtractUserResult {
   note?: string;
 }
 
+/** نتیجهٔ ستِ کوکی از مودال — hints/loggedIn/persisted/message (۲۳-۱۱ عصر) */
+export interface SetPascalCookieResult {
+  hints: { hasRemember: boolean; hasSession: boolean; decodedValuesFixed: boolean };
+  /** true = سشن لاگین شناخته شد؛ false = مهمان؛ null = سنجش نشد */
+  loggedIn: boolean | null;
+  /** در .env لوکال ذخیره شد؟ (تا بعد از ری‌استارت بماند) */
+  persisted: boolean;
+  message: string;
+  budget?: PhoneBudgetInfo;
+}
+
+/** کدهای خطایی که «مودال کوکی» را باز می‌کنند — کوکی غایب/نامعتبر/منقضی/تمام */
+const PASCAL_COOKIE_ERROR_CODES = new Set([
+  'BUSKOOL_COOKIE_MISSING',
+  'BUSKOOL_COOKIE_INVALID',
+  'BUSKOOL_CSRF',
+  'BUSKOOL_UNAUTHORIZED',
+  'BUSKOOL_BUDGET_EXHAUSTED',
+]);
+
+/** آیا این خطا «کوکی پاسکال» است؟ — مودال «تنظیم کوکی» باید باز شود
+ *  (کد پایدار اگر بود؛ وگرنه نشانه‌های متنی پیام) */
+export function isPascalCookieError(err: unknown): boolean {
+  if (err instanceof ApiError && err.code) return PASCAL_COOKIE_ERROR_CODES.has(err.code);
+  const msg = err instanceof Error ? err.message : String(err ?? '');
+  return /کوکی پاسکال|کوکی لاگین|مودال «تنظیم کوکی»|توکن CSRF|کوکی تازه/.test(msg);
+}
+
 /** json با پیام خطای تمیز — پیام فارسی بک‌اند بدون پیشوند فنی «HTTP 400 —»
- *  (خطاهای این بخش همگی پیام‌های کارپسندِ سرویس‌اند، نه خطای شبکه‌ای) */
+ *  (خطاهای این بخش همگی پیام‌های کارپسندِ سرویس‌اند، نه خطای شبکه‌ای).
+ *  نوسازی ۲۳-۱۱ عصر: کد ماشینی پایدار (مثل BUSKOOL_COOKIE_INVALID) هم
+ *  با پیام می‌آید — فرانت روی کد منطق «مودال کوکی» می‌بندد. */
+export class ApiError extends Error {
+  /** کد پایدار بک‌اند — AppError code یا RATE_LIMITED و… */
+  readonly code?: string;
+
+  constructor(message: string, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+  }
+}
+
 async function jsonClean<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let message = '';
+    let code: string | undefined;
     try {
       const body = await res.json();
       message = body?.message ?? JSON.stringify(body).slice(0, 200);
+      if (typeof body?.code === 'string') code = body.code;
     } catch {
       /* بدنهٔ متنی */
     }
-    throw new Error(message || `HTTP ${res.status}`);
+    throw new ApiError(message || `HTTP ${res.status}`, code);
   }
   const body = (await res.json()) as { status?: boolean; data?: T };
   return (body && typeof body === 'object' && 'data' in body ? body.data : (body as unknown)) as T;
@@ -1042,6 +1085,15 @@ export const updateApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
     }).then((r) => jsonClean<{ phone: string; budget: PhoneBudgetInfo; saved: boolean }>(r)),
+
+  /** ستِ کوکی پاسکال از مودال پنل — پاک‌سازی هر سبک کپی + ذخیرهٔ ران‌تایم
+   *  (بدون ری‌استارت) + ذخیره در .env + سنجش زندهٔ لاگین با /api/user */
+  setPascalCookie: (input: { adminPhone: string; cookie: string }) =>
+    fetch(`${BASE}/update/pascal-cookie`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    }).then((r) => jsonClean<SetPascalCookieResult>(r)),
 
   /** پیش‌ایمپورت یک یوزرنیم پاسکال — چک موجود بودن + گرفتن شماره */
   extractUser: (input: { adminPhone: string; userName: string }) =>

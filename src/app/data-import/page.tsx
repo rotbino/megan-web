@@ -198,7 +198,7 @@ export default function DataImportOverviewPage() {
           </div>
           <p className="mt-3 text-sm font-extrabold">ایمپورتر پاسکال</p>
           <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
-            مهاجرت پروفایل، آواتار، آگهی‌ها و عکس‌ها از buskool.com — تک‌کاربره یا لیستی از کالکشن user-pascal
+            مهاجرت پروفایل، آواتار، آگهی‌ها و عکس‌ها از buskool.com — تک‌کاربره یا لیستی از کالکشن user-buskool
           </p>
         </Link>
         <Link

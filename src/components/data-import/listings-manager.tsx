@@ -65,7 +65,7 @@ function imgSrc(url: string): string {
 
 /** چیپ منبع آگهی — فروشنده‌اش از پاسکال آمده یا خودش ثبت‌نام کرده */
 function SourceChip({ row }: { row: ImportedListingRow }) {
-  if (row.source === 'pascal') {
+  if (row.source === 'buskool') {
     return (
       <Badge className="bg-primary-soft font-bold text-primary hover:bg-primary-soft" title={`فروشنده @${row.owner.bUserName} در پاسکال`}>
         از پاسکال
@@ -273,7 +273,7 @@ function ListingsManagerInner() {
             <SelectTrigger className="h-8 w-[125px] rounded-[10px] text-[11.5px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">همهٔ منابع</SelectItem>
-              <SelectItem value="pascal">از پاسکال</SelectItem>
+              <SelectItem value="buskool">از پاسکال</SelectItem>
               <SelectItem value="native">ثبت خودی</SelectItem>
             </SelectContent>
           </Select>
