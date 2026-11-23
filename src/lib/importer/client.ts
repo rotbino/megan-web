@@ -294,7 +294,7 @@ async function adminFetch(path: string, body?: unknown): Promise<Response> {
 
 /** سند رفتار کاربر در پاسکال — آینهٔ BUserData بک‌اند (b-user-data.ts) */
 export interface BUserDoc {
-  source: 'buskool';
+  source: 'pascal';
   userName: string;
   userId: number;
   profileId: number | null;
@@ -366,7 +366,7 @@ export interface ImportedUserRow {
   /** (۱۹-۱۱) خودش با دکمهٔ «ایمپورت از وب» ایمپورت را کامل کرده — ردّ پایهٔ
    *  «کاربر واقعی ایمچ»: حداقل یک جلسهٔ WebImportSession done دارد */
   selfImported: boolean;
-  /** (تسک ۳۵ — ۲۱-۱۱) منبع ایمپورت — 'buskool' | 'daymat' | null (بومی) */
+  /** (تسک ۳۵ — ۲۱-۱۱) منبع ایمپورت — 'pascal' | 'daymat' | null (بومی) */
   importSource: string | null;
   /** (تسک ۳۵) سند دیمت — { daymatUserId, businessName, … } | null */
   d: Record<string, unknown> | null;
@@ -374,12 +374,12 @@ export interface ImportedUserRow {
 
 export interface ImportedUsersSummary {
   total: number;
-  buskool: number;
+  pascal: number;
   native: number;
   stub: number;
   /** (تسک ۳۵ — ۲۱-۱۱) ایمپورت‌شده از دیمت */
   daymat: number;
-  premiumBuskool: number;
+  premiumPascal: number;
   /** (۲۲-۱۱ — خواستهٔ مالک) تفکیک ویژه‌های پاسکال بر اساس نوع بسته‌ای که
    *  خریده‌اند (۱=دوماهه ۲=شش‌ماهه ۳=یک‌ساله) — مبنای برآورد درآمد پاسکال
    *  در کارت‌های بالای صفحهٔ مدیریت کاربران */
@@ -406,7 +406,7 @@ export interface ImportedUsersList {
 
 export interface ImportedUsersParams {
   q?: string;
-  source?: 'buskool' | 'native' | 'stub' | 'daymat' | 'all';
+  source?: 'pascal' | 'native' | 'stub' | 'daymat' | 'all';
   premium?: 'yes' | 'no';
   packageType?: number;
   login?: 'ever' | 'never' | 'after-contact';
@@ -418,7 +418,7 @@ export interface ImportedUsersParams {
   /** بازهٔ تاریخ ثبت‌نام — ISO میلادی (خواستهٔ مالک ۱۵-۱۱) */
   createdFrom?: string;
   createdTo?: string;
-  sort?: 'lastLogin' | 'createdAt' | 'products' | 'buskoolCreated' | 'imported' | 'contacted';
+  sort?: 'lastLogin' | 'createdAt' | 'products' | 'pascalCreated' | 'imported' | 'contacted';
   dir?: 'asc' | 'desc';
   page?: number;
   pageSize?: number;
@@ -551,7 +551,7 @@ export interface ImportedListingRow {
   createdAt: string;
   updatedAt: string;
   priceUpdatedAt: string | null;
-  source: 'buskool' | 'native';
+  source: 'pascal' | 'native';
   owner: {
     id: string;
     userName: string;
@@ -569,7 +569,7 @@ export interface ImportedListingRow {
 
 export interface ImportedListingsSummary {
   total: number;
-  buskool: number;
+  pascal: number;
   native: number;
   ownerLoggedIn: number;
   editedByUser: number;
@@ -588,7 +588,7 @@ export interface ImportedListingsList {
 
 export interface ImportedListingsParams {
   q?: string;
-  source?: 'buskool' | 'native' | 'all';
+  source?: 'pascal' | 'native' | 'all';
   ownerLogin?: 'ever' | 'never';
   edited?: 'yes' | 'no';
   status?: 'pending' | 'confirmed' | 'rejected' | 'deleted' | 'all';
@@ -618,7 +618,7 @@ export interface ProductImageRow {
   updatedAt: string;
   width: number | null;
   height: number | null;
-  source: 'buskool' | 'native';
+  source: 'pascal' | 'native';
   importedFrom: string | null;
   /** URL اصلی فایل در پاسکال (قبل از rehost) */
   originalUrl: string | null;
@@ -637,11 +637,11 @@ export interface ProductImageRow {
 
 export interface ProductImagesSummary {
   total: number;
-  buskool: number;
+  pascal: number;
   native: number;
   replaced: number;
   /** پاسکالی‌های هنوز تعویض‌نشده — باقی‌ماندهٔ کار پاک‌کردن واترمارک */
-  buskoolRemaining: number;
+  pascalRemaining: number;
 }
 
 export interface ProductImagesList {
@@ -655,7 +655,7 @@ export interface ProductImagesList {
 
 export interface ProductImagesParams {
   q?: string;
-  source?: 'buskool' | 'native' | 'all';
+  source?: 'pascal' | 'native' | 'all';
   replaced?: 'yes' | 'no';
   /** حالت گروهی (۱۶-۱۱ عصر): هر آگهی یک ردیف با همهٔ عکس‌هایش */
   group?: 'product';
@@ -867,7 +867,7 @@ export const productFilesApi = {
     adminFetch('importer/product-files/wm-batch', { limit, exclude }).then((r) => json<WmBatchResult>(r)),
 };
 
-/** نتیجهٔ پیش‌نمایش/اعمال حذف واترمارک (بک‌اند: buskool-wm.service) */
+/** نتیجهٔ پیش‌نمایش/اعمال حذف واترمارک (بک‌اند: pascal-wm.service) */
 export interface WmPreviewResult {
   status: 'removed' | 'not_found';
   score: number | null;

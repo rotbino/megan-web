@@ -10,7 +10,7 @@
  * بدون رنگ دلخواه، همان تم نقره‌ای ایمچ برقرار می‌ماند.
  */
 
-import { ArrowRightIcon } from '@/components/shared/buskool-icons';
+import { ArrowRightIcon } from '@/components/shared/pascal-icons';
 import { catalogIcon } from '@/lib/catalog-brand';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';

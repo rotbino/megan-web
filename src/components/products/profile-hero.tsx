@@ -24,7 +24,7 @@ import { ChatDialog } from '@/components/products/chat-dialog';
 import { CatalogSaveButton } from '@/components/products/catalog-save-button';
 import { PresenceDot } from '@/components/shared/presence-dot';
 import { RatingStars } from '@/components/shared/rating-stars';
-import { ArrowRightIcon } from '@/components/shared/buskool-icons';
+import { ArrowRightIcon } from '@/components/shared/pascal-icons';
 import { findPresence, usePresenceStatus } from '@/lib/api/presence';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';

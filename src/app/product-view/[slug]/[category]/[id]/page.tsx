@@ -33,7 +33,7 @@ import { RelatedSearches } from '@/components/products/related-searches';
 import { SellerOnlineBadge } from '@/components/products/seller-online-badge';
 import { SellerRatingBadge } from '@/components/products/seller-rating-badge';
 import { MobileContactBar } from '@/components/products/mobile-contact-bar';
-import { ArrowLeftIcon } from '@/components/shared/buskool-icons';
+import { ArrowLeftIcon } from '@/components/shared/pascal-icons';
 import { LazyOnView } from '@/components/shared/lazy-on-view';
 import {
   RailSkeleton,

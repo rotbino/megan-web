@@ -187,7 +187,7 @@ export default function DataImportOverviewPage() {
       {/* کارت ابزارها */}
       <div className="grid gap-3 sm:grid-cols-2">
         <Link
-          href="/data-import/buskool"
+          href="/data-import/pascal"
           className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-primary/5"
         >
           <div className="flex items-center justify-between">
@@ -198,7 +198,7 @@ export default function DataImportOverviewPage() {
           </div>
           <p className="mt-3 text-sm font-extrabold">ایمپورتر پاسکال</p>
           <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
-            مهاجرت پروفایل، آواتار، آگهی‌ها و عکس‌ها از buskool.com — تک‌کاربره یا لیستی از کالکشن user-buskool
+            مهاجرت پروفایل، آواتار، آگهی‌ها و عکس‌ها از buskool.com — تک‌کاربره یا لیستی از کالکشن user-pascal
           </p>
         </Link>
         <Link
@@ -228,8 +228,8 @@ export default function DataImportOverviewPage() {
           </div>
         ) : s ? (
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
-            <StatCard label="کل کاربران" value={toFa(s.total)} hint={`${toFa(s.buskool)} از پاسکال • ${toFa(s.native)} ثبت‌نام خودی`} />
-            <StatCard label="ویژهٔ پاسکال" value={toFa(s.premiumBuskool)} hint="فقط دادهٔ رفتاری — در آیمچ رایگان‌اند" />
+            <StatCard label="کل کاربران" value={toFa(s.total)} hint={`${toFa(s.pascal)} از پاسکال • ${toFa(s.native)} ثبت‌نام خودی`} />
+            <StatCard label="ویژهٔ پاسکال" value={toFa(s.premiumPascal)} hint="فقط دادهٔ رفتاری — در آیمچ رایگان‌اند" />
             <StatCard label="هرگز وارد نشده" value={toFa(s.neverLoggedIn)} hint="کاندیدای پاک‌سازی سالانه" />
             <StatCard label="تماس گرفته‌شده" value={toFa(s.contacted)} hint={`${toFa(s.cameAfterContact)} نفر بعد از تماس آمدند`} />
             <StatCard label="ایمپورت ناقص" value={toFa(s.failed)} hint="پرچم failedImport" />

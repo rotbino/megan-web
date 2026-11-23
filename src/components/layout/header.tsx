@@ -11,9 +11,9 @@ import {
   BuyersIcon,
   MessagesIcon,
   MyAccountIcon,
-  SearchIconBuskool,
+  SearchIconPascal,
   SellersIcon,
-} from '@/components/shared/buskool-icons';
+} from '@/components/shared/pascal-icons';
 import { useAuth } from '@/lib/mock/auth';
 import { useCategoryTree, useSuggestions, useUnreadMessagesCount, useChatSocketEvents } from '@/lib/mock/hooks';
 import { CarryFilters } from '@/components/shared/carry-filters';
@@ -338,7 +338,7 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
               aria-label="جستجوی محصول"
             />
             <button type="submit" aria-label="جستجو" className="shrink-0 text-muted-foreground">
-              <SearchIconBuskool size={24} />
+              <SearchIconPascal size={24} />
             </button>
           </form>
 

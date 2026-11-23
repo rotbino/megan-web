@@ -5,5 +5,5 @@ import { redirect } from 'next/navigation';
  * آدرس قدیمی برای لینک‌های ذخیره‌شده به آن‌جا ریدایرکت می‌شود.
  */
 export default function AdminImporterRedirect() {
-  redirect('/data-import/buskool');
+  redirect('/data-import/pascal');
 }

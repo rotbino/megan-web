@@ -14,7 +14,7 @@ import {
   MessagesIcon,
   MyAccountIcon,
   SellersIcon,
-} from '@/components/shared/buskool-icons';
+} from '@/components/shared/pascal-icons';
 
 /**
  * نوار ناوبری پایین موبایل (فوتر اپ‌گونه) — نقش‌محور (خواسته مالک):

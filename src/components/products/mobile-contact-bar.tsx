@@ -2,7 +2,7 @@
 
 import { Phone } from 'lucide-react';
 import { ChatDialog } from '@/components/products/chat-dialog';
-import { ChatBubbleIcon } from '@/components/shared/buskool-icons';
+import { ChatBubbleIcon } from '@/components/shared/pascal-icons';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 
 /**

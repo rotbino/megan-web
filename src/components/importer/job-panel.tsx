@@ -78,7 +78,7 @@ export function JobPanel({
   const minutes = Math.floor(elapsed / 60);
   const seconds = Math.floor(elapsed % 60);
 
-  const counterEntries = Object.entries(job.counters).filter(([k]) => !k.startsWith('buskool'));
+  const counterEntries = Object.entries(job.counters).filter(([k]) => !k.startsWith('pascal'));
 
   // نگهبان شبکه (۱۵-۱۱ شب): جاب در انتظار بازگشت اینترنت است — توقف موقت، نه شکست
   const netWaiting = job.status === 'running' && job.netWaiting === true;

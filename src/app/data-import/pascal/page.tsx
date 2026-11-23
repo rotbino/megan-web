@@ -5,6 +5,6 @@ import { ImporterView } from '@/components/importer/importer-view';
  * (خواستهٔ مالک ۱۳-۱۱). گارد نقش ارشد داخل خود کامپوننت است؛ آدرس قدیمی
  * /admin/importer به این‌جا ریدایرکت می‌شود.
  */
-export default function DataImportBuskoolPage() {
+export default function DataImportPascalPage() {
   return <ImporterView />;
 }

@@ -131,7 +131,7 @@ reaper/replace/staging، PrismaService با کوئری گرم‌کردن بوت�
 
 | اسکریپت | کار |
 |---|---|
-| `scripts/fetch-buskool-base-data.mjs` | کراول `POST /get_category_list` (BFS کل درخت) + `POST /location/get_location_info` → JSON خام در `scripts/data/` |
+| `scripts/fetch-pascal-base-data.mjs` | کراول `POST /get_category_list` (BFS کل درخت) + `POST /location/get_location_info` → JSON خام در `scripts/data/` |
 | `scripts/seed-base-data.mjs` | آپسرت ۶۹۵ دسته + ۳۱ استان + ۴۷۴ شهر با `_id` عددی پاسکال (trim نام شهرها) |
 | `scripts/seed-products.mjs` | ۲۶ فروشنده واقعی + ۶۰ آگهی واقعی (id پاسکال) + **rehost عکس‌ها از CDN پاسکال به باکت آروان** (پاین‌لاین sharp: اصلی ۱۶۰۰ + تامبنیل ۴۰۰ + هدر immutable) + Counter؛ `--skip-photos` → URL پاسکال می‌ماند |
 | `scripts/db-drop-all.mjs` | پاک‌سازی کامل (شروع تازه) |
@@ -139,7 +139,6 @@ reaper/replace/staging، PrismaService با کوئری گرم‌کردن بوت�
 
 - اجرا: `bun run seed:base-data` سپس `bun run seed:products`
 - اجرای مجدد هر seed ایمن است (upsert + ردشدن rehostهای موجود + fixer ObjectId).
-- منبع محصولات: `/home/z/my-project/scripts/buskool-data/products.json` (۶۰ آگهی واقعی ۵ کالا).
 
 ---
 

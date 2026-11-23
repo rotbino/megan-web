@@ -79,7 +79,7 @@ export interface AdminCategoryInput {
   score?: number;
 }
 
-/** استان/شهر (ادمین) — id = buskolId عددی */
+/** استان/شهر (ادمین) — id = pascalId عددی */
 export interface AdminProvince {
   id: number;
   name: string;
@@ -99,11 +99,11 @@ export interface AdminCity {
 }
 
 export interface AdminLocationInput {
-  buskolId?: number;
+  pascalId?: number;
   type: 'province' | 'city';
   name: string;
   enName?: string;
-  parentId?: number; // برای شهر: buskolId استان
+  parentId?: number; // برای شهر: pascalId استان
 }
 
 // ─── توکن ────────────────────────────────────────────────────────────────────
@@ -265,8 +265,8 @@ export async function upsertLocation(input: AdminLocationInput): Promise<{ id: n
 }
 
 /** فعال/غیرفعال کردن مکان */
-export async function setLocationActive(buskolId: number, type: 'province' | 'city', active: boolean): Promise<{ id: number; isActive: boolean }> {
-  return adminFetch('/admin/base-data/setLocationActive', { buskolId, type, active });
+export async function setLocationActive(pascalId: number, type: 'province' | 'city', active: boolean): Promise<{ id: number; isActive: boolean }> {
+  return adminFetch('/admin/base-data/setLocationActive', { pascalId, type, active });
 }
 
 // ─── فاز A3 — مدیریت کاربران ─────────────────────────────────────────────────

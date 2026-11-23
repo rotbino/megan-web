@@ -123,7 +123,7 @@ export function ArrowLeftIcon({ size = 20, ...props }: P) {
 }
 
 /** آیکون جستجو — عین پاسکال (موبایل) */
-export function SearchIconBuskool({ size = 24, ...props }: P) {
+export function SearchIconPascal({ size = 24, ...props }: P) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -143,7 +143,7 @@ export function SearchIconBuskool({ size = 24, ...props }: P) {
 }
 
 /** آیکون مکان (فیلتر همه ایران) — عین پاسکال */
-export function LocationIconBuskool({ size = 20, ...props }: P) {
+export function LocationIconPascal({ size = 20, ...props }: P) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

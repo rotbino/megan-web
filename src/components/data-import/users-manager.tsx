@@ -127,7 +127,7 @@ function SourceChip({ row }: { row: ImportedUserRow }) {
 }
 
 /** چیپ بستهٔ پاسکال — ویژه‌های سابق پاسکال (نه اعتبار آیمچ) */
-function BuskoolPackageChip({ row }: { row: ImportedUserRow }) {
+function PascalPackageChip({ row }: { row: ImportedUserRow }) {
   // کاربر بومی اصلاً پاسکالی نیست — خط تیره؛ فقط رکورد قدیمیِ پاسکالی «قدیمی» است
   if (!row.b) return row.bUserName ? <span className="text-[10px] text-muted-foreground">قدیمی</span> : <span className="text-[10px] text-muted-foreground">—</span>;
   const { premium } = row.b;
@@ -497,10 +497,10 @@ function UsersManagerInner() {
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
           {[
             { label: 'کل', value: summary.total, hint: 'همهٔ کاربران' },
-            { label: 'از پاسکال', value: summary.buskool, hint: 'ایمپورت‌شده' },
+            { label: 'از پاسکال', value: summary.pascal, hint: 'ایمپورت‌شده' },
             { label: 'از دیمت', value: summary.daymat, hint: 'مهاجرت دیمت — سوپرمارکت', teal: true },
             { label: 'ثبت‌نام خودی', value: summary.native, hint: 'خودشان آمده‌اند' },
-            { label: 'ویژهٔ پاسکال', value: summary.premiumBuskool, hint: 'کاندیدای دعوت به پرداخت', accent: true },
+            { label: 'ویژهٔ پاسکال', value: summary.premiumPascal, hint: 'کاندیدای دعوت به پرداخت', accent: true },
             { label: 'ایمپورت خودی', value: summary.selfImported, hint: 'خودشان از وب آورده‌اند — کاربران واقعی ایچ', accent: true },
             { label: 'بعد از تماس آمدند', value: summary.cameAfterContact, hint: `از ${toFa(summary.contacted)} تماس‌گرفته` },
             { label: 'هرگز وارد نشده', value: summary.neverLoggedIn, hint: summary.failed ? `+ ${toFa(summary.failed)} ایمپورت ناقص` : 'کاندیدای پاک‌سازی' },
@@ -529,10 +529,10 @@ function UsersManagerInner() {
       ) : null}
 
       {/* تفکیک بسته‌های ویژهٔ پاسکال + برآورد درآمد (خواستهٔ مالک ۲۲-۱۱) */}
-      {summary && summary.premiumPackages && summary.premiumBuskool > 0 ? (
+      {summary && summary.premiumPackages && summary.premiumPascal > 0 ? (
         <PremiumPackages
           packages={summary.premiumPackages}
-          total={summary.premiumBuskool}
+          total={summary.premiumPascal}
           onPick={(t) => {
             setPage(1);
             setPremium('yes');
@@ -571,7 +571,7 @@ function UsersManagerInner() {
             <SelectTrigger className="h-8 w-[130px] rounded-[10px] text-[11.5px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">همهٔ منابع</SelectItem>
-              <SelectItem value="buskool">از پاسکال</SelectItem>
+              <SelectItem value="pascal">از پاسکال</SelectItem>
               <SelectItem value="daymat">از دیمت</SelectItem>
               <SelectItem value="native">ثبت‌نام خودی</SelectItem>
               <SelectItem value="stub">کمکی (کامنت)</SelectItem>
@@ -653,7 +653,7 @@ function UsersManagerInner() {
               <SelectItem value="lastLogin">مرتب: آخرین ورود</SelectItem>
               <SelectItem value="createdAt">مرتب: ثبت‌نام</SelectItem>
               <SelectItem value="products">مرتب: تعداد آگهی</SelectItem>
-              <SelectItem value="buskoolCreated">مرتب: ثبت‌نام پاسکال</SelectItem>
+              <SelectItem value="pascalCreated">مرتب: ثبت‌نام پاسکال</SelectItem>
               <SelectItem value="imported">مرتب: تاریخ ایمپورت</SelectItem>
               <SelectItem value="contacted">مرتب: تاریخ تماس</SelectItem>
             </SelectContent>
@@ -808,7 +808,7 @@ function UsersManagerInner() {
                       </p>
                     )}
                   </td>
-                  <td className="p-2 align-middle"><BuskoolPackageChip row={row} /></td>
+                  <td className="p-2 align-middle"><PascalPackageChip row={row} /></td>
                   <td className="hidden p-2 align-middle sm:table-cell">
                     <span className="inline-flex items-center gap-1 tabular-nums">
                       <Boxes size={13} className="text-muted-foreground/70" />

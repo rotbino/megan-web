@@ -9,7 +9,7 @@
  * رنگ دلخواه، همان تم ایمچ برقرار می‌ماند.
  */
 
-import { ArrowRightIcon } from '@/components/shared/buskool-icons';
+import { ArrowRightIcon } from '@/components/shared/pascal-icons';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Share2 } from 'lucide-react';
