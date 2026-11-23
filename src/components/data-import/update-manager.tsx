@@ -27,6 +27,13 @@
  *     اول موبایل از پاسکال گرفته و ذخیره می‌شود و بلافاصله ایمپورت کامل
  *     شروع می‌شود. با موفقیت، کاربر از لیست خارج می‌شود.
  *
+ * نوسازی ۲۴-۱۱ (خواستهٔ مالک — «به هر دلیل»): اگر رکورد موبایل ندارد و
+ * گرفتن خودکار از پاسکال هم نشد (کوکی/سهمیه/قفل/خطا — هر چه)، «مودال ورود
+ * دستی شماره» باز می‌شود؛ مالک شماره را خودش از باسکول می‌گیرد و وارد
+ * می‌کند؛ شماره اول در دیتابیس (رکورد انتظار) ذخیره می‌شود و بعد بلافاصله
+ * ایمپورت شروع می‌شود — بدون مصرف سهمیهٔ کوکی. مسیر رفع کوکی هم داخل
+ * همان مودال دکمهٔ جداگانه دارد.
+ *
  * نوسازی ۲۳-۱۱ (خواستهٔ مالک): لیست «در انتظار ایمپورت» صفحه‌بندی ۵۰تایی +
  * فیلتر روزِ ثبت‌نام (امروز / دیروز / ۲ و ۳ روز پیش / «سایر» با عدد دلخواه /
  * همه) دارد؛ ریشه‌یابی خطای «کوکی لاگین نیست» هم انجام شد — ظرف کوکی زنده:
@@ -159,6 +166,17 @@ export function UpdateManager() {
     reason?: string;
     retry?: { kind: 'phone' | 'import'; user: PendingImportUser };
   }>({ open: false });
+
+  // ── مودال ورود دستی شمارهٔ موبایل (۲۴-۱۱ — خواستهٔ مالک): رکورد موبایل
+  // ندارد و گرفتن خودکار از پاسکال هم به هر دلیلی نشد → این مودال باز
+  // می‌شود؛ شمارهٔ دستی اول در دیتابیس ذخیره و بعد (در حالت ایمپورت)
+  // بلافاصله ایمپورت شروع می‌شود ──
+  const [manualPhone, setManualPhone] = useState<{
+    open: boolean;
+    mode: 'phone' | 'import';
+    user: PendingImportUser | null;
+    reason?: string;
+  }>({ open: false, mode: 'phone', user: null });
 
   // ── وضعیت پاس ──
   const [status, setStatus] = useState<RunStatus>('idle');
@@ -405,14 +423,11 @@ export function UpdateManager() {
           description: `${res.phone} — روی رکوردش در دیتابیس ذخیره شد؛ دکمهٔ ایمپورت دیگر سهمیه نمی‌سوزاند`,
         });
       } catch (err) {
+        // (۲۴-۱۱ — خواستهٔ مالک، «به هر دلیل»): گرفتن خودکار نشد → مودال ورود
+        // دستی شماره؛ مسیر رفع کوکی هم داخل همان مودال دکمهٔ جداگانه دارد
         const msg = err instanceof Error ? err.message : 'خطای نامشخص';
-        if (isPascalCookieError(err)) {
-          // خطای کوکی → مودال «تنظیم کوکی»؛ بعد از ذخیرهٔ موفق همین کار خودکار تکرار می‌شود
-          setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'idle' } }));
-          setCookieDialog({ open: true, reason: msg, retry: { kind: 'phone', user: u } });
-          return;
-        }
-        setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'error', message: msg } }));
+        setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'idle' } }));
+        setManualPhone({ open: true, mode: 'phone', user: u, reason: msg });
       }
     },
     [patchPendingPhone, toast],
@@ -426,15 +441,25 @@ export function UpdateManager() {
         let phone = u.phone ?? undefined;
         if (!phone) {
           setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'phone' } }));
-          const res = await updateApi.fetchPhone({
-            adminPhone: ADMIN_PHONE,
-            sId: u.bUserId,
-            pId: u.sampleProductId,
-            bUserName: u.bUserName,
-          });
-          setBudget(res.budget);
-          patchPendingPhone(u.bUserId, res.phone, new Date().toISOString());
-          phone = res.phone;
+          try {
+            const res = await updateApi.fetchPhone({
+              adminPhone: ADMIN_PHONE,
+              sId: u.bUserId,
+              pId: u.sampleProductId,
+              bUserName: u.bUserName,
+            });
+            setBudget(res.budget);
+            patchPendingPhone(u.bUserId, res.phone, new Date().toISOString());
+            phone = res.phone;
+          } catch (err) {
+            // (۲۴-۱۱ — خواستهٔ مالک، «به هر دلیل»): گرفتن خودکار نشد → مودال
+            // ورود دستی؛ بعد از ثبت، شماره در دیتابیس ذخیره و ایمپورت
+            // بلافاصله شروع می‌شود
+            const msg = err instanceof Error ? err.message : 'خطای نامشخص';
+            setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'idle' } }));
+            setManualPhone({ open: true, mode: 'import', user: u, reason: msg });
+            return;
+          }
         }
         // ۲) ایمپورت کامل — دادهٔ کاربر، آگهی‌ها، کامنت‌ها و بقیه
         setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'importing', jobId: '' } }));
@@ -442,13 +467,39 @@ export function UpdateManager() {
         pollJob(jobId);
         setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'importing', jobId } }));
       } catch (err) {
+        // خطای خودِ ایمپورت (نه گوشی‌گیری) — روی ردیف
         const msg = err instanceof Error ? err.message : 'خطای نامشخص';
-        if (isPascalCookieError(err)) {
-          setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'idle' } }));
-          setCookieDialog({ open: true, reason: msg, retry: { kind: 'import', user: u } });
-          return;
-        }
         setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'error', message: msg } }));
+      }
+    },
+    [patchPendingPhone, pollJob, startImport, toast],
+  );
+
+  // ── (۲۴-۱۱) ثبت شمارهٔ دستی مودال: اول در دیتابیس (رکورد انتظار) ذخیره،
+  // بعد — اگر حالت ایمپورت بود — بلافاصله شروع ایمپورت کامل ──
+  const submitManualPhone = useCallback(
+    async (u: PendingImportUser, phone: string, mode: 'phone' | 'import') => {
+      const res = await updateApi.setPhone({
+        adminPhone: ADMIN_PHONE,
+        bUserName: u.bUserName,
+        phone,
+      });
+      patchPendingPhone(u.bUserId, res.phone, res.at);
+      if (mode === 'import') {
+        setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'importing', jobId: '' } }));
+        const jobId = await startImport(u.bUserName, res.phone);
+        pollJob(jobId);
+        setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'importing', jobId } }));
+        toast({
+          title: `موبایل @${u.bUserName} ثبت شد — ایمپورت شروع شد`,
+          description: `${res.phone} — روی رکوردش در دیتابیس ذخیره شد؛ ایمپورت کامل در حال اجراست`,
+        });
+      } else {
+        setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'idle' } }));
+        toast({
+          title: `موبایل @${u.bUserName} ثبت شد`,
+          description: `${res.phone} — روی رکوردش در دیتابیس ذخیره شد (بدون مصرف سهمیهٔ کوکی)`,
+        });
       }
     },
     [patchPendingPhone, pollJob, startImport, toast],
@@ -911,9 +962,10 @@ export function UpdateManager() {
           «گرفتن موبایل» فقط شماره را می‌گیرد و روی رکورد کاربر ذخیره می‌کند (هر کوکی پاسکال ۲۰ شماره).
           «ایمپورت» اول رکورد را نگاه می‌کند: موبایل داشته باشد مستقیم ایمپورت کامل (پروفایل، آگهی‌ها،
           تصاویر، کامنت‌ها) شروع می‌شود؛ نداشته باشد اول موبایل گرفته و ذخیره می‌شود و بلافاصله ایمپورت
-          کامل انجام می‌شود. کاربر ایمپورت‌شده از این لیست خارج می‌شود. اگر خطای «کوکی لاگین نیست» آمد،
-          مودال «تنظیم کوکی» خودش باز می‌شود — کوکی تازه را همان‌جا بچسبانید؛ ذخیره، تست و تکرار خودکارِ
-          همان دکمه انجام می‌شود (بدون ری‌استارت).
+          کامل انجام می‌شود. کاربر ایمپورت‌شده از این لیست خارج می‌شود. اگر گرفتن خودکار شماره به هر
+          دلیلی نشد (کوکی/سهمیه/قفل و…)، مودال «ورود دستی شماره» باز می‌شود — شماره را از پروفایل
+          باسکول خودتان بگیرید و وارد کنید؛ اول در دیتابیس ذخیره می‌شود و بعد بلافاصله ایمپورت شروع
+          می‌شود (بدون مصرف سهمیهٔ کوکی). رفع مشکل کوکی هم داخل همان مودال دکمهٔ جداگانه دارد.
         </p>
       </section>
 
@@ -922,6 +974,27 @@ export function UpdateManager() {
         onStartImport={startImport}
         pollJob={pollJob}
         onCookieError={(msg) => setCookieDialog({ open: true, reason: msg })}
+      />
+
+      {/* مودال «ورود دستی شماره» (۲۴-۱۱) — گرفتن خودکار به هر دلیل نشد */}
+      <ManualPhoneDialog
+        open={manualPhone.open}
+        mode={manualPhone.mode}
+        user={manualPhone.user}
+        reason={manualPhone.reason}
+        onOpenChange={(o) => setManualPhone((d) => ({ ...d, open: o }))}
+        onSubmit={(u, phone) => submitManualPhone(u, phone, manualPhone.mode)}
+        onOpenCookie={(reason) => {
+          // از داخل مودال دستی: رفع کوکی → بعد از ذخیرهٔ موفق، همان دکمه دوباره
+          setManualPhone((d) => ({ ...d, open: false }));
+          setCookieDialog({
+            open: true,
+            reason,
+            retry: manualPhone.user
+              ? { kind: manualPhone.mode, user: manualPhone.user }
+              : undefined,
+          });
+        }}
       />
 
       {/* مودال «تنظیم کوکی» — با خطای کوکی خودکار باز می‌شود؛ دکمهٔ «تنظیم کوکی» هم دارد */}
@@ -1093,6 +1166,166 @@ function PascalCookieDialog({
             ذخیره و آزمایش
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            بستن
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ═══════════════════ مودال «ورود دستی شمارهٔ موبایل» (۲۴-۱۱) ═══════════════════
+
+/**
+ * خواستهٔ مالک: «برای ایمپورت دیتای کاربران منتظر ایمپورت، به هر دلیل اگر
+ * در رکورد کاربر شمارهٔ موبایلش نبود و با کد هم نتونستی شماره رو بگیری،
+ * مودال باز کن و بگو شمارهٔ موبایل رو وارد کن؛ بعد من دستی از باسکول
+ * می‌گیرم و وارد می‌کنم؛ بعد تو اول شماره رو اینزت کن توی دیتابیس و بعد
+ * بلافاصله شروع کن به ایمپورت».
+ *
+ * • reason = همان خطای گرفتن خودکار (خواندنش لازم نیست — فقط برای مرور)
+ * • mode=import → دکمهٔ «ذخیره و شروع ایمپورت»؛ mode=phone → «ذخیره شماره»
+ * • شماره اول در دیتابیس (رکورد انتظار) ذخیره می‌شود بعد ایمپورت شروع
+ * • مسیر رفع کوکی هم داخل همین مودال دکمهٔ جداگانه دارد
+ */
+function ManualPhoneDialog({
+  open,
+  onOpenChange,
+  mode,
+  user,
+  reason,
+  onSubmit,
+  onOpenCookie,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  /** import = بعد از ذخیره بلافاصله ایمپورت شروع می‌شود؛ phone = فقط ذخیره */
+  mode: 'phone' | 'import';
+  user: PendingImportUser | null;
+  /** پیام خطای گرفتن خودکار که مودال را باز کرد */
+  reason?: string;
+  /** ثبت شماره — resolve یعنی موفق (مودال بسته می‌شود)؛ reject داخل مودال نمایش داده می‌شود */
+  onSubmit: (user: PendingImportUser, phone: string) => Promise<void>;
+  /** باز کردن مودال «تنظیم کوکی» از داخل همین مودال */
+  onOpenCookie: (reason: string) => void;
+}) {
+  const [text, setText] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // با هر بار باز شدن، کادر تمیز شروع می‌کند
+  useEffect(() => {
+    if (open) {
+      setText('');
+      setError(null);
+      setBusy(false);
+    }
+  }, [open]);
+
+  /** نرمال‌سازی ورودی: ارقام فارسی/عربی → لاتین؛ فقط ۱۱رقمیِ ۰۹… */
+  const normalizeInput = (raw: string): string | null => {
+    const s = raw
+      .replace(/[\u06F0-\u06F9\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) & 0xf))
+      .replace(/[\s\-()]/g, '');
+    if (/^0098/.test(s)) return `0${s.slice(4)}`.length === 11 ? `0${s.slice(4)}` : null;
+    if (/^98(9\d{9})$/.test(s)) return `0${s.slice(2)}`;
+    if (/^9\d{9}$/.test(s)) return `0${s}`;
+    return /^09\d{9}$/.test(s) ? s : null;
+  };
+
+  const save = async () => {
+    if (!user || busy) return;
+    setError(null);
+    const phone = normalizeInput(text.trim());
+    if (!phone) {
+      setError('شماره را ۱۱ رقم و با ۰۹ وارد کنید (مثل ۰۹۱۲۳۴۵۶۷۸۹) — ارقام فارسی هم پذیرفته است');
+      return;
+    }
+    setBusy(true);
+    try {
+      await onSubmit(user, phone);
+      // موفق — والد خودش مودال را می‌بندد/وضعیت ردیف را به‌روز می‌کند
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ثبت شماره ناموفق بود');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !busy && onOpenChange(o)}>
+      <DialogContent className="max-w-lg" dir="rtl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Phone size={17} className="text-primary" />
+            ورود دستی شمارهٔ موبایل
+            {user && <span dir="ltr" className="font-bold">@{user.bUserName}</span>}
+          </DialogTitle>
+          <DialogDescription asChild>
+            <div className="space-y-3 text-right">
+              {reason && (
+                <p className="rounded-md border border-red-200 bg-red-50 p-2.5 text-[11px] leading-5 text-red-700">
+                  گرفتن خودکار نشد: {reason.slice(0, 220)}
+                  {reason.length > 220 ? '…' : ''}
+                </p>
+              )}
+              <div className="rounded-md border bg-secondary/40 p-3 text-[11px] leading-6 text-muted-foreground">
+                <b className="text-foreground">شماره را این‌طور بگیرید:</b>
+                <br />
+                در باسکول پروفایل همین فروشنده را باز کنید (@
+                <span dir="ltr">{user?.bUserName ?? ''}</span>) → دکمهٔ «نمایش شمارهٔ تماس» را بزنید →
+                شماره را کپی و همین‌جا وارد کنید.
+                <br />
+                ثبت شماره <b className="text-foreground">سهمیهٔ ۲۰تایی کوکی را مصرف نمی‌کند</b> و
+                {mode === 'import' ? (
+                  <>
+                    {' '}
+                    بعد از ذخیره در دیتابیس، <b className="text-foreground">ایمپورت کامل بلافاصله شروع می‌شود</b>
+                  </>
+                ) : (
+                  ' روی رکورد ذخیره می‌شود'
+                )}
+                .
+              </div>
+              <Input
+                dir="ltr"
+                inputMode="numeric"
+                placeholder="09123456789"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void save();
+                }}
+                disabled={busy}
+                className="h-10 text-left font-bold tracking-wider"
+                autoFocus
+              />
+              {error && (
+                <p className="flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 p-2 text-[11px] leading-5 text-red-700">
+                  <CircleAlert size={13} className="shrink-0" />
+                  {error}
+                </p>
+              )}
+            </div>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2">
+          <Button onClick={() => void save()} disabled={busy || !text.trim()} className="gap-2">
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+            {mode === 'import' ? 'ذخیره و شروع ایمپورت' : 'ذخیره شماره'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => onOpenCookie(reason ?? 'گرفتن خودکار شماره از پاسکول ناموفق بود')}
+            disabled={busy}
+            className="gap-2"
+            title="کوکی مرورگرِ لاگین‌شدهٔ باسکول را در مودال جداگانه تنظیم می‌کنید"
+          >
+            <KeyRound size={14} />
+            رفع مشکل کوکی
+          </Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
             بستن
           </Button>
         </DialogFooter>

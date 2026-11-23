@@ -1086,6 +1086,17 @@ export const updateApi = {
       body: JSON.stringify(input),
     }).then((r) => jsonClean<{ phone: string; budget: PhoneBudgetInfo; saved: boolean }>(r)),
 
+  /** ثبت دستی شمارهٔ موبایل روی رکورد «در انتظار ایمپورت» (خواستهٔ مالک
+   *  ۲۴-۱۱): گرفتن خودکار به هر دلیل نشد → مودال ورود شماره باز می‌شود؛
+   *  شماره اول در دیتابیس ذخیره می‌شود (بدون مصرف سهمیهٔ ۲۰تایی کوکی) و
+   *  فرانت بلافاصله ایمپورت کامل را شروع می‌کند */
+  setPhone: (input: { adminPhone: string; bUserName: string; phone: string }) =>
+    fetch(`${BASE}/update/set-phone`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    }).then((r) => jsonClean<{ saved: boolean; phone: string; at: string }>(r)),
+
   /** ستِ کوکی پاسکال از مودال پنل — پاک‌سازی هر سبک کپی + ذخیرهٔ ران‌تایم
    *  (بدون ری‌استارت) + ذخیره در .env + سنجش زندهٔ لاگین با /api/user */
   setPascalCookie: (input: { adminPhone: string; cookie: string }) =>
