@@ -16,7 +16,7 @@ interface ArticleLayoutProps {
 }
 
 /**
- * لی‌اوت مقاله راهنما — همان ساختار باسکول:
+ * لی‌اوت مقاله راهنما — همان ساختار پاسکال:
  * breadcrumb وسط‌چین، عنوان درشت وسط، بدنه تک‌ستونی max-w-3xl، بدون سایدبار.
  */
 export function ArticleLayout({ title, intro, crumbs, children }: ArticleLayoutProps) {
@@ -42,7 +42,7 @@ export function ArticleLayout({ title, intro, crumbs, children }: ArticleLayoutP
             ))}
           </nav>
 
-          {/* عنوان مقاله — عین بنر عنوان باسکول */}
+          {/* عنوان مقاله — عین بنر عنوان پاسکال */}
           <header className="mt-5 rounded-lg border border-primary/25 bg-primary/5 px-4 py-6 text-center">
             <h1 className="text-xl font-extrabold sm:text-2xl">{title}</h1>
             {intro && <p className="mx-auto mt-2 max-w-xl text-xs leading-6 text-muted-foreground sm:text-sm">{intro}</p>}
@@ -57,7 +57,7 @@ export function ArticleLayout({ title, intro, crumbs, children }: ArticleLayoutP
   );
 }
 
-/** تیتر بخش — با خط عمودی برند مثل باسکول */
+/** تیتر بخش — با خط عمودی برند مثل پاسکال */
 export function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <h2 className="flex items-center gap-2.5 text-base font-extrabold">
@@ -72,7 +72,7 @@ export function ArticleP({ children }: { children: React.ReactNode }) {
   return <p className="text-sm leading-8 text-foreground/90">{children}</p>;
 }
 
-/** شماره‌دار مراحل — عنوان بولد + متن، مثل باسکول */
+/** شماره‌دار مراحل — عنوان بولد + متن، مثل پاسکال */
 export function StepItem({ n, title, children }: { n: string | number; title: string; children?: React.ReactNode }) {
   return (
     <section className="space-y-2">
@@ -85,7 +85,7 @@ export function StepItem({ n, title, children }: { n: string | number; title: st
   );
 }
 
-/** جعبه نکته/تذکر — بوردر برند + پس‌زمینه ملایم، مثل باسکول */
+/** جعبه نکته/تذکر — بوردر برند + پس‌زمینه ملایم، مثل پاسکال */
 export function TipBox({ title, tone = 'brand', children }: { title?: string; tone?: 'brand' | 'warn'; children: React.ReactNode }) {
   return (
     <aside

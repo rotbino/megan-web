@@ -18,7 +18,7 @@ const BACKEND_URL = resolveBackendUrl();
 /**
  * ── تصاویر remote ────────────────────────────────────────────────────────────
  * سه منبع:
- *  1. ArvanCloud ما + CDN باسکول (دیتای seed و پروداکشن ابری)
+ *  1. ArvanCloud ما + CDN پاسکال (دیتای seed و پروداکشن ابری)
  *  2. بک‌اند لوکال (APP_PROFILE=local بک‌اند → تصاویر از
  *     http://localhost:4000/uploads/... سرو می‌شوند) — پورت آزاد تا با تغییر
  *     PORT بک‌اند هم کار کند

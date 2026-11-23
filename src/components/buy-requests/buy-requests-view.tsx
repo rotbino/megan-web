@@ -17,9 +17,9 @@ import { toFa } from '@/lib/format';
 import type { BuyRequest } from '@/lib/types';
 
 /**
- * درخواست‌های خرید — کارت‌های افقی مثل باسکول با جستجو و فیلتر مکان +
+ * درخواست‌های خرید — کارت‌های افقی مثل پاسکال با جستجو و فیلتر مکان +
  * صفحه‌بندی واقعی. شماره خریدار فقط برای کاربران واردشده آشکار می‌شود
- * (مدل Lead-gen باسکول) — در غیر این صورت مودال ورود باز می‌شود.
+ * (مدل Lead-gen پاسکال) — در غیر این صورت مودال ورود باز می‌شود.
  * صفحه‌بندی سئو (خواستهٔ مالک ۱۴-۱۱): در حالت پیش‌فرض شماره‌ها لینک واقعی
  * به /buyAd-requests/2 و… هستند؛ با فیلتر فعال دکمهٔ کلاینت می‌شوند.
  */
@@ -64,7 +64,7 @@ export function BuyRequestsView({
 
   return (
     <div className="mx-auto max-w-5xl space-y-4 px-4 py-6 lg:px-6">
-      {/* فیلترها — مثل باسکول: جستجو + همه ایران */}
+      {/* فیلترها — مثل پاسکال: جستجو + همه ایران */}
       <div className="flex flex-col gap-3 rounded-md border bg-card p-4 sm:flex-row">
         <form className="relative flex-1" onSubmit={(e) => e.preventDefault()} role="search">
           <Input
@@ -116,7 +116,7 @@ export function BuyRequestsView({
             {items.map((r) => <RequestCard key={r.id} request={r} />)}
           </ul>
 
-          {/* صفحه‌بندی — عین باسکول؛ در حالت پیش‌فرض لینک واقعی (سئو) */}
+          {/* صفحه‌بندی — عین پاسکال؛ در حالت پیش‌فرض لینک واقعی (سئو) */}
           {pageCount > 1 && (
             <SeoPagination
               page={page}
@@ -133,7 +133,7 @@ export function BuyRequestsView({
   );
 }
 
-/** کارت درخواست خرید — عین چیدمان باسکول: سربرگ کاربر + جمله «خریدار … هستم» + دکمه‌ها */
+/** کارت درخواست خرید — عین چیدمان پاسکال: سربرگ کاربر + جمله «خریدار … هستم» + دکمه‌ها */
 function RequestCard({ request }: { request: BuyRequest }) {
   const [phone, setPhone] = useState<string | null>(null);
   const [needLogin, setNeedLogin] = useState(false);
@@ -192,7 +192,7 @@ function RequestCard({ request }: { request: BuyRequest }) {
         <span className="text-xs text-muted-foreground"><RelativeTime date={request.createdAt} /></span>
       </div>
 
-      {/* جمله عین باسکول */}
+      {/* جمله عین پاسکال */}
       <p className="mt-3 text-sm leading-7 text-muted-foreground">
         خریدار <span className="font-bold text-foreground">{toFa(request.requirementAmount)} {request.unit}</span>{' '}
         <Link href="/product-list" className="font-bold text-primary hover:underline">{request.subcategoryName}</Link>
@@ -216,7 +216,7 @@ function RequestCard({ request }: { request: BuyRequest }) {
         </Button>
       </div>
 
-      {/* توصیه — عین باسکول */}
+      {/* توصیه — عین پاسکال */}
       <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
         <ShieldCheck size={12} className="shrink-0 text-primary" />
         توصیه ایمچ: همواره به انجام معاملات حضوری است.

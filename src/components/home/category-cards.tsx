@@ -5,7 +5,7 @@ import { useCategoryTree } from '@/lib/mock/hooks';
 import { Skeleton } from '@/components/ui/skeleton';
 
 /**
- * «دسته بندی های اصلی» — عین باسکول: کارت‌های تصویری گرد (موبایل ۹۰px، سه ستون)
+ * «دسته بندی های اصلی» — عین پاسکال: کارت‌های تصویری گرد (موبایل ۹۰px، سه ستون)
  * برچسب ۱۲px/۲۰px موبایل و ۱۶px دسکتاپ با وزن معمولی.
  */
 export function CategoryCards() {

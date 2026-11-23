@@ -421,7 +421,7 @@ export default function MyRequestsPage() {
         </div>
       </div>
 
-      {/* جعبه دلایل رد شدن — عین باسکول (هر دو تب) */}
+      {/* جعبه دلایل رد شدن — عین پاسکال (هر دو تب) */}
      {/* <PanelCard className="border-amber-200/70 bg-amber-50/50">
         <p className="flex items-center gap-1.5 text-sm font-bold text-amber-700">
           <Info size={16} className="shrink-0" />

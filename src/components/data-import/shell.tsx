@@ -2,7 +2,7 @@
 
 /**
  * پوستهٔ بخش «دیتا ایمپورت» — کاملاً جدا از پنل ادمین (خواستهٔ مالک ۱۳-۱۱):
- * ابزارهای مهاجرت داده از سایت‌های دیگر (فعلاً باسکول؛ ایمپورترهای آینده
+ * ابزارهای مهاجرت داده از سایت‌های دیگر (فعلاً پاسکال؛ ایمپورترهای آینده
  * هم همین‌جا اضافه می‌شوند) + مدیریت کاربران ایمپورت‌شده.
  *
  * گارد: همان نشست پنل مدیریت (توکن imach:admin-token) ولی فقط مدیر ارشد؛
@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
   { href: '/data-import', label: 'نمای کلی', Icon: LayoutDashboard },
-  { href: '/data-import/buskool', label: 'ایمپورتر باسکول', Icon: DatabaseZap },
+  { href: '/data-import/buskool', label: 'ایمپورتر پاسکال', Icon: DatabaseZap },
   { href: '/data-import/update', label: 'آپدیت', Icon: RefreshCw },
   { href: '/data-import/backup', label: 'بک‌آپ دیتابیس', Icon: DatabaseBackup },
   { href: '/data-import/users', label: 'مدیریت کاربران', Icon: Users },

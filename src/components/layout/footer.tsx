@@ -3,7 +3,7 @@ import { ChevronLeft, Headphones, Link2, Mail, Megaphone, Phone, UserRoundCheck 
 import { BrandLogo } from '@/components/shared/brand';
 import { GOOGLE_ENTRIES, searchPath } from '@/lib/popular-searches';
 
-/** فوتر — همان ساختار باسکول: سه هدف، ستون‌های لینک، توضیح سئویی، تماس و کپی‌رایت */
+/** فوتر — همان ساختار پاسکال: سه هدف، ستون‌های لینک، توضیح سئویی، تماس و کپی‌رایت */
 const goals = [
   [UserRoundCheck, 'ارتباط مستقیم فروشنده و خریدار'],
   [Headphones, 'پشتیبانی آنلاین و تلفنی'],
@@ -52,7 +52,7 @@ const footerCols = [
 export function Footer() {
   return (
     <footer className="mt-auto border-t bg-card">
-      {/* سه هدف — عین باسکول */}
+      {/* سه هدف — عین پاسکال */}
       <div className="border-b bg-secondary/40">
         <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 py-6 text-sm sm:grid-cols-3 lg:px-6">
           {goals.map(([Icon, title]) => (

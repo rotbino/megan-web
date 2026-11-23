@@ -82,7 +82,7 @@ export function RfqForm() {
     <section className="bg-secondary/40">
       <div className="mx-auto max-w-7xl px-4 py-10 lg:px-6">
         <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2">
-          {/* توضیح + آمار — مثل باسکول */}
+          {/* توضیح + آمار — مثل پاسکال */}
           <div>
             <p className="max-w-md text-sm leading-7 text-muted-foreground sm:text-base">
               در صورتی که خریدار عمده هستید ، با ثبت یک درخواست خرید، از چندین فروشنده قیمت دریافت کنید.

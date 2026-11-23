@@ -4,13 +4,13 @@
  * آپدیت قیمت‌ها + «کاربران در انتظار ایمپورت» — صفحهٔ «دیتا ایمپورت → آپدیت»
  * (خواستهٔ مالک ۲۱-۱۱: «یک تیر برای دو نشان»؛ نوسازی ۲۲-۱۱: لیست ماندگار).
  *
- * یک دکمه = یک پاس کامل روی N هزار آگهی آخرِ باسکول (بدون کوکی، sort_by=RD):
+ * یک دکمه = یک پاس کامل روی N هزار آگهی آخرِ پاسکال (بدون کوکی، sort_by=RD):
  *   • هر بچ ۱۰۰۰تایی با یک فراخوانی به بک‌اند می‌رود (سرورلس‌پسند — هر تکه
  *     ≪ تایم‌اوت ۶۰ث) و همان‌جا: قیمت/موجودی/حداقل‌سفارش آگهی‌های موجود در
  *     ایمچ مقایسه و فقط متفاوت‌ها آپدیت می‌شوند + کاربران تازه‌ثبت‌نامِ غایب
  *     «همان‌جا در دیتابیس ثبت می‌شوند» (خواستهٔ مالک ۲۲-۱۱: یک بار که پیدا
  *     شدیم دیگر توی دیتابیس داریمش — بدون موبایل).
- *   • بین بچ‌ها ۵ ثانیه وقفه (خواستهٔ مالک: «باسکول تشخیص ندهد ماشین هست») —
+ *   • بین بچ‌ها ۵ ثانیه وقفه (خواستهٔ مالک: «پاسکال تشخیص ندهد ماشین هست») —
  *     شمارش معکوس روی دکمه + گارد سرور؛ حتی دابل‌کلیک/دو تب فاصله را نمی‌شکند.
  *   • گزارش زندهٔ هر بچ: گرفته‌شده / در ایمچ / آپدیت‌شده / بدون تغییر / آگهی
  *     جدید + جمع کل.
@@ -19,16 +19,16 @@
  *   • جدول از دیتابیس خوانده می‌شود (اندپوینت pending) — ماندگار بین
  *     جلسه‌ها/ریفرش‌ها؛ رکوردهای ایمپورت‌شدهٔ کامل موقع خواندن خودکار از
  *     لیست خارج می‌شوند (خودترمیمی).
- *   • دکمهٔ «گرفتن موبایل»: فقط شماره را از باسکول می‌گیرد (کوکی — هر کوکی
+ *   • دکمهٔ «گرفتن موبایل»: فقط شماره را از پاسکال می‌گیرد (کوکی — هر کوکی
  *     ۲۰ شماره؛ شمارندهٔ سهمیه روی صفحه) و روی رکورد همان کاربر ذخیره
  *     می‌کند.
  *   • دکمهٔ «ایمپورت»: اول رکورد کاربر را نگاه می‌کند — موبایل گرفته شده →
  *     مستقیم ایمپورت کامل (دادهٔ کاربر، آگهی‌ها، کامنت‌ها و بقیه)؛ نگرفته →
- *     اول موبایل از باسکول گرفته و ذخیره می‌شود و بلافاصله ایمپورت کامل
+ *     اول موبایل از پاسکال گرفته و ذخیره می‌شود و بلافاصله ایمپورت کامل
  *     شروع می‌شود. با موفقیت، کاربر از لیست خارج می‌شود.
  *
- *   • «استخراج تک‌کاربر»: یوزرنیم باسکول → موجود = توست با یوزرنیم آیمچ بدون
- *     تماس با باسکول؛ غایب = شماره + ایمپورت کامل.
+ *   • «استخراج تک‌کاربر»: یوزرنیم پاسکال → موجود = توست با یوزرنیم آیمچ بدون
+ *     تماس با پاسکال؛ غایب = شماره + ایمپورت کامل.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -276,7 +276,7 @@ export function UpdateManager() {
     void tick();
   }, []);
 
-  /** شروع ایمپورت کامل یک کاربر باسکولی — پول با فراخواننده */
+  /** شروع ایمپورت کامل یک کاربر پاسکالی — پول با فراخواننده */
   const startImport = useCallback(
     async (userName: string, phone?: string) => {
       const { jobId } = await importerApi.startSingle({ adminPhone: ADMIN_PHONE, userName, phone });
@@ -324,7 +324,7 @@ export function UpdateManager() {
   const importUser = useCallback(
     async (u: PendingImportUser) => {
       try {
-        // ۱) موبایلِ قبلاً گرفته‌شده؟ — مستقیم سراغ ایمپورت کامل (بدون باسکول‌زدن برای شماره)
+        // ۱) موبایلِ قبلاً گرفته‌شده؟ — مستقیم سراغ ایمپورت کامل (بدون پاسکال‌زدن برای شماره)
         let phone = u.phone ?? undefined;
         if (!phone) {
           setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'phone' } }));
@@ -384,7 +384,7 @@ export function UpdateManager() {
             آپدیت قیمت‌ها
           </h1>
           <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-            آپدیت قیمت/موجودی/حداقل‌سفارش آخرین آگهی‌های باسکول در ایمچ + شناسایی و ثبت کاربران جدید — از
+            آپدیت قیمت/موجودی/حداقل‌سفارش آخرین آگهی‌های پاسکال در ایمچ + شناسایی و ثبت کاربران جدید — از
             همان یک لیست، بدون کوکی و با وقفهٔ ۵ ثانیه‌ای بین هر ۱٬۰۰۰تا
           </p>
         </div>
@@ -429,7 +429,7 @@ export function UpdateManager() {
             />
           </label>
           <p className="flex-1 text-[11px] leading-5 text-muted-foreground">
-            {toFa(batchCount)} بچ = تا {(batchCount * BATCH).toLocaleString('fa-IR')} آگهی آخر باسکول
+            {toFa(batchCount)} بچ = تا {(batchCount * BATCH).toLocaleString('fa-IR')} آگهی آخر پاسکال
             (جدیدترین‌ها اول) • {recentDays > 0 ? `فقط کاربرانِ ثبت‌نام‌شده در ${toFa(recentDays)} روز اخیر` : 'همهٔ کاربران غایب'} • وقفهٔ ۵ ثانیه بین بچ‌ها
           </p>
           {status === 'running' || status === 'pausing' ? (
@@ -475,7 +475,7 @@ export function UpdateManager() {
                 بدون تغییر: <b className="tabular-nums text-foreground">{toFa(totals.unchanged)}</b>
               </span>
               <span className="text-muted-foreground">
-                آگهی جدید باسکول: <b className="tabular-nums text-foreground">{toFa(totals.notInImach)}</b>
+                آگهی جدید پاسکال: <b className="tabular-nums text-foreground">{toFa(totals.notInImach)}</b>
               </span>
             </div>
             {/* ردیف بچ‌ها */}
@@ -551,7 +551,7 @@ export function UpdateManager() {
           </h3>
           <div className="flex items-center gap-3">
             <p className="text-[11px] text-muted-foreground">
-              تازه‌ثبت‌نام‌های باسکول — بی‌درنگ و «بدون موبایل» در دیتابیس ثبت شده‌اند؛ لیست ماندگار است
+              تازه‌ثبت‌نام‌های پاسکال — بی‌درنگ و «بدون موبایل» در دیتابیس ثبت شده‌اند؛ لیست ماندگار است
             </p>
             <Button
               size="sm"
@@ -572,7 +572,7 @@ export function UpdateManager() {
           </div>
         ) : pendingUsers.length === 0 ? (
           <p className="rounded-md border border-dashed p-6 text-center text-xs leading-6 text-muted-foreground">
-            هنوز کاربری در انتظار ایمپورت نیست — «شروع آپدیت» را بزنید؛ کاربران تازه‌ثبت‌نامِ باسکول که
+            هنوز کاربری در انتظار ایمپورت نیست — «شروع آپدیت» را بزنید؛ کاربران تازه‌ثبت‌نامِ پاسکال که
             آگهی دارند و در ایمچ نیستند، همان‌جا در دیتابیس ثبت و همین‌جا فهرست می‌شوند.
           </p>
         ) : (
@@ -580,7 +580,7 @@ export function UpdateManager() {
             <table className="w-full text-right text-xs">
               <thead>
                 <tr className="border-b text-[10px] text-muted-foreground">
-                  <th className="px-2 py-2 font-medium">کاربر باسکول</th>
+                  <th className="px-2 py-2 font-medium">کاربر پاسکال</th>
                   <th className="px-2 py-2 font-medium">نام</th>
                   <th className="px-2 py-2 font-medium">ثبت‌نام</th>
                   <th className="px-2 py-2 font-medium">موبایل</th>
@@ -599,7 +599,7 @@ export function UpdateManager() {
                           @{u.bUserName}
                         </span>
                         {u.isVerified && (
-                          <span className="mr-1.5 inline-flex items-center gap-0.5 text-amber-600" title="احراز باسکول — فقط دادهٔ رفتاری">
+                          <span className="mr-1.5 inline-flex items-center gap-0.5 text-amber-600" title="احراز پاسکال — فقط دادهٔ رفتاری">
                             <BadgeCheck size={13} />
                           </span>
                         )}
@@ -659,7 +659,7 @@ export function UpdateManager() {
           </div>
         )}
         <p className="mt-3 text-[10px] leading-5 text-muted-foreground">
-          «گرفتن موبایل» فقط شماره را می‌گیرد و روی رکورد کاربر ذخیره می‌کند (هر کوکی باسکول ۲۰ شماره).
+          «گرفتن موبایل» فقط شماره را می‌گیرد و روی رکورد کاربر ذخیره می‌کند (هر کوکی پاسکال ۲۰ شماره).
           «ایمپورت» اول رکورد را نگاه می‌کند: موبایل داشته باشد مستقیم ایمپورت کامل (پروفایل، آگهی‌ها،
           تصاویر، کامنت‌ها) شروع می‌شود؛ نداشته باشد اول موبایل گرفته و ذخیره می‌شود و بلافاصله ایمپورت
           کامل انجام می‌شود. کاربر ایمپورت‌شده از این لیست خارج می‌شود.
@@ -814,13 +814,13 @@ function SingleUserExtract({
           استخراج تک‌کاربر
         </h3>
         <p className="text-[11px] text-muted-foreground">
-          یوزرنیم باسکول → چک دیتابیس → شمارهٔ موبایل → ایمپورت کامل
+          یوزرنیم پاسکال → چک دیتابیس → شمارهٔ موبایل → ایمپورت کامل
         </p>
       </header>
       <div className="flex flex-wrap gap-2">
         <Input
           dir="ltr"
-          placeholder="یوزرنیم باسکول (مثل sajjaddourbin)"
+          placeholder="یوزرنیم پاسکال (مثل sajjaddourbin)"
           value={userName}
           onChange={(e) => setUserName(e.target.value)}
           onKeyDown={(e) => {
@@ -835,11 +835,11 @@ function SingleUserExtract({
         </Button>
       </div>
       <p className="mt-2.5 text-[10px] leading-5 text-muted-foreground">
-        قبل از هر تماس با باسکول، یوزرنیم با کلید باسکولی (bUserName) در دیتابیس چک می‌شود — کاربر موجود
-        هیچ درخواستی به باسکول نمی‌دهد و شماره‌اش هم گرفته نمی‌شود. شماره‌گیری موبایل با کوکی انجام
+        قبل از هر تماس با پاسکال، یوزرنیم با کلید پاسکالی (bUserName) در دیتابیس چک می‌شود — کاربر موجود
+        هیچ درخواستی به پاسکال نمی‌دهد و شماره‌اش هم گرفته نمی‌شود. شماره‌گیری موبایل با کوکی انجام
         می‌شود و هر کوکی فقط ۲۰ شماره می‌دهد. در BUSKOOL_COOKIE «کل هدر cookie مرورگرِ لاگین‌شده»
         بگذارید (هر سه جفت user_phone و user_password و laravel_session؛ فقط جفت‌های name=value
-        بدون expires/path) — با جفت‌های یادآور، سشنِ ۲ ساعتهٔ باسکول خودش ترمیم می‌شود.
+        بدون expires/path) — با جفت‌های یادآور، سشنِ ۲ ساعتهٔ پاسکال خودش ترمیم می‌شود.
       </p>
     </section>
   );

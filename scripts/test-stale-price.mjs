@@ -48,8 +48,8 @@ check('۲۵۰۰ روز = بیش از شش سال', stalePriceFa(daysAgo(2500)) =
 
 console.log('— قالب بک‌اند «YYYY-MM-DD HH:mm:ss» —');
 const bkDaysAgo = (n) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 19).replace('T', ' ');
-check('قالب باسکول قدیمی (۲۰۲۰)', stalePriceFa('2020-01-12 00:00:00') === 'این قیمت بیش از شش سال است که آپدیت نشده');
-check('قالب باسکول تازه (۵ روز پیش)', stalePriceFa(bkDaysAgo(5)) === null);
+check('قالب پاسکال قدیمی (۲۰۲۰)', stalePriceFa('2020-01-12 00:00:00') === 'این قیمت بیش از شش سال است که آپدیت نشده');
+check('قالب پاسکال تازه (۵ روز پیش)', stalePriceFa(bkDaysAgo(5)) === null);
 
 console.log(`\n${pass} پاس / ${fail} خطا`);
 process.exit(fail ? 1 : 0);

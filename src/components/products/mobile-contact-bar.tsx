@@ -6,11 +6,11 @@ import { ChatBubbleIcon } from '@/components/shared/buskool-icons';
 import { PhoneReveal } from '@/components/shared/phone-reveal';
 
 /**
- * نوار فیکس چت/تماس موبایل — عین باسکول (fix-send-message-wrapper):
+ * نوار فیکس چت/تماس موبایل — عین پاسکال (fix-send-message-wrapper):
  * fixed درست بالای نوار ناوبری پایین (bottom: 58px)، ارتفاع ۷۲px،
  * سفید با سایه رو به بالا؛ فقط در موبایل/تبلت (<۹۹۲px) دیده می‌شود.
- * «چت با فروشنده» دکمه سفید با متن/قاب رنگ برند (main-button-alt باسکول)
- * و «شماره تماس» دکمه پر رنگ برند با متن سفید (main-button باسکول).
+ * «چت با فروشنده» دکمه سفید با متن/قاب رنگ برند (main-button-alt پاسکال)
+ * و «شماره تماس» دکمه پر رنگ برند با متن سفید (main-button پاسکال).
  */
 export function MobileContactBar({
   productId,

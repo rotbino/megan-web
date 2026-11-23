@@ -626,7 +626,7 @@ export async function fetchAdminProductDetail(id: number): Promise<AdminProductD
   return adminFetch<AdminProductDetail>('/admin/products/getProductDetail', { id });
 }
 
-/** بازبینی آگهی در انتظار — تأیید یا رد با دلایل (عین جعبه باسکول) */
+/** بازبینی آگهی در انتظار — تأیید یا رد با دلایل (عین جعبه پاسکال) */
 export async function reviewAdminProduct(id: number, approve: boolean, rejectionReasons?: string[]): Promise<{ id: number; status: string }> {
   return adminFetch('/admin/products/reviewProduct', {
     id,

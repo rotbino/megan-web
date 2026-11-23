@@ -2,10 +2,10 @@
 
 /**
  * نمای کلی بخش «دیتا ایمپورت» — درگاه ابزارها:
- *   • کارت ایمپورتر باسکول و مدیریت کاربران ایمپورت‌شده
- *   • آمار زندهٔ دیتابیس و خلاصهٔ کاربران (منبع/ویژگی باسکول/رفتار ورود)
+ *   • کارت ایمپورتر پاسکال و مدیریت کاربران ایمپورت‌شده
+ *   • آمار زندهٔ دیتابیس و خلاصهٔ کاربران (منبع/ویژگی پاسکال/رفتار ورود)
  *   • «مهاجرت ساختار b» — رکوردهای ایمپورت‌شدهٔ قدیمی (پیش از فیلد b) را
- *     به ساختار جدید می‌برد و activePakageType کپی‌شده از باسکول را صفر
+ *     به ساختار جدید می‌برد و activePakageType کپی‌شده از پاسکال را صفر
  *     می‌کند (کاربر در آیمچ بدون پرداخت ویژه نیست — خواستهٔ مالک ۱۳-۱۱)
  */
 
@@ -58,7 +58,7 @@ export default function DataImportOverviewPage() {
       toast({
         title: 'مهاجرت ساختار b انجام شد',
         description: `${toFa(res.migrated)} کاربر مهاجرت شد${
-          res.premiumFixed ? ` — ${toFa(res.premiumFixed)} ویژهٔ کپی‌شدهٔ باسکول به رایگان برگشت` : ''
+          res.premiumFixed ? ` — ${toFa(res.premiumFixed)} ویژهٔ کپی‌شدهٔ پاسکال به رایگان برگشت` : ''
         }`,
       });
       await refetchSummary();
@@ -90,11 +90,11 @@ export default function DataImportOverviewPage() {
         setIdentityProgress(`در حال جداسازی… ${toFa(totalRenamed)} یوزرنیم تصادفی شد — ${toFa(res.remaining)} مانده`);
       }
       toast({
-        title: 'جداسازی هویت آیمچ از باسکول انجام شد',
+        title: 'جداسازی هویت آیمچ از پاسکال انجام شد',
         description:
           `${toFa(totalRenamed)} یوزرنیم آیمچ تصادفی شد` +
           `${totalFailed ? ` (${toFa(totalFailed)} ناموفق)` : ''}` +
-          (first ? ` — ${toFa(first.verifiedCleared)} احرازِ کپی‌شده از باسکول برداشته شد (به bVerified رفت)` : '') +
+          (first ? ` — ${toFa(first.verifiedCleared)} احرازِ کپی‌شده از پاسکال برداشته شد (به bVerified رفت)` : '') +
           (first?.approvedKept ? ` — ${toFa(first.approvedKept)} پروندهٔ احراز واقعی محفوظ ماند` : ''),
       });
       await refetchSummary();
@@ -123,7 +123,7 @@ export default function DataImportOverviewPage() {
           <div>
             <h1 className="text-base font-extrabold">دیتا ایمپورت</h1>
             <p className="text-[11px] text-muted-foreground">
-              ابزارهای مهاجرت داده از سایت‌های دیگر — فعلاً باسکول؛ ایمپورترهای بعدی هم اینجا اضافه می‌شوند
+              ابزارهای مهاجرت داده از سایت‌های دیگر — فعلاً پاسکال؛ ایمپورترهای بعدی هم اینجا اضافه می‌شوند
             </p>
           </div>
         </div>
@@ -144,10 +144,10 @@ export default function DataImportOverviewPage() {
             <TriangleAlert size={18} className="mt-0.5 shrink-0 text-amber-600" />
             <div>
               <p className="text-[13px] font-bold text-amber-800">
-                {toFa(s.needsMigration)} کاربر ایمپورت‌شدهٔ قدیمی هنوز «سند دادهٔ باسکولی (b)» ندارد
+                {toFa(s.needsMigration)} کاربر ایمپورت‌شدهٔ قدیمی هنوز «سند دادهٔ پاسکالی (b)» ندارد
               </p>
               <p className="mt-0.5 text-[11px] leading-5 text-amber-700">
-                با مهاجرت، فیلدهای پراکنده در یک سند یکپارچه جمع می‌شوند و ویژگیِ کپی‌شدهٔ باسکول (اگر باشد) از
+                با مهاجرت، فیلدهای پراکنده در یک سند یکپارچه جمع می‌شوند و ویژگیِ کپی‌شدهٔ پاسکال (اگر باشد) از
                 پروفایل آیمچ برداشته می‌شود — کاربر فقط با پرداخت واقعی در آیمچ ویژه می‌شود.
               </p>
             </div>
@@ -166,20 +166,20 @@ export default function DataImportOverviewPage() {
             <Fingerprint size={18} className="mt-0.5 shrink-0 text-sky-600" />
             <div>
               <p className="text-[13px] font-bold text-sky-800">
-                {toFa(s.needsIdentityFix)} کاربر هنوز هویت آیمچ/باسکول جداسازی نشده دارند
+                {toFa(s.needsIdentityFix)} کاربر هنوز هویت آیمچ/پاسکال جداسازی نشده دارند
               </p>
               <p className="mt-0.5 max-w-2xl text-[11px] leading-5 text-sky-700">
-                یوزرنیم آیمچِ این کاربران همان یوزرنیم باسکولشان است و احرازِ باسکول به اشتباه در اعتبار آیمچ نشسته.
-                با جداسازی: یوزرنیم آیمچ تصادفی و یکتا می‌شود (یوزرنیم باسکول در bUserName می‌ماند — کلید ایمپورت‌ها و
-                آپدیت قیمت‌های بعدی)، احراز باسکول فقط به bVerified می‌رود و isVerified همه false می‌شود؛ از این به بعد
-                احراز واقعی فقط با ارسال مدارک + تأیید ادمین. لینک‌های قدیمی پروفایل که با یوزرنیم باسکول ساخته شده بودند
-                بعد از اجرا کار نمی‌کنند (خواستهٔ خودمان — یوزرنیم باسکول دیگر نباید دیده شود).
+                یوزرنیم آیمچِ این کاربران همان یوزرنیم پاسکالشان است و احرازِ پاسکال به اشتباه در اعتبار آیمچ نشسته.
+                با جداسازی: یوزرنیم آیمچ تصادفی و یکتا می‌شود (یوزرنیم پاسکال در bUserName می‌ماند — کلید ایمپورت‌ها و
+                آپدیت قیمت‌های بعدی)، احراز پاسکال فقط به bVerified می‌رود و isVerified همه false می‌شود؛ از این به بعد
+                احراز واقعی فقط با ارسال مدارک + تأیید ادمین. لینک‌های قدیمی پروفایل که با یوزرنیم پاسکال ساخته شده بودند
+                بعد از اجرا کار نمی‌کنند (خواستهٔ خودمان — یوزرنیم پاسکال دیگر نباید دیده شود).
               </p>
             </div>
           </div>
           <Button size="sm" className="gap-1.5 rounded-[10px]" onClick={() => void runFixIdentity()} disabled={!!identityProgress}>
             {identityProgress ? <Loader2 size={14} className="animate-spin" /> : <Fingerprint size={14} />}
-            {identityProgress ?? 'جداسازی هویت آیمچ/باسکول'}
+            {identityProgress ?? 'جداسازی هویت آیمچ/پاسکال'}
           </Button>
         </div>
       )}
@@ -196,7 +196,7 @@ export default function DataImportOverviewPage() {
             </span>
             <ArrowLeft size={16} className="text-muted-foreground transition-transform group-hover:-translate-x-0.5" />
           </div>
-          <p className="mt-3 text-sm font-extrabold">ایمپورتر باسکول</p>
+          <p className="mt-3 text-sm font-extrabold">ایمپورتر پاسکال</p>
           <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
             مهاجرت پروفایل، آواتار، آگهی‌ها و عکس‌ها از buskool.com — تک‌کاربره یا لیستی از کالکشن user-buskool
           </p>
@@ -213,7 +213,7 @@ export default function DataImportOverviewPage() {
           </div>
           <p className="mt-3 text-sm font-extrabold">مدیریت کاربران</p>
           <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
-            کاربران ایمپورت‌شده در کنار سایر کاربران — فیلتر ویژه‌های باسکول، وضعیت ورود، علامت تماس و پاک‌سازی
+            کاربران ایمپورت‌شده در کنار سایر کاربران — فیلتر ویژه‌های پاسکال، وضعیت ورود، علامت تماس و پاک‌سازی
             رهاشده‌ها
           </p>
         </Link>
@@ -228,8 +228,8 @@ export default function DataImportOverviewPage() {
           </div>
         ) : s ? (
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
-            <StatCard label="کل کاربران" value={toFa(s.total)} hint={`${toFa(s.buskool)} از باسکول • ${toFa(s.native)} ثبت‌نام خودی`} />
-            <StatCard label="ویژهٔ باسکول" value={toFa(s.premiumBuskool)} hint="فقط دادهٔ رفتاری — در آیمچ رایگان‌اند" />
+            <StatCard label="کل کاربران" value={toFa(s.total)} hint={`${toFa(s.buskool)} از پاسکال • ${toFa(s.native)} ثبت‌نام خودی`} />
+            <StatCard label="ویژهٔ پاسکال" value={toFa(s.premiumBuskool)} hint="فقط دادهٔ رفتاری — در آیمچ رایگان‌اند" />
             <StatCard label="هرگز وارد نشده" value={toFa(s.neverLoggedIn)} hint="کاندیدای پاک‌سازی سالانه" />
             <StatCard label="تماس گرفته‌شده" value={toFa(s.contacted)} hint={`${toFa(s.cameAfterContact)} نفر بعد از تماس آمدند`} />
             <StatCard label="ایمپورت ناقص" value={toFa(s.failed)} hint="پرچم failedImport" />

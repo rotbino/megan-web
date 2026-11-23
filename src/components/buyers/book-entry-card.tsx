@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * کارت آیتم دفتر خرید (سمت سایت) — عین چیدمان سادهٔ کارت درخواست خرید باسکول:
+ * کارت آیتم دفتر خرید (سمت سایت) — عین چیدمان سادهٔ کارت درخواست خرید پاسکال:
  *  • سربرگ: آواتار دایره‌ای + نام خریدار
  *  • جمله: «خریدار عمده ۲ تن پسته به‌صورت ماهیانه هستم»
  *  • پانویس: آیکون تقویم + آخرین فعالیت، آیکون مکان + استان/شهر
@@ -69,7 +69,7 @@ export function BookEntryCard({
             )}
           </div>
 
-          {/* جمله — عین باسکول: خریدار … هستم؛ با نوع: «سیب از نوع قرمز» (خواستهٔ مالک ۹-۱۱) */}
+          {/* جمله — عین پاسکال: خریدار … هستم؛ با نوع: «سیب از نوع قرمز» (خواستهٔ مالک ۹-۱۱) */}
           <p className="mt-3 text-[13px] leading-7 text-muted-foreground sm:text-sm">
             {entry.role === 'عمده‌خریدار' ? 'خریدار عمده ' : 'خریدار '}
             <b className="text-foreground">{toFa(entry.minAmount)} {entry.unit}</b>{' '}
@@ -82,7 +82,7 @@ export function BookEntryCard({
             )}
           </p>
 
-          {/* زمان و مکان — عین باسکول */}
+          {/* زمان و مکان — عین پاسکال */}
           <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <span className="flex items-center gap-1" title="آخرین فعالیت">
               <CalendarDays size={14} className="text-foreground/45" />

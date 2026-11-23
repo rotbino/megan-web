@@ -1,8 +1,8 @@
 /**
- * انواع داده ایمچ — کاملاً منطبق بر ساختار باسکول (استخراج‌شده از APIهای واقعی)
+ * انواع داده ایمچ — کاملاً منطبق بر ساختار پاسکال (استخراج‌شده از APIهای واقعی)
  * و هم‌راستا با مدل‌های Prisma در بک‌اند.
  *
- * نگاشت نام‌ها (TS camelCase ↔ ستون snake_case باسکول):
+ * نگاشت نام‌ها (TS camelCase ↔ ستون snake_case پاسکال):
  *   myuserId ↔ myuser_id | subCategoryId ↔ sub_category_id
  *   minSalePrice ↔ min_sale_price | minSaleAmount ↔ min_sale_amount
  *   isElevated ↔ is_elevated | activePakageType ↔ active_pakage_type
@@ -85,7 +85,7 @@ export interface Product {
 
   /** نردبان — آگهی نردبان‌شده بالای نتایج می‌آید (۱۰۰ هزار تومان در ماه) */
   isLadder: boolean;
-  isElevated: boolean; // فروشنده ویژه باسکول — در ایمچ بدون استفاده
+  isElevated: boolean; // فروشنده ویژه پاسکال — در ایمچ بدون استفاده
   hasVideo: boolean;
   isOld: boolean;
   viewCount: number;
@@ -122,7 +122,7 @@ export interface BuyRequest {
   subcategoryName: string; // نام محصول (مثل: نهال)
   requirementAmount: number;
   unit: string;
-  /** ObjectId مگان — در باسکول عدد بود؛ فقط کلید/ارجاع فرانت */
+  /** ObjectId مگان — در پاسکال عدد بود؛ فقط کلید/ارجاع فرانت */
   myuserId: string;
   /** شناسهٔ عمومی خریدار — چت مستقیم از کارت (snapshot پیگیری‌ها و لیست درخواست‌ها) */
   userName?: string | null;
@@ -137,13 +137,13 @@ export interface BuyRequest {
   createdAt: string;
 }
 
-/** مرتب‌سازی — مرتبط‌ترین / جدیدترین مثل باسکول؛ match = «مطابق نیاز من»
+/** مرتب‌سازی — مرتبط‌ترین / جدیدترین مثل پاسکال؛ match = «مطابق نیاز من»
  *  (خواستهٔ مالک ۱۱-۱۱): فقط با زمینهٔ نیاز (ورود از درخواست‌های خرید) */
 export type SortKey = 'related' | 'newest' | 'match';
 
 export interface ProductQuery {
   categorySlug?: string;
-  s?: string; // عبارت جستجو (مثل باسکول: ?s=)
+  s?: string; // عبارت جستجو (مثل پاسکال: ?s=)
   provinceId?: number;
   cityId?: number;
   sort?: SortKey;
@@ -175,7 +175,7 @@ export interface CityMarketQuery {
 }
 
 // ─────────────────────────────────────────────────────────────
-// پنل فروشنده — منطبق بر پاسخ‌های واقعی باسکول که فرستاده شد
+// پنل فروشنده — منطبق بر پاسخ‌های واقعی پاسکال که فرستاده شد
 // (get_profile، get_category_list، saved lists، relatedByAdd)
 // ─────────────────────────────────────────────────────────────
 
@@ -189,7 +189,7 @@ export interface ProductFeature {
 }
 
 /**
- * پروفایل پنل — ساختار camelCase‌شده‌ی پاسخ user/get_profile باسکول:
+ * پروفایل پنل — ساختار camelCase‌شده‌ی پاسخ user/get_profile پاسکال:
  * { status, profile: {...}, user_info: {...} }
  * در فاز اتصال، فقط همین دو شیء از JSON بک‌اند پر می‌شود.
  */
@@ -235,7 +235,7 @@ export interface PanelProfile {
     sex: string | null; // «آقا» / «خانم»
     province: string;
     city: string;
-    /** id عددی باسکول — برای پیش‌پر کردن فرم‌های ثبت آگهی/درخواست */
+    /** id عددی پاسکال — برای پیش‌پر کردن فرم‌های ثبت آگهی/درخواست */
     provinceId: number | null;
     cityId: number | null;
     avatarUrl: string | null;
@@ -317,7 +317,7 @@ export interface FollowItem {
 }
 
 /**
- * خریدار پیشنهادی — سرویس relatedByAdd باسکول:
+ * خریدار پیشنهادی — سرویس relatedByAdd پاسکال:
  * تطبیق دسته + نوع کالا + حجم خرید/فروش؛ سورت با امتیاز تطابق.
  * مثال: خرما خازویی → اول خرما خازویی هم‌حجم، بعد بقیه خرماها، بعد محصولات نزدیک.
  */

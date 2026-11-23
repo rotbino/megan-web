@@ -64,7 +64,7 @@ export function SellersFeed() {
   const [provinceId, setProvinceId] = useState<number | undefined>(undefined);
   const [cityId, setCityId] = useState<number | undefined>(undefined);
   const [s, setS] = useState('');
-  // موبایل — بات‌شیت‌های نوار فیلتر (الگوی دیوار/باسکول)
+  // موبایل — بات‌شیت‌های نوار فیلتر (الگوی دیوار/پاسکال)
   const [sheet, setSheet] = useState<SheetKind>(null);
 
   const { data: provinces = [] } = useProvinces();

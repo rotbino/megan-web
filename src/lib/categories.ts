@@ -15,7 +15,7 @@ function flatten(tree: Category[]): Category[] {
 
 /**
  * مسیر ریشه → برگ برای یک slug یا نام دسته (برای BreadcrumbList و عنوان صفحه).
- * مثال: [کشاورزی، خشکبار، پسته] — URLهای باسکول‌گونه هم با نام کار می‌کنند.
+ * مثال: [کشاورزی، خشکبار، پسته] — URLهای پاسکال‌گونه هم با نام کار می‌کنند.
  */
 export function findCategoryPath(tree: Category[], slugOrName: string): Category[] | null {
   const path: Category[] = [];

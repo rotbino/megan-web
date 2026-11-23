@@ -61,7 +61,7 @@ export function VerifiedBadge({ className, label = 'احراز هویت شده' 
   );
 }
 
-/** نشان آگهی کهنه (isOld باسکول — نیاز به به‌روزرسانی قیمت) */
+/** نشان آگهی کهنه (isOld پاسکال — نیاز به به‌روزرسانی قیمت) */
 export function OldAdBadge({ className }: { className?: string }) {
   return (
     <span

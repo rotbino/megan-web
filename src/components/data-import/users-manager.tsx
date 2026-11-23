@@ -2,21 +2,21 @@
 
 /**
  * مدیریت کاربران ایمپورت‌شده — صفحهٔ «دیتا ایمپورت → مدیریت کاربران»
- * (خواستهٔ مالک ۱۳-۱۱). محیط کنترل رفتار کاربران ایمپورت‌شده از باسکول
+ * (خواستهٔ مالک ۱۳-۱۱). محیط کنترل رفتار کاربران ایمپورت‌شده از پاسکال
  * در کنار سایر کاربران:
  *
- *   • فیلترها: منبع (باسکول/خودی/کمکی)، ویژهٔ باسکول + نوع بسته، وضعیت
+ *   • فیلترها: منبع (پاسکال/خودی/کمکی)، ویژهٔ پاسکال + نوع بسته، وضعیت
  *     ورود (هرگز/بعد از تماس)، علامت تماس، ایمپورت ناقص، «رهاشده»
  *     (هرگز وارد نشده + بیش از N روز از ایمپورت) — پایهٔ پاک‌سازی سالانه.
- *   • سورت صعودی/نزولی روی آخرین ورود، ثبت‌نام، تعداد آگهی، تاریخ باسکول،
+ *   • سورت صعودی/نزولی روی آخرین ورود، ثبت‌نام، تعداد آگهی، تاریخ پاسکال،
  *     ایمپورت و تماس + صفحه‌بندی.
- *   • جزئیات کامل هر کاربر: مشخصات، سند رفتار باسکول (b)، شمارنده‌ها و
+ *   • جزئیات کامل هر کاربر: مشخصات، سند رفتار پاسکال (b)، شمارنده‌ها و
  *     آگهی‌ها + باز کردن کاتالوگ عمومی.
  *   • CRM: علامت «تماس گرفتم و دعوتش کردم» (b.contactedAt).
  *   • حذف کامل انتخاب‌شده‌ها با همهٔ داده‌ها و عکس‌ها (خطرناک — گارد ادمین).
  *
- * ⚠️ ویژهٔ باسکول فقط «دادهٔ رفتاری» است — در آیمچ هیچ کاربری بدون پرداخت
- * ویژه نیست؛ این صفحه همان‌جاست که بعداً ویژه‌های سابق باسکول را پیدا و
+ * ⚠️ ویژهٔ پاسکال فقط «دادهٔ رفتاری» است — در آیمچ هیچ کاربری بدون پرداخت
+ * ویژه نیست؛ این صفحه همان‌جاست که بعداً ویژه‌های سابق پاسکال را پیدا و
  * برای خرید بسته دعوت می‌کنیم.
  */
 
@@ -101,7 +101,7 @@ function fullName(u: { firstName: string; lastName: string; userName: string }):
   return n || `@${u.userName}`;
 }
 
-/** چیپ منبع کاربر — دیمت / باسکول / ثبت‌نام خودی / کمکی(کامنت) */
+/** چیپ منبع کاربر — دیمت / پاسکال / ثبت‌نام خودی / کمکی(کامنت) */
 function SourceChip({ row }: { row: ImportedUserRow }) {
   if (row.importSource === 'daymat') {
     return (
@@ -115,8 +115,8 @@ function SourceChip({ row }: { row: ImportedUserRow }) {
   }
   if (row.bUserName) {
     return (
-      <Badge className="bg-primary-soft font-bold text-primary hover:bg-primary-soft" title={`@${row.bUserName} در باسکول`}>
-        از باسکول
+      <Badge className="bg-primary-soft font-bold text-primary hover:bg-primary-soft" title={`@${row.bUserName} در پاسکال`}>
+        از پاسکال
       </Badge>
     );
   }
@@ -126,9 +126,9 @@ function SourceChip({ row }: { row: ImportedUserRow }) {
   return <Badge variant="outline" className="font-bold text-muted-foreground">ثبت‌نام خودی</Badge>;
 }
 
-/** چیپ بستهٔ باسکول — ویژه‌های سابق باسکول (نه اعتبار آیمچ) */
+/** چیپ بستهٔ پاسکال — ویژه‌های سابق پاسکال (نه اعتبار آیمچ) */
 function BuskoolPackageChip({ row }: { row: ImportedUserRow }) {
-  // کاربر بومی اصلاً باسکولی نیست — خط تیره؛ فقط رکورد قدیمیِ باسکولی «قدیمی» است
+  // کاربر بومی اصلاً پاسکالی نیست — خط تیره؛ فقط رکورد قدیمیِ پاسکالی «قدیمی» است
   if (!row.b) return row.bUserName ? <span className="text-[10px] text-muted-foreground">قدیمی</span> : <span className="text-[10px] text-muted-foreground">—</span>;
   const { premium } = row.b;
   if (!premium.isPremium) {
@@ -137,7 +137,7 @@ function BuskoolPackageChip({ row }: { row: ImportedUserRow }) {
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600"
-      title={`بستهٔ ${premium.packageTitle} در باسکول — در آیمچ رایگان است تا خودش پرداخت کند`}
+      title={`بستهٔ ${premium.packageTitle} در پاسکال — در آیمچ رایگان است تا خودش پرداخت کند`}
     >
       <Crown size={11} />
       {premium.packageTitle}
@@ -156,15 +156,15 @@ export function UsersManager() {
   );
 }
 
-// ═══════════════════ تفکیک بسته‌های ویژهٔ باسکول + برآورد درآمد ═══════════════════
-// (خواستهٔ مالک ۲۲-۱۱: «تعداد کاربران ویژه باسکول رو به تفکیک اینکه هر بسته رو
-// چند نفر خرید… درآمد باسکول از هر بسته رو حدس بزنم»)
+// ═══════════════════ تفکیک بسته‌های ویژهٔ پاسکال + برآورد درآمد ═══════════════════
+// (خواستهٔ مالک ۲۲-۱۱: «تعداد کاربران ویژه پاسکال رو به تفکیک اینکه هر بسته رو
+// چند نفر خرید… درآمد پاسکال از هر بسته رو حدس بزنم»)
 //
 // تعدادِ هر بسته از summary.premiumPackages (تجمیع روی b.premium.packageType)
 // می‌آید؛ قیمت هر بسته «قابل ویرایش» است (پیش‌فرض از ساختار پلن‌های هم‌شکل)
 // و در localStorage مرورگر مالک ذخیره می‌شود — درآمد = تعداد × قیمت.
-// ⚠️ برآورد فقط روی ویژه‌های باسکولِ شناسایی‌شده در ایمچ است (نمونهٔ کامل
-// جامعهٔ باسکول نیست) و packageType «بستهٔ فعالِ فعلی» است — تمدید یک کاربر
+// ⚠️ برآورد فقط روی ویژه‌های پاسکالِ شناسایی‌شده در ایمچ است (نمونهٔ کامل
+// جامعهٔ پاسکال نیست) و packageType «بستهٔ فعالِ فعلی» است — تمدید یک کاربر
 // دوباره شمرده نمی‌شود.
 
 /** قیمت پیش‌فرض هر بسته (تومان) — قابل ویرایش در UI */
@@ -214,7 +214,7 @@ function PremiumPackages({
   };
 
   // ردیف‌ها data-driven (۲۲-۱۱): بسته‌های شناخته‌شده ۱/۲/۳ همیشه دیده شوند
-  // (حتی صفر) + هر کد دیگری که در داده باشد (مثل ۶ = سازمانی/سفارشی باسکول)
+  // (حتی صفر) + هر کد دیگری که در داده باشد (مثل ۶ = سازمانی/سفارشی پاسکال)
   const rows = [
     ...[1, 2, 3].map((t) => ({
       t,
@@ -239,7 +239,7 @@ function PremiumPackages({
       <header className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-1.5 text-sm font-extrabold">
           <Crown size={15} className="text-amber-500" />
-          ویژه‌های باسکول به تفکیک بسته — برآورد درآمد
+          ویژه‌های پاسکال به تفکیک بسته — برآورد درآمد
         </h3>
         <p className="text-[10px] text-muted-foreground">
           درآمد = تعداد × قیمت — قیمت‌ها قابل ویرایش‌اند و در مرورگر شما ذخیره می‌شوند
@@ -281,16 +281,16 @@ function PremiumPackages({
         ))}
         {/* جمع کل */}
         <div className="rounded-lg border border-amber-300/70 bg-amber-100/50 p-3">
-          <p className="text-[11px] font-bold text-amber-800">جمع برآورد درآمد باسکول</p>
+          <p className="text-[11px] font-bold text-amber-800">جمع برآورد درآمد پاسکال</p>
           <p className="mt-1 text-lg font-extrabold tabular-nums text-amber-800">{priceFa(totalRevenue)}</p>
           <p className="mt-1 text-[10px] leading-4 text-muted-foreground">
-            از {toFa(total)} ویژهٔ باسکولِ ایمپورت‌شده
+            از {toFa(total)} ویژهٔ پاسکالِ ایمپورت‌شده
             {unaccounted > 0 ? ` — ${toFa(unaccounted)} نفر بستهٔ نامشخص/غیرپرداختی` : ''}
           </p>
         </div>
       </div>
       <p className="mt-2 text-[10px] leading-5 text-muted-foreground">
-        برآورد فقط روی ویژه‌های باسکولی است که در ایمچ شناسایی شده‌ایم (نه کل جامعهٔ باسکول)؛
+        برآورد فقط روی ویژه‌های پاسکالی است که در ایمچ شناسایی شده‌ایم (نه کل جامعهٔ پاسکال)؛
         «نفر خریداری کرده» یعنی این بسته الان بستهٔ فعال کاربر است — تمدیدِ یک کاربر دوباره
         شمرده نمی‌شود و درآمد تمدیدها در این حدس نیست.
       </p>
@@ -497,10 +497,10 @@ function UsersManagerInner() {
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
           {[
             { label: 'کل', value: summary.total, hint: 'همهٔ کاربران' },
-            { label: 'از باسکول', value: summary.buskool, hint: 'ایمپورت‌شده' },
+            { label: 'از پاسکال', value: summary.buskool, hint: 'ایمپورت‌شده' },
             { label: 'از دیمت', value: summary.daymat, hint: 'مهاجرت دیمت — سوپرمارکت', teal: true },
             { label: 'ثبت‌نام خودی', value: summary.native, hint: 'خودشان آمده‌اند' },
-            { label: 'ویژهٔ باسکول', value: summary.premiumBuskool, hint: 'کاندیدای دعوت به پرداخت', accent: true },
+            { label: 'ویژهٔ پاسکال', value: summary.premiumBuskool, hint: 'کاندیدای دعوت به پرداخت', accent: true },
             { label: 'ایمپورت خودی', value: summary.selfImported, hint: 'خودشان از وب آورده‌اند — کاربران واقعی ایچ', accent: true },
             { label: 'بعد از تماس آمدند', value: summary.cameAfterContact, hint: `از ${toFa(summary.contacted)} تماس‌گرفته` },
             { label: 'هرگز وارد نشده', value: summary.neverLoggedIn, hint: summary.failed ? `+ ${toFa(summary.failed)} ایمپورت ناقص` : 'کاندیدای پاک‌سازی' },
@@ -528,7 +528,7 @@ function UsersManagerInner() {
         </div>
       ) : null}
 
-      {/* تفکیک بسته‌های ویژهٔ باسکول + برآورد درآمد (خواستهٔ مالک ۲۲-۱۱) */}
+      {/* تفکیک بسته‌های ویژهٔ پاسکال + برآورد درآمد (خواستهٔ مالک ۲۲-۱۱) */}
       {summary && summary.premiumPackages && summary.premiumBuskool > 0 ? (
         <PremiumPackages
           packages={summary.premiumPackages}
@@ -546,7 +546,7 @@ function UsersManagerInner() {
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300/60 bg-amber-50 px-3.5 py-2.5">
           <p className="flex items-center gap-2 text-[12px] font-bold text-amber-800">
             <AlertTriangle size={15} />
-            {toFa(summary.needsMigration)} کاربر قدیمی هنوز سند دادهٔ باسکولی (b) ندارد
+            {toFa(summary.needsMigration)} کاربر قدیمی هنوز سند دادهٔ پاسکالی (b) ندارد
           </p>
           <Button asChild size="sm" variant="outline" className="h-7 rounded-md text-[11px]">
             <Link href="/data-import">اجرای مهاجرت در نمای کلی</Link>
@@ -561,7 +561,7 @@ function UsersManagerInner() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="جستجو: شماره موبایل، نام، شناسه یا یوزرنیم باسکول…"
+            placeholder="جستجو: شماره موبایل، نام، شناسه یا یوزرنیم پاسکال…"
             className="h-9 rounded-md pe-9"
             maxLength={60}
           />
@@ -571,7 +571,7 @@ function UsersManagerInner() {
             <SelectTrigger className="h-8 w-[130px] rounded-[10px] text-[11.5px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">همهٔ منابع</SelectItem>
-              <SelectItem value="buskool">از باسکول</SelectItem>
+              <SelectItem value="buskool">از پاسکال</SelectItem>
               <SelectItem value="daymat">از دیمت</SelectItem>
               <SelectItem value="native">ثبت‌نام خودی</SelectItem>
               <SelectItem value="stub">کمکی (کامنت)</SelectItem>
@@ -581,8 +581,8 @@ function UsersManagerInner() {
           <Select value={premium} onValueChange={(v) => { setPremium(v); setPage(1); }}>
             <SelectTrigger className="h-8 w-[125px] rounded-[10px] text-[11.5px]"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY}>ویژگی باسکول: همه</SelectItem>
-              <SelectItem value="yes">ویژهٔ باسکول</SelectItem>
+              <SelectItem value={ANY}>ویژگی پاسکال: همه</SelectItem>
+              <SelectItem value="yes">ویژهٔ پاسکال</SelectItem>
               <SelectItem value="no">غیرویژه</SelectItem>
             </SelectContent>
           </Select>
@@ -653,7 +653,7 @@ function UsersManagerInner() {
               <SelectItem value="lastLogin">مرتب: آخرین ورود</SelectItem>
               <SelectItem value="createdAt">مرتب: ثبت‌نام</SelectItem>
               <SelectItem value="products">مرتب: تعداد آگهی</SelectItem>
-              <SelectItem value="buskoolCreated">مرتب: ثبت‌نام باسکول</SelectItem>
+              <SelectItem value="buskoolCreated">مرتب: ثبت‌نام پاسکال</SelectItem>
               <SelectItem value="imported">مرتب: تاریخ ایمپورت</SelectItem>
               <SelectItem value="contacted">مرتب: تاریخ تماس</SelectItem>
             </SelectContent>
@@ -730,7 +730,7 @@ function UsersManagerInner() {
                 </th>
                 <th className="p-2 text-start font-bold">کاربر</th>
                 <th className="hidden p-2 text-start font-bold md:table-cell">منبع</th>
-                <th className="p-2 text-start font-bold">بستهٔ باسکول</th>
+                <th className="p-2 text-start font-bold">بستهٔ پاسکال</th>
                 <th className="hidden p-2 text-start font-bold sm:table-cell">آگهی‌ها</th>
                 <th className="p-2 text-start font-bold">آخرین ورود</th>
                 <th className="hidden p-2 text-start font-bold lg:table-cell">تماس</th>
@@ -762,10 +762,10 @@ function UsersManagerInner() {
                           {row.isVerified && <BadgeCheck size={12} className="shrink-0 text-verified" aria-label="احرازشده" />}
                           {row.bVerified && !row.isVerified && (
                             <span
-                              title="احراز شده در باسکول — فقط دادهٔ رفتاری؛ در اعتبار آیمچ اثری ندارد"
+                              title="احراز شده در پاسکال — فقط دادهٔ رفتاری؛ در اعتبار آیمچ اثری ندارد"
                               className="inline-flex shrink-0"
                             >
-                              <BadgeCheck size={12} className="text-amber-500" aria-label="احرازشده در باسکول" />
+                              <BadgeCheck size={12} className="text-amber-500" aria-label="احرازشده در پاسکال" />
                             </span>
                           )}
                           {!row.isActive && (
@@ -997,7 +997,7 @@ function DetailDialog({ id, onClose }: { id: string; onClose: () => void }) {
                 variant="outline"
                 className="h-8 gap-1.5 rounded-md text-[11.5px]"
                 disabled={contactMutation.isPending || !b}
-                title={b ? '' : 'کاربر سند دادهٔ باسکولی ندارد'}
+                title={b ? '' : 'کاربر سند دادهٔ پاسکالی ندارد'}
                 onClick={() => contactMutation.mutate(Boolean(b?.contactedAt))}
               >
                 {contactMutation.isPending ? (
@@ -1060,31 +1060,31 @@ function DetailDialog({ id, onClose }: { id: string; onClose: () => void }) {
               </section>
             ) : null}
 
-            {/* سند رفتار باسکول */}
+            {/* سند رفتار پاسکال */}
             <section className={cn('rounded-lg border p-3', b?.premium.isPremium && 'border-amber-300/70 bg-amber-50/40')}>
               <h3 className="mb-2 flex items-center gap-1.5 text-[12px] font-extrabold">
                 <Crown size={13} className="text-amber-500" />
-                رفتار این کاربر در باسکول
+                رفتار این کاربر در پاسکال
                 {b?.premium.isPremium ? (
                   <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-600">
-                    ویژهٔ باسکول ({b.premium.packageTitle}) — در آیمچ رایگان است تا پرداخت کند
+                    ویژهٔ پاسکال ({b.premium.packageTitle}) — در آیمچ رایگان است تا پرداخت کند
                   </span>
                 ) : null}
               </h3>
               {b ? (
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11.5px] sm:grid-cols-3">
-                  <Info label="یوزرنیم باسکول" value={`@${b.userName}`} ltr />
-                  <Info label="شناسه باسکول" value={String(b.userId)} ltr />
-                  <Info label="ثبت‌نام باسکول" value={b.createdAt ? dateFa(b.createdAt) : '—'} />
+                  <Info label="یوزرنیم پاسکال" value={`@${b.userName}`} ltr />
+                  <Info label="شناسه پاسکال" value={String(b.userId)} ltr />
+                  <Info label="ثبت‌نام پاسکال" value={b.createdAt ? dateFa(b.createdAt) : '—'} />
                   <Info label="ایمپورت" value={dateFa(b.importedAt)} />
                   <Info label="بسته" value={b.premium.packageTitle} />
                   <Info label="تماس/دعوت" value={b.contactedAt ? dateFa(b.contactedAt) : 'هنوز نه'} />
                   <Info
-                    label="احراز باسکول"
+                    label="احراز پاسکال"
                     value={u.bVerified || b.isVerified ? 'شده (فقط دادهٔ رفتاری)' : 'نشده'}
                   />
-                  <Info label="نقش باسکول" value={b.isSeller ? (b.isBuyer ? 'خریدار و فروشنده' : 'فروشنده') : b.isBuyer ? 'خریدار' : '—'} />
-                  <Info label="کیف پول باسکول" value={priceFa(b.walletBalance)} />
+                  <Info label="نقش پاسکال" value={b.isSeller ? (b.isBuyer ? 'خریدار و فروشنده' : 'فروشنده') : b.isBuyer ? 'خریدار' : '—'} />
+                  <Info label="کیف پول پاسکال" value={priceFa(b.walletBalance)} />
                   <Info label="دامنهٔ فعالیت" value={b.activityDomain ?? '—'} />
                   <Info label="نوع فعالیت" value={b.activityType ?? '—'} />
                   <Info label="استان/شهر" value={[b.province, b.city].filter(Boolean).join(' - ') || '—'} />
@@ -1093,18 +1093,18 @@ function DetailDialog({ id, onClose }: { id: string; onClose: () => void }) {
                   <Info label="تأیید پروفایل" value={b.confirmed ? 'شده' : 'نشده'} />
                   <Info label="نرخ پاسخ‌دهی" value={b.responseRate != null ? `${toFa(b.responseRate)}٪` : '—'} />
                   <Info label="امتیاز اعتبار" value={b.reputationScore ?? '—'} />
-                  <Info label="امتیاز باسکول" value={b.ratingAvg != null ? `${toFa(b.ratingAvg)} از ${toFa(b.ratingCount ?? 0)} نظر` : '—'} />
-                  <Info label="آگهی در باسکول" value={b.productsCount != null ? toFa(b.productsCount) : '—'} />
+                  <Info label="امتیاز پاسکال" value={b.ratingAvg != null ? `${toFa(b.ratingAvg)} از ${toFa(b.ratingCount ?? 0)} نظر` : '—'} />
+                  <Info label="آگهی در پاسکال" value={b.productsCount != null ? toFa(b.productsCount) : '—'} />
                   <Info label="آمده از" value={b.comingFrom ?? '—'} />
                   <Info label="ibp" value={b.ibp ? 'بله' : 'خیر'} />
                   <Info label="عکس‌های مرتبط" value={toFa(b.relateds.length)} />
-                  <Info label="متن کسب‌وکار" value={b.descriptionIsAuto ? 'خودکار باسکول (رد شد)' : b.descriptionRaw ? 'متن خود کاربر' : '—'} />
+                  <Info label="متن کسب‌وکار" value={b.descriptionIsAuto ? 'خودکار پاسکال (رد شد)' : b.descriptionRaw ? 'متن خود کاربر' : '—'} />
                 </dl>
               ) : (
                 <p className="text-[11px] leading-6 text-muted-foreground">
                   {u.bUserName
                     ? 'رکورد قدیمی است و سند b ندارد — از «نمای کلی» مهاجرت ساختار b را اجرا کنید.'
-                    : 'این کاربر از باسکول نیامده است.'}
+                    : 'این کاربر از پاسکال نیامده است.'}
                 </p>
               )}
             </section>

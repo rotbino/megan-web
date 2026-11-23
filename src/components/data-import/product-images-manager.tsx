@@ -29,7 +29,7 @@
  *   • کلیک روی تصویر = اندازهٔ اصلی در تب جدید (برای دیدن دقیق واترمارک)
  *   • تصاویر بزرگ‌تر از قبل نمایش داده می‌شوند (خواستهٔ مالک ۲۱-۱۱)
  *   • ?q=<شناسهٔ آگهی> = لینک عمیق «N عکس» از صفحهٔ آگهی‌ها (سازگاری با قدیم)
- *   • ?sort= محصول: زمان ثبت (پیش‌فرض) / آخرین ویرایش — باسکول واترمارک را
+ *   • ?sort= محصول: زمان ثبت (پیش‌فرض) / آخرین ویرایش — پاسکال واترمارک را
  *     جدیداً اضافه کرده؛ تاریخ آگهی فیلتر مهمی است (خواستهٔ مالک ۱۹-۱۱ عصر)
  */
 
@@ -71,12 +71,12 @@ import {
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-/** سورت بر تاریخ خودِ آگهی (باسکول) — زمان ثبت (پیش‌فرض) / آخرین ویرایش */
+/** سورت بر تاریخ خودِ آگهی (پاسکال) — زمان ثبت (پیش‌فرض) / آخرین ویرایش */
 type SortKey = 'productCreated' | 'productUpdated';
 
 const SORT_TABS: Array<{ key: SortKey; label: string; hint: string }> = [
-  { key: 'productCreated', label: 'زمان ثبت', hint: 'تصاویر بر اساس زمان ثبت آگهی در باسکول' },
-  { key: 'productUpdated', label: 'آخرین ویرایش', hint: 'تصاویر بر اساس آخرین ویرایش آگهی در باسکول' },
+  { key: 'productCreated', label: 'زمان ثبت', hint: 'تصاویر بر اساس زمان ثبت آگهی در پاسکال' },
+  { key: 'productUpdated', label: 'آخرین ویرایش', hint: 'تصاویر بر اساس آخرین ویرایش آگهی در پاسکال' },
 ];
 
 /** اندازهٔ دسته (خواستهٔ مالک ۲۱-۱۱): پیش‌فرض ۵۰ + گزینه‌های آماده + دلخواه */
@@ -108,7 +108,7 @@ function clampSize(v: number): number {
   return Math.min(SIZE_MAX, Math.max(1, Math.round(v)));
 }
 
-/** رقم‌های رشتهٔ عددی → فارسی، بدون جداکنندهٔ هزارگان (شناسهٔ باسکول: 333430 → ۳۳۳۴۳۰) */
+/** رقم‌های رشتهٔ عددی → فارسی، بدون جداکنندهٔ هزارگان (شناسهٔ پاسکال: 333430 → ۳۳۳۴۳۰) */
 function toFaPlain(digits: string): string {
   const fa = '۰۱۲۳۴۵۶۷۸۹';
   return digits.replace(/\d/g, (d) => fa[Number(d)]);
@@ -653,7 +653,7 @@ function ProductImagesManagerInner() {
                 ? productId != null
                   ? `${toFa(data.total)} تصویر نیازمند بررسی در این آگهی`
                   : `${toFa(data.total)} تصویر نیازمند بررسی — واترمارک‌دارها را اصلاح کنید و دسته را ببندید`
-                : 'شکار و پاک‌سازی واترمارک باسکول — دسته‌به‌دسته'}
+                : 'شکار و پاک‌سازی واترمارک پاسکال — دسته‌به‌دسته'}
             </p>
           </div>
         </div>
@@ -750,7 +750,7 @@ function ProductImagesManagerInner() {
           </div>
         </div>
 
-        {/* سورت بر تاریخ خودِ آگهی (باسکول) */}
+        {/* سورت بر تاریخ خودِ آگهی (پاسکال) */}
         <div
           className="ms-auto flex shrink-0 items-center gap-0.5 rounded-full border bg-background p-0.5"
           role="radiogroup"
@@ -862,7 +862,7 @@ function ProductImagesManagerInner() {
                   </span>
                 </a>
                 <figcaption className="space-y-1.5 px-2.5 py-2">
-                  {/* شناسهٔ عددی آگهی در باسکول — همان شماره‌ای که آگهی در باسکول دارد */}
+                  {/* شناسهٔ عددی آگهی در پاسکال — همان شماره‌ای که آگهی در پاسکال دارد */}
                   <p
                     className="truncate text-center font-mono text-[11.5px] font-extrabold tabular-nums text-foreground"
                     title={`File ID: ${f.id}`}
@@ -888,7 +888,7 @@ function ProductImagesManagerInner() {
                         )}
                         disabled={applying || uploading || confirming}
                         onClick={() => void fixOne(f)}
-                        title="واترمارک باسکول را پاک می‌کند و تصویر تمیز را جایگزین عکس فعلی آگهی در سرور می‌کند — می‌توانید همزمان روی ده‌ها تصویر بزنید"
+                        title="واترمارک پاسکال را پاک می‌کند و تصویر تمیز را جایگزین عکس فعلی آگهی در سرور می‌کند — می‌توانید همزمان روی ده‌ها تصویر بزنید"
                       >
                         {applying ? (
                           <>

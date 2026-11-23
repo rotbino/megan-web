@@ -7,7 +7,7 @@ import { useProducts } from '@/lib/mock/hooks';
 import { Skeleton } from '@/components/ui/skeleton';
 import { stockFa } from '@/lib/format';
 
-/** «جدیدترین محصولات» — ردیف افقی مثل باسکول: عکس + نام + موجودی */
+/** «جدیدترین محصولات» — ردیف افقی مثل پاسکال: عکس + نام + موجودی */
 export function LatestProducts() {
   const { data, isLoading } = useProducts({ sort: 'newest' });
   const items = data?.items ?? [];

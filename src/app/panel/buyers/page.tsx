@@ -124,7 +124,7 @@ function PanelBuyersInner() {
     (p) => p.status === 'confirmed' || p.status === 'pending',
   );
 
-  // ── تب فوری: درخواست‌های خرید (سرویس باسکول) — سورت تطابق سمت کلاینت ──
+  // ── تب فوری: درخواست‌های خرید (سرویس پاسکال) — سورت تطابق سمت کلاینت ──
   const reqQuery = useBuyRequests({
     s: q || undefined,
     categoryId: rootId ?? undefined,

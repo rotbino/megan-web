@@ -274,7 +274,7 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
           )}
 
           {/* جستجوی دسکتاپ — تپل (h-12)، بدون بکگراند، بوردر طوسی کمرنگ؛
-              چسبیده به لوگو (۱۶px) و کشسان تا خود نوار کاربر (مثل باسکول) */}
+              چسبیده به لوگو (۱۶px) و کشسان تا خود نوار کاربر (مثل پاسکال) */}
           <div ref={searchWrap}  className="relative hidden min-w-0 flex-1 nav-desktop:block nav-desktop:max-w-[500px]">
             <form
                 onSubmit={(e) => { e.preventDefault(); submit(); }}

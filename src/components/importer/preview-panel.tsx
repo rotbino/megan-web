@@ -18,7 +18,7 @@ function LocalImage({ src, alt, className }: { src: string | null; alt: string; 
       </div>
     );
   }
-  // منبع: فایل لوکال روی بک‌اند (uploads) یا URL کامل باسکول
+  // منبع: فایل لوکال روی بک‌اند (uploads) یا URL کامل پاسکال
   const fullSrc = src.startsWith('http') ? src : `${API_BASE}${src}`;
   return <img src={fullSrc} alt={alt} loading="lazy" className={`object-cover ${className ?? ''}`} />;
 }
@@ -27,10 +27,10 @@ export function PreviewPanel({ preview }: { preview: ImportPreview }) {
   const { user, profile, counts, products, reviews, avatar } = preview;
   const packageLabel =
     user.bActivePackageType === 2 || user.bActivePackageType === 3
-      ? 'ویژه در باسکول'
+      ? 'ویژه در پاسکال'
       : user.bActivePackageType === 1
-        ? 'عادی در باسکول'
-        : 'رایگان در باسکول';
+        ? 'عادی در پاسکال'
+        : 'رایگان در پاسکال';
 
   return (
     <div className="mt-4 space-y-4">
@@ -61,9 +61,9 @@ export function PreviewPanel({ preview }: { preview: ImportPreview }) {
             {user.bVerified && (
               <span
                 className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700"
-                title="این فیلد فقط دادهٔ رفتاری باسکول است — در اعتبار آیمچ اثری ندارد و تا ارسال مدارک + تأیید ادمین، کاربر احراز‌شده نیست"
+                title="این فیلد فقط دادهٔ رفتاری پاسکال است — در اعتبار آیمچ اثری ندارد و تا ارسال مدارک + تأیید ادمین، کاربر احراز‌شده نیست"
               >
-                احراز شده در باسکول
+                احراز شده در پاسکال
               </span>
             )}
             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
@@ -71,7 +71,7 @@ export function PreviewPanel({ preview }: { preview: ImportPreview }) {
             </span>
             {user.bResponseRate != null && (
               <span className="text-[11px] text-muted-foreground">
-                نرخ پاسخ باسکول: {user.bResponseRate.toLocaleString('fa-IR')}٪
+                نرخ پاسخ پاسکال: {user.bResponseRate.toLocaleString('fa-IR')}٪
               </span>
             )}
           </div>
@@ -82,11 +82,11 @@ export function PreviewPanel({ preview }: { preview: ImportPreview }) {
             </span>
             {user.bUserName && (
               <span>
-                باسکول: <span dir="ltr" className="font-mono">@{user.bUserName}</span>
+                پاسکال: <span dir="ltr" className="font-mono">@{user.bUserName}</span>
               </span>
             )}
             <span>ایمچ #{user.id.slice(-8)}</span>
-            <span>باسکول #{(user.bUserId ?? 0).toLocaleString('fa-IR')}</span>
+            <span>پاسکال #{(user.bUserId ?? 0).toLocaleString('fa-IR')}</span>
             <span>عضویت: {dateFa(user.createdAt)}</span>
             {profile?.address && <span>{profile.address}</span>}
             {profile?.companyName && <span>شرکت: {profile.companyName}</span>}
@@ -143,7 +143,7 @@ export function PreviewPanel({ preview }: { preview: ImportPreview }) {
                   <span className="text-muted-foreground">{stockFa(p.stock, p.unit)}</span>
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>ثبت باسکول: {dateFa(p.createdAt)}</span>
+                  <span>ثبت پاسکال: {dateFa(p.createdAt)}</span>
                   <span dir="ltr" className="font-mono">b:{p.bProductId}</span>
                 </div>
               </div>
@@ -171,7 +171,7 @@ export function PreviewPanel({ preview }: { preview: ImportPreview }) {
                   {r.reviewer.city && <span className="text-muted-foreground">{r.reviewer.city}</span>}
                   {r.reviewer.isStub && (
                     <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                      نویسندهٔ باسکولی (user_for_b_comment — کاربر ایمچ نیست)
+                      نویسندهٔ پاسکالی (user_for_b_comment — کاربر ایمچ نیست)
                     </span>
                   )}
                   <span className="text-muted-foreground">{dateFa(r.createdAt)}</span>

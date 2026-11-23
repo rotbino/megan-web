@@ -160,7 +160,7 @@ export default async function ProductViewPage({ params }: Props) {
   const city = product.cityName.trim();
   const sellerName = `${product.seller.firstName} ${product.seller.lastName}`.trim();
   const productUrl = `/product-view/${product.slug}/${product.categoryName}/${product.id}`;
-  // توضیحات → متن سادهٔ چندخطی: <hr/> جداکنندهٔ خطوط باسکول به خط نو می‌افتد
+  // توضیحات → متن سادهٔ چندخطی: <hr/> جداکنندهٔ خطوط پاسکال به خط نو می‌افتد
   // و تگ/موجودیت HTML دیگری در UI یا JSON-LD دیده نمی‌شود (خواستهٔ مالک ۱۴-۱۱)
   const plainDesc = descToText(product.description);
 
@@ -235,7 +235,7 @@ export default async function ProductViewPage({ params }: Props) {
       <ProductViewPing productId={product.id} />
       <main className="flex-1">
         <div className="mx-auto max-w-7xl px-4 pt-4 lg:px-6">
-          {/* ─── نوار ناوبری بالا (بردکرامب) — عین باسکول ─── */}
+          {/* ─── نوار ناوبری بالا (بردکرامب) — عین پاسکال ─── */}
           <nav aria-label="مسیر صفحه" className="no-scrollbar mb-3 flex h-9 items-center gap-1 overflow-x-auto text-[13px] md:text-sm">
             {crumbs.map((c, i) => (
               <span key={`${c.href}-${i}`} className="flex shrink-0 items-center gap-1">
@@ -473,7 +473,7 @@ export default async function ProductViewPage({ params }: Props) {
         <div className="h-[74px] nav-desktop:hidden" aria-hidden />
       </main>
 
-      {/* نوار فیکس چت/تماس موبایل — عین باسکول (fix-send-message-wrapper) */}
+      {/* نوار فیکس چت/تماس موبایل — عین پاسکال (fix-send-message-wrapper) */}
       <MobileContactBar
         productId={product.id}
         sellerUserName={product.seller.userName}

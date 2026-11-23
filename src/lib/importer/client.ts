@@ -1,5 +1,5 @@
 /**
- * کلاینت API ایمپورتر باسکول — ارتباط مستقیم با بک‌اند ایمچ (megan-back).
+ * کلاینت API ایمپورتر پاسکال — ارتباط مستقیم با بک‌اند ایمچ (megan-back).
  * پیش‌فرض http://localhost:4000 (پورت بک‌اند لوکال)؛ با NEXT_PUBLIC_API_URL قابل تغییر است.
  * پاسخ‌های بک‌اند قرارداد یکنواخت اپ را دارند: { status: true, data } — اینجا باز می‌شوند.
  */
@@ -19,7 +19,7 @@ export interface PingInfo {
   /** (۱۵-۱۱ شب) نگهبان شبکه: true یعنی جاب در حال اجرا همین حالا در انتظار
    *  بازگشت اینترنت است — توقف موقت، نه شکست؛ بعد از وصل شدن از همان‌جا ادامه می‌یابد */
   netWaiting?: boolean;
-  /** سلامت سشن باسکول (۱۵-۱۱): true = لاگین، false = سشن مهمان/بی‌اثر،
+  /** سلامت سشن پاسکال (۱۵-۱۱): true = لاگین، false = سشن مهمان/بی‌اثر،
    *  null = بدون کوکی یا خطای شبکه — کوکی مهمان هم cookieSet:true می‌دهد
    *  ولی متن کامنت‌ها را باز نمی‌کند */
   cookieLoggedIn?: boolean | null;
@@ -35,7 +35,7 @@ export interface PingInfo {
   adminPhone: string;
   /** درایور ذخیرهٔ عکس‌ها — local یعنی دیسک ./uploads، arvan یعنی ابر */
   storageDriver?: string;
-  /** وضعیت گام باسکول (۱۴-۱۱) — فاصلهٔ مؤثر/هم‌زمانی/ضریب عقب‌نشینی تطبیقی */
+  /** وضعیت گام پاسکال (۱۴-۱۱) — فاصلهٔ مؤثر/هم‌زمانی/ضریب عقب‌نشینی تطبیقی */
   pace?: { gapMs: number; effectiveGapMs: number; concurrency: number; penalty: number };
 }
 
@@ -144,7 +144,7 @@ export interface ImportPreview {
     id: string;
     phone: string;
     userName: string;
-    /** (۲۰-۱۱) هویت دوگانه — یوزرنیم آیمچ مستقل + یوزرنیم/احراز باسکول */
+    /** (۲۰-۱۱) هویت دوگانه — یوزرنیم آیمچ مستقل + یوزرنیم/احراز پاسکال */
     bUserName: string | null;
     bVerified: boolean;
     firstName: string;
@@ -292,7 +292,7 @@ async function adminFetch(path: string, body?: unknown): Promise<Response> {
   });
 }
 
-/** سند رفتار کاربر در باسکول — آینهٔ BUserData بک‌اند (b-user-data.ts) */
+/** سند رفتار کاربر در پاسکال — آینهٔ BUserData بک‌اند (b-user-data.ts) */
 export interface BUserDoc {
   source: 'buskool';
   userName: string;
@@ -347,12 +347,12 @@ export interface ImportedUserRow {
   role: string;
   isActive: boolean;
   isVerified: boolean;
-  /** (۲۰-۱۱) احراز باسکول — دادهٔ رفتاری، بدون اعتبار در آیمچ */
+  /** (۲۰-۱۱) احراز پاسکال — دادهٔ رفتاری، بدون اعتبار در آیمچ */
   bVerified: boolean;
   failedImport: boolean;
   /** دلیل آخرین شکست ایمپورت (۱۵-۱۱) — از profile.bImportError؛ null = بدون ثبت */
   importError: { message: string; sig: string; at: string } | null;
-  /** کاربر کمکی نویسندهٔ کامنت باسکول (bk-c*) */
+  /** کاربر کمکی نویسندهٔ کامنت پاسکال (bk-c*) */
   isStub: boolean;
   hasBusinessDesc: boolean;
   provinceId: number | null;
@@ -380,8 +380,8 @@ export interface ImportedUsersSummary {
   /** (تسک ۳۵ — ۲۱-۱۱) ایمپورت‌شده از دیمت */
   daymat: number;
   premiumBuskool: number;
-  /** (۲۲-۱۱ — خواستهٔ مالک) تفکیک ویژه‌های باسکول بر اساس نوع بسته‌ای که
-   *  خریده‌اند (۱=دوماهه ۲=شش‌ماهه ۳=یک‌ساله) — مبنای برآورد درآمد باسکول
+  /** (۲۲-۱۱ — خواستهٔ مالک) تفکیک ویژه‌های پاسکال بر اساس نوع بسته‌ای که
+   *  خریده‌اند (۱=دوماهه ۲=شش‌ماهه ۳=یک‌ساله) — مبنای برآورد درآمد پاسکال
    *  در کارت‌های بالای صفحهٔ مدیریت کاربران */
   premiumPackages?: { packageType: number; title: string; count: number }[];
   neverLoggedIn: number;
@@ -391,7 +391,7 @@ export interface ImportedUsersSummary {
   /** (۱۹-۱۱) خودشان ایمپورت از وب را کامل کرده‌اند — کاربران واقعی ایچ */
   selfImported: number;
   needsMigration: number;
-  /** (۲۰-۱۱) هنوز جداسازی هویت آیمچ/باسکول نشده — دکمهٔ «جداسازی هویت» */
+  /** (۲۰-۱۱) هنوز جداسازی هویت آیمچ/پاسکال نشده — دکمهٔ «جداسازی هویت» */
   needsIdentityFix: number;
 }
 
@@ -503,8 +503,8 @@ export const importedUsersApi = {
       json<{ migrated: number; premiumFixed: number }>(r),
     ),
 
-  /** (۲۰-۱۱) جداسازی هویت آیمچ از باسکول — احراز باسکول → bVerified،
-   *  isVerified همه false، یوزرنیم آیمچِ برابر باسکول → تصادفی یکتا.
+  /** (۲۰-۱۱) جداسازی هویت آیمچ از پاسکال — احراز پاسکال → bVerified،
+   *  isVerified همه false، یوزرنیم آیمچِ برابر پاسکال → تصادفی یکتا.
    *  سرورلس: هر فراخوانی حداکثر ۵۰۰ نفر — حلقه تا done:true */
   fixIdentity: (adminPhone: string, batch?: number) =>
     adminFetch(`importer/fix-identity${batch ? `?batch=${batch}` : ''}`, { adminPhone }).then((r) =>
@@ -518,9 +518,9 @@ export interface FixIdentityResult {
   /** هنوز مانده — فراخوانی بعدی را بزن */
   remaining: number;
   done: boolean;
-  /** چند کاربر احرازِ باسکول‌شان در b_verified ثبت شد (نخستین فراخوانی) */
+  /** چند کاربر احرازِ پاسکال‌شان در b_verified ثبت شد (نخستین فراخوانی) */
   bVerifiedSet: number;
-  /** چند is_verified کپی‌شده از باسکول false شد (نخستین فراخوانی) */
+  /** چند is_verified کپی‌شده از پاسکال false شد (نخستین فراخوانی) */
   verifiedCleared: number;
   /** پرونده‌های احراز واقعاً تأییدشده که دست نخوردند */
   approvedKept: number;
@@ -620,10 +620,10 @@ export interface ProductImageRow {
   height: number | null;
   source: 'buskool' | 'native';
   importedFrom: string | null;
-  /** URL اصلی فایل در باسکول (قبل از rehost) */
+  /** URL اصلی فایل در پاسکال (قبل از rehost) */
   originalUrl: string | null;
   replacedAt: string | null;
-  /** تاریخ‌های خودِ آگهی (باسکول) — مبنای سورت/فیلتر شکار واترمارک */
+  /** تاریخ‌های خودِ آگهی (پاسکال) — مبنای سورت/فیلتر شکار واترمارک */
   product: {
     id: number;
     name: string;
@@ -640,7 +640,7 @@ export interface ProductImagesSummary {
   buskool: number;
   native: number;
   replaced: number;
-  /** باسکولی‌های هنوز تعویض‌نشده — باقی‌ماندهٔ کار پاک‌کردن واترمارک */
+  /** پاسکالی‌های هنوز تعویض‌نشده — باقی‌ماندهٔ کار پاک‌کردن واترمارک */
   buskoolRemaining: number;
 }
 
@@ -671,7 +671,7 @@ export interface ProductImagesParams {
     | 'newest'
     | 'oldest';
   dir?: 'asc' | 'desc';
-  /** بازهٔ تاریخ ثبتِ خودِ آگهی (باسکول) — ISO میلادی */
+  /** بازهٔ تاریخ ثبتِ خودِ آگهی (پاسکال) — ISO میلادی */
   createdFrom?: string;
   createdTo?: string;
   /** بازهٔ تاریخ آخرین تغییرِ خودِ آگهی — ISO میلادی */
@@ -766,7 +766,7 @@ export interface ProductFilesParams {
   watermark?: 'yes' | 'no' | 'fixed' | 'all';
   /** فقط تصاویر این آگهی — لینک عمیق «N عکس» از صفحهٔ آگهی‌ها */
   productId?: number;
-  /** سورت بر تاریخ خودِ آگهی (باسکول) — پیش‌فرض productCreated = زمان ثبت
+  /** سورت بر تاریخ خودِ آگهی (پاسکال) — پیش‌فرض productCreated = زمان ثبت
    *  (خواستهٔ مالک ۱۹-۱۱ عصر)؛ productUpdated = آخرین ویرایش آگهی */
   sort?: 'productCreated' | 'productUpdated';
   page?: number;
@@ -844,7 +844,7 @@ export const productFilesApi = {
       json<{ id: string; hasWatermark: boolean | null }>(r),
     ),
 
-  /** (۱۹-۱۱) پیش‌نمایش حذف خودکار واترمارک باسکول — بدون هیچ تغییری.
+  /** (۱۹-۱۱) پیش‌نمایش حذف خودکار واترمارک پاسکال — بدون هیچ تغییری.
    * بدنهٔ {} لازم است تا adminFetch آن را POST بفرستد (GET روی مسیرِ @Post می‌افتد و 404 می‌شود) */
   wmPreview: (id: string) =>
     adminFetch(`importer/product-files/${id}/wm-preview`, {}).then((r) => json<WmPreviewResult>(r)),
@@ -902,14 +902,14 @@ export interface WmBatchResult {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// آپدیت قیمت‌ها + کاربران جدید باسکول — «دیتا ایمپورت → آپدیت» (۲۱-۱۱).
+// آپدیت قیمت‌ها + کاربران جدید پاسکال — «دیتا ایمپورت → آپدیت» (۲۱-۱۱).
 // آینهٔ قرارداد بک‌اند: price-update.service.ts — گام‌محور و سرورلس‌پسند؛
 // فرانت حلقهٔ بچ‌های ۱۰۰۰تایی را با ۵ ثانیه فاصله می‌چرخاند (گارد سرور هم هست).
 // نوسازی ۲۲-۱۱: کاربران جدید همان‌جا در دیتابیس ثبت می‌شوند («کاربران در
 // انتظار ایمپورت») — لیست از اندپوینت pending خوانده می‌شود و ماندگار است.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** کاربر باسکولِ تازه‌ثبت‌نام که هنوز در ایمچ نیست — از user_info آیتم‌های لیست */
+/** کاربر پاسکالِ تازه‌ثبت‌نام که هنوز در ایمچ نیست — از user_info آیتم‌های لیست */
 export interface ScanNewUser {
   bUserId: number;
   bUserName: string;
@@ -998,7 +998,7 @@ async function jsonClean<T>(res: Response): Promise<T> {
 }
 
 export const updateApi = {
-  /** یک تکهٔ ۱۰۰۰تایی از جدیدترین آگهی‌های باسکول — آپدیت قیمت + شناسایی و
+  /** یک تکهٔ ۱۰۰۰تایی از جدیدترین آگهی‌های پاسکال — آپدیت قیمت + شناسایی و
    *  ثبت کاربران جدید در جدول «در انتظار ایمپورت» */
   scan: (input: { adminPhone: string; from: number; to: number; updatePrices?: boolean; recentDays?: number }) =>
     fetch(`${BASE}/update/scan`, {
@@ -1016,7 +1016,7 @@ export const updateApi = {
       body: JSON.stringify(input),
     }).then((r) => jsonClean<{ users: PendingImportUser[]; removedImported: number }>(r)),
 
-  /** شمارهٔ موبایل یک فروشندهٔ باسکول — هر کوکی ۲۰ شماره؛ سهمیه در پاسخ؛
+  /** شمارهٔ موبایل یک فروشندهٔ پاسکال — هر کوکی ۲۰ شماره؛ سهمیه در پاسخ؛
    *  با bUserName شماره روی رکورد «در انتظار ایمپورت» هم ذخیره می‌شود */
   fetchPhone: (input: { adminPhone: string; sId: number; pId: number; bUserName?: string }) =>
     fetch(`${BASE}/update/fetch-phone`, {
@@ -1025,7 +1025,7 @@ export const updateApi = {
       body: JSON.stringify(input),
     }).then((r) => jsonClean<{ phone: string; budget: PhoneBudgetInfo; saved: boolean }>(r)),
 
-  /** پیش‌ایمپورت یک یوزرنیم باسکول — چک موجود بودن + گرفتن شماره */
+  /** پیش‌ایمپورت یک یوزرنیم پاسکال — چک موجود بودن + گرفتن شماره */
   extractUser: (input: { adminPhone: string; userName: string }) =>
     fetch(`${BASE}/update/extract-user`, {
       method: 'POST',

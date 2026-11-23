@@ -23,8 +23,8 @@ import { cn } from '@/lib/utils';
  *  • دسکتاپ: شیت بزرگ چسبیده به پایین صفحه (۸۵vh، حداکثر ۶۷۲px، گوشه‌های
  *    بالا گرد) که از پایین بالا می‌آید — الگوی مدال‌های چت وب‌سایت‌ها؛
  *    تاریخچه بلند دیده می‌شود، نه یک جعبه معلق کوچک.
- * دو مسیر: روی آگهی (productId — کنار شماره تماس در کارت فروشنده، مثل باسکول)
- * و از پروفایل فروشنده (sellerUserName — دکمه «ارسال پیام»، مثل باسکول).
+ * دو مسیر: روی آگهی (productId — کنار شماره تماس در کارت فروشنده، مثل پاسکال)
+ * و از پروفایل فروشنده (sellerUserName — دکمه «ارسال پیام»، مثل پاسکال).
  * مهمان: فرم چت خودش مودال ورود را باز می‌کند.
  */
 export function ChatDialog({
@@ -101,7 +101,7 @@ export function ChatDialog({
           // موبایل: تمام‌صفحه — مثل صفحه چت (۱۰۰dvh زیر نوار آدرس مرورگر)
           'top-0 left-0 flex h-[100dvh] w-full translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 p-0',
           'max-w-none sm:max-w-none',
-          // دسکتاپ — عین باسکول (chat-modal-wrapper): پنل ۴۵۰×۵۵۰ چسبیده به پایین،
+          // دسکتاپ — عین پاسکال (chat-modal-wrapper): پنل ۴۵۰×۵۵۰ چسبیده به پایین،
           // گوشه پایین صفحه (در RTL: start=راست، پس پنل سمت چپ/بیرون می‌افتد)،
           // radius 12px و سایه نرم؛ از پایین بالا می‌آید (bottom-sheet)
           'nav-desktop:bottom-4 nav-desktop:start-4 nav-desktop:top-auto nav-desktop:h-[550px] nav-desktop:w-[450px] nav-desktop:max-w-none nav-desktop:translate-x-0 nav-desktop:translate-y-0 nav-desktop:rounded-[12px] nav-desktop:sm:rounded-[12px] nav-desktop:border nav-desktop:shadow-[0_0_22px_rgba(0,0,0,0.18)]',

@@ -1,15 +1,15 @@
 'use client';
 
 /**
- * کارت هویت فروشنده — سرصفحه کاتالوگ (بازطراحی دور ۱۷، عین باسکول cp-header):
+ * کارت هویت فروشنده — سرصفحه کاتالوگ (بازطراحی دور ۱۷، عین پاسکال cp-header):
  *  • بنر عریض ۱۳۶px موبایل / ۲۸۰px دسکتاپ با تصویر ۱۹۲۰×۴۴۱ و گوشه‌های
  *    پایین گرد ۱۶px (cp-header-banner-container) — ریشهٔ «نصفه افتادن» بنر
- *    قدیمی، تصویر ۲:۱ در کادرِ کوتاه بود؛ حالا تصویر و نسبت باسکول است.
+ *    قدیمی، تصویر ۲:۱ در کادرِ کوتاه بود؛ حالا تصویر و نسبت پاسکال است.
  *  • دکمه‌های بازگشت (دایره) و اشتراک‌گذاری (قرص) فقط دسکتاپ روی بنر —
- *    باسکول در موبایل این دو را مخفی می‌کند (cp-banner-buttons-container).
+ *    پاسکال در موبایل این دو را مخفی می‌کند (cp-banner-buttons-container).
  *  • آواتار ۸۵/۱۳۰px با رینگ ضخیم کارت؛ فروشنده ویژه: رینگ طلایی +
  *    بج «فروشنده ویژه» آویزان زیر آواتار (قانون طلایی: amber-400 + متن
- *    سفید + رینگ amber-500/50) — همان چیپ تاج‌دار، حالا در جای باسکولی.
+ *    سفید + رینگ amber-500/50) — همان چیپ تاج‌دار، حالا در جای پاسکالی.
  *  • متا: امتیاز + «N نظر» (لینک به نظرات) + مدت عضویت «X سال Y ماه در
  *    ایمچ» + شهر. دکمه‌ها موبایل گرید دوستونه وسط‌چین، دسکتاپ انتهای ردیف.
  * رنگ‌ها همه توکنی‌اند (bg-card/text-card-foreground برای دکمه‌های روی بنر)
@@ -47,7 +47,7 @@ export interface ProfileHeroUser {
   reviewSummary?: { avg: number; count: number } | null;
 }
 
-/** مدت عضویت به سبک باسکول — «۵ سال ۳ ماه در باسکول»؛ در کاتالوگ کاربر
+/** مدت عضویت به سبک پاسکال — «۵ سال ۳ ماه در پاسکال»؛ در کاتالوگ کاربر
  *  بدون ذکر ایمچ: «۵ سال ۳ ماه فعالیت» (بازنگری خواستهٔ ۱۰-۱۱) */
 function membershipLabel(days: number): string {
   const years = Math.floor(days / 365);
@@ -87,16 +87,16 @@ export function ProfileHero({
 
   return (
     <div>
-      {/* ─── بنر — عریض عین باسکول: ۱۳۶ موبایل / ۲۸۰ دسکتاپ، گوشه پایین گرد ─── */}
+      {/* ─── بنر — عریض عین پاسکال: ۱۳۶ موبایل / ۲۸۰ دسکتاپ، گوشه پایین گرد ─── */}
       <div className="relative h-[136px] overflow-hidden lg:h-[280px] lg:rounded-b-2xl">
         <img
-          src="/images/company-profile-banner.png"
+          src="/images/company-profile-banner.webp"
           alt=""
           aria-hidden
           className="absolute inset-0 size-full object-cover"
         />
 
-        {/* دکمه‌های گوشه بالای بنر — فقط دسکتاپ (موبایل باسکول مخفی):
+        {/* دکمه‌های گوشه بالای بنر — فقط دسکتاپ (موبایل پاسکال مخفی):
             بازگشت راست + اشتراک‌گذاری چپ؛ توکنی تا تم تاریک خوانا بماند */}
         <div className="absolute inset-x-0 top-0 hidden items-center justify-between px-6 py-5 lg:flex">
           <button
@@ -117,7 +117,7 @@ export function ProfileHero({
       {/* ─── ردیف هویت — آواتار روی بنر + نام + متا + دکمه‌ها (cp-header-container) ─── */}
       <div className="px-4 pb-5 pt-0 lg:px-8 lg:pb-6 lg:pt-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:gap-6">
-          {/* آواتار — ۵۴٪ روی بنر افتاده مثل باسکول (۸۵px/-46px و ۱۳۰px/-70px) */}
+          {/* آواتار — ۵۴٪ روی بنر افتاده مثل پاسکال (۸۵px/-46px و ۱۳۰px/-70px) */}
           <div className="relative -mt-[46px] size-[85px] shrink-0 lg:-mt-[80px] lg:size-[130px] lg:self-start">
             {user.avatarUrl ? (
               <img
@@ -139,7 +139,7 @@ export function ProfileHero({
               </span>
             )}
 
-            {/* بج فروشنده ویژه — آویزان زیر آواتار (جایگاه باسکول)؛
+            {/* بج فروشنده ویژه — آویزان زیر آواتار (جایگاه پاسکال)؛
                 طلایی همیشه: amber-400 + متن سفید + رینگ amber-500/50 */}
             {special && (
               <span className="absolute bottom-[-12px] start-0 inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-400 px-2 py-0.5 text-[10.5px] font-bold text-white ring-1 ring-amber-500/50 shadow-sm lg:bottom-[-14px] lg:left-1/2 lg:-translate-x-1/2 lg:px-2.5 lg:py-1 lg:text-[11.5px] lg:start-auto">
@@ -193,7 +193,7 @@ export function ProfileHero({
             </div>
           </div>
 
-          {/* دکمه‌های اقدام — موبایل: گرید دوستونه وسط‌چین (باسکول)؛ دسکتاپ: انتهای ردیف.
+          {/* دکمه‌های اقدام — موبایل: گرید دوستونه وسط‌چین (پاسکال)؛ دسکتاپ: انتهای ردیف.
               تماس خاموش (خواستهٔ مالک ۱۱-۱۱) = فقط «ارسال پیام» تمام‌عرض */}
           <div className="mx-auto grid w-full max-w-[640px] grid-cols-2 gap-4 pt-1 lg:mx-0 lg:flex lg:w-auto lg:gap-4 lg:pt-0">
             {callEnabled && (

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * ایمپورتر باسکول — ابزار ادمین (بخش «دیتا ایمپورت»، /data-import/buskool)
+ * ایمپورتر پاسکال — ابزار ادمین (بخش «دیتا ایمپورت»، /data-import/buskool)
  * برای مهاجرت داده از buskool.com به ایمچ. کاملاً جدا از پنل ادمین است؛
  * عملیات‌های مخرب سمت بک‌اند هم پشت IMPORTER_ADMIN_PHONE گارد می‌شوند.
  *
@@ -83,7 +83,7 @@ function AdminOnly() {
       </span>
       <h1 className="mt-4 text-lg font-extrabold">فقط مدیر ارشد</h1>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        ایمپورتر باسکول فقط برای حساب‌های مدیر ارشد (SUPER_ADMIN) قابل استفاده است.
+        ایمپورتر پاسکال فقط برای حساب‌های مدیر ارشد (SUPER_ADMIN) قابل استفاده است.
       </p>
     </div>
   );
@@ -214,7 +214,7 @@ function ImporterHome({ adminPhone }: { adminPhone: string }) {
       <header>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-extrabold">ایمپورتر باسکول</h1>
+            <h1 className="text-xl font-extrabold">ایمپورتر پاسکال</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               مهاجرت کاربران، آگهی‌ها، کامنت‌ها و تصاویر از buskool.com به دیتابیس ایمچ
             </p>
@@ -314,7 +314,7 @@ function StatusChips({
     },
     {
       label: source?.connected
-        ? `منبع: ${source.total?.toLocaleString('fa-IR') ?? '—'} کاربر باسکول`
+        ? `منبع: ${source.total?.toLocaleString('fa-IR') ?? '—'} کاربر پاسکال`
         : 'کالکشن منبع قطع',
       ok: source ? source.connected : null,
       hint: source?.connected
@@ -328,23 +328,23 @@ function StatusChips({
       hint:
         ping?.storageDriver === 'local'
           ? `ذخیره در همان مسیر آپلود عادی (uploads/users/{id}/…)`
-          : 'عکس‌های باسکول دقیقاً در همان مسیر آگهی‌های معمولی ذخیره می‌شوند — پوشهٔ خود کاربر در باکت (users/{userId}/…)',
+          : 'عکس‌های پاسکال دقیقاً در همان مسیر آگهی‌های معمولی ذخیره می‌شوند — پوشهٔ خود کاربر در باکت (users/{userId}/…)',
       icon: <HardDrive size={13} />,
     },
     {
       // سه حالت کوکی (۱۵-۱۱): بدون کوکی / کوکی لاگین‌شده / کوکی مهمان
-      // (کوکی مهمان از باسکول پذیرفته می‌شود ولی متن کامنت‌ها را باز نمی‌کند)
+      // (کوکی مهمان از پاسکال پذیرفته می‌شود ولی متن کامنت‌ها را باز نمی‌کند)
       // + تشخیص ساختار (۲۲-۱۱): فقط laravel_session بگذارد ۲ ساعت بعد می‌میرد —
       // جفت‌های user_phone/user_password لازم‌اند تا سشن خودش ترمیم شود
       label: !ping?.cookieSet
-        ? 'بدون کوکی باسکول'
+        ? 'بدون کوکی پاسکال'
         : ping.cookieLoggedIn === true
           ? ping.cookieDiag?.hasRemember
-            ? 'کوکی باسکول: لاگین + یادآور'
-            : 'کوکی باسکول: لاگین (بدون یادآور!)'
+            ? 'کوکی پاسکال: لاگین + یادآور'
+            : 'کوکی پاسکال: لاگین (بدون یادآور!)'
           : ping.cookieLoggedIn === false
-            ? 'کوکی باسکول: بدون لاگین!'
-            : 'کوکی باسکول تنظیم است',
+            ? 'کوکی پاسکال: بدون لاگین!'
+            : 'کوکی پاسکال تنظیم است',
       ok: !ping?.cookieSet
         ? null
         : ping.cookieLoggedIn === false
@@ -544,7 +544,7 @@ function SingleTesterCard({
     setError(null);
     const un = userName.trim();
     if (!un) {
-      setError('یوزرنیم باسکول را وارد کنید (مثل il2016n)');
+      setError('یوزرنیم پاسکال را وارد کنید (مثل il2016n)');
       return;
     }
     if (phone && !/^09\d{9}$/.test(phone.trim())) {
@@ -578,7 +578,7 @@ function SingleTesterCard({
         <div>
           <h2 className="text-sm font-extrabold">تستر ایمپورت تک‌کاربره</h2>
           <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-            یوزرنیم پروفایل باسکول را وارد کنید؛ پروفایل، آمار، کامنت‌ها و تک‌تک آگهی‌ها (با فاصلهٔ ۵ ثانیه‌ای)
+            یوزرنیم پروفایل پاسکال را وارد کنید؛ پروفایل، آمار، کامنت‌ها و تک‌تک آگهی‌ها (با فاصلهٔ ۵ ثانیه‌ای)
             گرفته و در ایمچ ثبت می‌شود. عکس‌ها هم در پوشهٔ uploads بک‌اند ذخیره می‌شوند.
           </p>
         </div>
@@ -586,7 +586,7 @@ function SingleTesterCard({
 
       <form onSubmit={start} className="mt-4 grid gap-3 sm:grid-cols-[1.2fr_1fr_0.7fr_auto]">
         <div className="space-y-1.5">
-          <Label htmlFor="bk-username">یوزرنیم باسکول *</Label>
+          <Label htmlFor="bk-username">یوزرنیم پاسکال *</Label>
           <Input
             id="bk-username"
             dir="ltr"

@@ -179,7 +179,7 @@ export default async function CatalogPage({ params }: Props) {
   // با میزبانیِ فعلی ساخته شود، نه دامنهٔ کانفیگ (خواستهٔ مالک ۱۰-۱۱ دور ۴)
   const sharePath = `/c/${settings.catalogId}`;
 
-  /** آمار فروشنده — سه جعبه مثل تب «اصلی» باسکول */
+  /** آمار فروشنده — سه جعبه مثل تب «اصلی» پاسکال */
   const stats = [
     { icon: Boxes, label: 'آگهی فعال', value: toFa(user.productCount ?? products.length) },
     { icon: Store, label: 'موجودی عرضه', value: stockFa(totalStock, unit) },
@@ -221,9 +221,9 @@ export default async function CatalogPage({ params }: Props) {
       {/* ردپای بازدید کاتالوگ — برای فید «فروشندگان» و شخصی‌سازی (۱۸-۱۱) */}
       <CatalogViewPing userName={user.userName} />
       <main className="flex-1">
-        {/* ─── کارت یکپارچه هدر کاتالوگ — عین باسکول (cp-header-main-container) ───
+        {/* ─── کارت یکپارچه هدر کاتالوگ — عین پاسکال (cp-header-main-container) ───
             بنر + هویت فروشنده + نوار لینک بخش‌ها همه یک کارت‌اند؛ سایه نرم
-            ۰/۱px/۸px باسکول (بدون بوردر در تم روشن — در تاریک بوردر ظریف). */}
+            ۰/۱px/۸px پاسکال (بدون بوردر در تم روشن — در تاریک بوردر ظریف). */}
         <div className="mx-auto max-w-7xl px-4 pt-4 lg:px-6 lg:pt-6">
           <div className="overflow-hidden rounded-lg bg-card shadow-[0_1px_8px_rgba(0,0,0,0.1)] dark:border dark:border-border">
             <ProfileHero
@@ -264,7 +264,7 @@ export default async function CatalogPage({ params }: Props) {
                   </h3>
                   {/* متن پیش‌فرض پارامتریک آیمچ (خواستهٔ مالک ۱۳-۱۱) — فقط
                       نمایشی و ساخته‌شده از دادهٔ همین صفحه؛ چیزی در دیتابیس
-                      ذخیره نمی‌شود و عمداً شبیه متن خودکار باسکول نیست */}
+                      ذخیره نمی‌شود و عمداً شبیه متن خودکار پاسکال نیست */}
                   <p className="mt-2 whitespace-pre-line text-sm leading-7 text-muted-foreground">
                     {user.businessDesc?.trim() ||
                       fallbackBusinessDesc({ name: sellerName, city: user.cityName ?? user.provinceName })}

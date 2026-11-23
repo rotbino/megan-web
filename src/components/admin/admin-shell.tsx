@@ -135,7 +135,7 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
       { href: '/admin/logs', label: 'لاگ عملیات', Icon: ScrollText, superOnly: false },
       { href: '/admin/admins', label: 'ادمین‌ها', Icon: UserCog, superOnly: true },
       { href: '/admin/settings', label: 'تنظیمات', Icon: Settings, superOnly: false },
-      // ایمپورتر باسکول و مدیریت کاربران ایمپورت‌شده به بخش جدای «دیتا ایمپورت»
+      // ایمپورتر پاسکال و مدیریت کاربران ایمپورت‌شده به بخش جدای «دیتا ایمپورت»
       // منتقل شدند (خواستهٔ مالک ۱۳-۱۱) — کاملاً جدا از سایر بخش‌های ادمین:
       // /data-import (ریدایرکت از /admin/importer هم هست)
     ],

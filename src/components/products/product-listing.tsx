@@ -37,7 +37,7 @@ import type { Paged } from '@/lib/mock/api';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { Category, Product, SortKey } from '@/lib/types';
-/** مرتب‌سازی — دقیقاً مثل باسکول: مرتبط‌ترین / جدیدترین (نردبان‌شده‌ها همیشه بالا) */
+/** مرتب‌سازی — دقیقاً مثل پاسکال: مرتبط‌ترین / جدیدترین (نردبان‌شده‌ها همیشه بالا) */
 const SORTS: { key: SortKey; label: string }[] = [
   { key: 'related', label: 'مرتبط ترین' },
   { key: 'newest', label: 'جدیدترین' },
@@ -474,7 +474,7 @@ function ProductListingInner({
   /**
    * باز کردن بات‌شیت دسته‌ها — روی صفحه دسته، پشته تا سطح دسته فعال
    * پیش‌تنظیم می‌شود (نه از ریشه) تا هم‌ترازهای/فرزندان همان دسته دیده شوند؛
-   * برای برگ، یک سطح عقب‌تر (هم‌ترازهای خودش) — عین رفتار باسکول.
+   * برای برگ، یک سطح عقب‌تر (هم‌ترازهای خودش) — عین رفتار پاسکال.
    */
   const openCategoriesSheet = () => {
     if (activeCategorySlug) {
@@ -673,7 +673,7 @@ function ProductListingInner({
           </div>
         </div>
 
-        {/* نوار فیلتر و مرتب‌سازی — موبایل (الگوی باسکول/دیوار: دسته ها، مرتب
+        {/* نوار فیلتر و مرتب‌سازی — موبایل (الگوی پاسکال/دیوار: دسته ها، مرتب
             سازی، فیلترهای فعال). فیلتر مکان عین دسکتاپ اینجا است (خواستهٔ مالک
             ۸-۱۱ دور ۲۳): اول استان، با انتخاب استان دکمهٔ شهر ظاهر می‌شود */}
         <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto border-b border-border/70 px-4 pb-2.5 lg:hidden">
@@ -819,7 +819,7 @@ function ProductListingInner({
         onBack={catStack.length ? () => setCatStack((st) => st.slice(0, -1)) : undefined}
         title={sheetLevel ? sheetLevel.categoryName : 'همه دسته ها'}
       >
-        {/* میان‌بر: همه محصولات دسته فعال (مثل باسکول؛ خواستهٔ مالک ۱۸-۱۱:
+        {/* میان‌بر: همه محصولات دسته فعال (مثل پاسکال؛ خواستهٔ مالک ۱۸-۱۱:
             بدون فعل «مشاهده» — فقط «همه محصولات …») */}
         {activeCategoryName && activeCategorySlug && (
           <Link

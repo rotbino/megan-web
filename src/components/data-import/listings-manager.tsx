@@ -2,13 +2,13 @@
 
 /**
  * مدیریت آگهی‌ها — صفحهٔ «دیتا ایمپورت → آگهی‌ها» (خواستهٔ مالک ۱۳-۱۱).
- * محیط تسلط بر مخلوط آگهی‌های ایمپورت‌شده از باسکول و آگهی‌های طبیعی:
+ * محیط تسلط بر مخلوط آگهی‌های ایمپورت‌شده از پاسکال و آگهی‌های طبیعی:
  *
- *   • فیلترها: منبع (باسکول/خودی)، ورود فروشنده (وارد شده/هرگز)، ویرایش‌شده
+ *   • فیلترها: منبع (پاسکال/خودی)، ورود فروشنده (وارد شده/هرگز)، ویرایش‌شده
  *     توسط خود فروشنده، وضعیت، بدون عکس + جستجو و سورت روی همهٔ مهرهای زمانی.
  *   • هر ردیف: کاور، نام + لینک صفحهٔ عمومی، فروشنده (+ لاگین)، چیپ ویرایش،
  *     قیمت/موجودی + هشدار کهنگی قیمت (همان منطق صفحهٔ آگهی)، تاریخ‌های دقیق
- *     باسکول (ثبت/آپدیت/آپدیت قیمت)، تعداد عکس + پرش به آلبوم تصاویر همان آگهی.
+ *     پاسکال (ثبت/آپدیت/آپدیت قیمت)، تعداد عکس + پرش به آلبوم تصاویر همان آگهی.
  */
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
@@ -63,12 +63,12 @@ function imgSrc(url: string): string {
   return url.startsWith('http') ? url : `${API_BASE}${url}`;
 }
 
-/** چیپ منبع آگهی — فروشنده‌اش از باسکول آمده یا خودش ثبت‌نام کرده */
+/** چیپ منبع آگهی — فروشنده‌اش از پاسکال آمده یا خودش ثبت‌نام کرده */
 function SourceChip({ row }: { row: ImportedListingRow }) {
   if (row.source === 'buskool') {
     return (
-      <Badge className="bg-primary-soft font-bold text-primary hover:bg-primary-soft" title={`فروشنده @${row.owner.bUserName} در باسکول`}>
-        از باسکول
+      <Badge className="bg-primary-soft font-bold text-primary hover:bg-primary-soft" title={`فروشنده @${row.owner.bUserName} در پاسکال`}>
+        از پاسکال
       </Badge>
     );
   }
@@ -233,7 +233,7 @@ function ListingsManagerInner() {
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {[
             { label: 'کل آگهی‌ها', value: summary.total, hint: 'همهٔ آگهی‌ها' },
-            { label: 'از باسکول', value: summary.buskool, hint: 'ایمپورت‌شده' },
+            { label: 'از پاسکال', value: summary.buskool, hint: 'ایمپورت‌شده' },
             { label: 'ثبت خودی', value: summary.native, hint: 'فروشنده خودش ثبت کرده' },
             { label: 'فروشنده وارد شده', value: summary.ownerLoggedIn, hint: 'دعوت‌ها جواب داده', accent: true },
             { label: 'ویرایش توسط فروشنده', value: summary.editedByUser, hint: 'خودش دستی تغییرش داده' },
@@ -273,7 +273,7 @@ function ListingsManagerInner() {
             <SelectTrigger className="h-8 w-[125px] rounded-[10px] text-[11.5px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">همهٔ منابع</SelectItem>
-              <SelectItem value="buskool">از باسکول</SelectItem>
+              <SelectItem value="buskool">از پاسکال</SelectItem>
               <SelectItem value="native">ثبت خودی</SelectItem>
             </SelectContent>
           </Select>
@@ -381,7 +381,7 @@ function ListingsManagerInner() {
                 <th className="p-2 text-start font-bold">فروشنده</th>
                 <th className="hidden p-2 text-start font-bold lg:table-cell">ویرایش</th>
                 <th className="hidden p-2 text-start font-bold sm:table-cell">قیمت / موجودی</th>
-                <th className="hidden p-2 text-start font-bold xl:table-cell">تاریخ‌ها (باسکول)</th>
+                <th className="hidden p-2 text-start font-bold xl:table-cell">تاریخ‌ها (پاسکال)</th>
                 <th className="p-2 text-start font-bold">عکس‌ها</th>
               </tr>
             </thead>
@@ -504,7 +504,7 @@ function ListingsManagerInner() {
       {/* راهنمای پایین */}
       <p className="flex items-center justify-center gap-1.5 text-center text-[10.5px] leading-5 text-muted-foreground">
         <Store size={12} className="shrink-0" />
-        «ویرایش‌شده» یعنی فروشنده خودش بعد از ایمپورت از پنلش آگهی را تغییر داده است؛ مهرهای زمانیِ آگهی‌های باسکولی عین باسکول حفظ می‌شوند.
+        «ویرایش‌شده» یعنی فروشنده خودش بعد از ایمپورت از پنلش آگهی را تغییر داده است؛ مهرهای زمانیِ آگهی‌های پاسکالی عین پاسکال حفظ می‌شوند.
       </p>
     </div>
   );

@@ -12,7 +12,7 @@
  *  • موبایل: چیپ‌های فیلتر + بات‌شیت سلسله‌مراتبی؛ باز کردن بات‌شیت روی دستهٔ
  *    فعال، هم‌ترازها/فرزندان همان دسته؛ انتخاب هر دسته بلافاصله فیلتر می‌کند
  *    و اگر فرزند داشته باشد برای ریزترشدن باز می‌ماند.
- *  • کارت‌ها ساده و عین باسکول: آواتار + نام خریدار، جملهٔ «خریدار … هستم»،
+ *  • کارت‌ها ساده و عین پاسکال: آواتار + نام خریدار، جملهٔ «خریدار … هستم»،
  *    تاریخ و مکان.
  *  • «ارسال پیشنهاد تامین» روی کارت همیشه فعال است (خواستهٔ مالک ۱-۱۱ دور
  *    سوم): هر نیاز ثبت‌شده از ابتدا به دستهٔ آخر کالایش وصل است؛ دسته از خود
@@ -487,7 +487,7 @@ export function BuyersView({
           </div>
         </div>
 
-        {/* نوار فیلتر — موبایل (الگوی باسکول/دیوار)؛ تب‌ها بالا هستند و اینجا نیستند */}
+        {/* نوار فیلتر — موبایل (الگوی پاسکال/دیوار)؛ تب‌ها بالا هستند و اینجا نیستند */}
         <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto border-b border-border/70 px-4 pb-2.5 lg:hidden">
           <button
             type="button"
@@ -932,7 +932,7 @@ function CategoryNav({
   );
 }
 
-/** کارت پیش‌نمایش درخواست خرید — عین چیدمان باسکول (خواستهٔ مالک ۱-۱۱):
+/** کارت پیش‌نمایش درخواست خرید — عین چیدمان پاسکال (خواستهٔ مالک ۱-۱۱):
  *  سربرگ آواتار + نام خریدار، جملهٔ «خریدار … هستم»، تاریخ و مکان. */
 function RequestPreviewCard({ request }: { request: BuyRequest }) {
   const initial = request.firstName.trim().charAt(0) || 'خ';
@@ -952,7 +952,7 @@ function RequestPreviewCard({ request }: { request: BuyRequest }) {
           </span>
         </div>
 
-        {/* جمله — عین باسکول */}
+        {/* جمله — عین پاسکال */}
         <p className="mt-3 text-[13px] leading-7 text-muted-foreground sm:text-sm">
           خریدار <b className="text-foreground">{toFa(request.requirementAmount)} {request.unit}</b>{' '}
           <b className="text-foreground">{request.subcategoryName}</b>

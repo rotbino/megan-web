@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/help' },
 };
 
-/** چهار کارت راهنمای اصلی — عین باسکول، لینک‌دار */
+/** چهار کارت راهنمای اصلی — عین پاسکال، لینک‌دار */
 const GUIDE_CARDS = [
   { icon: UserRound, title: 'حساب کاربری', hint: 'راهنمای ورود و ثبت نام در ایمچ', href: '/help/verify-account' },
   { icon: PackagePlus, title: 'فروش محصول', hint: 'راهنمای فروشندگان ایمچ', href: '/help/become-seller' },
@@ -73,7 +73,7 @@ const HIGHLIGHTS = [
   { title: 'چگونه از سرنخ‌های فروش در ایمچ استفاده کنم؟', time: '۲ دقیقه مطالعه', href: '/help/start-conversation' },
 ];
 
-/** پرسش‌های همیشگی — عین باسکول (با جایگزینی ایمچ) */
+/** پرسش‌های همیشگی — عین پاسکال (با جایگزینی ایمچ) */
 const FAQS = [
   {
     q: 'چطور می توانم به فروشندگان اعتماد کنم؟',

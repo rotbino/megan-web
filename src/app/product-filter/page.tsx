@@ -13,7 +13,7 @@ import { ProductFilterClient } from './product-filter-client';
  *  • دیتا: کاتالوگ عمومی v2 (catalog/v2) — آگهی‌های confirmed روی درخت
  *    عمیق جدید (تا خودِ کالا)، فیلتر شهر/استان/جستجو/ویژگی‌ها/سورت؛
  *  • noindex تا وقتی سوییچ عمومی اعلام شود — محتوای تکراری با
- *    /product-list (که فعلاً روی دستهٔ باسکول است) ایندکس نشود.
+ *    /product-list (که فعلاً روی دستهٔ پاسکال است) ایندکس نشود.
  */
 export const metadata: Metadata = {
   title: 'خرید و فروش عمده | دسته‌بندی جدید ایمچ',

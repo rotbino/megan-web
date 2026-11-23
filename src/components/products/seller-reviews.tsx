@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * نظرات کاربران — عین ساختار باسکول: خلاصه امتیاز (میانگین + ستاره + توزیع
+ * نظرات کاربران — عین ساختار پاسکال: خلاصه امتیاز (میانگین + ستاره + توزیع
  * ۵..۱) + لیست نظرات + فرم ثبت/ویرایش نظر خودم (لاگین لازم). مهمان‌ها لیست
  * را می‌بینند، برای نوشتن مودال ورود باز می‌شود.
  *
@@ -51,9 +51,9 @@ function MyReviewStatusNote({ status }: { status: SellerReviewRow['status'] }) {
   );
 }
 
-/** یک نظر — کارت مؤلف نظر باسکول؛ mine=true برای نظر خودم (سنجاق‌شده بالای لیست).
+/** یک نظر — کارت مؤلف نظر پاسکال؛ mine=true برای نظر خودم (سنجاق‌شده بالای لیست).
  *  شهر نویسنده زیر نام می‌آید (خواستهٔ مالک ۱۳-۱۱) — برای کاربران واقعی از
- *  پروفایل و برای کامنت‌های باسکولی از جدول user_for_b_comment. */
+ *  پروفایل و برای کامنت‌های پاسکالی از جدول user_for_b_comment. */
 function ReviewCard({ review, mine = false }: { review: SellerReviewRow; mine?: boolean }) {
   const name = `${review.author.firstName} ${review.author.lastName}`.trim() || 'کاربر ایمچ';
   return (
@@ -85,7 +85,7 @@ function ReviewCard({ review, mine = false }: { review: SellerReviewRow; mine?: 
                 </span>
               )}
               <RelativeTime date={review.createdAt} />
-              {/* شناسه فقط برای کاربران واقعی — نویسندهٔ کامنت باسکولی کاربر ایمچ نیست */}
+              {/* شناسه فقط برای کاربران واقعی — نویسندهٔ کامنت پاسکالی کاربر ایمچ نیست */}
               {review.author.userName && <>— شناسه {review.author.userName}</>}
             </p>
           </div>
@@ -210,7 +210,7 @@ export function SellerReviews({
                 <p className="text-[11px] text-muted-foreground">{toFa(summary.count)} نظر درباره {roleLabel}</p>
               </div>
             </div>
-            {/* توزیع — میله‌های ۵..۱ مثل باسکول */}
+            {/* توزیع — میله‌های ۵..۱ مثل پاسکال */}
             <div className="flex min-w-40 flex-1 flex-col-reverse gap-1">
               {summary.distribution.map((d) => {
                 const pct = summary.count ? Math.round((d.count / summary.count) * 100) : 0;

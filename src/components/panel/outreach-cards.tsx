@@ -187,7 +187,7 @@ export function UrgentChatCard({ chat }: { chat: UrgentChat }) {
         </span>
       </div>
 
-      {/* ردیف ۲: جملهٔ درخواست — باسکولی: خریدار N واحد کالا از نوع X هستم */}
+      {/* ردیف ۲: جملهٔ درخواست — پاسکالی: خریدار N واحد کالا از نوع X هستم */}
       {req && (
         <p className="mt-1.5 line-clamp-1 text-[11px] leading-6 text-muted-foreground">
           خریدار{' '}

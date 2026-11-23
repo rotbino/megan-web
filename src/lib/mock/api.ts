@@ -500,13 +500,13 @@ export async function getBuyRequests(
   return { ...raw, items: raw.items.map(toBuyRequest) };
 }
 
-/** جدیدترین درخواست‌ها — سکشن صفحه اول (۴ تایی عین باسکول) */
+/** جدیدترین درخواست‌ها — سکشن صفحه اول (۴ تایی عین پاسکال) */
 export async function getLatestBuyRequests(): Promise<BuyRequest[]> {
   const raw = await apiFetch<RawBuyRequest[]>('/buy-requests/getLatestBuyRequests', {}, { auth: false });
   return raw.map(toBuyRequest);
 }
 
-/** شماره تماس خریدار — نیازمند ورود (مدل Lead-gen باسکول) */
+/** شماره تماس خریدار — نیازمند ورود (مدل Lead-gen پاسکال) */
 export async function getBuyRequestContact(id: number): Promise<{
   phone: string;
   firstName: string;
@@ -981,7 +981,7 @@ export async function getMyProductDetail(id: number): Promise<{
 
 /**
  * ویرایش آگهی خودم — واقعی:
- * ۱) updateMyProduct (دوباره «در انتظار تایید» مثل باسکول)؛
+ * ۱) updateMyProduct (دوباره «در انتظار تایید» مثل پاسکال)؛
  * ۲) عکس‌های جدید آپلود می‌شوند؛ ۳) عکس‌های حذف‌شده پاک می‌شوند.
  * ناموفق‌های آپلود برمی‌گردند (نه بی‌صدایی) تا فرم هشدار/تلاش-دوباره بدهد.
  */
@@ -1471,7 +1471,7 @@ export async function deletePhoneContact(id: string): Promise<{ deleted: true }>
 /** نوع حساب احراز: حقیقی | دارای مدرک کسب‌وکار — بک‌اند از وجود جواز کسب/آگهی ثبت استخراج می‌کند */
 export type VerificationAccountType = 'personal' | 'legal';
 
-/** اسلات‌های مدارک — عین باسکول: روی کارت + پشت کارت + سلفی با گواهی (+ آگهی ثبت) */
+/** اسلات‌های مدارک — عین پاسکال: روی کارت + پشت کارت + سلفی با گواهی (+ آگهی ثبت) */
 export type VerificationDocKey =
   | 'nationalCardFront'
   | 'nationalCardBack'
@@ -1503,7 +1503,7 @@ export async function getMyVerification(): Promise<MyVerification> {
 }
 
 /**
- * ارسال مدارک — یک درخواست multipart، دو مرحله (عین باسکول):
+ * ارسال مدارک — یک درخواست multipart، دو مرحله (عین پاسکال):
  * روی کارت + پشت کارت + سلفی همراه با کارت و گواهی دست‌نوشته؛
  * + جواز کسب یا آگهی ثبت شرکت (اختیاری — اعتبار بیشتر برای کسب‌وکارها).
  * بک‌اند سفارش را اتمیک می‌سازد؛ در خطا هیچ فایلی جامانده نمی‌ماند.
@@ -1751,7 +1751,7 @@ export async function getMyPackageOrders(): Promise<MyPackageOrder[]> {
   return raw.items;
 }
 
-// ─── نظرات فروشنده (عین «نظرات کاربران» باسکول) ────────────────────────────
+// ─── نظرات فروشنده (عین «نظرات کاربران» پاسکال) ────────────────────────────
 
 export interface SellerReviewRow {
   id: string;
@@ -1759,7 +1759,7 @@ export interface SellerReviewRow {
   text: string;
   /** قانون انتشار (مالک ۲-۱۱): pending = در انتظار تأیید ادمین (فقط نویسنده می‌بیند) */
   status: 'pending' | 'approved' | 'rejected';
-  /** نویسنده — userName فقط برای کاربران واقعی؛ نویسندهٔ کامنت باسکولی
+  /** نویسنده — userName فقط برای کاربران واقعی؛ نویسندهٔ کامنت پاسکالی
    *  (جدول user_for_b_comment — خاستهٔ مالک ۱۳-۱۱) کاربر ایمچ نیست و
    *  به‌جای شناسه، شهرش زیر کامنت نمایش داده می‌شود. */
   author: {

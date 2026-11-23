@@ -22,7 +22,7 @@ index 16eb650..68679d0 100755
  # ── ذخیره‌سازی فایل‌ها (ArvanCloud S3-compatible) ──
 +# توجه: اگر APP_PROFILE=local باشد درایور اجباراً local می‌شود و این کلیدها بی‌اثرند.
  STORAGE_DRIVER=arvan            # arvan | local
- MAX_FILE_SIZE=5242880           # ۵ مگابایت (قاعده باسکول)
+ MAX_FILE_SIZE=5242880           # ۵ مگابایت (قاعده پاسکال)
  FILES_STAGING_TTL_DAYS=7        # عمر فایل‌های staged قبل از reaper
 diff --git a/.gitignore b/.gitignore
 index a3b242d..4f0529a 100755

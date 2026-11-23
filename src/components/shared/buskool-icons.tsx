@@ -1,7 +1,7 @@
 import type { SVGProps } from 'react';
 
 /**
- * آیکون‌های سهام عمومی باسکول — عین SVGهای خود سایت باسکول
+ * آیکون‌های سهام عمومی پاسکال — عین SVGهای خود سایت پاسکال
  * (اندازه ۲۵×۲۴، خط‌های نازک) برای نوار پایین موبایل و آیتم‌های هدر.
  * رنگ از طریق currentColor کنترل می‌شود.
  */
@@ -82,7 +82,7 @@ export function MyAccountIcon({ size = 24, ...props }: P) {
   );
 }
 
-/** فلش راست (جهت بازگشت در RTL) — مسیر SVG عین دکمه بازگشت باسکول */
+/** فلش راست (جهت بازگشت در RTL) — مسیر SVG عین دکمه بازگشت پاسکال */
 export function ArrowRightIcon({ size = 20, ...props }: P) {
   return (
     <svg
@@ -102,7 +102,7 @@ export function ArrowRightIcon({ size = 20, ...props }: P) {
   );
 }
 
-/** فلش چپ کوچک (جهت جلو در RTL) — عین باسکول */
+/** فلش چپ کوچک (جهت جلو در RTL) — عین پاسکال */
 export function ArrowLeftIcon({ size = 20, ...props }: P) {
   return (
     <svg
@@ -122,7 +122,7 @@ export function ArrowLeftIcon({ size = 20, ...props }: P) {
   );
 }
 
-/** آیکون جستجو — عین باسکول (موبایل) */
+/** آیکون جستجو — عین پاسکال (موبایل) */
 export function SearchIconBuskool({ size = 24, ...props }: P) {
   return (
     <svg
@@ -142,7 +142,7 @@ export function SearchIconBuskool({ size = 24, ...props }: P) {
   );
 }
 
-/** آیکون مکان (فیلتر همه ایران) — عین باسکول */
+/** آیکون مکان (فیلتر همه ایران) — عین پاسکال */
 export function LocationIconBuskool({ size = 20, ...props }: P) {
   return (
     <svg
@@ -165,7 +165,7 @@ export function LocationIconBuskool({ size = 20, ...props }: P) {
 /** آیکون ارسال پیام RTL — قانون جهت‌دارها در فارسی:
  *  در چیدمان راست‌به‌چپ، آیکون ارسال باید به سمت بیرون (چپ) اشاره کند؛
  *  یعنی نسخه آینه‌شده هواپیمای کاغذی انگلیسی (که به راست اشاره می‌کند).
- *  مسیر عین آیکون ارسال باسکول است که افقی آینه شده است. */
+ *  مسیر عین آیکون ارسال پاسکال است که افقی آینه شده است. */
 export function SendIconRtl({ size = 17, ...props }: P) {
   return (
     <svg
@@ -192,7 +192,7 @@ export function SendIconRtl({ size = 17, ...props }: P) {
   );
 }
 
-/** حباب گفتگوی پر (دکمه‌های «چت با فروشنده») — عین باسکول ۲۵×۲۵ */
+/** حباب گفتگوی پر (دکمه‌های «چت با فروشنده») — عین پاسکال ۲۵×۲۵ */
 export function ChatBubbleIcon({ size = 25, ...props }: P) {
   return (
     <svg
