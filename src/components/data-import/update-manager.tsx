@@ -27,6 +27,12 @@
  *     اول موبایل از پاسکال گرفته و ذخیره می‌شود و بلافاصله ایمپورت کامل
  *     شروع می‌شود. با موفقیت، کاربر از لیست خارج می‌شود.
  *
+ * نوسازی ۲۳-۱۱ (خواستهٔ مالک): لیست «در انتظار ایمپورت» صفحه‌بندی ۵۰تایی +
+ * فیلتر روزِ ثبت‌نام (امروز / دیروز / ۲ و ۳ روز پیش / «سایر» با عدد دلخواه /
+ * همه) دارد؛ ریشه‌یابی خطای «کوکی لاگین نیست» هم انجام شد — ظرف کوکی زنده:
+ * Set-Cookie پاسخ‌های پاسکال پذیرفته و ارسال می‌شود (مثل مرورگر) تا سشنِ
+ * ۲ساعتهٔ laravel_session زنده بماند.
+ *
  *   • «استخراج تک‌کاربر»: یوزرنیم پاسکال → موجود = توست با یوزرنیم آیمچ بدون
  *     تماس با پاسکال؛ غایب = شماره + ایمپورت کامل.
  */
@@ -34,7 +40,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BadgeCheck,
+  CalendarDays,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   CircleAlert,
   Database,
   Loader2,
@@ -68,6 +77,30 @@ const BATCH = 1000;
 const GAP_MS = 5_000;
 /** سقف ایمنی تعداد بچ در یک پاس */
 const MAX_BATCHES = 30;
+/** تعداد ردیف هر صفحهٔ لیست «در انتظار ایمپورت» — خواستهٔ مالک ۲۳-۱۱ */
+const PENDING_PAGE_SIZE = 50;
+
+/** برچسب روز برای فیلتر لیست «در انتظار ایمپورت» — N=0 امروز، ۱ دیروز، … */
+function dayLabelFa(days: number): string {
+  if (days === 0) return 'امروز';
+  if (days === 1) return 'دیروز';
+  return `${toFa(days)} روز پیش`;
+}
+
+/** شماره‌های دکمه‌های صفحه — تا ۷ صفحه همه؛ بیشتر: اول و آخر + همسایه‌های جاری */
+function pageNumbers(current: number, pages: number): (number | '…')[] {
+  if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1);
+  const set = new Set<number>([1, 2, current - 1, current, current + 1, pages - 1, pages]);
+  const nums = [...set].filter((n) => n >= 1 && n <= pages).sort((a, b) => a - b);
+  const out: (number | '…')[] = [];
+  let prev = 0;
+  for (const n of nums) {
+    if (n - prev > 1) out.push('…');
+    out.push(n);
+    prev = n;
+  }
+  return out;
+}
 
 type RunStatus = 'idle' | 'running' | 'pausing' | 'done' | 'stopped' | 'error';
 
@@ -123,6 +156,16 @@ export function UpdateManager() {
   const [userStates, setUserStates] = useState<Record<number, UserState>>({});
   const [budget, setBudget] = useState<{ limit: number; used: number; remaining: number } | null>(null);
 
+  // ── فیلتر روز + صفحه‌بندی ۵۰تایی (خواستهٔ مالک ۲۳-۱۱) ──
+  /** روزِ فیلتر ثبت‌نام — null یعنی همهٔ روزها؛ 0=امروز، ۱=دیروز، … */
+  const [pendingDay, setPendingDay] = useState<number | null>(null);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [pendingTotal, setPendingTotal] = useState(0);
+  const [pendingPages, setPendingPages] = useState(1);
+  /** ورودی عددیِ فیلتر «سایر» (N روز پیش) */
+  const [customDayOpen, setCustomDayOpen] = useState(false);
+  const [customDayText, setCustomDayText] = useState('');
+
   // ── جاب ایمپورت در جریان (کاربر لیست یا تک‌کاربر) ──
   const [job, setJob] = useState<ImportJob | null>(null);
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -143,13 +186,23 @@ export function UpdateManager() {
     [],
   );
 
-  // ── بار اول: لیست «در انتظار ایمپورت» از دیتابیس ──
+  // ── لیست «در انتظار ایمپورت» — با فیلتر روز و صفحهٔ جاری (۲۳-۱۱) ──
   const loadPending = useCallback(
     async (opts?: { silent?: boolean }) => {
       if (!opts?.silent) setPendingLoading(true);
       try {
-        const res = await updateApi.pending({ adminPhone: ADMIN_PHONE });
+        const res = await updateApi.pending({
+          adminPhone: ADMIN_PHONE,
+          page: pendingPage,
+          pageSize: PENDING_PAGE_SIZE,
+          days: pendingDay,
+        });
         setPendingUsers(res.users);
+        setPendingTotal(res.total);
+        setPendingPages(res.pages);
+        // سرور صفحهٔ درخواستی را محدود می‌کند (مثلاً بعد از حذف ردیف‌ها) —
+        // همان را روی UI هم بگذار تا «صفحهٔ خالی» نداشته باشیم
+        if (res.page !== pendingPage) setPendingPage(res.page);
       } catch (err) {
         toast({
           title: 'خواندن لیست «در انتظار ایمپورت» ناموفق بود',
@@ -160,12 +213,32 @@ export function UpdateManager() {
         setPendingLoading(false);
       }
     },
-    [toast],
+    [pendingDay, pendingPage, toast],
   );
 
   useEffect(() => {
     void loadPending();
   }, [loadPending]);
+
+  // ── فیلتر «سایر»: عدد روز با تأخیر کوتاه اعمال می‌شود (تا حین تایپینگ عدد،
+  // به‌ازای هر رقم درخواست نزنیم) ──
+  useEffect(() => {
+    if (!customDayOpen) return;
+    const t = customDayText.trim();
+    const n = Number(t);
+    if (!t || !Number.isFinite(n) || n < 0 || n > 3650) return;
+    const timer = setTimeout(() => {
+      setPendingDay(Math.floor(n));
+      setPendingPage(1);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [customDayOpen, customDayText]);
+
+  /** انتخاب فیلتر روز — همیشه به صفحهٔ ۱ برمی‌گردد */
+  const pickDay = useCallback((days: number | null) => {
+    setPendingDay(days);
+    setPendingPage(1);
+  }, []);
 
   // ── جمع کل پاس ──
   const totals = useMemo(() => {
@@ -370,7 +443,7 @@ export function UpdateManager() {
     // خطا/توقف: پیام روی پنل جاب دیده می‌شود — دکمه برای تلاش مجدد برمی‌گردد
     else setUserStates((s) => ({ ...s, [id]: { kind: 'idle' } }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [job?.status]);
+  }, [job?.status, loadPending]);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -546,7 +619,7 @@ export function UpdateManager() {
             <Users size={15} className="text-primary" />
             کاربران در انتظار ایمپورت
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary tabular-nums">
-              {toFa(pendingUsers.length)}
+              {toFa(pendingTotal)}
             </span>
           </h3>
           <div className="flex items-center gap-3">
@@ -566,14 +639,83 @@ export function UpdateManager() {
           </div>
         </header>
 
+        {/* ── فیلتر روزِ ثبت‌نام (خواستهٔ مالک ۲۳-۱۱): امروز / دیروز / ۲ و ۳ روز
+            پیش / سایر (عدد دلخواه) / همه ── */}
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          <CalendarDays size={14} className="text-muted-foreground" />
+          {([null, 0, 1, 2, 3] as (number | null)[]).map((d) => {
+            const label = d === null ? 'همه' : dayLabelFa(d);
+            return (
+              <button
+                key={String(d)}
+                type="button"
+                onClick={() => {
+                  if (d !== null && d >= 4) return;
+                  if (d === null) setCustomDayOpen(false);
+                  pickDay(d);
+                }}
+                className={cn(
+                  'rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors',
+                  pendingDay === d
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
+          {/* «سایر» — دکمه + اینپوت عدد (مثلا ۸ روز پیش) */}
+          <button
+            type="button"
+            onClick={() => {
+              setCustomDayOpen(true);
+              if (pendingDay != null && pendingDay >= 4) setCustomDayText(String(pendingDay));
+            }}
+            className={cn(
+              'rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors',
+              customDayOpen || (pendingDay != null && pendingDay >= 4)
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground',
+            )}
+          >
+            سایر{pendingDay != null && pendingDay >= 4 ? ` (${dayLabelFa(pendingDay)})` : ''}
+          </button>
+          {customDayOpen && (
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Input
+                dir="ltr"
+                type="number"
+                min={0}
+                max={3650}
+                placeholder="مثلا ۸"
+                value={customDayText}
+                onChange={(e) => setCustomDayText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const n = Number(customDayText);
+                    if (customDayText.trim() && Number.isFinite(n) && n >= 0 && n <= 3650) {
+                      setPendingDay(Math.floor(n));
+                      setPendingPage(1);
+                    }
+                  }
+                }}
+                className="h-7 w-24 rounded-md text-center text-left"
+              />
+              روز پیش
+            </span>
+          )}
+        </div>
+
         {pendingLoading && pendingUsers.length === 0 ? (
           <div className="grid place-items-center rounded-md border border-dashed p-6 text-muted-foreground">
             <Loader2 className="size-5 animate-spin" />
           </div>
         ) : pendingUsers.length === 0 ? (
           <p className="rounded-md border border-dashed p-6 text-center text-xs leading-6 text-muted-foreground">
-            هنوز کاربری در انتظار ایمپورت نیست — «شروع آپدیت» را بزنید؛ کاربران تازه‌ثبت‌نامِ پاسکال که
-            آگهی دارند و در ایمچ نیستند، همان‌جا در دیتابیس ثبت و همین‌جا فهرست می‌شوند.
+            {pendingDay != null
+              ? `در «${dayLabelFa(pendingDay)}» کاربری در انتظار ایمپورت نیست — فیلتر روز را عوض کنید یا «همه» را ببینید.`
+              : 'هنوز کاربری در انتظار ایمپورت نیست — «شروع آپدیت» را بزنید؛ کاربران تازه‌ثبت‌نامِ پاسکال که آگهی دارند و در ایمچ نیستند، همان‌جا در دیتابیس ثبت و همین‌جا فهرست می‌شوند.'}
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -658,11 +800,70 @@ export function UpdateManager() {
             </table>
           </div>
         )}
+
+        {/* ── صفحه‌بندی ۵۰تایی (خواستهٔ مالک ۲۳-۱۱) ── */}
+        {pendingPages > 1 && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+            <p className="text-[11px] text-muted-foreground">
+              {pendingDay != null ? `ثبت‌نام ${dayLabelFa(pendingDay)} — ` : ''}
+              {toFa(pendingTotal)} کاربر • صفحهٔ {toFa(pendingPage)} از {toFa(pendingPages)}
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1 rounded-md px-2 text-[11px]"
+                onClick={() => setPendingPage((p) => Math.max(1, p - 1))}
+                disabled={pendingLoading || pendingPage <= 1}
+              >
+                <ChevronRight size={13} />
+                قبلی
+              </Button>
+              {pageNumbers(pendingPage, pendingPages).map((p, i) =>
+                p === '…' ? (
+                  <span key={`gap-${i}`} className="px-1 text-[10px] text-muted-foreground">
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPendingPage(p)}
+                    className={cn(
+                      'grid size-7 place-items-center rounded-md text-[11px] font-bold tabular-nums',
+                      p === pendingPage ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-secondary',
+                    )}
+                  >
+                    {toFa(p)}
+                  </button>
+                ),
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1 rounded-md px-2 text-[11px]"
+                onClick={() => setPendingPage((p) => Math.min(pendingPages, p + 1))}
+                disabled={pendingLoading || pendingPage >= pendingPages}
+              >
+                بعدی
+                <ChevronLeft size={13} />
+              </Button>
+            </div>
+          </div>
+        )}
+        {pendingPages === 1 && pendingTotal > 0 && (
+          <p className="mt-3 border-t pt-3 text-[11px] text-muted-foreground">
+            {pendingDay != null ? `ثبت‌نام ${dayLabelFa(pendingDay)} — ` : ''}
+            {toFa(pendingTotal)} کاربر در یک صفحه
+          </p>
+        )}
         <p className="mt-3 text-[10px] leading-5 text-muted-foreground">
           «گرفتن موبایل» فقط شماره را می‌گیرد و روی رکورد کاربر ذخیره می‌کند (هر کوکی پاسکال ۲۰ شماره).
           «ایمپورت» اول رکورد را نگاه می‌کند: موبایل داشته باشد مستقیم ایمپورت کامل (پروفایل، آگهی‌ها،
           تصاویر، کامنت‌ها) شروع می‌شود؛ نداشته باشد اول موبایل گرفته و ذخیره می‌شود و بلافاصله ایمپورت
-          کامل انجام می‌شود. کاربر ایمپورت‌شده از این لیست خارج می‌شود.
+          کامل انجام می‌شود. کاربر ایمپورت‌شده از این لیست خارج می‌شود. سشن کوکی پاسکال حالا خودکار زنده
+          می‌ماند — فقط وقتی خطای «کوکی لاگین نیست» دیدید، کوکی تازه در BUSKOOL_COOKIE بگذارید و بک‌اند
+          را ری‌استارت کنید.
         </p>
       </section>
 
@@ -838,8 +1039,10 @@ function SingleUserExtract({
         قبل از هر تماس با پاسکال، یوزرنیم با کلید پاسکالی (bUserName) در دیتابیس چک می‌شود — کاربر موجود
         هیچ درخواستی به پاسکال نمی‌دهد و شماره‌اش هم گرفته نمی‌شود. شماره‌گیری موبایل با کوکی انجام
         می‌شود و هر کوکی فقط ۲۰ شماره می‌دهد. در BUSKOOL_COOKIE «کل هدر cookie مرورگرِ لاگین‌شده»
-        بگذارید (هر سه جفت user_phone و user_password و laravel_session؛ فقط جفت‌های name=value
-        بدون expires/path) — با جفت‌های یادآور، سشنِ ۲ ساعتهٔ پاسکال خودش ترمیم می‌شود.
+        بگذارید (هر سه جفت user_phone و user_password و laravel_session؛ فقط جفت‌های name=value بدون
+        expires/path) و بک‌اند را ری‌استارت کنید. سشنِ laravel_session فقط ۲ ساعت بی‌کار می‌ماند؛ بک‌اند
+        از این پس مثل مرورگر هر تمدیدِ سشن را نگه می‌دارد — اگر باز خطای «کوکی لاگین نیست» آمد، یعنی
+        کوکی کپی‌شده از پیش مُرده بوده و باید تازه کپی شود.
       </p>
     </section>
   );

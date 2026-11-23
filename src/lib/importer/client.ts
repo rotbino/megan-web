@@ -997,6 +997,18 @@ async function jsonClean<T>(res: Response): Promise<T> {
   return (body && typeof body === 'object' && 'data' in body ? body.data : (body as unknown)) as T;
 }
 
+/** نتیجهٔ لیست «در انتظار ایمپورت» — صفحه‌بندی ۵۰تایی + فیلتر روز (۲۳-۱۱) */
+export interface PendingListResult {
+  users: PendingImportUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pages: number;
+  /** فیلتر روز جاری — null یعنی همهٔ روزها */
+  days: number | null;
+  removedImported: number;
+}
+
 export const updateApi = {
   /** یک تکهٔ ۱۰۰۰تایی از جدیدترین آگهی‌های پاسکال — آپدیت قیمت + شناسایی و
    *  ثبت کاربران جدید در جدول «در انتظار ایمپورت» */
@@ -1008,13 +1020,19 @@ export const updateApi = {
     }).then((r) => jsonClean<ScanResult>(r)),
 
   /** لیست «کاربران در انتظار ایمپورت» از دیتابیس — ماندگار بین جلسه‌ها؛
-   *  ایمپورت‌شده‌های کامل موقع خواندن خودکار از لیست خارج می‌شوند */
-  pending: (input: { adminPhone: string }) =>
+   *  ایمپورت‌شده‌های کامل موقع خواندن خودکار از لیست خارج می‌شوند؛
+   *  صفحه‌بندی ۵۰تایی + فیلتر روزِ ثبت‌نام (days=0 امروز، ۱ دیروز، …) */
+  pending: (input: { adminPhone: string; page?: number; pageSize?: number; days?: number | null }) =>
     fetch(`${BASE}/update/pending`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    }).then((r) => jsonClean<{ users: PendingImportUser[]; removedImported: number }>(r)),
+      body: JSON.stringify({
+        adminPhone: input.adminPhone,
+        page: input.page ?? 1,
+        pageSize: input.pageSize ?? 50,
+        days: input.days ?? null,
+      }),
+    }).then((r) => jsonClean<PendingListResult>(r)),
 
   /** شمارهٔ موبایل یک فروشندهٔ پاسکال — هر کوکی ۲۰ شماره؛ سهمیه در پاسخ؛
    *  با bUserName شماره روی رکورد «در انتظار ایمپورت» هم ذخیره می‌شود */
