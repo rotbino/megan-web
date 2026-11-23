@@ -58,6 +58,13 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { JobPanel } from '@/components/importer/job-panel';
 import {
@@ -881,6 +888,38 @@ function totalsLabel(bs: BatchRow[]) {
 
 // ═══════════════════ دکمه‌های هر ردیف ═══════════════════
 
+/** پیام خطای ردیف — کوتاه در جدول، با کلیک دیالوگ کامل (پیام‌های خود-تشخیصِ
+ *  گوشی‌گیری ۲۳-۱۱ بلندند: هر دو اندپوینت + وضعیت کوکی + سنجش زنده) */
+function UserRowError({ message }: { message: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        className="max-w-[240px] truncate text-right text-[10px] text-red-600 underline decoration-dotted underline-offset-2"
+        title="کلیک: جزئیات خطا"
+        onClick={() => setOpen(true)}
+      >
+        {message}
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-700">
+              <CircleAlert size={16} /> خطای گوشی‌گیری / ایمپورت
+            </DialogTitle>
+            <DialogDescription asChild>
+              <p className="whitespace-pre-wrap break-words text-right text-[12px] leading-6 text-foreground">
+                {message}
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 function UserRowActions({
   user,
   state,
@@ -931,9 +970,7 @@ function UserRowActions({
               <UserPlus size={13} /> تلاش مجدد
             </Button>
           </div>
-          <span className="max-w-[240px] truncate text-[10px] text-red-600" title={state.message}>
-            {state.message}
-          </span>
+          <UserRowError message={state.message} />
         </div>
       );
     default:
