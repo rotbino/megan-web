@@ -984,3 +984,57 @@ export interface WebImportProgress {
   retry?: boolean;
   message?: string;
 }
+
+// ─────────────────────────────────────────────────────────────
+// گزارش بازار (۲۵-۱۱) — ردیاب قیمت صنفِ فروشنده
+// ─────────────────────────────────────────────────────────────
+
+/** یک قلم کالا در گزارش بازار — آمار تجمیعی صنف + قیمت خودِ فروشنده */
+export interface MarketReportItem {
+  /** نام قلم — نمونهٔ خواناترِ گروه نام‌های هم‌معنا */
+  name: string;
+  unit: string;
+  /** تعداد فروشنده‌های متمایز با قیمت معتبر */
+  sellers: number;
+  listings: number;
+  /** میانهٔ قیمت‌های سالم (تومان هر واحد) */
+  median: number | null;
+  min: number | null;
+  max: number | null;
+  /** تغییر هفتگی درصدی — null = هنوز دادهٔ تازه‌ای نیست */
+  changePct: number | null;
+  /** نقاط هفتگی اسپارک‌لاین — فقط بستهٔ فعال و وقتی ≥۲ هفته داده باشد */
+  spark: Array<{ weekStart: string; value: number }> | null;
+  /** قلم از واحدهای مختلف ساخته شده — مقایسهٔ دقیق ممکن نیست */
+  mixedUnit: boolean;
+  /** قیمت خودِ فروشنده در همین قلم + فاصله از میانهٔ بازار */
+  mine: { price: number; diffPct: number | null; expired: boolean } | null;
+}
+
+/** صنفِ گزارش — نام + واحد + مسیر درخت دسته‌ها */
+export interface MarketReportCategory {
+  id: number;
+  name: string;
+  unit: string;
+  path: string;
+}
+
+/** پاسخ getMarketReport — بستهٔ فعال: جدول کامل؛ رایگان: ۳ قلم شخصی + تلنگر */
+export interface MarketReport {
+  category: MarketReportCategory | null;
+  generatedAt: string;
+  packageActive: boolean;
+  listingCount?: number;
+  sellerCount?: number;
+  /** شاخص صنف: میانهٔ تغییر قلم‌ها — null = دادهٔ تازه‌ای نیست */
+  index: { value: number | null; basis: number };
+  /** بستهٔ فعال: جدول کامل قلم‌ها (مرتب بر تعداد فروشنده) */
+  items?: MarketReportItem[];
+  /** نام قلم‌هایی که خود فروشنده آگهی دارد (برجسته در جدول) */
+  myItemNames?: string[];
+  /** رایگان: تا ۳ قلم شخصی */
+  myItems?: MarketReportItem[];
+  personalTotal?: number;
+  lockedItems?: number;
+  teaser?: { insufficient: number; changedItems: number; totalItems?: number };
+}

@@ -282,6 +282,16 @@ export function useMyProducts(enabled = true) {
   });
 }
 
+/** گزارش بازار صنف (۲۵-۱۱) — ردیاب قیمت صنفِ فروشنده؛ ۵ دقیقهٔ کش کلاینت */
+export function useMarketReport(subCategoryId?: number) {
+  return useQuery({
+    queryKey: ['market-report', subCategoryId ?? 'auto'],
+    queryFn: () => api.getMarketReport(subCategoryId),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+}
+
 /** وضعیت «ایمپورت از وب» (۱۸-۱۱) — فقط اعضای سابقِ از پیش ثبت‌شده؛
  * imported = ایمپورت را تمام کرده و «ثبت محصول جدید» باز است.
  * خطا/401 بی‌صدا eligible:false است. */

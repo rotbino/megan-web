@@ -7,7 +7,7 @@
  */
 
 import { apiFetch, serverPost, setTokens, clearTokens, getTokens, ApiError, uploadImage as clientUploadImage, uploadChatFile as clientUploadChatFile, uploadSupportFile as clientUploadSupportFile } from '@/lib/api/client';
-import type { BuyRequest, Category, City, CityMarketQuery, PackageType, Product, ProductQuery, Province, SessionUser, UserTask } from '@/lib/types';
+import type { BuyRequest, Category, City, CityMarketQuery, MarketReport, PackageType, Product, ProductQuery, Province, SessionUser, UserTask } from '@/lib/types';
 
 export interface Paged<T> {
   items: T[];
@@ -886,6 +886,12 @@ export async function getMyProducts(): Promise<{
     deleted: raw.counts.deleted ?? 0,
   };
   return { items: raw.items.map(toProduct), counts, capacity: raw.capacity ?? PRODUCT_CAPACITY };
+}
+
+/** گزارش بازار صنف فروشنده (۲۵-۱۱) — میانه/بازه/تغییر قلم‌های صنف.
+ *  بدون subCategoryId: صنفِ پرآگهی‌ترین آگهی‌های خودش. */
+export async function getMarketReport(subCategoryId?: number): Promise<MarketReport> {
+  return apiFetch<MarketReport>('/products/getMarketReport', subCategoryId ? { subCategoryId } : {});
 }
 
 /**

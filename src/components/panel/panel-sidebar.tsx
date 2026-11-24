@@ -24,6 +24,7 @@ import {
   MessageSquare,
   Package,
   ShieldCheck,
+  TrendingUp,
   UserRound,
   Users,
   Wallet,
@@ -43,16 +44,19 @@ interface PanelNavItem {
   exact?: boolean;
 }
 
-/** منوی فروشنده — ۸ آیتم؛ دور ۱۶: «آیمچ من» اول از همه (هر دو پنل).
+/** منوی فروشنده — ۹ آیتم؛ دور ۱۶: «آیمچ من» اول از همه (هر دو پنل).
  *  دور ۱۹+ (خواسته مالک ۴-۱۱): «خریداران پیشنهادی» حذف شد — تطبیق حالا داخل
  *  صفحهٔ «خریداران» است. خواسته مالک ۶-۱۱: «پیشنهادات تامین» هم حذف شد —
  *  همان لیست تب سوم «پیشنهادات ارسال شده» صفحهٔ خریداران شد؛ منو خلوت‌تر
  *  و هر چیز در جای گویاتر خودش.
+ *  «گزارش بازار» (۲۵-۱۱): ردیاب قیمت صنف — ۳ قلم شخصی + شاخص رایگان؛
+ *  جدول کامل با بستهٔ فعال.
  *  «بازاریابی» (افلیت ۱۷-۱۱): نقش سیستمی مستقل — خواسته مالک: لینک پنل
  *  بازاریابی در لینک‌های «آیمچ من» هم باشد. */
 export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel', label: 'آیمچ من', icon: UserRound, exact: true },
   { href: '/panel/products', label: 'محصولات من', icon: Package },
+  { href: '/panel/market-report', label: 'گزارش بازار', icon: TrendingUp },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
   { href: '/panel/buyers', label: 'خریداران', icon: Users },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
