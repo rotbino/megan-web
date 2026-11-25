@@ -2,8 +2,8 @@
 
 /**
  * اجزای مشترک گزارشات ایمچ (۲۵-۱۱ راند ۲) — مینیمال و یک‌نگاهی:
- *  • Sparkline — اسپارک ۸هفته‌ای داخل ردیف‌ها (بی‌آیکون)
- *  • LineChart — نمودار خطی بزرگ‌تر با مینیمم/ماکس
+ *  • Sparkline — اسپارک روزانهٔ هفتهٔ اخیر داخل ردیف‌ها (بی‌آیکون)
+ *  • LineChart — نمودار خطی روزانه با مینیمم/ماکس
  *  • ChangeChip — ▲▼ درصد تغییر
  *  • TierChips — پله‌های حجمی «خرده ۴۱k · عمده ۳۴k»
  *  • CityChips — برش شهری «تهران ۳۸k · مشهد ۴۱k»
@@ -42,13 +42,13 @@ export function Sparkline({ points, className = '' }: { points: Array<{ value: n
   );
 }
 
-// ─── نمودار خطی بزرگ‌تر — نقاط هفتگی + برچسب ابتداء/انتها ────────────────
+// ─── نمودار خطی روزانه — نقاط روزانه + برچسب ابتداء/انتها ────────────────
 
 export function LineChart({
   points,
   unit,
 }: {
-  points: Array<{ weekStart: string; value: number }>;
+  points: Array<{ dayStart: string; value: number }>;
   unit?: string;
 }) {
   const vals = points.map((p) => p.value);

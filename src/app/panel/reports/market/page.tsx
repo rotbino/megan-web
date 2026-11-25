@@ -7,9 +7,9 @@
  * واقعی همان صنف ساخته می‌شود. رایگان: ۳ قلم شخصی + شاخص؛ بستهٔ فعال: جدول کامل.
  *
  * قواعد صداقت (هم‌قرارداد بک‌اند):
- *  • هر قلم حداقل ۳ فروشندهٔ متمایز — وگرنه آمار نمی‌شود.
- *  • «تغییر هفته» فقط از تاریخچهٔ واقعی — تا داده جریان بگیرد «—» می‌بینیم.
- *  • پلهٔ حجمی/شهر فقط با دادهٔ پشتیبان؛ قیمت هیچ فروشنده‌ای با نامش منتشر نمی‌شود.
+ *  • مبنا فقط قیمت‌های به‌روزشده (۳ روز؛ وگرنه ۷ روز) — قیمت‌های کهنه ملاک نیستند.
+ *  • هر قلم حداقل ۳ فروشندهٔ به‌روزشده — وگرنه آمار نمی‌شود.
+ *  • «تغییر هفته» و روند فقط از هفتهٔ اخیر؛ قیمت هیچ فروشنده‌ای با نامش منتشر نمی‌شود.
  */
 
 import { AlertTriangle, Lock, Package } from 'lucide-react';
@@ -69,7 +69,7 @@ function ReportView({ report }: { report: MarketReport }) {
         <p className="text-xs leading-6 text-muted-foreground">
           {cat.path}
           <span className="mx-1 text-muted-foreground/40">•</span>
-          ساخته‌شده از {toFa(report.listingCount ?? 0)} آگهی {toFa(report.sellerCount ?? 0)} فروشنده
+          ساخته‌شده از قیمت‌های به‌روزشدهٔ {toFa(report.listingCount ?? 0)} آگهی {toFa(report.sellerCount ?? 0)} فروشنده
           <span className="mx-1 text-muted-foreground/40">•</span>
           {dateFa(report.generatedAt)}
         </p>
@@ -80,9 +80,9 @@ function ReportView({ report }: { report: MarketReport }) {
       {/* قلم‌ها */}
       {items.length === 0 ? (
         <PanelCard className="p-4 sm:p-5">
-          <p className="text-sm font-bold">قلم‌های شما هنوز دادهٔ مقایسه ندارند</p>
+          <p className="text-sm font-bold">قلم‌های شما هنوز دادهٔ تازه کافی ندارند</p>
           <p className="mt-2 text-xs leading-6 text-muted-foreground">
-            هر قلم وقتی به گزارش می‌آید که دست‌کم ۳ فروشندهٔ صنفتان قیمتِ همان کالا را ثبت کرده باشند.
+            قیمت‌ها روزانه نوسان می‌کنند؛ هر قلم وقتی به گزارش می‌آید که دست‌کم ۳ فروشنده قیمتِ همان کالا را در ۷ روز اخیر به‌روز کرده باشند.
           </p>
         </PanelCard>
       ) : (
@@ -112,9 +112,7 @@ function ReportView({ report }: { report: MarketReport }) {
 
       {/* پانوشت — قواعد گزارش؛ صادق و کوتاه */}
       <p className="px-1 pb-2 text-[11px] leading-5 text-muted-foreground/80">
-        قیمت‌ها به تومان برای هر {cat.unit} و فقط تجمیعی‌اند. پله‌های حجمی و برش شهری فقط جایی که دادهٔ
-        پشتیبان دارد نشان داده می‌شود؛ کمتر از ۳ فروشنده = آمار نمی‌شود.
-      </p>
+        مبنا فقط قیمت‌های به‌روزشدهٔ ۳ یا ۷ روز اخیر است — قیمت‌های کهنه مقایسه نمی‌شوند. قیمت‌ها به تومان برای هر {cat.unit} و فقط تجمیعی‌اند؛ کمتر از ۳ فروشندهٔ به‌روزشده = آمار نمی‌شود.</p>
     </div>
   );
 }
@@ -136,7 +134,7 @@ function IndexStrip({ report }: { report: MarketReport }) {
         </>
       ) : (
         <span className="text-muted-foreground">
-          هنوز دادهٔ تازه‌ای نیست — با جریان گرفتن رصد هفتگی، شاخص اینجا می‌نشیند.
+          هنوز دادهٔ تازه‌ای نیست — با به‌روز شدن قیمت‌ها، شاخص اینجا می‌نشیند.
         </span>
       )}
     </div>
@@ -163,7 +161,12 @@ function ItemRow({ item, highlight }: { item: MarketReportItem; highlight?: bool
         {/* میانه */}
         <div className="md:text-start">
           {item.median != null ? (
-            <span className="font-num text-sm font-extrabold">{toFa(item.median)}</span>
+            <>
+              <span className="font-num text-sm font-extrabold">{toFa(item.median)}</span>
+              {item.basisDays != null && (
+                <span className="ms-1 text-[9px] text-muted-foreground/80">مبنای {toFa(item.basisDays)} روز</span>
+              )}
+            </>
           ) : (
             <span className="text-xs text-muted-foreground">—</span>
           )}
@@ -240,7 +243,7 @@ function LockedTeaser({ report }: { report: MarketReport }) {
           {toFa(locked)} قلم دیگرِ صنف {cat.name} رصد می‌شوند
         </p>
         <p className="mt-1.5 text-xs leading-6 text-muted-foreground">
-          جدول کامل + پلهٔ حجمی + برش شهری + اسپارک‌لاین هشت‌هفته‌ای
+          جدول کامل + پلهٔ حجمی + برش شهری + اسپارک‌لاین روزانه
           {teaser?.insufficient ? ` (${toFa(teaser.insufficient)} قلم دیگر در راه)` : ''}.
         </p>
         <Button asChild size="sm" className="mt-3 rounded-md">

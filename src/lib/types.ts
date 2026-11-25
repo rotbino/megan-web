@@ -1001,10 +1001,12 @@ export interface MarketReportItem {
   median: number | null;
   min: number | null;
   max: number | null;
-  /** تغییر هفتگی درصدی — null = هنوز دادهٔ تازه‌ای نیست */
+  /** تغییر هفتگی درصدی (۷ روز اخیر) — null = هنوز دادهٔ تازه‌ای نیست */
   changePct: number | null;
-  /** نقاط هفتگی اسپارک‌لاین — فقط وقتی ≥۲ هفته داده باشد */
-  spark: Array<{ weekStart: string; value: number }> | null;
+  /** نقاط روزانهٔ هفتهٔ اخیر — فقط وقتی ≥۲ روز داده باشد */
+  spark: Array<{ dayStart: string; value: number }> | null;
+  /** پنجرهٔ تازگی مبنا: ۳ یا ۷ روز — قیمت‌های کهنه ملاک نیستند */
+  basisDays: 3 | 7 | null;
   /** قلم از واحدهای مختلف ساخته شده — مقایسهٔ دقیق ممکن نیست */
   mixedUnit: boolean;
   /** پله‌های حجمی (خرده/میانه/عمده) — null یعنی دادهٔ پشتیبان نیست */
@@ -1087,7 +1089,9 @@ export interface ItemReport {
   min?: number | null;
   max?: number | null;
   changePct?: number | null;
-  spark?: Array<{ weekStart: string; value: number }> | null;
+  spark?: Array<{ dayStart: string; value: number }> | null;
+  /** پنجرهٔ تازگی مبنا (۳/۷ روز اخیر) */
+  basisDays?: 3 | 7 | null;
   mixedUnit?: boolean;
   tiers?: ReportTier[] | null;
   cities?: ReportCity[] | null;
@@ -1104,10 +1108,12 @@ export interface AdvisorItem {
   min: number | null;
   max: number | null;
   changePct: number | null;
-  spark: Array<{ weekStart: string; value: number }> | null;
+  spark: Array<{ dayStart: string; value: number }> | null;
+  /** پنجرهٔ تازگی مبنا (۳/۷ روز اخیر) */
+  basisDays?: 3 | 7 | null;
   cities: ReportCity[] | null;
   tiers: ReportTier[] | null;
-  /** سیگنال نسبت به میانگین ۸ هفته: null = داده کافی نیست */
+  /** سیگنال نسبت به میانگین روزهای اخیر همان قلم: null = داده کافی نیست */
   signal: 'buy' | 'wait' | null;
   devPct: number | null;
 }

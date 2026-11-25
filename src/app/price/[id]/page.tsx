@@ -5,7 +5,7 @@
  * مقصد لینک «گزارش قیمت» زیر آمار هر آگهی.
  *
  * یک‌نگاهی: جایگاه قیمت این آگهی در بازار همان قلم — نوار کف/میانه/سقف،
- * پله‌های حجمی، برش شهری و تغییر هفتگی. تماماً تجمیعی — قیمت هیچ فروشنده‌ای
+ * پله‌های حجمی، برش شهری و روند روزانهٔ هفتهٔ اخیر. تماماً تجمیعی — قیمت هیچ فروشنده‌ای
  * با نامش نشان داده نمی‌شود. اعضا (لاگین‌شده) کامل می‌بینند — همان گِیت
  * قیمتِ سایت؛ مهمان دکمهٔ ورود می‌گیرد.
  */
@@ -132,15 +132,15 @@ function ReportView({ data }: { data: ItemReport }) {
         </section>
       )}
 
-      {/* نمودار — وقتی ≥۲ هفته داده باشد */}
+      {/* نمودار — وقتی ≥۲ روز داده باشد */}
       {data.spark && data.spark.length >= 2 ? (
         <section className="rounded-lg border bg-card p-4 sm:p-5">
-          <p className="mb-3 text-sm font-bold">روند هفتگی میانهٔ بازار</p>
+          <p className="mb-3 text-sm font-bold">روند روزانهٔ میانهٔ بازار</p>
           <LineChart points={data.spark} unit={p.unit} />
         </section>
       ) : (
         <p className="px-1 text-[11px] leading-5 text-muted-foreground/80">
-          نمودار روند هفتگی با جمع‌شدن دادهٔ هفتهٔ دوم به بعد همین‌جا نشان داده می‌شود.
+          نمودار روند روزانه با ثبت‌شدن قیمت‌های تازه همین‌جا نشان داده می‌شود.
         </p>
       )}
 
@@ -150,7 +150,7 @@ function ReportView({ data }: { data: ItemReport }) {
       </Button>
 
       <p className="px-1 text-[11px] leading-5 text-muted-foreground/80">
-        آمار تجمیعی از {toFa(data.listings ?? 0)} آگهیِ همان قلم است؛ قیمت هیچ فروشنده‌ای با نامش منتشر نمی‌شود.
+        آمار فقط از قیمت‌های به‌روزشدهٔ {data.basisDays != null ? `${toFa(data.basisDays)} روز اخیر` : 'هفتهٔ اخیر'} ({toFa(data.listings ?? 0)} آگهی) ساخته می‌شود؛ قیمت‌های کهنه ملاک نیستند و قیمت هیچ فروشنده‌ای با نامش منتشر نمی‌شود.
         {data.mixedUnit ? ' (واحدهای مختلفی ثبت شده — مقایسه تقریبی است)' : ''}
       </p>
     </div>
@@ -188,8 +188,8 @@ function Insufficient({ data }: { data: ItemReport }) {
       </span>
       <p className="mt-4 text-sm font-bold">این قلم هنوز دادهٔ کافی ندارد</p>
       <p className="mt-2 max-w-sm text-xs leading-6 text-muted-foreground">
-        وقتی دست‌کم ۳ فروشندهٔ دیگر هم {p.name} را با قیمت ثبت کنند، گزارش همین‌جا ساخته می‌شود.
-        الان {toFa(data.sellers)} فروشنده ثبت کرده‌اند.
+        قیمت‌ها روزانه نوسان می‌کنند؛ وقتی دست‌کم ۳ فروشنده قیمتِ {p.name} را در ۷ روز اخیر به‌روز کنند، گزارش همین‌جا ساخته می‌شود.
+        الان {toFa(data.sellers)} فروشنده ثبت کرده‌اند — قیمت تازهٔ کافی نیست.
       </p>
       <Button asChild variant="outline" className="mt-5 rounded-md">
         <Link href={p.href}>بازگشت به آگهی</Link>

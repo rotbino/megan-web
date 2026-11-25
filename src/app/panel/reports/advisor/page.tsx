@@ -3,7 +3,7 @@
 /**
  * مشاور خرید دوره‌ای (۲۵-۱۱ راند ۲) — سبد خرید دوره‌ای خریدار (دفتر خرید) ×
  * قیمت بازار. برای هر صنفِ سبد: اقلام پرگردش با میانه/بازه + سیگنال
- * «الان بخر / صبر کن» از فاصلهٔ امروز تا میانگین ۸ هفته.
+ * «الان بخر / صبر کن» از فاصلهٔ امروز تا میانگین روزهای اخیر (پنجرهٔ ۷ روزه).
  *
  * فریمیوم: ۳ صنف زنده؛ کامل با بستهٔ فعال. مینیمال — بدون توضیح اضافه.
  */
@@ -68,7 +68,7 @@ export default function BuyAdvisorPage() {
       )}
 
       <p className="px-1 pb-2 text-[11px] leading-5 text-muted-foreground/80">
-        سیگنال‌ها از فاصلهٔ قیمت امروز تا میانگین ۸ هفتهٔ همان قلم‌اند — {dateFa(data.generatedAt)}.
+        سیگنال‌ها از فاصلهٔ قیمت امروز تا میانگین قیمت‌های اخیر همان قلم (حداکثر ۷ روز) — {dateFa(data.generatedAt)}.
       </p>
     </div>
   );
@@ -102,6 +102,9 @@ function AdvisorCard({ row }: { row: AdvisorRow }) {
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                 {it.median != null && (
                   <span className="font-num text-sm font-extrabold">{toFa(it.median)}</span>
+                )}
+                {it.basisDays != null && (
+                  <span className="text-[9px] text-muted-foreground/80">مبنای {toFa(it.basisDays)} روز</span>
                 )}
                 <span className="text-[11px] text-muted-foreground">
                   {it.min != null && it.max != null ? `${toFa(it.min)} تا ${toFa(it.max)} / هر ${it.unit}` : `هر ${it.unit}`}
