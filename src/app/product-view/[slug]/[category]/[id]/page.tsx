@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   BadgeCheck,
+  BarChart3,
   BookOpen,
   Eye,
   Home,
@@ -312,6 +313,19 @@ export default async function ProductViewPage({ params }: Props) {
                     />
                   </div>
                 </div>
+
+                {/* گزارش قیمت این کالا (۲۵-۱۱ راند ۲) — زیر آمار؛ صفحهٔ /price/{id} */}
+                <Link
+                  href={`/price/${product.id}`}
+                  className="mt-2 flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs font-bold text-primary hover:bg-primary/[0.04]"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <BarChart3 size={14} /> گزارش قیمت این کالا
+                  </span>
+                  <span className="text-[10px] font-normal text-muted-foreground">
+                    جایگاه در بازار · پلهٔ حجم · شهرها
+                  </span>
+                </Link>
               </div>
             </div>
 

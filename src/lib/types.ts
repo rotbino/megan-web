@@ -1003,12 +1003,36 @@ export interface MarketReportItem {
   max: number | null;
   /** تغییر هفتگی درصدی — null = هنوز دادهٔ تازه‌ای نیست */
   changePct: number | null;
-  /** نقاط هفتگی اسپارک‌لاین — فقط بستهٔ فعال و وقتی ≥۲ هفته داده باشد */
+  /** نقاط هفتگی اسپارک‌لاین — فقط وقتی ≥۲ هفته داده باشد */
   spark: Array<{ weekStart: string; value: number }> | null;
   /** قلم از واحدهای مختلف ساخته شده — مقایسهٔ دقیق ممکن نیست */
   mixedUnit: boolean;
+  /** پله‌های حجمی (خرده/میانه/عمده) — null یعنی دادهٔ پشتیبان نیست */
+  tiers: ReportTier[] | null;
+  /** برش شهری (تا ۳ شهر) — null یعنی هیچ شهری ≥۳ فروشنده ندارد */
+  cities: ReportCity[] | null;
   /** قیمت خودِ فروشنده در همین قلم + فاصله از میانهٔ بازار */
   mine: { price: number; diffPct: number | null; expired: boolean } | null;
+}
+
+/** پلهٔ حجمی قلم — از پراکندگی حداقل‌سفارش فروشنده‌ها */
+export interface ReportTier {
+  label: 'خرده' | 'میانه' | 'عمده';
+  /** کوچک‌ترین حداقل‌سفارشِ این پله (به واحد دسته) */
+  from: number;
+  sellers: number;
+  /** میانهٔ قیمت پله (تومان هر واحد) */
+  median: number;
+}
+
+/** برش شهری قلم — فقط شهرهای ≥۳ فروشندهٔ متمایز */
+export interface ReportCity {
+  cityId: number;
+  cityName: string;
+  sellers: number;
+  median: number;
+  min: number;
+  max: number;
 }
 
 /** صنفِ گزارش — نام + واحد + مسیر درخت دسته‌ها */
@@ -1037,4 +1061,110 @@ export interface MarketReport {
   personalTotal?: number;
   lockedItems?: number;
   teaser?: { insufficient: number; changedItems: number; totalItems?: number };
+}
+
+// ─── گزارشات ایمچ (۲۵-۱۱ راند ۲) ─────────────────────────────────
+
+/** پاسخ getItemReport — گزارش تک‌کالا روی خود آگهی؛ تماماً تجمیعی */
+export interface ItemReport {
+  sufficient: boolean;
+  sellers: number;
+  product: {
+    id: number;
+    name: string;
+    unit: string;
+    minSaleAmount: number;
+    price: number;
+    city: string | null;
+    category: MarketReportCategory;
+    /** مسیر بازگشت به خود آگهی */
+    href: string;
+  };
+  generatedAt: string;
+  /** فقط sufficient=true: */
+  listings?: number;
+  median?: number | null;
+  min?: number | null;
+  max?: number | null;
+  changePct?: number | null;
+  spark?: Array<{ weekStart: string; value: number }> | null;
+  mixedUnit?: boolean;
+  tiers?: ReportTier[] | null;
+  cities?: ReportCity[] | null;
+  /** جایگاه قیمت این آگهی در برابر بازار (تجمیمی) */
+  position?: { diffPct: number | null; cheaperThan: number | null; expired: boolean };
+}
+
+/** یک قلم سبد خرید دوره‌ای در مشاور خرید */
+export interface AdvisorItem {
+  name: string;
+  unit: string;
+  sellers: number;
+  median: number | null;
+  min: number | null;
+  max: number | null;
+  changePct: number | null;
+  spark: Array<{ weekStart: string; value: number }> | null;
+  cities: ReportCity[] | null;
+  tiers: ReportTier[] | null;
+  /** سیگنال نسبت به میانگین ۸ هفته: null = داده کافی نیست */
+  signal: 'buy' | 'wait' | null;
+  devPct: number | null;
+}
+
+/** یک صنف سبد خرید دوره‌ای خریدار */
+export interface AdvisorRow {
+  category: MarketReportCategory;
+  volumeMin: number;
+  period: string;
+  index: { value: number | null; basis: number };
+  items: AdvisorItem[];
+}
+
+/** پاسخ getBuyAdvisor — ۳ ردیف رایگان؛ کامل با بستهٔ فعال */
+export interface BuyAdvisor {
+  rows: AdvisorRow[];
+  totalRows: number;
+  lockedRows: number;
+  packageActive: boolean;
+  pendingCount: number;
+  generatedAt: string;
+}
+
+/** یک صنف در نقشهٔ فرصت فروش */
+export interface OpportunityRow {
+  category: MarketReportCategory;
+  /** درخواست خرید تأییدشدهٔ ۳۰ روز اخیر */
+  requests30d: number;
+  sellers: number;
+  listings: number;
+  /** جمع بازدید آگهی‌های صنف (سیگنال تقاضا) */
+  views: number;
+  score: number;
+  topItems: Array<{ name: string; median: number | null; sellers: number }>;
+  index: { value: number | null; basis: number };
+}
+
+/** پاسخ getOpportunityMap — ۳ ردیف رایگان؛ کامل با بستهٔ فعال */
+export interface OpportunityMap {
+  rows: OpportunityRow[];
+  totalRows: number;
+  lockedRows: number;
+  packageActive: boolean;
+  generatedAt: string;
+}
+
+/** پاسخ getPriceIndex — عمومی؛ فقط درصد */
+export interface PriceIndexData {
+  overall: { value: number | null; basis: number };
+  categories: Array<{
+    name: string;
+    path: string;
+    unit: string;
+    sellers: number;
+    listings: number;
+    index: number | null;
+    basis: number;
+  }>;
+  generatedAt: string;
 }

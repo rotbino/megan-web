@@ -48,6 +48,11 @@ function LoginGate({ onOpen, buyersLock }: { onOpen: () => void; buyersLock?: bo
 const PAGE_TITLES: Array<{ href: string; label: string; exact?: boolean }> = [
   ...SELLER_NAV,
   ...BUYER_NAV,
+  { href: '/panel/reports/market', label: 'گزارش بازار صنف' },
+  { href: '/panel/reports/advisor', label: 'مشاور خرید' },
+  { href: '/panel/reports/opportunities', label: 'فرصت‌های فروش' },
+  { href: '/panel/reports/price-index', label: 'شاخص قیمت ایمچ' },
+  { href: '/panel/market-report', label: 'گزارش بازار' },
   { href: '/panel/profile', label: 'پروفایل' },
   { href: '/panel/profile/edit', label: 'ویرایش پروفایل' },
   { href: '/panel/wallet', label: 'کیف پول' },
