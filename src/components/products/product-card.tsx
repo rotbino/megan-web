@@ -10,7 +10,7 @@ import { parseServerDate, stockFa } from '@/lib/format';
 import type { Product } from '@/lib/types';
 
 export function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
-  const href = `/product-view/${product.slug}/${product.categoryName}/${product.id}`;
+  const href = `/product-view/${product.slug}/${product.v2Key ?? product.categoryName}/${product.id}`;
   // «آخرین به‌روزرسانی قیمت»: مهر تغییر قیمت (برای آگهی پاسکالی همان
   // last_price_update پاسکال) اگر باشد، وگرنه آخرین آپدیت آگهی (خواستهٔ
   // مالک ۱۳-۱۱ — مهرهای پاسکال عیناً حفظ می‌شوند)

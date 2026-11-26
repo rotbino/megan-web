@@ -29,6 +29,12 @@ export interface Category {
   id: number;
   categoryName: string;
   slug: string;
+  /** (۲۶-۱۱) کلید v2 تاکسونومی ایمچ — منبع درخت عمومی سایت؛ slug == key */
+  key?: string;
+  /** شمار آگهی زیر این گره (فقط درخت v2 از بک‌اند می‌آید) */
+  count?: number;
+  /** نام آیکون lucide ریشه (فقط درخت v2) — نگاشت در category-icons */
+  icon?: string;
   unit: string; // «کیلوگرم»
   min: number; // حداقل سفارش پیش‌فرض
   example?: string;
@@ -63,6 +69,12 @@ export interface Product {
   categoryName: string;
   subCategoryId: number; // دسته برگ (مثل پسته)
   subCategoryName: string;
+
+  /** (۲۶-۱۱) دستهٔ عمومی ایمچ — تاکسونومی v2 نمایشی سایت؛ فارسی‌های باسکول
+   *  (categoryName/subCategoryName) پشت صحنه (ایمپورت/تطابق) می‌مانند */
+  v2Key?: string | null;
+  v2Path?: string[];
+  v2LeafName?: string | null;
 
   provinceId: number;
   provinceName: string;
@@ -120,6 +132,9 @@ export interface BuyRequest {
   name: string | null; // «نوع محصول» (مثل: پاجوش پیارم)
   categoryId: number;
   subcategoryName: string; // نام محصول (مثل: نهال)
+  /** (۲۶-۱۱) دستهٔ عمومی ایمچ — تاکسونومی v2؛ فارسی باسکول پشت صحنه */
+  v2Key?: string | null;
+  v2Path?: string[];
   requirementAmount: number;
   unit: string;
   /** ObjectId مگان — در پاسکال عدد بود؛ فقط کلید/ارجاع فرانت */
@@ -548,6 +563,9 @@ export const PERIOD_LABELS: Record<PurchasePeriod, string> = {
  *  اختیاری؛ example مثال نوع همان دسته است (پلیس‌هولدر فرم). */
 export interface BuyerBookItem {
   categoryId: number;
+  /** (۲۶-۱۱) دستهٔ عمومی ایمچ — نام‌های نمایشی از همین مسیر آمده‌اند */
+  v2Key?: string | null;
+  v2Path?: string[];
   name: string; // نام دسته (برای نمایش)
   rootName: string; // کشاورزی
   parentName: string; // میوه
@@ -573,6 +591,9 @@ export interface BuyerDirectoryItem {
   buyerName: string; // نام نمایشی خریدار — روی کارت (خواسته مالک ۱-۱۱)
   role: 'عمده‌خریدار' | 'خرده‌خریدار';
   categoryId: number;
+  /** (۲۶-۱۱) دستهٔ عمومی ایمچ — تطابق و نمایشی؛ باسکول پشت صحنه */
+  v2Key?: string | null;
+  v2Path?: string[];
   categoryName: string;
   rootName: string; // نام دستهٔ ریشه — برای آیکون کارت
   categoryPath: string; // «کشاورزی / میوه»
@@ -594,6 +615,8 @@ export interface BuyerDirectoryItem {
 /** فیلتر دایرکتوری خریداران */
 export interface BuyerDirectoryQuery {
   categoryId?: number;
+  /** (۲۶-۱۱) کلید v2 ایمچ — فیلتر درختی روی تاکسونومی عمومی */
+  v2Key?: string;
   s?: string; // جستجو در نام/مسیر دسته
   period?: PurchasePeriod;
   provinceId?: number;

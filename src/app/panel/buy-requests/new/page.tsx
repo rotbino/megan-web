@@ -88,7 +88,7 @@ export default function RegisterBuyRequestPage() {
     if (step === 1) {
       submit.mutate(
         {
-          subCategoryId: draft.leaf!.id,
+          v2Key: draft.leaf!.key ?? draft.leaf!.slug,
           productType: draft.productType.trim(),
           requirementAmount: num(draft.amount),
           goal: draft.goal!,

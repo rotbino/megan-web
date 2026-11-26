@@ -2,11 +2,15 @@
 
 import Link from 'next/link';
 import { useCategoryTree } from '@/lib/mock/hooks';
+import { TaxonomyIcon } from '@/lib/category-icons';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 /**
- * «دسته بندی های اصلی» — عین پاسکال: کارت‌های تصویری گرد (موبایل ۹۰px، سه ستون)
- * برچسب ۱۲px/۲۰px موبایل و ۱۶px دسکتاپ با وزن معمولی.
+ * «دسته بندی های اصلی» — (۲۶-۱۱): درخت عمومی سایت = تاکسونومی اختصاصی
+ * ایمچ (۱۵ ریشهٔ v2)؛ به‌جای عکس‌های عمومیِ پاسکال‌گونه، کاشی آیکون خطی
+ * برند (متمایز از باسکول — خواستهٔ مالک: ظاهر دسته‌ها کپی باسکول نباشد).
+ * موبایل: کارت‌های گرد ۹۰px سه‌ستونه؛ دسکتاپ: ۱۲۰px پنج‌ستونه.
  */
 export function CategoryCards() {
   const { data: tree, isLoading } = useCategoryTree();
@@ -31,17 +35,14 @@ export function CategoryCards() {
               className="group flex flex-col items-center"
               aria-label={c.categoryName}
             >
-              <span className="block overflow-hidden rounded-full border border-border bg-secondary p-1 transition-shadow group-hover:shadow-md">
-                {c.image ? (
-                  <img
-                    src={c.image}
-                    alt={c.categoryName}
-                    loading="lazy"
-                    width={120}
-                    height={120}
-                    className="size-[90px] rounded-full object-cover transition-transform duration-300 group-hover:scale-105 nav-desktop:size-[120px]"
-                  />
-                ) : null}
+              <span
+                className={cn(
+                  'flex items-center justify-center overflow-hidden rounded-full border border-border bg-secondary p-1 transition-shadow group-hover:shadow-md',
+                )}
+              >
+                <span className="flex size-[84px] items-center justify-center rounded-full bg-card transition-transform duration-300 group-hover:scale-105 nav-desktop:size-[112px]">
+                  <TaxonomyIcon icon={c.icon} size={38} className="text-primary" />
+                </span>
               </span>
               <p className="mt-2 px-1 text-center text-xs font-normal leading-5 text-foreground nav-desktop:mt-3 nav-desktop:text-base nav-desktop:leading-7">
                 {c.categoryName}

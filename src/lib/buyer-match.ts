@@ -18,8 +18,30 @@
  *    فروشندهٔ بدون آگهی هم همهٔ خریداران را می‌بیند، فقط بدون سورت تطابق
  */
 
-import type { BuyerDirectoryItem, BuyRequest, Category, Product, PurchasePeriod } from '@/lib/types';
-import { findCategoryPathById } from '@/lib/categories';
+import type { BuyerDirectoryItem, BuyRequest, Product, PurchasePeriod } from '@/lib/types';
+
+// ─── (۲۶-۱۱) تطابق روی تاکسونومی v2 ایمچ — پیشوند کلید نقطه‌گذر ─────────────
+// قبلاً مسیر باسکول از درخت حل می‌شد؛ حالا هر آگهی/درخواست/آیتم دفتر v2Key دارد
+// و رابطهٔ برگ/پدر/ریشه = تطبیق پیشوند رشته — بدون درخت و بدون id باسکول
+// (باسکول کامل پشت صحنه است؛ جابجایی هم‌معنا چون نگاشت ۶۹۵/۶۹۵ پوشش دارد).
+
+/** پیشوند پدر کلید — «agri.fruit.apple» → «agri.fruit»؛ ریشه → null */
+const parentKeyOf = (key: string): string | null =>
+  key.includes('.') ? key.slice(0, key.lastIndexOf('.')) : null;
+
+/** ریشهٔ کلید — «agri.fruit.apple» → «agri» */
+const rootKeyOf = (key: string): string => key.split('.')[0];
+
+/** امتیاز خانوادهٔ کالایی (۰/۱۰/۲۲/۴۰) — هم‌برگ/هم‌پدر/هم‌ریشه */
+function familyScore(a: string | null | undefined, b: string | null | undefined): number {
+  if (!a || !b) return 0;
+  if (a === b) return 40;
+  const pa = parentKeyOf(a);
+  const pb = parentKeyOf(b);
+  if (pa != null && pa === pb) return 22;
+  if (rootKeyOf(a) === rootKeyOf(b)) return 10;
+  return 0;
+}
 
 /** نرمال‌سازی متن فارسی — ZWNJ/فاصله‌های تکراری یکسان شوند */
 const norm = (s: string) => s.replace(/[\u200c\s]+/g, ' ').trim();
@@ -31,25 +53,17 @@ export interface BuyerMatch {
   relatedProduct?: string;
 }
 
-/** مسیر دستهٔ هر محصولِ خودم از درخت — یک‌بار برای همه */
-function productPaths(tree: Category[], products: Product[]) {
+/** ورودی تطابقِ هر محصولِ خودم — کلید v2 (۲۶-۱۱) */
+function productKeys(products: Product[]) {
   return products
     .filter((p) => p.status === 'confirmed' || p.status === 'pending')
-    .map((p) => {
-      const path = findCategoryPathById(tree, p.subCategoryId);
-      return {
-        product: p,
-        leaf: path?.[path.length - 1],
-        parent: path && path.length > 1 ? path[path.length - 2] : undefined,
-        root: path?.[0],
-      };
-    });
+    .map((p) => ({ product: p, key: p.v2Key ?? null }));
 }
 
 /** نوعِ استخراج‌شدهٔ آگهی — نام محصول منهای نام دستهٔ برگ */
 function productTypeOf(p: Product, leafName?: string): string {
   const name = norm(p.productName);
-  const leaf = leafName ? norm(leafName) : norm(p.subCategoryName);
+  const leaf = leafName ? norm(leafName) : norm(p.v2LeafName ?? p.subCategoryName);
   return name.replace(leaf, ' ').trim();
 }
 
@@ -137,18 +151,14 @@ function locationScore(
 
 /** امتیاز برای آیتم دایرکتوری (خریدهای دوره‌ای) — دستهٔ برگ + نوع کالا + حجم ماهانه + مکان */
 export function matchForDirectoryItem(
-  tree: Category[],
   products: Product[] | undefined,
   item: Pick<
     BuyerDirectoryItem,
-    'categoryId' | 'categoryName' | 'minAmount' | 'unit' | 'period' | 'productType' | 'province' | 'city'
+    'v2Key' | 'categoryId' | 'categoryName' | 'minAmount' | 'unit' | 'period' | 'productType' | 'province' | 'city'
   >,
 ): BuyerMatch {
   if (!products || products.length === 0) return { score: 0 };
-  const mine = productPaths(tree, products);
-  const itemPath = findCategoryPathById(tree, item.categoryId);
-  const itemParentId = itemPath && itemPath.length > 1 ? itemPath[itemPath.length - 2].id : null;
-  const itemRootId = itemPath?.[0]?.id ?? null;
+  const mine = productKeys(products);
 
   // حجم دوره‌ای → معادل ماهانه؛ واحد از دستهٔ خود آیتم
   const monthly = item.minAmount * (PERIOD_PER_MONTH[item.period] ?? 1);
@@ -156,17 +166,14 @@ export function matchForDirectoryItem(
   let best = 0;
   let related: string | undefined;
   for (const m of mine) {
-    let cat = 0;
-    if (m.product.subCategoryId === item.categoryId) cat = 40;
-    else if (itemParentId != null && m.leaf?.parentId === itemParentId) cat = 22;
-    else if (itemRootId != null && m.root?.id === itemRootId) cat = 10;
+    const cat = familyScore(m.key, item.v2Key ?? undefined);
     if (cat === 0) continue;
 
     // نوع کالا (خواستهٔ مالک ۹-۱۱): بدون نوع = «هر نوعی از همین کالا» (کامل)؛
     // با نوع = تطبیق متن عین درخواست فوری — «سیب از نوع قرمز» به فروشندهٔ سیب قرمز
     const type = !item.productType?.trim()
       ? 20
-      : typeMatches(item.productType, m.product, m.leaf?.categoryName)
+      : typeMatches(item.productType, m.product, m.product.v2LeafName ?? undefined)
         ? 20
         : 0;
     const vol = volumeScore(monthly, item.unit, m.product);
@@ -183,50 +190,23 @@ export function matchForDirectoryItem(
 
 /** امتیاز برای درخواست خرید فوری — دسته + نوع کالا + حجم + مکان */
 export function matchForBuyRequest(
-  tree: Category[],
   products: Product[] | undefined,
   req: Pick<
     BuyRequest,
-    'subcategoryName' | 'name' | 'requirementAmount' | 'unit' | 'provinceId' | 'cityId' | 'city'
+    'v2Key' | 'subcategoryName' | 'name' | 'requirementAmount' | 'unit' | 'provinceId' | 'cityId' | 'city'
   >,
 ): BuyerMatch {
   if (!products || products.length === 0) return { score: 0 };
-  const mine = productPaths(tree, products);
-  const sub = norm(req.subcategoryName);
-
-  // دستهٔ درخواست را در درخت پیدا کن — تا پدر/ریشه درست مقایسه شود
-  // (جمع‌کردن در شیء — تحلیل جریان TS انتساب داخل closure را نمی‌بیند)
-  const found: { node: Category | null; parent: Category | null; root: Category | null } = {
-    node: null,
-    parent: null,
-    root: null,
-  };
-  const walk = (nodes: Category[], parent: Category | null, root: Category | null): boolean => {
-    for (const n of nodes) {
-      if (norm(n.categoryName) === sub) {
-        found.node = n;
-        found.parent = parent;
-        found.root = root ?? n;
-        return true;
-      }
-      if (n.children?.length && walk(n.children, n, root ?? n)) return true;
-    }
-    return false;
-  };
-  walk(tree, null, null);
+  const mine = productKeys(products);
 
   let best = 0;
   let related: string | undefined;
   for (const m of mine) {
-    let cat = 0;
-    const leafName = m.leaf?.categoryName ?? m.product.subCategoryName;
-    if (found.node ? m.leaf?.id === found.node.id : norm(leafName) === sub) cat = 40;
-    else if (found.parent && m.leaf?.parentId === found.parent.id) cat = 22;
-    else if (found.root && m.root?.id === found.root.id) cat = 10;
+    const cat = familyScore(m.key, req.v2Key ?? undefined);
     if (cat === 0) continue;
 
     // نوع کالا — بدون نوع = «هر نوعی از همین کالا» (کامل)؛ با نوع = تطبیق متن
-    const type = !req.name?.trim() ? 20 : typeMatches(req.name, m.product, m.leaf?.categoryName) ? 20 : 0;
+    const type = !req.name?.trim() ? 20 : typeMatches(req.name, m.product, m.product.v2LeafName ?? undefined) ? 20 : 0;
     const vol = volumeScore(req.requirementAmount, req.unit, m.product);
     const loc = locationScore(m.product, {
       cityId: req.cityId ?? null,

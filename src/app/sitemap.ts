@@ -3,6 +3,8 @@ import { apiBase, joinUrl } from '@/lib/api/client';
 import { GOOGLE_ENTRY_QS } from '@/lib/popular-searches';
 import { getSearchUniverse } from '@/lib/search-universe';
 import { listMajorCities } from '@/lib/city-markets';
+import { getCategoryTreeSSR } from '@/lib/mock/api';
+import type { Category } from '@/lib/types';
 import { SITE_URL } from '@/lib/site';
 
 const BASE = SITE_URL;
@@ -10,6 +12,8 @@ const BASE = SITE_URL;
 interface SitemapProduct {
   slug: string;
   categoryName: string;
+  /** (۲۶-۱۱) کلید v2 — سگمنت دستهٔ URL محصولات */
+  v2Key?: string | null;
   id: number;
   isLadder: boolean;
   seller?: { userName?: string };
@@ -21,18 +25,12 @@ interface SitemapProductList {
   total: number;
 }
 
-interface RawCategoryNode {
-  id: number;
-  category_name: string;
-  slug: string;
-  score: number;
-  children?: RawCategoryNode[];
-}
+
 /** دیتای زنده از بک‌اند — فقط دیتابیس واقعی، هیچ ماکی در کار نیست (SEO) */
 export const revalidate = 3600;
 
-/** درخت دسته‌ها را مسطح می‌کند — همه نودها slug مخصوص خودشان را دارند */
-function flattenCategories(nodes: RawCategoryNode[], out: RawCategoryNode[] = []): RawCategoryNode[] {
+/** درخت دسته‌ها (v2) را مسطح می‌کند — همه نودها slug/کلید خودشان را دارند */
+function flattenCategories(nodes: Category[], out: Category[] = []): Category[] {
   for (const n of nodes) {
     out.push(n);
     if (n.children?.length) flattenCategories(n.children, out);
@@ -53,31 +51,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // سه منبع واقعی — هر کدام مستقل؛ خرابی یکی بقیه را نمی‌اندازد
-  const [categoryData, productListPage, universe, majorCities] = await Promise.all([
-    fetch(joinUrl(apiBase(), '/categories/getAllCategories'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-      next: { revalidate: 3600 },
-    })
-      .then((r) => r.json() as Promise<{ status: boolean; data?: RawCategoryNode[] }>)
-      .then((j) => (j?.status && j.data ? { flat: flattenCategories(j.data), roots: j.data } : { flat: [], roots: [] }))
-      .catch(() => ({ flat: [] as RawCategoryNode[], roots: [] as RawCategoryNode[] })),
-    fetch(joinUrl(apiBase(), '/products/getProductList'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ page: 1, pageSize: 100, sort: 'newest' }),
-      next: { revalidate: 3600 },
-    })
-      .then((r) => r.json() as Promise<{ status: boolean; data?: SitemapProductList }>)
-      .then((j) => (j?.status && j.data?.items ? j.data : { items: [] as SitemapProduct[], total: 0 }))
-      .catch(() => ({ items: [] as SitemapProduct[], total: 0 })),
+  // (۲۶-۱۱) دسته‌های سایت‌مپ = تاکسونومی v2 ایمچ — URLهای /product-list/category/{کلید}
+  // (شمار آگهی هر گره هم به‌عنوان weight صفحه)
+  const [taxonomyTree, productListPage, universe, majorCities] = await Promise.all([
+    getCategoryTreeSSR(3600).catch(() => []),
+    // رفع باگ قدیمی (۲۶-۱۱): سقف pageSize اندپوینت ۴۸ است — درخواست ۱۰۰تایی
+    // همیشه VALIDATION_ERROR می‌خورد و URLهای آگهی‌ها بی‌صدا از سایت‌مپ می‌افتاد؛
+    // حالا سه صفحهٔ ۴۸تایی موازی (۱۴۴ آگهی تازه) — سقف سبک می‌ماند
+    Promise.all([1, 2, 3].map((page) =>
+      fetch(joinUrl(apiBase(), '/products/getProductList'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page, pageSize: 48, sort: 'newest' }),
+        next: { revalidate: 3600 },
+      })
+        .then((r) => r.json() as Promise<{ status: boolean; data?: SitemapProductList }>)
+        .then((j) => (j?.status && j.data?.items ? j.data : { items: [] as SitemapProduct[], total: 0 }))
+        .catch(() => ({ items: [] as SitemapProduct[], total: 0 })),
+    )).then((pages) => ({
+      items: pages.flatMap((p) => p.items),
+      total: pages[0]?.total ?? 0,
+    })),
     getSearchUniverse().catch(() => []),
     // بازارهای عمدهٔ شهری (خواستهٔ مالک ۹-۱۱) — فقط شهرهای بزرگ موجود در دیتابیس
     listMajorCities().catch(() => []),
   ]);
 
-  const { flat: categoryNodes, roots: rootCategoryNodes } = categoryData;
+  const flatTaxonomy = flattenCategories(taxonomyTree ?? []);
+  const rootCategoryNodes = taxonomyTree ?? [];
   // آیتم‌های لیست (همراه total برای شمردن صفحه‌ها)
   const productItems = productListPage.items;
   const productTotal = productListPage.total;
@@ -85,14 +86,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // فروشندگانِ دارای آگهی — از همان لیست واقعی محصولات (یکتا)
   const sellerNames = [...new Set(productItems.map((p) => p.seller?.userName).filter((x): x is string => Boolean(x)))];
 
-  const categoryPages: MetadataRoute.Sitemap = categoryNodes.map((c) => ({
+  // (۲۶-۱۱) صفحات دسته = کلیدهای v2؛ وزن = شمار آگهی گره
+  const categoryPages: MetadataRoute.Sitemap = flatTaxonomy.map((c) => ({
     url: `${BASE}/product-list/category/${encodeURIComponent(c.slug)}`,
     changeFrequency: 'daily' as const,
-    priority: c.score > 1000 ? 0.8 : 0.6,
+    priority: (c.count ?? 0) > 1000 ? 0.8 : 0.6,
   }));
 
   const productPages: MetadataRoute.Sitemap = productItems.map((p) => ({
-    url: `${BASE}/product-view/${p.slug}/${p.categoryName}/${p.id}`,
+    url: `${BASE}/product-view/${p.slug}/${p.v2Key ?? p.categoryName}/${p.id}`,
     changeFrequency: 'daily' as const,
     priority: p.isLadder ? 0.7 : 0.5,
   }));

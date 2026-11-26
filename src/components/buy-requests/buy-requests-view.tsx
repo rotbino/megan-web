@@ -195,7 +195,7 @@ function RequestCard({ request }: { request: BuyRequest }) {
       {/* جمله عین پاسکال */}
       <p className="mt-3 text-sm leading-7 text-muted-foreground">
         خریدار <span className="font-bold text-foreground">{toFa(request.requirementAmount)} {request.unit}</span>{' '}
-        <Link href="/product-list" className="font-bold text-primary hover:underline">{request.subcategoryName}</Link>
+        <Link href="/product-list" className="font-bold text-primary hover:underline">{request.v2Path?.at(-1) ?? request.subcategoryName}</Link>
         {request.name ? <> از نوع <span className="font-bold text-primary">{request.name}</span> هستم</> : ' هستم'}
       </p>
 

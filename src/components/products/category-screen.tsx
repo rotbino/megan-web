@@ -1,8 +1,8 @@
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { ProductListing } from '@/components/products/product-listing';
 import { JsonLd } from '@/components/shared/json-ld';
 import { CategoryViewPing } from '@/components/shared/category-view-ping';
-import { getCategoryTreeSSR, getProductsSSR } from '@/lib/mock/api';
+import { getCategoryTreeSSR, getProductsSSR, resolveSlugSSR } from '@/lib/mock/api';
 import { findCategoryPath } from '@/lib/categories';
 import { SITE_URL } from '@/lib/site';
 import type { Category } from '@/lib/types';
@@ -12,12 +12,13 @@ import type { Category } from '@/lib/types';
  * /product-list/category/[slug]/[pageno] (خواستهٔ مالک ۱۴-۱۱: هر پیج URL
  * جداگانه مثل /product-list/category/میوه/2 برای ایندکس جداگانهٔ گوگل).
  *
- * (خواستهٔ مالک ۱۷-۱۱): هدر/فوتر از layout خانوادهٔ /product-list و سایدبار
- * فیلترها از layout همین سگمنت می‌آیند — این اسکرین فقط «ستون لیست کالاها»
- * رندر می‌کند (embedded) تا ناوبری بین دسته‌ها فقط همین ستون را عوض کند.
+ * (۲۶-۱۱ — سوییچ عمومی): [slug] = کلید تاکسونومی v2 ایمچ (مثل
+ * agri.fruit.apple — نقطه‌گذر ASCII). URLهای قدیمی با slug/نام فارسی باسکول
+ * با ریدایرکت دائمی (308) به کلید جدید می‌روند — اعتبار سئو منتقل می‌شود
+ * و ساختار ظاهری سایت از باسکول جدا می‌شود (خواستهٔ مالک).
  */
 
-/** مسیر دسته: فقط از درخت زنده بک‌اند — بدون فالبک ماک */
+/** مسیر دسته: از درخت v2 زندهٔ بک‌اند — بدون فالبک ماک */
 export async function resolveCategory(slug: string): Promise<{ tree: Category[]; path: Category[] | null }> {
   const tree = (await getCategoryTreeSSR(3600)) ?? [];
   return { tree, path: findCategoryPath(tree, slug) };
@@ -26,11 +27,18 @@ export async function resolveCategory(slug: string): Promise<{ tree: Category[];
 export async function CategoryScreen({ slug, page }: { slug: string; page: number }) {
   const decoded = decodeURIComponent(slug);
   const { tree, path } = await resolveCategory(decoded);
-  if (!path) notFound();
+
+  // URL کهنهٔ باسکول (slug/نام فارسی) → کلید v2 با ۳۰۸ دائمی؛ ناشناخته → 404
+  if (!path) {
+    const key = await resolveSlugSSR(decoded);
+    if (key && key !== decoded) permanentRedirect(`/product-list/category/${key}`);
+    notFound();
+  }
 
   const cat = path.at(-1)!;
 
   // کوئری پیش‌فرض اولیه — عین ساختار کلاینت تا queryKey یکی باشد و initialData بخورد
+  // (categorySlug = کلید v2؛ بک‌اند خودش به idهای باسکول ترجمه می‌کند)
   const initial = await getProductsSSR(
     {
       categorySlug: decoded,
@@ -87,7 +95,7 @@ export async function CategoryScreen({ slug, page }: { slug: string; page: numbe
             itemListElement: initial.items.slice(0, 20).map((p, i) => ({
               '@type': 'ListItem',
               position: i + 1,
-              url: `${SITE_URL}/product-view/${p.slug}/${p.categoryName}/${p.id}`,
+              url: `${SITE_URL}/product-view/${p.slug}/${p.v2Key ?? p.categoryName}/${p.id}`,
               name: p.productName,
             })),
           }}

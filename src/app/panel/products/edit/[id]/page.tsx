@@ -1,3 +1,4 @@
+import { findCategoryPath } from '@/lib/categories';
 'use client';
 
 /**
@@ -80,24 +81,10 @@ interface EditDraft {
 }
 
 /** مسیر دسته را از درخت با پیمایش والد‌ها می‌سازد */
-function buildPath(tree: Category[], leafId: number): { path: Category[]; leaf: Category | null } {
-  const byId = new Map<number, { node: Category; parent: number | null }>();
-  const walk = (nodes: Category[], parent: number | null): void => {
-    for (const n of nodes) {
-      byId.set(n.id, { node: n, parent });
-      if (n.children?.length) walk(n.children, n.id);
-    }
-  };
-  walk(tree, null);
-  const entry = byId.get(leafId);
-  if (!entry) return { path: [], leaf: null };
-  const path: Category[] = [];
-  let cur: { node: Category; parent: number | null } | undefined = entry;
-  while (cur) {
-    path.unshift(cur.node);
-    cur = cur.parent != null ? byId.get(cur.parent) : undefined;
-  }
-  return { path, leaf: entry.node };
+/** مسیر دسته در درخت v2 — (۲۶-۱۱) با کلید v2 آگهی حل می‌شود */
+function buildPath(tree: Category[], v2Key: string | null | undefined): { path: Category[]; leaf: Category | null } {
+  if (!v2Key) return { path: [], leaf: null };
+  return { path: findCategoryPath(tree, v2Key) ?? [], leaf: findCategoryPath(tree, v2Key)?.at(-1) ?? null };
 }
 
 export default function EditProductPage() {
@@ -143,7 +130,7 @@ export default function EditProductPage() {
   // ─── پیش‌پر کردن فرم از دیتای واقعی آگهی (الگوی controlled-late) ───
   if (detail && tree && !draft) {
     const p = detail.product;
-    const { path, leaf } = buildPath(tree, p.subCategoryId);
+    const { path, leaf } = buildPath(tree, p.v2Key);
     const brandFeature = (p.features ?? []).find((f) => f.key === 'برند' && f.value?.trim());
     const brand = brandFeature?.value.trim() ?? '';
     const leafName = leaf?.categoryName ?? '';
@@ -224,7 +211,7 @@ export default function EditProductPage() {
       const result = await submit.mutateAsync({
         id: productId,
         productName: fullName,
-        subCategoryId: draft.leaf.id,
+        v2Key: draft.leaf.key ?? draft.leaf.slug,
         provinceId: num(draft.provinceId),
         cityId: num(draft.cityId),
         stock: num(draft.stock),

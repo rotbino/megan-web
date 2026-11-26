@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { CategoryScreen, resolveCategory } from '@/components/products/category-screen';
+import { resolveSlugSSR } from '@/lib/mock/api';
 import { parsePageNo, pageTitleSuffix } from '@/lib/pagination';
 
 /**
@@ -17,7 +18,13 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, pageno } = await params;
   const n = parsePageNo(pageno) ?? 1;
-  const { path } = await resolveCategory(decodeURIComponent(slug));
+  const decoded = decodeURIComponent(slug);
+  const { path } = await resolveCategory(decoded);
+  // (۲۶-۱۱) URL کهنهٔ باسکول → کلید v2 — ریدایرکت دائمی واقعی (۳۰۸)
+  if (!path) {
+    const key = await resolveSlugSSR(decoded);
+    if (key && key !== decoded) permanentRedirect(`/product-list/category/${key}`);
+  }
   const name = path?.at(-1)?.categoryName ?? 'دسته‌بندی';
   const title = pageTitleSuffix(`${name} - خرید و قیمت ${name} عمده | ارزان‌ترین قیمت`, n);
   return {

@@ -83,7 +83,7 @@ export async function SearchScreen({ rawQ, page }: { rawQ: string; page: number 
             itemListElement: initial.items.slice(0, 20).map((p, i) => ({
               '@type': 'ListItem',
               position: i + 1,
-              url: `${SITE_URL}/product-view/${p.slug}/${p.categoryName}/${p.id}`,
+              url: `${SITE_URL}/product-view/${p.slug}/${p.v2Key ?? p.categoryName}/${p.id}`,
               name: p.productName,
             })),
           }}
@@ -167,7 +167,7 @@ export async function CitySearchScreen({
             itemListElement: initial.items.slice(0, 20).map((p, i) => ({
               '@type': 'ListItem',
               position: i + 1,
-              url: `${SITE_URL}/product-view/${p.slug}/${p.categoryName}/${p.id}`,
+              url: `${SITE_URL}/product-view/${p.slug}/${p.v2Key ?? p.categoryName}/${p.id}`,
               name: p.productName,
             })),
           }}

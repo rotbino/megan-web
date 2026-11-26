@@ -45,7 +45,7 @@ export function RfqForm() {
     // (درخواست‌های در انتظار) می‌رود (خواسته مالک ۲۸-۱۰)
     if (!requireAuth('rfq')) {
       savePendingRfq({
-        subCategoryId: category.id,
+        v2Key: category.key ?? category.slug,
         productType: productType.trim(),
         amount: Number(amount),
       });
@@ -53,7 +53,7 @@ export function RfqForm() {
     }
     mutation.mutate(
       {
-        subCategoryId: category.id,
+        v2Key: category.key ?? category.slug,
         productType: productType.trim(),
         amount: Number(amount),
       },

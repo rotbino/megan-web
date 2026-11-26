@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import {
@@ -8,7 +8,7 @@ import {
   parseCitiesParam,
 } from '@/components/city/city-market-view';
 import { resolveMarketCity } from '@/lib/city-markets';
-import { getCategoryTreeSSR } from '@/lib/mock/api';
+import { getCategoryTreeSSR, resolveSlugSSR } from '@/lib/mock/api';
 import { findCategoryPath } from '@/lib/categories';
 
 /**
@@ -48,7 +48,15 @@ async function resolveCityCategory(rawSlug: string, rawCatSlug: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, categorySlug } = await params;
   const resolved = await resolveCityCategory(slug, categorySlug);
-  if (!resolved) return { title: 'بازار عمده شهر' };
+  // (۲۶-۱۱) URL کهنهٔ باسکول → کلید v2 — ریدایرکت دائمی واقعی (۳۰۸)
+  if (!resolved) {
+    const key = await resolveSlugSSR(safeDecode(categorySlug));
+    const city = await resolveMarketCity(slug);
+    if (key && key !== safeDecode(categorySlug) && city) {
+      permanentRedirect(`${marketCanonical(city)}/category/${key}`);
+    }
+    return { title: 'بازار عمده شهر' };
+  }
   const { city, path } = resolved;
   const cat = path.at(-1)!;
   const title = `خرید عمده ${cat.categoryName} در ${city.name} | قیمت ${cat.categoryName} ${city.name}`;
@@ -69,7 +77,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CityMarketCategoryPage({ params, searchParams }: Props) {
   const { slug, categorySlug } = await params;
   const resolved = await resolveCityCategory(slug, categorySlug);
-  if (!resolved) notFound();
+  // (۲۶-۱۱) URL کهنهٔ باسکول → کلید v2 با ۳۰۸ دائمی — عین صفحهٔ دستهٔ ملی
+  if (!resolved) {
+    // (۲۶-۱۱) URL کهنهٔ باسکول → کلید v2 با ۳۰۸ دائمی — عین صفحهٔ دستهٔ ملی
+    const key = await resolveSlugSSR(safeDecode(categorySlug));
+    const city = await resolveMarketCity(slug);
+    if (key && key !== safeDecode(categorySlug) && city) {
+      permanentRedirect(`${marketCanonical(city)}/category/${key}`);
+    }
+    notFound();
+  }
 
   // تیک‌های چندشهری از URL — اعتبارسنجی در ویو
   const sp = await searchParams;

@@ -44,7 +44,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { stockFa, toFa, priceFa, descToText } from '@/lib/format';
 import { getCategoryTreeSSR, getRelatedProductsSSR } from '@/lib/mock/api';
-import { findCategoryPathById } from '@/lib/categories';
+import { findCategoryPath } from '@/lib/categories';
 import { apiBase, joinUrl } from '@/lib/api/client';
 import { SITE_URL } from '@/lib/site';
 import type { Product } from '@/lib/types';
@@ -70,6 +70,7 @@ async function getProduct(id: number): Promise<Product | null> {
       id: number; productName: string; slug: string; description: string;
       stock: number; minSalePrice: number; minSaleAmount: number; unit: string;
       categoryId: number; categoryName: string; subCategoryId: number; subCategoryName: string;
+      v2Key?: string | null; v2Path?: string[]; v2LeafName?: string | null;
       provinceId: number; provinceName: string; cityId: number; cityName: string;
       myuserId: string; seller: { id: string; userName: string; firstName: string; lastName: string; activePakageType: number; isVerified: boolean; avatarUrl?: string | null };
       isLadder: boolean; isElevated?: boolean; hasVideo: boolean; isOld: boolean; viewCount: number;
@@ -100,18 +101,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const city = product.cityName.trim();
   const sellerName = `${product.seller.firstName} ${product.seller.lastName}`.trim();
+  // (۲۶-۱۱) دستهٔ عمومی ایمچ — سگمنت URL و نام‌های عنوان از تاکسونومی v2؛
+  // دستهٔ باسکول فقط فالبکِ آگهی‌های بی‌نگاشت است
+  const catUrlName = product.v2Key ?? product.categoryName;
+  const leafName = product.v2LeafName ?? product.subCategoryName;
   // کنونیکال همیشه به آدرس رسمی (slug واقعی محصول) — ورودی شنی سیگنال‌ها را
   // روی همان URL جمع می‌کند (قانون سئو RULES.md §۴)
-  const canonical = `/product-view/${product.slug}/${product.categoryName}/${product.id}`;
+  const canonical = `/product-view/${product.slug}/${catUrlName}/${product.id}`;
   // عنوان عمده‌محور (RULES.md §۴): فروش عمده {کالا} در {شهر} | قیمت عمده — ایمچ
   // (آگهی ثبت‌شده «فروش» است — خواسته مالک ۲-۱۱: «در عنوان آگهی‌های فروش
   // خرید زدی؛ باید بزنی فروش»؛ «خرید عمده» در توضیحات/کلیدواژه‌ها می‌ماند)
   // (قالب layout خودش « | ایمچ» می‌چسباند — اینجا تکرار نشود)
-  const title = `فروش عمده ${product.productName} در ${city} | قیمت عمده ${product.subCategoryName}`;
+  const title = `فروش عمده ${product.productName} در ${city} | قیمت عمده ${leafName}`;
   const description =
     `خرید عمده ${product.productName} از ${sellerName} در ${city}، ${product.provinceName}؛ ` +
     `موجودی ${stockFa(product.stock, product.unit)}، حداقل سفارش ${stockFa(product.minSaleAmount, product.unit)}. ` +
-    `قیمت روز ${product.subCategoryName} و تماس مستقیم با فروشنده در بازار عمده ایمچ.`;
+    `قیمت روز ${leafName} و تماس مستقیم با فروشنده در بازار عمده ایمچ.`;
 
   return {
     title,
@@ -120,9 +125,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       `خرید عمده ${product.productName}`,
       `قیمت عمده ${product.productName}`,
       `فروش عمده ${product.productName}`,
-      `خرید عمده ${product.subCategoryName} در ${city}`,
-      `فروش عمده ${product.subCategoryName} در ${product.provinceName}`,
-      `خرید عمده ${product.subCategoryName}`,
+      `خرید عمده ${leafName} در ${city}`,
+      `فروش عمده ${leafName} در ${product.provinceName}`,
+      `خرید عمده ${leafName}`,
       `${sellerName}`,
       `${sellerName} ${city}`,
       'بازار عمده',
@@ -158,20 +163,20 @@ export default async function ProductViewPage({ params }: Props) {
 
   const city = product.cityName.trim();
   const sellerName = `${product.seller.firstName} ${product.seller.lastName}`.trim();
-  const productUrl = `/product-view/${product.slug}/${product.categoryName}/${product.id}`;
+  // (۲۶-۱۱) سگمنت دستهٔ URL = کلید v2 ایمچ (فالبک نام باسکول برای آگهی بی‌نگاشت)
+  const catUrlName = product.v2Key ?? product.categoryName;
+  const productUrl = `/product-view/${product.slug}/${catUrlName}/${product.id}`;
   // توضیحات → متن سادهٔ چندخطی: <hr/> جداکنندهٔ خطوط پاسکال به خط نو می‌افتد
   // و تگ/موجودیت HTML دیگری در UI یا JSON-LD دیده نمی‌شود (خواستهٔ مالک ۱۴-۱۱)
   const plainDesc = descToText(product.description);
 
   // ─── زنجیرهٔ کامل دسته از ریشهٔ درخت (خواستهٔ مالک ۱۷-۱۱) ───
   // به‌جای «همه دسته ها» نام سطح اول می‌آید: مواد غذایی > لبنیات > ماست > پنیر ریکوتا.
+  // (۲۶-۱۱) درخت عمومی = تاکسونومی v2 ایمچ — مسیر با v2Key آگهی حل می‌شود؛
   // درخت از همان کش layout خوانده می‌شود (همان getCategoryTreeSSR با revalidate یکسان)
   // ⇒ هیچ fetch اضافه‌ای به بک‌اند نمی‌رود.
   const catTree = await getCategoryTreeSSR(3600);
-  const catPath = catTree
-    ? (findCategoryPathById(catTree, product.subCategoryId) ??
-       findCategoryPathById(catTree, product.categoryId))
-    : null;
+  const catPath = catTree && product.v2Key ? findCategoryPath(catTree, product.v2Key) : null;
 
   const categoryHref = (nameOrSlug: string) =>
     `/product-list/category/${encodeURIComponent(nameOrSlug)}`;
@@ -187,13 +192,14 @@ export default async function ProductViewPage({ params }: Props) {
     for (const c of catPath) {
       crumbs.push({ name: c.categoryName, href: categoryHref(c.slug) });
     }
-    // زیردسته‌ای که در درخت نیست (نوع کالای دستی) — مثل قبل به‌عنوان خرده‌آخرِ دسته
-    const lastCat = crumbs[crumbs.length - 1];
-    if (product.subCategoryName && product.subCategoryName !== lastCat.name) {
-      crumbs.push({ name: product.subCategoryName, href: categoryHref(product.subCategoryName) });
-    }
+  } else if (product.v2Key && product.v2Path?.length) {
+    // درخت در دسترس نیست — مسیر v2 از خود آگهی (کلیدهای هر سطح = پیشوند تجزیه‌شده)
+    const chain = product.v2Key.split('.');
+    product.v2Path.forEach((name, i) => {
+      crumbs.push({ name, href: categoryHref(chain.slice(0, i + 1).join('.')) });
+    });
   } else {
-    // درخت در دسترس نیست — مسیر قدیمی با «همه دسته ها» (فالبک امن)
+    // آگهی بدون نگاشت v2 — مسیر قدیمی باسکول (فالبک امن)
     crumbs.push({ name: 'همه دسته ها', href: '/product-list' });
     crumbs.push({ name: product.categoryName, href: categoryHref(product.categoryName) });
     crumbs.push({ name: product.subCategoryName, href: categoryHref(product.subCategoryName) });
@@ -307,7 +313,7 @@ export default async function ProductViewPage({ params }: Props) {
                       variant="icon"
                       targetType="product"
                       targetId={product.id}
-                      suggestedFolderName={product.subCategoryName || product.productName}
+                      suggestedFolderName={product.v2LeafName || product.subCategoryName || product.productName}
                     />
                   </div>
                 </div>
@@ -450,7 +456,7 @@ export default async function ProductViewPage({ params }: Props) {
           <Suspense fallback={<RelatedLinksSkeleton />}>
             <RelatedSearches
               productName={product.productName}
-              subCategoryName={product.subCategoryName}
+              subCategoryName={product.v2LeafName ?? product.subCategoryName}
               cityName={city}
               sellerUserName={product.seller.userName}
               sellerName={sellerName}
@@ -500,7 +506,7 @@ export default async function ProductViewPage({ params }: Props) {
           '@type': 'Product',
           name: product.productName,
           description: plainDesc.slice(0, 300),
-          category: product.subCategoryName,
+          category: product.v2LeafName ?? product.subCategoryName,
           image: product.photos.slice(0, 4).map(absoluteUrl),
           url: `${SITE_URL}${productUrl}`,
           sku: String(product.id),

@@ -313,6 +313,7 @@ export default function MyRequestsPage() {
   const handleAdd = async (inputs: NewBookItemInput[]) => {
     await save.mutateAsync([
       ...bookItems.map((i) => ({
+        v2Key: i.v2Key ?? undefined,
         categoryId: i.categoryId,
         minAmount: i.minAmount,
         period: i.period,
@@ -329,12 +330,14 @@ export default function MyRequestsPage() {
       bookItems.map((i) =>
         i.categoryId === editing.categoryId
           ? {
+              v2Key: i.v2Key ?? undefined,
               categoryId: i.categoryId,
               minAmount: patch.minAmount,
               period: patch.period,
               productType: patch.productType,
             }
           : {
+              v2Key: i.v2Key ?? undefined,
               categoryId: i.categoryId,
               minAmount: i.minAmount,
               period: i.period,
@@ -352,6 +355,7 @@ export default function MyRequestsPage() {
       bookItems
         .filter((i) => i.categoryId !== item.categoryId)
         .map((i) => ({
+          v2Key: i.v2Key ?? undefined,
           categoryId: i.categoryId,
           minAmount: i.minAmount,
           period: i.period,

@@ -69,7 +69,7 @@ export function LatestBuyRequests() {
               </div>
               <p className="text-xs leading-6 text-muted-foreground">
                 خریدار <span className="font-bold text-foreground">{toFa(r.requirementAmount)} {r.unit}</span>{' '}
-                <span className="font-bold text-primary">{r.subcategoryName}</span>
+                <span className="font-bold text-primary">{r.v2Path?.at(-1) ?? r.subcategoryName}</span>
                 {r.name ? <> از نوع <span className="font-bold text-primary">{r.name}</span> هستم</> : ' هستم'}
               </p>
             </Link>

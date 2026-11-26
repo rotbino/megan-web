@@ -25,7 +25,9 @@ import type { Category, PurchasePeriod } from '@/lib/types';
 import { AmountInput, PeriodPicker } from './form-parts';
 
 export interface NewBookItemInput {
-  categoryId: number;
+  /** (۲۶-۱۱) کلید v2 ایمچ — سرور دستهٔ باسکول نماینده را می‌نشاند */
+  v2Key?: string;
+  categoryId?: number;
   minAmount: number;
   period: PurchasePeriod;
   /** «نوع کالا» اختیاری — عین درخواست فوری: «سیب از نوع قرمز» (خواستهٔ مالک ۹-۱۱) */
@@ -169,7 +171,9 @@ export function AddItemFlow({
 
   const submit = async () => {
     const inputs: NewBookItemInput[] = selectedList.map((c) => ({
-      categoryId: c.id,
+      // (۲۶-۱۱) درخت عمومی = تاکسونومی v2 — کلید v2 می‌فرستیم (سرور
+      // دستهٔ باسکول نماینده را می‌نشاند)
+      v2Key: c.key ?? c.slug,
       minAmount: Number(drafts[c.id].amount),
       period: drafts[c.id].period,
       productType: drafts[c.id].type.trim() || undefined,

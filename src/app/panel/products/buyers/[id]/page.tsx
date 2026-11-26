@@ -46,7 +46,7 @@ import { SupplyOfferModal } from '@/components/buyers/supply-offer-modal';
 import { GroupOfferWizard } from '@/components/buyers/group-offer-wizard';
 import { NeedPackageModal } from '@/components/shared/need-package-modal';
 import { SupplyOfferCard, UrgentChatCard } from '@/components/panel/outreach-cards';
-import { findCategoryPathById } from '@/lib/categories';
+import { findCategoryPath } from '@/lib/categories';
 import { parseServerDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { BuyerDirectoryItem, Category, SentOffer, UrgentChat } from '@/lib/types';
@@ -84,11 +84,12 @@ export default function ProductBuyersPage() {
   const leafName = product?.subCategoryName ?? '';
 
   // دستهٔ کامل کالا از درخت — واحد/مثال/عنوان مودال پیشنهاد
+  // (۲۶-۱۱) درخت عمومی = تاکسونومی v2 — مسیر با v2Key کالا
   const leafCategory = useMemo<Category | null>(() => {
-    if (leafId == null || !tree?.length) return null;
-    const path = findCategoryPathById(tree, leafId);
+    if (!product?.v2Key || !tree?.length) return null;
+    const path = findCategoryPath(tree, product.v2Key);
     return path?.[path.length - 1] ?? null;
-  }, [tree, leafId]);
+  }, [tree, product?.v2Key]);
 
   // خریدهای دوره‌ای همین دسته
   const dirQuery = useBuyerDirectory({ categoryId: leafId ?? undefined, perPage: 48 });
@@ -197,7 +198,8 @@ export default function ProductBuyersPage() {
 
   const targetCategory = (b: BuyerDirectoryItem | null): Category | null => {
     if (!b) return null;
-    const path = tree ? findCategoryPathById(tree, b.categoryId) : null;
+    // (۲۶-۱۱) مسیر v2 از کلید آیتم دفتر
+    const path = tree && b.v2Key ? findCategoryPath(tree, b.v2Key) : null;
     if (path?.length) return path[path.length - 1];
     return {
       id: b.categoryId,

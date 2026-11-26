@@ -51,6 +51,8 @@ export function prefetchInfiniteProducts(client: QueryClient, query: Omit<Produc
     queryKey: infiniteProductsKey(query),
     queryFn: ({ pageParam }: { pageParam: number }) => api.getProducts({ ...query, page: pageParam }),
     initialPageParam: 1,
+    getNextPageParam: (lastPage: Paged<Product>) =>
+      lastPage.page < lastPage.pageCount ? lastPage.page + 1 : undefined,
     staleTime: 60_000,
   });
 }
@@ -201,7 +203,7 @@ export function useCities(provinceId?: number) {
 }
 
 export function useBuyRequests(
-  opts: { s?: string; categoryId?: number; provinceId?: number; page?: number; perPage?: number } = {},
+  opts: { s?: string; categoryId?: number; v2Key?: string; provinceId?: number; page?: number; perPage?: number } = {},
   initialData?: Paged<BuyRequest>,
 ) {
   return useQuery({

@@ -37,7 +37,7 @@ export function LatestProducts() {
           {items.map((p, i) => (
             <Link
               key={p.id}
-              href={`/product-view/${p.slug}/${p.categoryName}/${p.id}`}
+              href={`/product-view/${p.slug}/${p.v2Key ?? p.categoryName}/${p.id}`}
               className="w-[124px] shrink-0 overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md nav-desktop:w-44"
             >
               <div className="relative aspect-square">

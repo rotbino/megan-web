@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { permanentRedirect } from 'next/navigation';
 import { CategoryScreen, resolveCategory } from '@/components/products/category-screen';
+import { resolveSlugSSR } from '@/lib/mock/api';
 
 // ISR (F5): مثل لیست محصولات — کش با بازتولید پس‌زمینه ۵ دقیقه‌ای؛ TTFB داغ.
 // دسته‌های ناشناخته notFound می‌شوند (404 کش می‌شود تا بازتولید بعدی).
@@ -11,7 +13,14 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const { path } = await resolveCategory(decodeURIComponent(slug));
+  const decoded = decodeURIComponent(slug);
+  const { path } = await resolveCategory(decoded);
+  // (۲۶-۱۱) URL کهنهٔ باسکول → کلید v2 — اینجا قبل از استریم، پس ریدایرکت
+  // دائمیِ واقعی (۳۰۸) برمی‌گردد و اعتبار سئو منتقل می‌شود
+  if (!path) {
+    const key = await resolveSlugSSR(decoded);
+    if (key && key !== decoded) permanentRedirect(`/product-list/category/${key}`);
+  }
   const name = path?.at(-1)?.categoryName ?? 'دسته‌بندی';
   const title = `${name} - خرید و قیمت ${name} عمده | ارزان‌ترین قیمت`;
   return {

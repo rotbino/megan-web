@@ -287,7 +287,7 @@ function SourceLink({ item }: { item: FollowItem }) {
   const p = item.target as Product;
   return (
     <Button asChild variant="secondary" size="sm" className="w-full rounded-md text-xs">
-      <Link href={`/product-view/${p.slug}/${p.categoryName}/${p.id}`}>
+      <Link href={`/product-view/${p.slug}/${p.v2Key ?? p.categoryName}/${p.id}`}>
         <Link2 size={14} /> مشاهده آگهی
       </Link>
     </Button>

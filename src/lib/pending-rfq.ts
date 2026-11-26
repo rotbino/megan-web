@@ -19,7 +19,9 @@ const KEY = 'imach:pending-rfq';
 const TTL_MS = 30 * 60 * 1000;
 
 export interface PendingRfq {
-  subCategoryId: number;
+  /** (۲۶-۱۱) کلید v2 ایمچ — فرم‌های عمومی درخت v2 را نشان می‌دهند */
+  v2Key?: string;
+  subCategoryId?: number;
   productType: string;
   amount: number;
   savedAt: number;
@@ -42,7 +44,7 @@ export function takePendingRfq(): PendingRfq | null {
     const p = JSON.parse(raw) as PendingRfq;
     if (
       !p ||
-      typeof p.subCategoryId !== 'number' ||
+      (typeof p.subCategoryId !== 'number' && typeof p.v2Key !== 'string') ||
       typeof p.amount !== 'number' ||
       typeof p.savedAt !== 'number' ||
       Date.now() - p.savedAt > TTL_MS
@@ -78,6 +80,7 @@ export async function flushPendingRfq(): Promise<FlushResult> {
   if (!p) return 'none';
   try {
     await submitBuyRequest({
+      v2Key: p.v2Key,
       subCategoryId: p.subCategoryId,
       productType: p.productType,
       amount: p.amount,

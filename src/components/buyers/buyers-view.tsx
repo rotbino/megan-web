@@ -44,7 +44,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '@/lib/mock/auth';
-import { findCategoryPathById } from '@/lib/categories';
+import { findCategoryPath } from '@/lib/categories';
 import {
   useBuyerDirectory,
   useBuyRequests,
@@ -98,7 +98,7 @@ export function BuyersView({
 
   // فیلترها
   const [s, setS] = useState('');
-  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [categoryKey, setCategoryKey] = useState<string | null>(null);
   const [categoryLabel, setCategoryLabel] = useState<string | null>(null);
   const [period, setPeriod] = useState<PeriodFilter>('all');
   const [provinceId, setProvinceId] = useState<number | null>(null);
@@ -133,7 +133,7 @@ export function BuyersView({
   const { data: cities = [] } = useCities(provinceId ?? undefined);
 
   const dirQuery = {
-    categoryId: categoryId ?? undefined,
+    v2Key: categoryKey ?? undefined,
     s: s || undefined,
     period: period === 'all' ? undefined : period,
     provinceId: provinceId ?? undefined,
@@ -145,7 +145,7 @@ export function BuyersView({
   // فیلترهای پیش‌فرض تب خریداران — فقط در همین حالت seed SSR و صفحه‌بندی
   // لینکی (سئو) فعال است؛ تب درخواست‌ها و فیلترها URL خودشان را ندارند
   const isDefaultFilters =
-    tab === 'buyers' && !s && !categoryId && period === 'all' && !provinceId && !cityId;
+    tab === 'buyers' && !s && !categoryKey && period === 'all' && !provinceId && !cityId;
   const data = directory.data ?? (isDefaultFilters && page === (initialPage ?? 1) ? initialData : undefined);
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -153,7 +153,7 @@ export function BuyersView({
 
   // تب دوم — درخواست‌های خرید همین دسته (خواستهٔ مالک دور سوم: تب همیشه هست)
   const reqData = useBuyRequests(
-    { categoryId: categoryId ?? undefined, provinceId: provinceId ?? undefined, page: reqPage },
+    { v2Key: categoryKey ?? undefined, provinceId: provinceId ?? undefined, page: reqPage },
   );
   const reqTotal = reqData.data?.total ?? 0;
   const reqItems = reqData.data?.items ?? [];
@@ -173,14 +173,15 @@ export function BuyersView({
   );
 
   const pickCategory = (c: Category) => {
-    setCategoryId(c.id);
+    // (۲۶-۱۱) درخت عمومی = تاکسونومی v2 — انتخاب دسته با کلید v2 می‌رود
+    setCategoryKey(c.key ?? c.slug);
     setCategoryLabel(c.categoryName);
     setPage(1);
     setReqPage(1);
   };
 
   const clearCategory = () => {
-    setCategoryId(null);
+    setCategoryKey(null);
     setCategoryLabel(null);
     setPage(1);
     setReqPage(1);
@@ -194,7 +195,7 @@ export function BuyersView({
     clearCategory();
   };
 
-  const hasFilters = !!s || period !== 'all' || provinceId != null || cityId != null || !!categoryId;
+  const hasFilters = !!s || period !== 'all' || provinceId != null || cityId != null || !!categoryKey;
 
   const closeSheets = () => {
     setSheet(null);
@@ -244,13 +245,14 @@ export function BuyersView({
   /** دستهٔ کامل هدف از درخت — برای واحد/مثال و عنوان «پیشنهاد تامین برنج» */
   const targetCategory = (b: BuyerDirectoryItem | null): Category | null => {
     if (!b) return null;
-    const path = findCategoryPathById(tree, b.categoryId);
+    // (۲۶-۱۱) مسیر v2 از کلید آیتم دفتر — بدون id باسکول
+    const path = b.v2Key ? findCategoryPath(tree, b.v2Key) : null;
     if (path?.length) return path[path.length - 1];
     // اگر درخت هنوز لود نشده، از دیتای خود کارت می‌سازیم تا دکمه هیچ‌وقت قفل نشود
     return {
       id: b.categoryId,
       categoryName: b.categoryName,
-      slug: '',
+      slug: b.v2Key ?? '',
       unit: b.unit,
       min: 0,
       parentId: null,
@@ -266,8 +268,8 @@ export function BuyersView({
    *  پیش‌تنظیم می‌شود (نه از ریشه) تا فرزندان/هم‌ترازهای همان دسته دیده شوند؛
    *  برای برگ، یک سطح عقب‌تر (هم‌ترازهای خودش) — عین رفتار آگهی‌ها. */
   const openCategoriesSheet = () => {
-    if (categoryId != null) {
-      const p = findCategoryPathById(tree, categoryId);
+    if (categoryKey != null) {
+      const p = findCategoryPath(tree, categoryKey);
       if (p?.length) {
         const cur = p[p.length - 1];
         setCatStack(cur.children?.length ? p : p.slice(0, -1));
@@ -347,7 +349,7 @@ export function BuyersView({
           </h2>
           <CategoryNav
             tree={tree}
-            activeId={categoryId}
+            activeKey={categoryKey}
             onPick={pickCategory}
             onClear={clearCategory}
           />
@@ -688,7 +690,7 @@ export function BuyersView({
                 onClick={() => selectMobileCategory(c)}
                 className={cn(
                   'flex w-full items-center justify-between gap-2 rounded-md px-3 py-3 text-start text-sm transition-colors hover:bg-accent',
-                  c.id === categoryId ? 'font-bold text-primary' : 'font-medium',
+                  (c.key ?? c.slug) === categoryKey ? 'font-bold text-primary' : 'font-medium',
                 )}
               >
                 <span className="line-clamp-1">{c.categoryName}</span>
@@ -823,28 +825,28 @@ export function BuyersView({
  *  برای برگ، هم‌ترازهای خودش (فرزندان والد) دیده می‌شوند. */
 function CategoryNav({
   tree,
-  activeId,
+  activeKey,
   onPick,
   onClear,
 }: {
   tree: Category[];
-  activeId: number | null;
+  activeKey: string | null;
   onPick: (c: Category) => void;
   onClear: () => void;
 }) {
-  const path = activeId != null ? findCategoryPathById(tree, activeId) : null;
+  const path = activeKey != null ? findCategoryPath(tree, activeKey) : null;
   const current = path?.[path.length - 1];
   const parent = path && path.length > 1 ? path[path.length - 2] : undefined;
 
   // صفحهٔ اول — فقط سطوح اول (خواستهٔ مالک ۱-۱۱)
-  const rootsList = (highlightId?: number) => (
+  const rootsList = (highlightKey?: string) => (
     <nav className="max-h-96 space-y-0.5 overflow-y-auto pe-1 text-sm" aria-label="دسته‌های خرید">
       <button
         type="button"
         onClick={onClear}
         className={cn(
           'block w-full rounded-md px-2.5 py-1.5 text-start transition-colors',
-          activeId == null
+          activeKey == null
             ? 'bg-accent font-bold text-accent-foreground'
             : 'text-muted-foreground hover:bg-secondary',
         )}
@@ -858,7 +860,7 @@ function CategoryNav({
           onClick={() => onPick(root)}
           className={cn(
             'flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-start transition-colors',
-            root.id === highlightId || root.id === activeId
+            (root.key ?? root.slug) === highlightKey || (root.key ?? root.slug) === activeKey
               ? 'font-bold text-primary'
               : 'font-medium text-foreground/85 hover:bg-secondary',
           )}
@@ -876,7 +878,7 @@ function CategoryNav({
 
   // تمرکز: فرزندان دستهٔ فعلی؛ اگر برگ بود → هم‌ترازهای خودش (فرزندان والد)
   const focus = current.children?.length ? current : parent;
-  if (!focus) return rootsList(current.id);
+  if (!focus) return rootsList(current.key ?? current.slug);
 
   // مقصد دکمهٔ بازگشت: والدِ سطحِ درحال‌نمایش (یا فهرست سطوح اول اگر ریشه است)
   const focusIndex = path.indexOf(focus);
@@ -905,7 +907,7 @@ function CategoryNav({
 
       <ul className="max-h-96 space-y-0.5 overflow-y-auto pe-1">
         {(focus.children ?? []).map((c) => {
-          const active = c.id === current.id;
+          const active = (c.key ?? c.slug) === (current.key ?? current.slug);
           return (
             <li key={c.id}>
               <button
@@ -955,7 +957,7 @@ function RequestPreviewCard({ request }: { request: BuyRequest }) {
         {/* جمله — عین پاسکال */}
         <p className="mt-3 text-[13px] leading-7 text-muted-foreground sm:text-sm">
           خریدار <b className="text-foreground">{toFa(request.requirementAmount)} {request.unit}</b>{' '}
-          <b className="text-foreground">{request.subcategoryName}</b>
+          <b className="text-foreground">{request.v2Path?.at(-1) ?? request.subcategoryName}</b>
           {request.name ? (
             <> از نوع <b className="text-foreground">{request.name}</b> هستم</>
           ) : (

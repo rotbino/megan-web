@@ -14,15 +14,17 @@ function flatten(tree: Category[]): Category[] {
 }
 
 /**
- * مسیر ریشه → برگ برای یک slug یا نام دسته (برای BreadcrumbList و عنوان صفحه).
- * مثال: [کشاورزی، خشکبار، پسته] — URLهای پاسکال‌گونه هم با نام کار می‌کنند.
+ * مسیر ریشه → برگ برای یک slug/کلید (برای BreadcrumbList و عنوان صفحه).
+ * (۲۶-۱۱) درخت عمومی = تاکسونومی v2 — slug گره همان کلید v2 است و تطبیق
+ * فقط با کلید انجام می‌شود؛ نام‌های فارسی کهنه (باسکول) هرگز این‌جا
+ * resolve نمی‌شوند تا صفحهٔ دسته بتواند ریدایرکت دائمی بزند.
  */
-export function findCategoryPath(tree: Category[], slugOrName: string): Category[] | null {
+export function findCategoryPath(tree: Category[], slug: string): Category[] | null {
   const path: Category[] = [];
   const walk = (nodes: Category[]): boolean => {
     for (const n of nodes) {
       path.push(n);
-      if (n.slug === slugOrName || n.categoryName === slugOrName) return true;
+      if (n.slug === slug) return true;
       if (n.children?.length && walk(n.children)) return true;
       path.pop();
     }

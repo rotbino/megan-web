@@ -18,19 +18,48 @@ export interface Paged<T> {
 
 // ─── شکل پاسخ خام بک‌اند ───────────────────────────────────────────────────
 
-/** CategoryNode بک‌اند (snake_case) — نوع کالا (Good) جدول جدا دارد و در
- *  این درخت نیست (خواسته مالک ۳۰-۱۰) */
-interface RawCategoryNode {
-  id: number;
-  category_name: string;
-  slug: string;
-  unit: string;
-  min: number;
-  example: string | null;
-  parent_id: number | null;
-  score: number;
-  children?: RawCategoryNode[];
+/** (۲۶-۱۱) گره درخت تاکسونومی v2 — خروجی عمومی /catalog/v2/getTree؛
+ *  منبع جدید درخت دسته‌های نمای سایت (دستهٔ اختصاصی ایمچ) — فارسی‌های
+ *  باسکول برای ایمپورت/تطابق پشت صحنه می‌مانند */
+interface RawTaxonomyNode {
+  key: string;
+  name: string;
+  icon?: string;
+  count: number;
+  children?: RawTaxonomyNode[];
 }
+
+/** پاسخ کامل getTree — شمارندها فقط اطلاعاتی‌اند */
+interface CatalogV2TreeShape {
+  totalProducts: number;
+  mapped: number;
+  unmapped: number;
+  roots: RawTaxonomyNode[];
+}
+
+/** هش عددی پایدار از کلید v2 — فقط کلید React/انتخاب ریشه مگامنو؛ هرگز
+ *  به بک‌اند فرستاده نمی‌شود (فرانت کلید key می‌فرستد، نه این id) */
+function taxonomyId(key: string): number {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+  return Math.abs(h) || 1;
+}
+
+/** گره v2 → Category — slug = کلید v2 (نقطه‌گذر ASCII)؛ لینک‌های دسته و
+ *  پارامتر categorySlug سایت همه روی همین کلید می‌رویند (بک‌اند خودش ترجمه می‌کند) */
+const toCategoryV2 = (c: RawTaxonomyNode): Category => ({
+  id: taxonomyId(c.key),
+  categoryName: c.name,
+  slug: c.key,
+  key: c.key,
+  count: c.count,
+  icon: c.icon,
+  unit: '',
+  min: 0,
+  parentId: null,
+  score: c.count,
+  children: (c.children ?? []).map(toCategoryV2),
+});
 
 /** ProductDto بک‌اند — camelCase منطبق تایپ فرانت با دو استثنا */
 interface RawProduct {
@@ -46,6 +75,10 @@ interface RawProduct {
   categoryName: string;
   subCategoryId: number;
   subCategoryName: string;
+  /** (۲۶-۱۱) دستهٔ عمومی ایمچ — تاکسونومی v2 */
+  v2Key?: string | null;
+  v2Path?: string[];
+  v2LeafName?: string | null;
   provinceId: number;
   provinceName: string;
   cityId: number;
@@ -97,32 +130,6 @@ const toProduct = (p: RawProduct): Product => {
   };
 };
 
-/** تصویر کارت دسته‌های ریشه — دارایی ثابت فرانت (webp بهینه) */
-const ROOT_IMAGES: Record<number, string> = {
-  76: '/images/categories/agriculture.webp',
-  734: '/images/categories/building.webp',
-  136: '/images/categories/metals.webp',
-  924: '/images/categories/fashion.webp',
-  996: '/images/categories/bags.webp',
-  329: '/images/categories/machinery.webp',
-  77: '/images/categories/food.webp',
-  998: '/images/categories/cosmetics.webp',
-  923: '/images/categories/electronics.webp',
-  997: '/images/categories/sports.webp',
-};
-
-const toCategory = (c: RawCategoryNode): Category => ({
-  id: c.id,
-  categoryName: c.category_name,
-  slug: c.slug,
-  unit: c.unit,
-  min: c.min,
-  example: c.example ?? undefined,
-  parentId: c.parent_id,
-  score: c.score,
-  image: ROOT_IMAGES[c.id],
-  children: (c.children ?? []).map(toCategory),
-});
 
 // ─── جستجو و پیشنهادها ────────────────────────────────────────────────────
 
@@ -252,8 +259,10 @@ export async function getSellerProducts(
 // ─── دسته‌بندی‌ها و مکان‌ها ────────────────────────────────────────────────
 
 export async function getCategoryTree(): Promise<Category[]> {
-  const raw = await apiFetch<RawCategoryNode[]>('/categories/getAllCategories', {}, { auth: false });
-  return raw.map(toCategory);
+  // (۲۶-۱۱) درخت دسته‌های عمومی سایت = تاکسونومی v2 ایمچ — بک‌اند مسیر
+  // عمومی /catalog/v2/getTree را می‌دهد (شمار آگهی هر گره؛ بدون احراز هویت)
+  const raw = await apiFetch<CatalogV2TreeShape>('/catalog/v2/getTree', {}, { auth: false });
+  return raw.roots.map(toCategoryV2);
 }
 
 // ─── فید «فروشندگان» خریدار (خواستهٔ مالک ۱۸-۱۱) ────────────────────────────
@@ -398,11 +407,27 @@ export async function getBuyRequestsSSR(
   }
 }
 
-/** درخت دسته‌ها سمت سرور — برای نام دسته و مسیر BreadcrumbList */
+/** درخت دسته‌ها سمت سرور — برای نام دسته و مسیر BreadcrumbList
+ *  (۲۶-۱۱): تاکسونومی v2 ایمچ از همان اندپوینت عمومی */
 export async function getCategoryTreeSSR(revalidate = 600): Promise<Category[] | null> {
   try {
-    const raw = await serverPost<RawCategoryNode[]>('/categories/getAllCategories', {}, revalidate);
-    return raw.map(toCategory);
+    const raw = await serverPost<CatalogV2TreeShape>('/catalog/v2/getTree', {}, revalidate);
+    return raw.roots.map(toCategoryV2);
+  } catch {
+    return null;
+  }
+}
+
+/** (۲۶-۱۱) slug/نام باسکول کهنه → کلید v2 — برای ریدایرکت دائمی URLهای
+ *  ایندکس‌شدهٔ قدیمی به دستهٔ جدید ایمچ؛ null = دستهٔ ناشناخته (404) */
+export async function resolveSlugSSR(slug: string): Promise<string | null> {
+  try {
+    const raw = await serverPost<{ key: string | null; path: string[] }>(
+      '/catalog/v2/resolveSlug',
+      { slug },
+      3600,
+    );
+    return raw.key ?? null;
   } catch {
     return null;
   }
@@ -448,6 +473,9 @@ interface RawBuyRequest {
   name: string | null;
   categoryId: number;
   subcategoryName: string;
+  /** (۲۶-۱۱) دستهٔ عمومی ایمچ — تاکسونومی v2 */
+  v2Key?: string | null;
+  v2Path?: string[];
   requirementAmount: number;
   unit: string;
   myuserId: string;
@@ -469,6 +497,8 @@ const toBuyRequest = (r: RawBuyRequest): BuyRequest => ({
   name: r.name,
   categoryId: r.categoryId,
   subcategoryName: r.subcategoryName,
+  v2Key: r.v2Key ?? null,
+  v2Path: r.v2Path ?? [],
   requirementAmount: r.requirementAmount,
   unit: r.unit,
   myuserId: r.myuserId,
@@ -484,13 +514,14 @@ const toBuyRequest = (r: RawBuyRequest): BuyRequest => ({
 });
 
 export async function getBuyRequests(
-  opts: { s?: string; categoryId?: number; provinceId?: number; page?: number; perPage?: number } = {},
+  opts: { s?: string; categoryId?: number; v2Key?: string; provinceId?: number; page?: number; perPage?: number } = {},
 ): Promise<Paged<BuyRequest>> {
   const raw = await apiFetch<{ items: RawBuyRequest[]; total: number; page: number; pageCount: number }>(
     '/buy-requests/getBuyRequestList',
     {
       s: opts.s,
       categoryId: opts.categoryId,
+      v2Key: opts.v2Key,
       provinceId: opts.provinceId,
       page: opts.page,
       perPage: opts.perPage,
@@ -567,12 +598,14 @@ export async function getSeller(userName: string) {
 // ─── فرم‌ها ────────────────────────────────────────────────────────────────
 
 export async function submitBuyRequest(input: {
-  subCategoryId: number;
+  /** (۲۶-۱۱) کلید v2 تاکسونومی ایمچ — سرور دستهٔ باسکول نماینده را می‌نشاند */
+  v2Key?: string;
+  subCategoryId?: number;
   productType?: string;
   amount: number;
 }): Promise<{ ok: true; id: number }> {
   await apiFetch('/buy-requests/createBuyRequest', {
-    subCategoryId: input.subCategoryId,
+    ...(input.v2Key ? { v2Key: input.v2Key } : { subCategoryId: input.subCategoryId }),
     name: input.productType || undefined,
     requirementAmount: input.amount,
   });
@@ -899,7 +932,9 @@ export async function getMyProducts(): Promise<{
  */
 export async function submitProduct(input: {
   productName: string;
-  subCategoryId: number;
+  /** (۲۶-۱۱) کلید v2 تاکسونومی ایمچ — سرور دستهٔ باسکول نماینده را می‌نشاند */
+  v2Key?: string;
+  subCategoryId?: number;
   provinceId: number;
   cityId: number;
   stock: number;
@@ -911,7 +946,7 @@ export async function submitProduct(input: {
 }): Promise<{ ok: true; id: number; status: 'pending'; failedPhotos: File[] }> {
   const created = await apiFetch<{ id: number; status: string }>('/products/createProduct', {
     productName: input.productName,
-    subCategoryId: input.subCategoryId,
+    ...(input.v2Key ? { v2Key: input.v2Key } : { subCategoryId: input.subCategoryId }),
     provinceId: input.provinceId,
     cityId: input.cityId,
     stock: input.stock,
@@ -988,7 +1023,9 @@ export async function getMyProductDetail(id: number): Promise<{
 export async function updateMyProduct(input: {
   id: number;
   productName: string;
-  subCategoryId: number;
+  /** (۲۶-۱۱) کلید v2 ایمچ — سرور دستهٔ باسکول نماینده را می‌نشاند */
+  v2Key?: string;
+  subCategoryId?: number;
   provinceId: number;
   cityId: number;
   stock: number;
@@ -1004,7 +1041,7 @@ export async function updateMyProduct(input: {
   const updated = await apiFetch<{ id: number; status: string }>('/products/updateMyProduct', {
     id: input.id,
     productName: input.productName,
-    subCategoryId: input.subCategoryId,
+    ...(input.v2Key ? { v2Key: input.v2Key } : { subCategoryId: input.subCategoryId }),
     provinceId: input.provinceId,
     cityId: input.cityId,
     stock: input.stock,
@@ -1562,14 +1599,16 @@ export async function getMyBuyRequests(): Promise<{
 }
 
 export async function submitPanelBuyRequest(input: {
-  subCategoryId: number;
+  /** (۲۶-۱۱) کلید v2 تاکسونومی ایمچ — سرور دستهٔ باسکول نماینده را می‌نشاند */
+  v2Key?: string;
+  subCategoryId?: number;
   productType: string;
   requirementAmount: number;
   goal: 'price_and_buy' | 'price_only';
   hasHistory: boolean;
 }): Promise<{ ok: true; id: number; status: 'pending' }> {
   const data = await apiFetch<{ id: number; status: string }>('/buy-requests/createBuyRequest', {
-    subCategoryId: input.subCategoryId,
+    ...(input.v2Key ? { v2Key: input.v2Key } : { subCategoryId: input.subCategoryId }),
     name: input.productType || undefined,
     requirementAmount: input.requirementAmount,
     goal: input.goal,
@@ -1953,11 +1992,20 @@ export async function getMyBuyerBook(): Promise<MyBuyerBook> {
 /** ذخیره دفتر خرید من — جایگزینی کامل (تیک برگ‌ها + حداقل + دوره + نوع اختیاری).
  *  سمت سررور ستون حجم «volumeMin» است؛ نگاشت نام اینجا انجام می‌شود. */
 export async function saveMyBuyerBook(
-  items: Array<Pick<BuyerBookItem, 'categoryId' | 'minAmount' | 'period'> & { productType?: string }>,
+  items: Array<{
+    /** (۲۶-۱۱) کلید v2 ایمچ — سرور دستهٔ باسکول نماینده را می‌نشاند */
+    v2Key?: string | null;
+    categoryId?: number;
+    minAmount: number;
+    period: BuyerBookItem['period'];
+    productType?: string;
+  }>,
 ): Promise<{ saved: number }> {
+  // (۲۶-۱۱): انتخاب‌گر فرانت درخت v2 را نشان می‌دهد — v2Key می‌فرستد و سرور
+  // دستهٔ باسکول نماینده را می‌نشاند؛ categoryId مستقیم هم معتبر می‌ماند
   return apiFetch<{ saved: number }>('/buyers/saveMyBook', {
     items: items.map((i) => ({
-      categoryId: i.categoryId,
+      ...(i.v2Key ? { v2Key: i.v2Key } : { categoryId: i.categoryId }),
       volumeMin: i.minAmount,
       period: i.period,
       // نوع کالا اختیاری — خالی ارسال نمی‌شود (null بماند)
@@ -1970,6 +2018,7 @@ export async function saveMyBuyerBook(
 export async function getBuyerDirectory(q: BuyerDirectoryQuery): Promise<BuyerDirectoryPage> {
   return apiFetch<BuyerDirectoryPage>('/buyers/directory', {
     categoryId: q.categoryId,
+    v2Key: q.v2Key,
     s: q.s,
     period: q.period,
     provinceId: q.provinceId,

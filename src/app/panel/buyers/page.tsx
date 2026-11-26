@@ -63,7 +63,7 @@ import { SentOffersList } from '@/components/panel/sent-offers-list';
 import { SavedBuyerBooksList } from '@/components/panel/saved-buyer-books';
 import { NeedPackageModal } from '@/components/shared/need-package-modal';
 import { matchForBuyRequest, matchForDirectoryItem, sortByMatch } from '@/lib/buyer-match';
-import { findCategoryPathById } from '@/lib/categories';
+import { findCategoryPath } from '@/lib/categories';
 import { toFa } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { BuyerDirectoryItem, Category } from '@/lib/types';
@@ -109,7 +109,8 @@ function PanelBuyersInner() {
   const [needProductOpen, setNeedProductOpen] = useState(false);
 
   const roots: Category[] = useMemo(() => tree ?? [], [tree]);
-  const rootId = rootCat !== 'all' ? Number(rootCat) : null;
+  // (۲۶-۱۱) درخت عمومی = تاکسونومی v2 — فیلتر ریشه با کلید v2 (باسکول پشت صحنه)
+  const rootKey = rootCat !== 'all' ? (roots.find((r) => String(r.id) === rootCat)?.key ?? null) : null;
 
   const { data: cities = [] } = useCities(provinceId ?? undefined);
 
@@ -127,19 +128,19 @@ function PanelBuyersInner() {
   // ── تب فوری: درخواست‌های خرید (سرویس پاسکال) — سورت تطابق سمت کلاینت ──
   const reqQuery = useBuyRequests({
     s: q || undefined,
-    categoryId: rootId ?? undefined,
+    v2Key: rootKey ?? undefined,
     provinceId: provinceId ?? undefined,
     perPage: 50,
   });
   const reqItems = useMemo(() => {
     const items = reqQuery.data?.items ?? [];
-    return sortByMatch(items, (r) => matchForBuyRequest(tree ?? [], products, r).score);
-  }, [reqQuery.data, tree, products]);
+    return sortByMatch(items, (r) => matchForBuyRequest(products, r).score);
+  }, [reqQuery.data, products]);
   const reqVisible = reqItems.slice(0, batch * REQ_BATCH);
 
   // ── تب دوره‌ای: دایرکتوری دفتر خرید — سورت تطابق داخل صفحه ──
   const dirQuery = useBuyerDirectory({
-    categoryId: rootId ?? undefined,
+    v2Key: rootKey ?? undefined,
     s: q || undefined,
     provinceId: provinceId ?? undefined,
     cityId: cityId ?? undefined,
@@ -148,8 +149,8 @@ function PanelBuyersInner() {
   });
   const dirItems = useMemo(() => {
     const items = dirQuery.data?.items ?? [];
-    return sortByMatch(items, (b) => matchForDirectoryItem(tree ?? [], products, b).score);
-  }, [dirQuery.data, tree, products]);
+    return sortByMatch(items, (b) => matchForDirectoryItem(products, b).score);
+  }, [dirQuery.data, products]);
   const dirTotal = dirQuery.data?.total ?? 0;
   const dirPageCount = Math.max(1, Math.ceil(dirTotal / 24));
 
@@ -195,12 +196,13 @@ function PanelBuyersInner() {
   /** دستهٔ کامل هدف از درخت — برای واحد/مثال و عنوان «پیشنهاد تامین برنج» */
   const targetCategory = (b: BuyerDirectoryItem | null): Category | null => {
     if (!b) return null;
-    const path = findCategoryPathById(tree ?? [], b.categoryId);
+    // (۲۶-۱۱) مسیر v2 از کلید آیتم دفتر — بدون id باسکول
+    const path = b.v2Key && tree ? findCategoryPath(tree, b.v2Key) : null;
     if (path?.length) return path[path.length - 1];
     return {
       id: b.categoryId,
       categoryName: b.categoryName,
-      slug: '',
+      slug: b.v2Key ?? '',
       unit: b.unit,
       min: 0,
       parentId: null,
@@ -417,7 +419,7 @@ function PanelBuyersInner() {
           ) : (
             <div className="space-y-3">
               {reqVisible.map((r) => {
-                const m = matchForBuyRequest(tree ?? [], products, r);
+                const m = matchForBuyRequest(products, r);
                 return (
                   <BuyerCard
                     key={r.id}
@@ -471,7 +473,7 @@ function PanelBuyersInner() {
             <>
               <ul className={cn('space-y-3 transition-opacity', dirQuery.isFetching && 'opacity-60')}>
                 {dirItems.map((b) => {
-                  const m = matchForDirectoryItem(tree ?? [], products, b);
+                  const m = matchForDirectoryItem(products, b);
                   return (
                     <BookEntryCard
                       key={b.id}

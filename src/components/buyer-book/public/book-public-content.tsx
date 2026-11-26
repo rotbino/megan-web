@@ -67,7 +67,7 @@ import { SellerReviews } from '@/components/products/seller-reviews';
 import { SupplyOfferModal } from '@/components/buyers/supply-offer-modal';
 import { NeedPackageModal } from '@/components/shared/need-package-modal';
 import { RootCategoryIcon } from '@/lib/category-icons';
-import { findCategoryPathById } from '@/lib/categories';
+import { findCategoryPath } from '@/lib/categories';
 import { useToast } from '@/hooks/use-toast';
 import { stockFa, toFa } from '@/lib/format';
 import { PERIOD_LABELS, type BuyerBookItem, type BuyerDirectoryItem, type BuyerBookSettings } from '@/lib/types';
@@ -318,6 +318,8 @@ export function BookPublicContent({
     buyerName: `${buyer.firstName} ${buyer.lastName}`.trim(),
     role: buyer.role,
     categoryId: it.categoryId,
+    v2Key: it.v2Key ?? null,
+    v2Path: it.v2Path ?? [],
     categoryName: it.name,
     rootName: it.rootName,
     categoryPath: [it.rootName, it.parentName].filter(Boolean).join(' / '),
@@ -335,7 +337,8 @@ export function BookPublicContent({
 
   const targetCategory = useMemo(() => {
     if (!offerTarget) return null;
-    const path = tree ? findCategoryPathById(tree, offerTarget.categoryId) : null;
+    // (۲۶-۱۱) مسیر v2 از کلید آیتم دفتر — بدون id باسکول
+    const path = tree && offerTarget.v2Key ? findCategoryPath(tree, offerTarget.v2Key) : null;
     if (path?.length) return path[path.length - 1];
     return {
       id: offerTarget.categoryId,

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {ArrowRight, ChevronDown, LayoutGrid, Plus, Search, Sparkles} from 'lucide-react';
 import { BrandLogo } from '@/components/shared/brand';
+import { TaxonomyIcon } from '@/lib/category-icons';
 import { HeaderUserMenu } from '@/components/layout/header-user-menu';
 import { TasksBell } from '@/components/shared/tasks-bell';
 import {
@@ -535,10 +536,12 @@ function MegaMenu({
               onFocus={() => setActiveRoot(c.id)}
               onClick={() => setActiveRoot(c.id)}
               className={cn(
-                'flex w-full items-center justify-between rounded-sm px-3 py-2 text-start hover:bg-accent',
+                'flex w-full items-center gap-2 rounded-sm px-3 py-2 text-start hover:bg-accent',
                 current?.id === c.id && 'bg-accent font-semibold text-accent-foreground',
               )}
             >
+              {/* (۲۶-۱۱) درخت عمومی = تاکسونومی ایمچ — آیکون اختصاصی ریشه‌ها */}
+              <TaxonomyIcon icon={c.icon} size={15} className="shrink-0 text-primary" />
               <span className="line-clamp-1">{c.categoryName}</span>
             </button>
           </li>

@@ -8,7 +8,7 @@ import {
   parseCitiesParam,
 } from '@/components/city/city-market-view';
 import { resolveMarketCity } from '@/lib/city-markets';
-import { getCategoryTreeSSR } from '@/lib/mock/api';
+import { getCategoryTreeSSR, resolveSlugSSR } from '@/lib/mock/api';
 import { findCategoryPath } from '@/lib/categories';
 import { parsePageNo, pageTitleSuffix } from '@/lib/pagination';
 
@@ -46,7 +46,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, categorySlug, pageno } = await params;
   const n = parsePageNo(pageno) ?? 1;
   const resolved = await resolveCityCategory(slug, categorySlug);
-  if (!resolved) return { title: 'بازار عمده شهر' };
+  // (۲۶-۱۱) URL کهنهٔ باسکول → کلید v2 — ریدایرکت دائمی واقعی (۳۰۸)
+  if (!resolved) {
+    const key = await resolveSlugSSR(safeDecode(categorySlug));
+    const city = await resolveMarketCity(slug);
+    if (key && key !== safeDecode(categorySlug) && city) {
+      permanentRedirect(`${marketCanonical(city)}/category/${key}`);
+    }
+    return { title: 'بازار عمده شهر' };
+  }
   const { city, path } = resolved;
   const cat = path.at(-1)!;
   const base = `${marketCanonical(city)}/category/${encodeURIComponent(cat.slug)}`;
@@ -66,7 +74,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CityMarketCategoryPagedPage({ params, searchParams }: Props) {
   const { slug, categorySlug, pageno } = await params;
   const resolved = await resolveCityCategory(slug, categorySlug);
-  if (!resolved) notFound();
+  // (۲۶-۱۱) URL کهنهٔ باسکول → کلید v2 با ۳۰۸ دائمی — عین صفحهٔ دستهٔ ملی
+  if (!resolved) {
+    const key = await resolveSlugSSR(safeDecode(categorySlug));
+    const city = await resolveMarketCity(slug);
+    if (key && key !== safeDecode(categorySlug) && city) {
+      permanentRedirect(`${marketCanonical(city)}/category/${key}`);
+    }
+    notFound();
+  }
 
   const n = parsePageNo(pageno);
   if (n === null) notFound();

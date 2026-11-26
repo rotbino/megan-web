@@ -213,7 +213,7 @@ export default function RegisterProductPage() {
     try {
       const result = await submit.mutateAsync({
         productName: fullName,
-        subCategoryId: draft.leaf!.id,
+        v2Key: draft.leaf!.key ?? draft.leaf!.slug,
         provinceId: num(draft.provinceId),
         cityId: num(draft.cityId),
         stock: num(draft.stock),
