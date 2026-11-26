@@ -1,5 +1,5 @@
-import { findCategoryPath } from '@/lib/categories';
 'use client';
+
 
 /**
  * ویرایش آگهی — فرم بازِ تک‌صفحه‌ای (خواسته مالک ۴-۱۱؛ جایگزین ویزارد):
@@ -17,6 +17,7 @@ import { findCategoryPath } from '@/lib/categories';
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { findCategoryPath } from '@/lib/categories';
 import {
   ArrowRight,
   ChevronLeft,
@@ -80,11 +81,11 @@ interface EditDraft {
   features: ProductFeature[];
 }
 
-/** مسیر دسته را از درخت با پیمایش والد‌ها می‌سازد */
 /** مسیر دسته در درخت v2 — (۲۶-۱۱) با کلید v2 آگهی حل می‌شود */
 function buildPath(tree: Category[], v2Key: string | null | undefined): { path: Category[]; leaf: Category | null } {
   if (!v2Key) return { path: [], leaf: null };
-  return { path: findCategoryPath(tree, v2Key) ?? [], leaf: findCategoryPath(tree, v2Key)?.at(-1) ?? null };
+  const path = findCategoryPath(tree, v2Key) ?? [];
+  return { path, leaf: path.at(-1) ?? null };
 }
 
 export default function EditProductPage() {
