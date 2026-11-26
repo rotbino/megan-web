@@ -7,7 +7,7 @@
  */
 
 import { apiFetch, serverPost, setTokens, clearTokens, getTokens, ApiError, uploadImage as clientUploadImage, uploadChatFile as clientUploadChatFile, uploadSupportFile as clientUploadSupportFile } from '@/lib/api/client';
-import type { BuyAdvisor, BuyRequest, Category, City, CityMarketQuery, ItemReport, MarketReport, OpportunityMap, PackageType, PriceIndexData, Product, ProductQuery, Province, SessionUser, UserTask } from '@/lib/types';
+import type { BuyRequest, Category, City, CityMarketQuery, PackageType, Product, ProductQuery, Province, SessionUser, UserTask } from '@/lib/types';
 
 export interface Paged<T> {
   items: T[];
@@ -886,34 +886,6 @@ export async function getMyProducts(): Promise<{
     deleted: raw.counts.deleted ?? 0,
   };
   return { items: raw.items.map(toProduct), counts, capacity: raw.capacity ?? PRODUCT_CAPACITY };
-}
-
-/** گزارش بازار صنف فروشنده (۲۵-۱۱) — میانه/بازه/تغییر قلم‌های صنف.
- *  بدون subCategoryId: صنفِ پرآگهی‌ترین آگهی‌های خودش. */
-export async function getMarketReport(subCategoryId?: number): Promise<MarketReport> {
-  return apiFetch<MarketReport>('/products/getMarketReport', subCategoryId ? { subCategoryId } : {});
-}
-
-// ─── گزارشات ایمچ (۲۵-۱۱ راند ۲) ─────────────────────────────────
-
-/** گزارش تک‌کالا — جایگاه قیمت آگهی در بازار همان قلم (تجمیمی) */
-export async function getItemReport(productId: number): Promise<ItemReport> {
-  return apiFetch<ItemReport>('/products/getItemReport', { productId });
-}
-
-/** مشاور خرید دوره‌ای — سبد خرید دوره‌ای خریدار × قیمت بازار */
-export async function getBuyAdvisor(): Promise<BuyAdvisor> {
-  return apiFetch<BuyAdvisor>('/products/getBuyAdvisor', {});
-}
-
-/** نقشهٔ فرصت فروش — تقاضا ÷ عرضه بر صنف */
-export async function getOpportunityMap(): Promise<OpportunityMap> {
-  return apiFetch<OpportunityMap>('/products/getOpportunityMap', {});
-}
-
-/** شاخص قیمت ایمچ — عمومی؛ فقط درصد */
-export async function getPriceIndex(): Promise<PriceIndexData> {
-  return apiFetch<PriceIndexData>('/products/getPriceIndex', {}, { auth: false });
 }
 
 /**

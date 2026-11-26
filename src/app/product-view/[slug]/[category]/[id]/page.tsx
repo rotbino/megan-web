@@ -4,14 +4,12 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   BadgeCheck,
-  BarChart3,
   BookOpen,
   Eye,
   Home,
   MapPin,
   Package,
   Phone,
-  ShieldAlert,
   Store,
   User,
 } from 'lucide-react';
@@ -313,19 +311,6 @@ export default async function ProductViewPage({ params }: Props) {
                     />
                   </div>
                 </div>
-
-                {/* گزارش قیمت این کالا (۲۵-۱۱ راند ۲) — زیر آمار؛ صفحهٔ /price/{id} */}
-                <Link
-                  href={`/price/${product.id}`}
-                  className="mt-2 flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs font-bold text-primary hover:bg-primary/[0.04]"
-                >
-                  <span className="flex items-center gap-1.5">
-                    <BarChart3 size={14} /> گزارش قیمت این کالا
-                  </span>
-                  <span className="text-[10px] font-normal text-muted-foreground">
-                    جایگاه در بازار · پلهٔ حجم · شهرها
-                  </span>
-                </Link>
               </div>
             </div>
 
@@ -425,16 +410,6 @@ export default async function ProductViewPage({ params }: Props) {
               </Button>
               <p className="mt-3 text-[11px] leading-5 text-muted-foreground">
                 عضویت از {new Intl.DateTimeFormat('fa-IR', { year: 'numeric', month: 'long' }).format(new Date(product.createdAt))}
-              </p>
-            </div>
-
-            <div className="space-y-2 rounded-md border bg-secondary/50 p-5">
-              <p className="flex items-center gap-2 text-sm font-bold">
-                <ShieldAlert size={16} />
-                توصیه ایمچ
-              </p>
-              <p className="text-[11px] leading-6 text-muted-foreground">
-                همواره به انجام معاملات حضوری است.
               </p>
             </div>
           </aside>

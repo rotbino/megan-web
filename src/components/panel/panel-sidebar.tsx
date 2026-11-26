@@ -16,7 +16,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  BarChart3,
   Bookmark,
   BookMarked,
   FileText,
@@ -44,19 +43,16 @@ interface PanelNavItem {
   exact?: boolean;
 }
 
-/** منوی فروشنده — ۹ آیتم؛ دور ۱۶: «آیمچ من» اول از همه (هر دو پنل).
+/** منوی فروشنده — ۸ آیتم؛ دور ۱۶: «آیمچ من» اول از همه (هر دو پنل).
  *  دور ۱۹+ (خواسته مالک ۴-۱۱): «خریداران پیشنهادی» حذف شد — تطبیق حالا داخل
  *  صفحهٔ «خریداران» است. خواسته مالک ۶-۱۱: «پیشنهادات تامین» هم حذف شد —
  *  همان لیست تب سوم «پیشنهادات ارسال شده» صفحهٔ خریداران شد؛ منو خلوت‌تر
  *  و هر چیز در جای گویاتر خودش.
- *  «گزارشات» (۲۵-۱۱ راند ۲): هاب یک‌لینکی گزارشات — رصد صنف، مشاور خرید،
- *  فرصت‌ها، شاخص قیمت؛ گزارش تک‌کالا جداگانه زیر آمار خود آگهی است.
  *  «بازاریابی» (افلیت ۱۷-۱۱): نقش سیستمی مستقل — خواسته مالک: لینک پنل
  *  بازاریابی در لینک‌های «آیمچ من» هم باشد. */
 export const SELLER_NAV: PanelNavItem[] = [
   { href: '/panel', label: 'آیمچ من', icon: UserRound, exact: true },
   { href: '/panel/products', label: 'محصولات من', icon: Package },
-  { href: '/panel/reports', label: 'گزارشات', icon: BarChart3 },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
   { href: '/panel/buyers', label: 'خریداران', icon: Users },
   { href: '/panel/verification', label: 'احراز هویت', icon: ShieldCheck },
@@ -74,7 +70,6 @@ export const SELLER_NAV: PanelNavItem[] = [
 export const BUYER_NAV: PanelNavItem[] = [
   { href: '/panel', label: 'آیمچ من', icon: UserRound, exact: true },
   { href: '/panel/my-requests', label: 'درخواست های خرید من', icon: FileText },
-  { href: '/panel/reports', label: 'گزارشات', icon: BarChart3 },
   { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare, exact: true },
   { href: '/panel/saved-catalogs', label: 'کاتالوگ های ذخیره شده', icon: BookMarked },
   { href: '/panel/saved', label: 'سرنخ‌های خرید', icon: Bookmark },

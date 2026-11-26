@@ -26,7 +26,6 @@ import {
   MessageSquare,
   Package,
   ShieldCheck,
-  TrendingUp,
   Users,
   Wallet,
 } from 'lucide-react';
@@ -123,8 +122,6 @@ export default function PanelDashboard() {
       ]
     : [
         { href: '/panel/products', label: 'محصولات من', icon: Package },
-        // «گزارش بازار» (۲۵-۱۱) — ردیاب قیمت صنف؛ موبایل سایدبار ندارد
-        { href: '/panel/market-report', label: 'گزارش بازار', icon: TrendingUp },
         { href: '/panel/messages', label: 'پیام ها', icon: MessageSquare },
         { href: '/panel/buyers', label: 'خریداران', icon: Users },
         // «پیشنهادات تامین» حذف شد (خواسته مالک ۶-۱۱) — تب سوم «پیشنهادات

@@ -282,58 +282,6 @@ export function useMyProducts(enabled = true) {
   });
 }
 
-/** گزارش بازار صنف (۲۵-۱۱) — ردیاب قیمت صنفِ فروشنده؛ ۵ دقیقهٔ کش کلاینت */
-export function useMarketReport(subCategoryId?: number) {
-  return useQuery({
-    queryKey: ['market-report', subCategoryId ?? 'auto'],
-    queryFn: () => api.getMarketReport(subCategoryId),
-    staleTime: 5 * 60_000,
-    retry: false,
-  });
-}
-
-// ─── گزارشات ایمچ (۲۵-۱۱ راند ۲) ─────────────────────────────────
-
-/** گزارش تک‌کالا — روی خود آگهی؛ نقطهٔ تصمیم خریدار */
-export function useItemReport(productId: number) {
-  return useQuery({
-    queryKey: ['item-report', productId],
-    queryFn: () => api.getItemReport(productId),
-    staleTime: 5 * 60_000,
-    retry: false,
-  });
-}
-
-/** مشاور خرید دوره‌ای — سبد خرید دوره‌ای خریدار × قیمت بازار */
-export function useBuyAdvisor() {
-  return useQuery({
-    queryKey: ['buy-advisor'],
-    queryFn: () => api.getBuyAdvisor(),
-    staleTime: 5 * 60_000,
-    retry: false,
-  });
-}
-
-/** نقشهٔ فرصت فروش — تقاضا ÷ عرضه بر صنف */
-export function useOpportunityMap() {
-  return useQuery({
-    queryKey: ['opportunity-map'],
-    queryFn: () => api.getOpportunityMap(),
-    staleTime: 5 * 60_000,
-    retry: false,
-  });
-}
-
-/** شاخص قیمت ایمچ — عمومی؛ فقط درصد */
-export function usePriceIndex() {
-  return useQuery({
-    queryKey: ['price-index'],
-    queryFn: () => api.getPriceIndex(),
-    staleTime: 5 * 60_000,
-    retry: false,
-  });
-}
-
 /** وضعیت «ایمپورت از وب» (۱۸-۱۱) — فقط اعضای سابقِ از پیش ثبت‌شده؛
  * imported = ایمپورت را تمام کرده و «ثبت محصول جدید» باز است.
  * خطا/401 بی‌صدا eligible:false است. */
