@@ -98,7 +98,9 @@ export interface LogLine {
 
 export interface ImportJob {
   id: string;
-  kind: 'single' | 'list';
+  /** single = تک‌کاربره | list = لیستی از user-buskool | pending = گروهی از
+   *  جدول «در انتظار ایمپورت» با شماره‌های گرفته‌شده (۲۶-۱۱) */
+  kind: 'single' | 'list' | 'pending';
   status: JobStatus;
   userName?: string;
   totalUsers?: number;
@@ -225,6 +227,15 @@ export const importerApi = {
     maxProductsPerUser?: number;
   }) =>
     fetch(`${BASE}/list`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    }).then((r) => json<{ jobId: string }>(r)),
+
+  /** ایمپورت گروهی «در انتظارهایی که موبایل دارند» (۲۶-۱۱) — منبع جدول
+   *  انتظار، قدیمی‌ترین اول؛ همان جاب لیستی با پول و کنترل توقف/ادامه */
+  startPendingImport: (input: { adminPhone: string; maxProductsPerUser?: number }) =>
+    fetch(`${BASE}/pending-import`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),

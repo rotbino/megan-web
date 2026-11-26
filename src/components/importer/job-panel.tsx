@@ -100,7 +100,11 @@ export function JobPanel({
           {job.status === 'failed' && <XCircle size={16} className="text-red-600" />}
           {job.status === 'stopped' && <OctagonX size={16} className="text-amber-600" />}
           <span>
-            {job.kind === 'single' ? 'ایمپورت تک‌کاربره' : 'ایمپورت لیستی'}
+            {job.kind === 'single'
+              ? 'ایمپورت تک‌کاربره'
+              : job.kind === 'pending'
+                ? 'ایمپورت گروهی — در انتظارها'
+                : 'ایمپورت لیستی'}
             {job.userName ? ` — ${job.userName}` : ''}
           </span>
           {paused && (
@@ -172,8 +176,10 @@ export function JobPanel({
         </div>
       </div>
 
-      {/* پیشرفت لیستی */}
-      {job.kind === 'list' && typeof job.totalUsers === 'number' && job.totalUsers > 0 && (
+      {/* پیشرفت لیستی/گروهی */}
+      {(job.kind === 'list' || job.kind === 'pending') &&
+        typeof job.totalUsers === 'number' &&
+        job.totalUsers > 0 && (
         <div className="border-b px-4 py-3">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>

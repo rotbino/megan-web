@@ -98,6 +98,10 @@ const GAP_MS = 5_000;
 const MAX_BATCHES = 30;
 /** تعداد ردیف هر صفحهٔ لیست «در انتظار ایمپورت» — خواستهٔ مالک ۲۳-۱۱ */
 const PENDING_PAGE_SIZE = 50;
+/** تعداد شماره‌هایی که دکمهٔ «ایمپورت» (گرفتن گروهی — ۲۶-۱۱) می‌گیرد:
+ *  ۲۰ کاربرِ اولِ لیست که هنوز شماره ندارند — یکی‌یکی با وقفهٔ ۵ ثانیه‌ای
+ *  (سقف سهمیهٔ هر کوکی پاسکال هم ۲۰ شماره است) */
+const BULK_PHONE_TAKE = 20;
 
 /** برچسب روز برای فیلتر لیست «در انتظار ایمپورت» — N=0 امروز، ۱ دیروز، … */
 function dayLabelFa(days: number): string {
@@ -207,6 +211,16 @@ export function UpdateManager() {
 
   // ── جاب ایمپورت در جریان (کاربر لیست یا تک‌کاربر) ──
   const [job, setJob] = useState<ImportJob | null>(null);
+
+  // ── گرفتن گروهی موبایل (۲۶-۱۱ — خواستهٔ مالک): دکمهٔ «ایمپورت» ۲۰ کاربرِ
+  // اولِ لیستِ بدون‌شماره را یکی‌یکی با وقفهٔ ۵ ثانیه‌ای شماره می‌گیرد ──
+  const [bulkPhone, setBulkPhone] = useState<{ running: boolean; done: number; total: number; countdown: number }>({
+    running: false,
+    done: 0,
+    total: 0,
+    countdown: 0,
+  });
+  const bulkStopRef = useRef(false);
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** جاب در حال اجراست؟ — دکمه‌های ایمپورت دیگر ردیف‌ها قفل می‌شوند */
   const importBusy = job?.status === 'running';
@@ -217,6 +231,13 @@ export function UpdateManager() {
     const t = setTimeout(() => setCountdown((c) => c - 1), 1_000);
     return () => clearTimeout(t);
   }, [countdown]);
+
+  // شمارش معکوس وقفهٔ ۵ ثانیه‌ای گرفتن گروهی موبایل (۲۶-۱۱)
+  useEffect(() => {
+    if (bulkPhone.countdown <= 0) return;
+    const t = setTimeout(() => setBulkPhone((b) => ({ ...b, countdown: b.countdown - 1 })), 1_000);
+    return () => clearTimeout(t);
+  }, [bulkPhone.countdown]);
 
   useEffect(
     () => () => {
@@ -404,6 +425,109 @@ export function UpdateManager() {
     );
   }, []);
 
+  // ── دکمهٔ «ایمپورت گروهی» (۲۶-۱۱ — خواستهٔ مالک): همهٔ «در انتظار»هایی
+  // که موبایل دارند را در یک جاب پشت‌سرهم ایمپورت کامل می‌کند (دادهٔ کاربر،
+  // آگهی‌ها، تصاویر، کامنت‌ها) — قدیمی‌ترین اول؛ پیشرفت در پنل جاب ──
+  const startGroupImport = useCallback(async () => {
+    try {
+      const { jobId } = await importerApi.startPendingImport({ adminPhone: ADMIN_PHONE });
+      pollJob(jobId);
+      toast({
+        title: 'ایمپورت گروهی شروع شد',
+        description: 'کاربران «در انتظار» که موبایل دارند، قدیمی‌ترین اول، پشت‌سرهم کامل ایمپورت می‌شوند — پیشرفت در پنل زیر',
+      });
+    } catch (err) {
+      toast({
+        title: 'شروع ایمپورت گروهی ناموفق بود',
+        description: err instanceof Error ? err.message : 'خطای نامشخص',
+        variant: 'destructive',
+      });
+    }
+  }, [pollJob, toast]);
+
+  // ── دکمهٔ «ایمپورت» (۲۶-۱۱ — خواستهٔ مالک): گرفتن شمارهٔ موبایل ۲۰ کاربرِ
+  // اولِ لیست که هنوز شماره ندارند — یکی‌یکی با وقفهٔ ۵ ثانیه‌ای بین هر دو
+  // گرفتن (هر کوکی پاسکال ۲۰ شماره؛ سهمیه با هر پاسخ تازه می‌شود) ──
+  const runBulkPhones = useCallback(async () => {
+    const targets = pendingUsers.filter((u) => !u.phone).slice(0, BULK_PHONE_TAKE);
+    if (!targets.length) {
+      toast({
+        title: 'کاربرِ بدون‌شماره‌ای در این لیست نیست',
+        description: 'فیلتر روز را عوض کنید یا «همه» را ببینید',
+      });
+      return;
+    }
+    bulkStopRef.current = false;
+    setBulkPhone({ running: true, done: 0, total: targets.length, countdown: 0 });
+    let ok = 0;
+    let fail = 0;
+    let consecFails = 0;
+    for (let i = 0; i < targets.length; i++) {
+      if (bulkStopRef.current) break;
+      const u = targets[i];
+      setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'phone' } }));
+      try {
+        const res = await updateApi.fetchPhone({
+          adminPhone: ADMIN_PHONE,
+          sId: u.bUserId,
+          pId: u.sampleProductId,
+          bUserName: u.bUserName,
+        });
+        setBudget(res.budget);
+        patchPendingPhone(u.bUserId, res.phone, new Date().toISOString());
+        ok++;
+        consecFails = 0;
+        setBulkPhone((b) => ({ ...b, done: b.done + 1 }));
+      } catch (err) {
+        fail++;
+        consecFails++;
+        setBulkPhone((b) => ({ ...b, done: b.done + 1 }));
+        const msg = err instanceof Error ? err.message : 'خطای نامشخص';
+        toast({
+          title: `گرفتن شمارهٔ @${u.bUserName} ناموفق بود`,
+          description: msg,
+          variant: 'destructive',
+        });
+        // دو خطای پیاپی = احتمالاً کوکی/سهمیه تمام شده — ادامه بی‌فایده است
+        if (consecFails >= 2) {
+          toast({
+            title: 'گرفتن گروهی متوقف شد',
+            description: 'دو خطای پیاپی — احتمالاً کوکی منقضی یا سهمیهٔ ۲۰تایی تمام شده؛ کوکی را تازه کنید و دوباره بزنید',
+            variant: 'destructive',
+          });
+          break;
+        }
+      } finally {
+        setUserStates((s) => ({ ...s, [u.bUserId]: { kind: 'idle' } }));
+      }
+      // وقفهٔ ۵ ثانیه‌ای بین هر دو گرفتن — به‌جز بعد از آخری
+      if (i < targets.length - 1 && !bulkStopRef.current) {
+        setBulkPhone((b) => ({ ...b, countdown: Math.ceil(GAP_MS / 1_000) }));
+        const until = Date.now() + GAP_MS;
+        while (Date.now() < until && !bulkStopRef.current) {
+          await new Promise((r) => setTimeout(r, 250));
+        }
+        setBulkPhone((b) => ({ ...b, countdown: 0 }));
+      }
+    }
+    setBulkPhone((b) => ({ ...b, running: false, countdown: 0 }));
+    void loadPending({ silent: true });
+    if (ok > 0) {
+      toast({
+        title: 'گرفتن گروهی موبایل تمام شد',
+        description: `${toFa(ok)} شماره گرفته و روی رکوردها ذخیره شد${fail ? ` — ${toFa(fail)} خطا` : ''}؛ حالا «ایمپورت گروهی» را بزنید تا کامل ایمپورت شوند`,
+      });
+    }
+  }, [loadPending, patchPendingPhone, pendingUsers, toast]);
+
+  const stopBulkPhones = () => {
+    bulkStopRef.current = true;
+    setBulkPhone((b) => ({ ...b, countdown: 0 }));
+  };
+
+  /** کاربرانِ بدون شماره در صفحهٔ جاری — دکمهٔ «ایمپورت» وقتی صفر است خاموش می‌ماند */
+  const phonelessCount = useMemo(() => pendingUsers.filter((u) => !u.phone).length, [pendingUsers]);
+
   // ── دکمهٔ «گرفتن موبایل»: فقط شماره می‌گیرد و روی رکورد ذخیره می‌کند ──
   const takePhone = useCallback(
     async (u: PendingImportUser) => {
@@ -508,6 +632,19 @@ export function UpdateManager() {
   // وقتی جاب تمام شد، وضعیت کاربر مربوط را به‌روز کن و از لیست خارجش کن
   useEffect(() => {
     if (!job || job.status === 'running') return;
+    // جاب گروهی «در انتظارها» (۲۶-۱۱): ردیفِ خاصی در حالت importing نیست —
+    // پایانش فقط لیست را تازه می‌کند (رکوردهای ایمپورت‌شده خودشان خارج می‌شوند)
+    if (job.kind === 'pending') {
+      if (job.status === 'done') {
+        toast({
+          title: 'ایمپورت گروهی تمام شد',
+          description: `${toFa(job.usersDone ?? 0)} کاربر موفق / ${toFa(job.usersFailed ?? 0)} خطا`,
+        });
+        void loadPending({ silent: true });
+      }
+      // خطا/توقف: پیام روی پنل جاب دیده می‌شود
+      return;
+    }
     const entry = Object.entries(userStates).find(([, v]) => v.kind === 'importing');
     if (!entry) return;
     const [uid] = entry;
@@ -691,7 +828,8 @@ export function UpdateManager() {
         <section className="rounded-lg border bg-card p-4">
           <h3 className="mb-3 flex items-center gap-2 text-sm font-extrabold">
             <Database size={15} className="text-primary" />
-            ایمپورت در جریان — @{job.userName}
+            ایمپورت در جریان
+            {job.userName ? ` — @${job.userName}` : job.kind === 'pending' ? ' — گروهی (در انتظارها)' : ''}
           </h3>
           <JobPanel
             job={job}
@@ -713,10 +851,44 @@ export function UpdateManager() {
               {toFa(pendingTotal)}
             </span>
           </h3>
-          <div className="flex items-center gap-3">
-            <p className="text-[11px] text-muted-foreground">
-              تازه‌ثبت‌نام‌های پاسکال — بی‌درنگ و «بدون موبایل» در دیتابیس ثبت شده‌اند؛ لیست ماندگار است
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="hidden xl:block text-[11px] text-muted-foreground">
+              تازه‌ثبت‌نام‌های پاسکال — «بدون موبایل» ثبت و ماندگارند؛ «ایمپورت» شماره می‌گیرد، «ایمپورت گروهی» کامل ایمپورت می‌کند
             </p>
+            {/* دکمهٔ «ایمپورت» (۲۶-۱۱): گرفتن گروهی شماره — ۲۰ کاربرِ اولِ
+                لیستِ بدون‌شماره، یکی‌یکی با وقفهٔ ۵ ثانیه‌ای */}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1.5 rounded-md px-2 text-[11px]"
+              onClick={() => void runBulkPhones()}
+              disabled={bulkPhone.running || pendingLoading || phonelessCount === 0}
+              title={`گرفتن شمارهٔ موبایل ${toFa(Math.min(BULK_PHONE_TAKE, phonelessCount))} کاربرِ اولِ این لیست که هنوز شماره ندارند — یکی‌یکی با وقفهٔ ۵ ثانیه‌ای (هر کوکی پاسکال ۲۰ شماره)${pendingDay != null ? '؛ فیلتر روز فعالی است' : ''}`}
+            >
+              {bulkPhone.running ? (
+                <>
+                  <Loader2 size={12} className="animate-spin" />
+                  {toFa(bulkPhone.done)}/{toFa(bulkPhone.total)}
+                </>
+              ) : (
+                <>
+                  <Phone size={12} />
+                  ایمپورت{phonelessCount > 0 ? ` (${toFa(Math.min(BULK_PHONE_TAKE, phonelessCount))})` : ''}
+                </>
+              )}
+            </Button>
+            {/* دکمهٔ «ایمپورت گروهی» (۲۶-۱۱): همهٔ در انتظارهایی که موبایل
+                دارند در یک جاب پشت‌سرهم کامل ایمپورت می‌شوند */}
+            <Button
+              size="sm"
+              className="h-7 gap-1.5 rounded-md px-2 text-[11px]"
+              onClick={() => void startGroupImport()}
+              disabled={importBusy || bulkPhone.running || pendingLoading}
+              title="ایمپورت کامل همهٔ «در انتظار»هایی که موبایل دارند — دادهٔ کاربر، آگهی‌ها، تصاویر و کامنت‌ها؛ قدیمی‌ترین اول؛ پیشرفت در پنل جاب"
+            >
+              <UserPlus size={12} />
+              ایمپورت گروهی
+            </Button>
             <Button
               size="sm"
               variant="outline"
@@ -739,6 +911,29 @@ export function UpdateManager() {
             </Button>
           </div>
         </header>
+
+        {/* ── نوار پیشرفت گرفتن گروهی موبایل (۲۶-۱۱) ── */}
+        {bulkPhone.running && (
+          <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-2.5 text-xs">
+            <Loader2 size={14} className="animate-spin text-primary" />
+            <span className="font-bold">گرفتن گروهی موبایل</span>
+            <span className="tabular-nums text-muted-foreground">
+              {toFa(bulkPhone.done)} از {toFa(bulkPhone.total)}
+            </span>
+            {bulkPhone.countdown > 0 && (
+              <span className="tabular-nums text-muted-foreground">— بعدی در {toFa(bulkPhone.countdown)} ثانیه</span>
+            )}
+            <Button
+              size="sm"
+              variant="destructive"
+              className="mr-auto h-7 gap-1 rounded-md px-2 text-[11px]"
+              onClick={stopBulkPhones}
+            >
+              <Square size={12} />
+              توقف
+            </Button>
+          </div>
+        )}
 
         {/* ── فیلتر روزِ ثبت‌نام (خواستهٔ مالک ۲۳-۱۱): امروز / دیروز / ۲ و ۳ روز
             پیش / سایر (عدد دلخواه) / همه ── */}
@@ -959,13 +1154,16 @@ export function UpdateManager() {
           </p>
         )}
         <p className="mt-3 text-[10px] leading-5 text-muted-foreground">
-          «گرفتن موبایل» فقط شماره را می‌گیرد و روی رکورد کاربر ذخیره می‌کند (هر کوکی پاسکال ۲۰ شماره).
-          «ایمپورت» اول رکورد را نگاه می‌کند: موبایل داشته باشد مستقیم ایمپورت کامل (پروفایل، آگهی‌ها،
-          تصاویر، کامنت‌ها) شروع می‌شود؛ نداشته باشد اول موبایل گرفته و ذخیره می‌شود و بلافاصله ایمپورت
-          کامل انجام می‌شود. کاربر ایمپورت‌شده از این لیست خارج می‌شود. اگر گرفتن خودکار شماره به هر
-          دلیلی نشد (کوکی/سهمیه/قفل و…)، مودال «ورود دستی شماره» باز می‌شود — شماره را از پروفایل
-          باسکول خودتان بگیرید و وارد کنید؛ اول در دیتابیس ذخیره می‌شود و بعد بلافاصله ایمپورت شروع
-          می‌شود (بدون مصرف سهمیهٔ کوکی). رفع مشکل کوکی هم داخل همان مودال دکمهٔ جداگانه دارد.
+          «ایمپورت» (گروهی): ۲۰ کاربرِ اولِ همین لیست که هنوز شماره ندارند، یکی‌یکی با وقفهٔ ۵ ثانیه‌ای شماره‌شان
+          گرفته و روی رکوردشان ذخیره می‌شود — هر کوکی پاسکال ۲۰ شماره؛ سهمیهٔ باقی‌مانده بالای صفحه است. «ایمپورت
+          گروهی»: همهٔ «در انتظار»هایی که موبایل دارند در یک جاب پشت‌سرهم کامل ایمپورت می‌شوند (دادهٔ کاربر، آگهی‌ها،
+          تصاویر، کامنت‌ها) — قدیمی‌ترین اول؛ با توقف/ادامه کنترل می‌شود و کاربر ایمپورت‌شده از این لیست خارج می‌شود.
+          «گرفتن موبایل» هر ردیف فقط شمارهٔ همان کاربر را می‌گیرد و ذخیره می‌کند. «ایمپورت» هر ردیف اول رکورد را
+          نگاه می‌کند: موبایل داشته باشد مستقیم ایمپورت کامل شروع می‌شود؛ نداشته باشد اول موبایل گرفته و ذخیره
+          می‌شود و بلافاصله ایمپورت کامل انجام می‌شود. اگر گرفتن خودکار شماره به هر دلیل نشد (کوکی/سهمیه/قفل و…)،
+          مودال «ورود دستی شماره» باز می‌شود — شماره را از پروفایل باسکول خودتان بگیرید و وارد کنید؛ اول در
+          دیتابیس ذخیره می‌شود و بعد بلافاصله ایمپورت شروع می‌شود (بدون مصرف سهمیهٔ کوکی). رفع مشکل کوکی هم داخل
+          همان مودال دکمهٔ جداگانه دارد.
         </p>
       </section>
 
