@@ -25,6 +25,8 @@ interface RawTaxonomyNode {
   key: string;
   name: string;
   icon?: string;
+  /** مثال «نوع کالا» — فقط برگ‌ها (۲۷-۱۱)؛ میراث example پاسکال + مثال‌های B2B */
+  example?: string;
   count: number;
   children?: RawTaxonomyNode[];
 }
@@ -54,6 +56,7 @@ const toCategoryV2 = (c: RawTaxonomyNode): Category => ({
   key: c.key,
   count: c.count,
   icon: c.icon,
+  example: c.example,
   unit: '',
   min: 0,
   parentId: null,
