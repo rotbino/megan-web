@@ -1,9 +1,15 @@
 /**
- * کلاینت کاتالوگ عمومی v2 — صفحهٔ /product-filter (مهاجرت موازی).
+ * کلاینت کاتالوگ عمومی v2 — صفحهٔ فیلتر پیشرفتهٔ ایمچ /product-filter.
  *
  * اندپوینت‌ها عمومی‌اند (بدون توکن): POST /catalog/v2/getTree و getList.
  * شمارهٔ تلفن فروشنده از سمت بک‌اند هرگز ارسال نمی‌شود؛ قیمت‌ها مثل
  * بقیهٔ سایت پشت ورود است (کارت «مشاهده قیمت»).
+ *
+ * (۲۸-۱۱ بازطراحی «تامینان») getList حالا همراهِ خودش می‌آورد:
+ *  • facets — شمارش کنار هر گزینهٔ فیلتر (استان/شهر/اتریبیوت) + بازهٔ واقعی
+ *    قیمت/حداقل‌سفارش گره؛
+ *  • unit — واحد پرتکرار گره (برچسب فیلتر حجم خرید)؛
+ *  • node — نام/مسیر گرهٔ انتخابی برای breadcrumb.
  */
 
 import { apiFetch } from '@/lib/api/client';
@@ -61,7 +67,22 @@ export interface CatalogV2Row {
   resolved_attrs?: Record<string, string>;
 }
 
-export type CatalogV2Sort = 'newest' | 'price-asc' | 'price-desc';
+export type CatalogV2Sort =
+  | 'newest'
+  | 'price-asc'
+  | 'price-desc'
+  | 'moq-asc'
+  | 'stock-desc';
+
+/** شمارش زندهٔ گزینه‌ها — «چند آگهی با این گزینه می‌ماند» */
+export interface CatalogV2Facets {
+  provinces: { id: number; name: string; count: number }[];
+  cities: { id: number; name: string; count: number }[];
+  /** attrKey → برچسب گزینه → شمار آگهی */
+  attrs: Record<string, Record<string, number>>;
+  price: { min: number | null; max: number | null };
+  moq: { min: number | null; max: number | null };
+}
 
 export interface CatalogV2Filters {
   nodeKey?: string;
@@ -69,6 +90,10 @@ export interface CatalogV2Filters {
   cityId?: number;
   search?: string;
   attrs?: Record<string, string[]>;
+  priceMin?: number;
+  priceMax?: number;
+  moqMin?: number;
+  moqMax?: number;
   sort?: CatalogV2Sort;
   page?: number;
   perPage?: number;
@@ -79,7 +104,10 @@ export interface CatalogV2List {
   page: number;
   perPage: number;
   pageCount: number;
+  node: { key: string; name: string; path: string[] } | null;
   attrs: CatalogV2Attr[];
+  unit: { top: string; list: { unit: string; count: number }[] } | null;
+  facets: CatalogV2Facets;
   items: CatalogV2Row[];
 }
 
@@ -90,7 +118,7 @@ export async function fetchCatalogV2Tree(): Promise<CatalogV2Tree> {
   return apiFetch<CatalogV2Tree>('/catalog/v2/getTree', {}, { auth: false });
 }
 
-/** آگهی‌های confirmed روی دستهٔ جدید — گره/شهر/جستجو/اتریبیوت/سورت */
+/** آگهی‌های confirmed روی دستهٔ جدید — گره/شهر/جستجو/اتریبیوت/بازه‌ها/سورت + فاست‌ها */
 export async function fetchCatalogV2List(filters: CatalogV2Filters = {}): Promise<CatalogV2List> {
   return apiFetch<CatalogV2List>(
     '/catalog/v2/getList',
@@ -117,4 +145,23 @@ export function catalogNodePathLabel(tree: CatalogV2TreeNode[] | undefined, key:
     return null;
   };
   return walk(tree ?? [], [])?.join(' ‹ ') ?? key;
+}
+
+/** گرهٔ درخت با کلید v2 — برای مشتق‌کردن بخش‌های سطح‌دار فیلتر */
+export function catalogFindNode(
+  tree: CatalogV2TreeNode[] | undefined,
+  key: string,
+): CatalogV2TreeNode | null {
+  if (!tree || key === 'all') return null;
+  const walk = (nodes: CatalogV2TreeNode[]): CatalogV2TreeNode | null => {
+    for (const n of nodes) {
+      if (n.key === key) return n;
+      if (key.startsWith(`${n.key}.`) && n.children) {
+        const deep = walk(n.children);
+        if (deep) return deep;
+      }
+    }
+    return null;
+  };
+  return walk(tree);
 }
