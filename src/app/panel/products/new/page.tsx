@@ -38,6 +38,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ProductAttrsCard, useLeafAttrs } from '@/components/panel/product-form/product-attrs';
 import { ProductStepper } from '@/components/panel/product-form/stepper';
 import { CategoryCascade } from '@/components/panel/product-form/category-cascade';
 import { WebImportModal } from '@/components/panel/web-import-modal';
@@ -53,8 +54,9 @@ import type { Category, ProductFeature } from '@/lib/types';
 
 const num = (v: string) => Number(v.replace(/[^\d]/g, '')) || 0;
 
-/** بخش ویژگی‌ها (مرحلهٔ آخر) موقتاً خاموش است (خواسته مالک ۳-۱۱) — کاربر اگر
- *  بخواهد ویژگی‌ها را در توضیحات می‌نویسد؛ بعداً تجربهٔ بهتری پیاده می‌شود. */
+/** بخش ویژگی‌های ساخت‌یافتهٔ دسته (دور ۴): مرحلهٔ ۶ «ویژگی‌های کالا» از
+ *  اتریبیوت‌های تاکسونومی v2 همان دسته می‌آید (مثل برنج: کشور/نوع/برند)؛
+ *  ویژگی‌های آزاد قدیمی (PRODUCT_FEATURE_KEYS) کنار گذاشته شد. */
 const FEATURES_STEP_ENABLED = false;
 
 interface Draft {
@@ -207,8 +209,10 @@ export default function RegisterProductPage() {
     // برند اختیاری به آخر عنوان می‌چسبد (خواسته مالک ۲-۱۱ دور ۱۸):
     // «تنقلات چیپس چییتوز» — و به‌صورت ویژگی «برند» ذخیره می‌شود تا ویرایش
     // و جستجوی برند (contains روی نام) هر دو درست کار کنند؛
-    // واژهٔ «برند» ورودی همین‌جا هم پاک می‌شود (خواسته مالک ۳-۱۱)
-    const brand = stripBrandWord(draft.brand);
+    // واژهٔ «برند» ورودی همین‌جا هم پاک می‌شود (خواسته مالک ۳-۱۱)؛
+    // دسته‌های برند-اتریبیوتی (مثل برنج — دور ۴): برند را چیپ‌های «ویژگی‌های
+    // کالا» مدیریت می‌کنند (key=brand)؛ نام و feature «برند» آزاد نمی‌چسبد
+    const brand = hasBrandAttr ? '' : stripBrandWord(draft.brand);
     const fullName = [draft.leaf!.categoryName, draft.productType.trim(), brand].filter(Boolean).join(' ');
     try {
       const result = await submit.mutateAsync({
@@ -388,6 +392,10 @@ export default function RegisterProductPage() {
   }
 
   const leaf = draft.leaf;
+  /** ویژگی‌های تعریف‌شدهٔ دستهٔ فعلی (دور ۴) — ورودی برند آزاد فقط وقتی
+   *  می‌ماند که دسته برند-اتریبیوتی نداشته باشد (مثل برنج) */
+  const leafAttrs = useLeafAttrs(draft?.leaf?.key ?? draft?.leaf?.slug);
+  const hasBrandAttr = leafAttrs.some((a) => a.key === 'brand');
   // خطای ولیدیشن مرحله — derived: به محض اصلاح ورودی همان لحظه پاک می‌شود
   // (خواسته مالک ۳-۱۱)؛ error فقط پیام‌های لحظه‌ای (مثل رد تصویر) است
   const shownStepError = attempted ? stepError(step) : null;
@@ -456,21 +464,30 @@ export default function RegisterProductPage() {
           </div>
 
           {/* برند اختیاری (خواسته مالک ۲-۱۱ دور ۱۸) — به آخر عنوان اضافه می‌شود؛
-              پلیس‌هولدر نمونه حذف شد (خواسته مالک ۳-۱۱: «اپل» به پفک ربطی ندارد) */}
-          <div className="space-y-2">
-            <Label htmlFor="product-brand">اگر محصول شما برند دارد وارد کنید</Label>
-            <Input
-              id="product-brand"
-              value={draft.brand}
-              onChange={(e) => patch({ brand: e.target.value })}
-              onBlur={() => {
-                // «برند چیتوز» → «چیتوز» (خواسته مالک ۳-۱۱)
-                const cleaned = stripBrandWord(draft.brand);
-                if (cleaned !== draft.brand) patch({ brand: cleaned });
-              }}
-              maxLength={40}
-            />
-          </div>
+              پلیس‌هولدر نمونه حذف شد (خواسته مالک ۳-۱۱: «اپل» به پفک ربطی ندارد)؛
+              دسته‌های برند-اتریبیوتی (مثل برنج — دور ۴): برند در مرحلهٔ آخر از
+              گزینه‌های «ویژگی‌های کالا» انتخاب می‌شود */}
+          {!hasBrandAttr ? (
+            <div className="space-y-2">
+              <Label htmlFor="product-brand">اگر محصول شما برند دارد وارد کنید</Label>
+              <Input
+                id="product-brand"
+                value={draft.brand}
+                onChange={(e) => patch({ brand: e.target.value })}
+                onBlur={() => {
+                  // «برند چیتوز» → «چیتوز» (خواسته مالک ۳-۱۱)
+                  const cleaned = stripBrandWord(draft.brand);
+                  if (cleaned !== draft.brand) patch({ brand: cleaned });
+                }}
+                maxLength={40}
+              />
+            </div>
+          ) : (
+            <p className="rounded-lg bg-secondary/60 px-3 py-2 text-[11px] leading-5 text-muted-foreground">
+              برند این دسته در مرحلهٔ آخر از گزینه‌های <b className="font-bold text-foreground/70">«ویژگی‌های کالا»</b>
+              انتخاب می‌شود — بدون برند / برندهای ایرانی / خارجی.
+            </p>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -765,6 +782,17 @@ export default function RegisterProductPage() {
                 </Button>
               )}
             </>
+          )}
+
+          {/* ── ویژگی‌های کالا (دور ۴) — چیپ‌های تک‌انتخابی اتریبیوت‌های همین
+              دسته (تاکسونومی v2)؛ آخرین بخش فرم؛ گزینه‌های وابسته (کشور ←
+              نوع/برند) هم‌خانواده می‌آیند؛ همین داده‌ها فیلتر پیشرفته می‌شوند ── */}
+          {draft.leaf && (
+            <ProductAttrsCard
+              leafKey={draft.leaf.key ?? draft.leaf.slug}
+              features={draft.features}
+              onChange={(features) => patch({ features })}
+            />
           )}
         </PanelCard>
       )}

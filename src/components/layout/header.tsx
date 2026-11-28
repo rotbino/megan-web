@@ -19,6 +19,7 @@ import { useAuth } from '@/lib/mock/auth';
 import { useCategoryTree, useSuggestions, useUnreadMessagesCount, useChatSocketEvents } from '@/lib/mock/hooks';
 import { CarryFilters } from '@/components/shared/carry-filters';
 import { searchPath } from '@/lib/popular-searches';
+import { FILTER_SEARCH_SYNC, dispatchFilterSearchSubmit } from '@/lib/filter-search';
 import { UnreadBadge } from '@/components/shared/unread-badge';
 import { cn } from '@/lib/utils';
 import type { Category } from '@/lib/types';
@@ -48,8 +49,27 @@ import type { Category } from '@/lib/types';
  *         فیلتر استان/شهر در موبایل «سرتاسری کنار جستجو» نیست (خواستهٔ مالک
  *         ۸-۱۱ دور ۲۳) — عین دسکتاپ، بعد از جستجو در نوار فیلتر صفحهٔ
  *         لیست/جستجو انتخاب می‌شود (product-listing)؛ جعبهٔ جستجو فقط جستجوست.
+ *
+ * دو پراپ جدید (خواستهٔ مالک ۲۸-۱۱ دور ۴ — صفحهٔ فیلتر پیشرفته):
+ *  • filterSearch — جعبهٔ جستجو همین‌جا در صفحه فیلتر می‌زند (رویداد محلی
+ *    به /product-filter) نه مهاجرت به /product-list/search؛ عبارت فعال هم
+ *    با چیپ جستجو آینه می‌شود (پاک‌شدن چیپ = خالی شدن جعبه). صفحات دیگر
+ *    بدون پراپ = رفتار پیش‌فرض (جستجوی سراسری).
+ *  • hideNavRow — نوار ردیف ۲ (دسته بندی + فروشنده شوید) در این صفحه حذف
+ *    می‌شود؛ جای آن را زیر-هدر چسبانِ خودِ صفحه (نوار فیلتر + فیلترهای
+ *    منتخب) می‌گیرد که با اسکرول هرگز غیب نمی‌شود.
  */
-export function Header({ backButton = false }: { backButton?: boolean }) {
+export function Header({
+  backButton = false,
+  filterSearch = false,
+  hideNavRow = false,
+}: {
+  backButton?: boolean;
+  /** جعبهٔ جستجو به صفحهٔ فیلتر همین‌جا وصل می‌شود (/product-filter) */
+  filterSearch?: boolean;
+  /** نوار «دسته بندی | فروشنده شوید» رندر نشود (جایش را زیر-هدر صفحه می‌گیرد) */
+  hideNavRow?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useAuth();
@@ -228,11 +248,30 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
     // فیلتر جستجو (چیپ ✕ یا «حذف همه») اتفاق می‌افتد؛ بعد از ناوبری، هم‌نماکنندهٔ
     // مسیر عبارت را با نسخهٔ پاک‌سازی‌شدهٔ URL (stripSearchNoise) هم‌طرز می‌کند.
     if (term) setQ(term); // کلیک روی پیشنهاد — همان لحظه در جعبه بنشیند
-    // جستجو به مسیر سئو-پسند می‌رود — کلمات اضافه (عمده/خرید/شهر…) همان‌جا
-    // حذف می‌شوند تا کاربر مستقیم به صفحه یکتای همان کالا برسد و نتیجه پُر باشد:
-    // «خرید سیب زمینی عمده در تهران» → /product-list/search/سیب زمینی
+
+    // صفحهٔ فیلتر پیشرفته (خواستهٔ مالک ۲۸-۱۱ دور ۴): جستجو محلی است — عبارت
+    // با رویداد به همان صفحه می‌رسد، بدون ناوبری؛ عبارت/URL خودِ صفحه مدیریتش
+    // می‌کند. صفحات دیگر = رفتار پیش‌فرض: مهاجرت به مسیر سئو-پسند جستجو —
+    // کلمات اضافه همان‌جا حذف می‌شوند ("خرید سیب زمینی عمده در تهران" ←
+    // /product-list/search/سیب زمینی)
+    if (filterSearch) {
+      dispatchFilterSearchSubmit(value);
+      return;
+    }
     router.push(searchPath(value));
   };
+
+  // آینهٔ عبارت فعال صفحهٔ فیلتر → جعبهٔ جستجو (فقط حالت filterSearch): چیپ
+  // جستجو پاک شد / ورود عمیق ?q= / هم‌نمایی اولیه — جعبه همان لحظه هم‌طرز می‌شود.
+  useEffect(() => {
+    if (!filterSearch) return;
+    const onSync = (e: Event) => {
+      const term = (e as CustomEvent<string>).detail ?? '';
+      setQ((cur) => (cur !== term ? term : cur));
+    };
+    window.addEventListener(FILTER_SEARCH_SYNC, onSync);
+    return () => window.removeEventListener(FILTER_SEARCH_SYNC, onSync);
+  }, [filterSearch]);
 
   const closeMega = () => {
     setMegaOpen(false);
@@ -424,8 +463,12 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
       </div>
 
       {/* ─── ردیف ۲ — نوار زیر هدر (دسکتاپ): دسته بندی | فروشنده شوید ──
-          با اسکرول به داخل صفحه جمع می‌شود (grid-rows 1fr→0fr + محو تدریجی)
-          تا فضای بیشتری برای محتوا باز شود؛ با اسکرول به بالا برمی‌گردد. */}
+          در صفحهٔ فیلتر پیشرفته حذف می‌شود (پراپ hideNavRow — خواستهٔ مالک
+          ۲۸-۱۱ دور ۴): جای آن را زیر-هدر چسبان خودِ صفحه می‌گیرد و با اسکرول
+          غیب نمی‌شود. با اسکرول به داخل صفحه جمع می‌شود (grid-rows 1fr→0fr +
+          محو تدریجی) تا فضای بیشتری برای محتوا باز شود؛ با اسکرول به بالا
+          برمی‌گردد. */}
+      {!hideNavRow && (
       <div
         className={cn(
           'hidden nav-desktop:grid nav-desktop:transition-[grid-template-rows,opacity] nav-desktop:duration-300 nav-desktop:ease-in-out',
@@ -502,6 +545,7 @@ export function Header({ backButton = false }: { backButton?: boolean }) {
           </div>
         </div>
       </div>
+      )}
       </CarryFilters>
     </header>
   );

@@ -27,7 +27,12 @@ export const metadata: Metadata = {
 export default function ProductFilterPage() {
   return (
     <>
-      <Header />
+      {/* هدر مخصوص صفحهٔ فیلتر (خواستهٔ مالک ۲۸-۱۱ دور ۴):
+          • filterSearch — سرچ‌باکس هدر همین‌جا فیلتر می‌زند (نه /product-list/search)؛
+          • hideNavRow — نوار «دسته بندی | فروشنده شوید» حذف؛ جای آن را زیر-هدرِ
+            چسبانِ خودِ صفحه (نوار فیلتر + فیلترهای منتخب) می‌گیرد که موقع اسکرول
+            غیب نمی‌شود (دسکتاپ و موبایل). */}
+      <Header filterSearch hideNavRow />
       <main className="flex-1">
         {/* useSearchParams زیر Suspense — رندر سرور پایدار می‌ماند */}
         <Suspense

@@ -41,6 +41,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CategoryCascade } from '@/components/panel/product-form/category-cascade';
 import { PriceValidityPicker } from '@/components/panel/product-form/price-validity-picker';
+import { ProductAttrsCard, useLeafAttrs } from '@/components/panel/product-form/product-attrs';
 import { PanelCard } from '@/components/panel/panel-parts';
 import { UnitInput } from '@/components/shared/unit-input';
 import { optimizeProductImage } from '@/lib/image-optimize';
@@ -128,6 +129,12 @@ export default function EditProductPage() {
   const provinceIdNum = draft ? num(draft.provinceId) : 0;
   const { data: cities } = useCities(provinceIdNum || undefined);
 
+  /** ویژگی‌های تعریف‌شدهٔ دستهٔ فعلی (دور ۴) — برای فرم: کادر دسته‌بندی تمام‌عرض
+   *  + بخش «ویژگی‌های کالا» زیر فرم + مخفی‌کردن ورودی برند آزاد وقتی برند
+   *  جزو اتریبیوت‌های دسته است (مثل برنج: «بدون برند»/برندهای ایرانی/خارجی) */
+  const leafAttrs = useLeafAttrs(draft?.leaf?.key ?? draft?.leaf?.slug);
+  const hasBrandAttr = leafAttrs.some((a) => a.key === 'brand');
+
   // ─── پیش‌پر کردن فرم از دیتای واقعی آگهی (الگوی controlled-late) ───
   if (detail && tree && !draft) {
     const p = detail.product;
@@ -158,7 +165,10 @@ export default function EditProductPage() {
         30,
       ),
       description: p.description ?? '',
-      features: (p.features ?? []).filter((f) => f.key !== 'برند').map((f) => ({ ...f })),
+      // «برند» هم داخل features می‌ماند (دور ۴): اگر دسته برند-اتریبیوتی دارد
+      // (مثل برنج) بخش «ویژگی‌های کالا» همان را مصرف/مدیریت می‌کند؛ وگرنه
+      // ورودی آزاد برند + انتهای عنوان — منطق ذخیره به hasBrandAttr تصمیم می‌گیرد
+      features: (p.features ?? []).map((f) => ({ ...f })),
     });
     setExistingPhotos(detail.photoFiles.map((f) => ({ id: f.id, url: f.thumbUrl ?? f.url })));
   }
@@ -205,8 +215,11 @@ export default function EditProductPage() {
       return;
     }
     // برند به آخر عنوان می‌چسبد + به‌صورت ویژگی «برند» ذخیره می‌شود؛
-    // واژهٔ «برند» ورودی همین‌جا هم پاک می‌شود (خواسته مالک ۳-۱۱)
-    const brand = stripBrandWord(draft.brand);
+    // واژهٔ «برند» ورودی همین‌جا هم پاک می‌شود (خواسته مالک ۳-۱۱) —
+    // مگر آن‌که دسته برند را جزو اتریبیوت‌هایش تعریف کرده باشد (برنج — دور ۴):
+    // برند را چیپ‌های «ویژگی‌های کالا» می‌گیرند (بدون برند/برندهای کشور) و
+    // نه ورودی آزاد؛ features همان بخش مدیریتش می‌کند
+    const brand = hasBrandAttr ? '' : stripBrandWord(draft.brand);
     const fullName = [draft.leaf.categoryName, draft.productType.trim(), brand].filter(Boolean).join(' ');
     try {
       const result = await submit.mutateAsync({
@@ -222,8 +235,10 @@ export default function EditProductPage() {
         priceValidityDays: draft.priceValidityDays ?? undefined,
         description: draft.description,
         features: [
-          ...draft.features.filter((f) => f.key && f.value.trim()),
-          ...(brand ? [{ key: 'برند', value: brand }] : []),
+          ...draft.features.filter(
+            (f) => f.key && f.value.trim() && (hasBrandAttr ? true : f.key !== 'برند'),
+          ),
+          ...(!hasBrandAttr && brand ? [{ key: 'برند', value: brand }] : []),
         ],
         newPhotos: newPhotos.map((p) => p.file),
         removedPhotoIds,
@@ -413,76 +428,78 @@ export default function EditProductPage() {
         </div>
       </div>
 
-      {/* فرم باز — دسکتاپ دو ستونه، موبایل تک‌ستونه (خواسته مالک ۴-۱۱) */}
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        {/* ستون راست: دسته‌بندی + اطلاعات محصول */}
-        <div className="space-y-4">
-          <PanelCard className="space-y-3">
-            <h2 className="flex items-center gap-2 text-sm font-extrabold">
-              <span className="grid size-7 place-items-center rounded-md bg-primary/10 text-primary">
-                <Tag size={14} />
-              </span>
-              دسته بندی
-            </h2>
+      {/* فرم باز — دسکتاپ دو ستونه، موبایل تک‌ستونه (خواسته مالک ۴-۱۱)؛
+          دسته‌بندی تمام‌عرض بالای دو ستون (خواستهٔ مالک ۲۸-۱۱ دور ۴: نیم‌صفحه
+          کسکید را جمع و زشت می‌کرد) */}
+      <PanelCard className="space-y-3">
+        <h2 className="flex items-center gap-2 text-sm font-extrabold">
+          <span className="grid size-7 place-items-center rounded-md bg-primary/10 text-primary">
+            <Tag size={14} />
+          </span>
+          دسته بندی
+        </h2>
 
-            {/* حالت فشرده — فقط دستهٔ فعلی + مداد ویرایش (خواسته مالک ۱۱-۱۱) */}
-            {!catEditing ? (
+        {/* حالت فشرده — فقط دستهٔ فعلی + مداد ویرایش (خواسته مالک ۱۱-۱۱) */}
+        {!catEditing ? (
+          <button
+            type="button"
+            onClick={() => {
+              setCatBackup({ path: draft.path, leaf: draft.leaf });
+              setCatEditing(true);
+            }}
+            title="تغییر دسته بندی"
+            aria-label="تغییر دسته بندی محصول"
+            className="group flex w-full items-center gap-2 rounded-md border bg-secondary/40 px-3.5 py-3 text-start transition-colors hover:border-primary/40 hover:bg-secondary/70"
+          >
+            {draft.path.length > 0 ? (
+              <span className="flex min-w-0 flex-wrap items-center gap-1 text-[13px] font-bold text-primary">
+                {draft.path.map((c, i) => (
+                  <span key={c.id} className="flex items-center gap-1">
+                    {i > 0 && <ChevronLeft size={12} className="text-muted-foreground/60" aria-hidden />}
+                    {c.categoryName}
+                  </span>
+                ))}
+              </span>
+            ) : (
+              <span className="text-[13px] font-bold text-muted-foreground">انتخاب دسته بندی محصول</span>
+            )}
+            <Pencil
+              size={15}
+              className="ms-auto shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
+              aria-hidden
+            />
+          </button>
+        ) : (
+          /* حالت ویرایش — کسکید کامل تمام‌عرض + انصراف به دستهٔ قبلی */
+          <div className="space-y-2">
+            <CategoryCascade
+              value={{ path: draft.path, leaf: draft.leaf }}
+              onChange={(v) => {
+                patch({ path: v.path, leaf: v.leaf });
+                // برگ تازه انتخاب شد → جمع کن و مسیر جدید را فشرده نشان بده
+                if (v.leaf) setCatEditing(false);
+              }}
+            />
+            <div className="flex justify-end">
               <button
                 type="button"
                 onClick={() => {
-                  setCatBackup({ path: draft.path, leaf: draft.leaf });
-                  setCatEditing(true);
+                  patch({ path: catBackup.path, leaf: catBackup.leaf });
+                  setCatEditing(false);
                 }}
-                title="تغییر دسته بندی"
-                aria-label="تغییر دسته بندی محصول"
-                className="group flex w-full items-center gap-2 rounded-md border bg-secondary/40 px-3.5 py-3 text-start transition-colors hover:border-primary/40 hover:bg-secondary/70"
+                className="text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
               >
-                {draft.path.length > 0 ? (
-                  <span className="flex min-w-0 flex-wrap items-center gap-1 text-[13px] font-bold text-primary">
-                    {draft.path.map((c, i) => (
-                      <span key={c.id} className="flex items-center gap-1">
-                        {i > 0 && <ChevronLeft size={12} className="text-muted-foreground/60" aria-hidden />}
-                        {c.categoryName}
-                      </span>
-                    ))}
-                  </span>
-                ) : (
-                  <span className="text-[13px] font-bold text-muted-foreground">انتخاب دسته بندی محصول</span>
-                )}
-                <Pencil
-                  size={15}
-                  className="ms-auto shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
-                  aria-hidden
-                />
+                انصراف و بازگشت
               </button>
-            ) : (
-              /* حالت ویرایش — کسکید کامل + انصراف به دستهٔ قبلی */
-              <div className="space-y-2">
-                <CategoryCascade
-                  value={{ path: draft.path, leaf: draft.leaf }}
-                  onChange={(v) => {
-                    patch({ path: v.path, leaf: v.leaf });
-                    // برگ تازه انتخاب شد → جمع کن و مسیر جدید را فشرده نشان بده
-                    if (v.leaf) setCatEditing(false);
-                  }}
-                />
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      patch({ path: catBackup.path, leaf: catBackup.leaf });
-                      setCatEditing(false);
-                    }}
-                    className="text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    انصراف و بازگشت
-                  </button>
-                </div>
-              </div>
-            )}
-            <SectionError id="category" />
-          </PanelCard>
+            </div>
+          </div>
+        )}
+        <SectionError id="category" />
+      </PanelCard>
 
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        {/* ستون راست: اطلاعات محصول */}
+        <div className="space-y-4">
           <PanelCard className="space-y-4">
             <h2 className="flex items-center gap-2 text-sm font-extrabold">
               <span className="grid size-7 place-items-center rounded-md bg-primary/10 text-primary">
@@ -505,20 +522,29 @@ export default function EditProductPage() {
               </p>
             </div>
 
-            {/* برند اختیاری — پاک‌سازی واژهٔ «برند» موقع blur (خواسته مالک ۳-۱۱) */}
-            <div className="space-y-2">
-              <Label htmlFor="product-brand">اگر محصول شما برند دارد وارد کنید</Label>
-              <Input
-                id="product-brand"
-                value={draft.brand}
-                onChange={(e) => patch({ brand: e.target.value })}
-                onBlur={() => {
-                  const cleaned = stripBrandWord(draft.brand);
-                  if (cleaned !== draft.brand) patch({ brand: cleaned });
-                }}
-                maxLength={40}
-              />
-            </div>
+            {/* برند اختیاری — پاک‌سازی واژهٔ «برند» موقع blur (خواسته مالک ۳-۱۱)؛
+                فقط وقتی دسته برند-اتریبیوتی ندارد (دور ۴ — مثل برنج که برندش
+                از گزینه‌های «ویژگی‌های کالا» می‌آید: بدون برند/برندهای کشور) */}
+            {!hasBrandAttr ? (
+              <div className="space-y-2">
+                <Label htmlFor="product-brand">اگر محصول شما برند دارد وارد کنید</Label>
+                <Input
+                  id="product-brand"
+                  value={draft.brand}
+                  onChange={(e) => patch({ brand: e.target.value })}
+                  onBlur={() => {
+                    const cleaned = stripBrandWord(draft.brand);
+                    if (cleaned !== draft.brand) patch({ brand: cleaned });
+                  }}
+                  maxLength={40}
+                />
+              </div>
+            ) : (
+              <p className="rounded-lg bg-secondary/60 px-3 py-2 text-[11px] leading-5 text-muted-foreground">
+                برند این دسته در بخش <b className="font-bold text-foreground/70">«ویژگی‌های کالا»</b> (پایین همین فرم)
+                انتخاب می‌شود — بدون برند / برندهای ایرانی / خارجی.
+              </p>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -742,6 +768,20 @@ export default function EditProductPage() {
         </div>
         <SectionError id="description" />
       </PanelCard>
+
+      {/* ═══ ویژگی‌های کالا — آخرین بخش فرم (خواستهٔ مالک ۲۸-۱۱ دور ۴: «زیر
+          فرم»): چیپ‌های تک‌انتخابی از اتریبیوت‌های همین دسته (تاکسونومی v2)؛
+          این همان چیزی است که فیلتر پیشرفتهٔ عمده فیلتر می‌کند؛ دسته‌های
+          بی‌اتریبیوت بخش را نمی‌بینند ═══ */}
+      {draft.leaf && (
+        <PanelCard>
+          <ProductAttrsCard
+            leafKey={draft.leaf.key ?? draft.leaf.slug}
+            features={draft.features}
+            onChange={(features) => patch({ features })}
+          />
+        </PanelCard>
+      )}
 
       {/* نوار ذخیره — چسبان پایین؛ فرم باز، همهٔ بخش‌ها یک‌جا ذخیره می‌شوند */}
       <div className="sticky bottom-16 z-10 rounded-lg border bg-card/95 p-3 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] backdrop-blur lg:bottom-4">

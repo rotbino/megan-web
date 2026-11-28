@@ -19,6 +19,10 @@ import { apiFetch } from '@/lib/api/client';
 export interface CatalogV2AttrOption {
   label: string;
   match: string[];
+  /** گزینهٔ وابسته — فقط وقتی معتبر/مرئی است که ویژگیِ `key` یکی از `any`
+   *  را داشته باشد؛ مثلاً «صدری (پاکستانی)» فقط وقتی کشور=پاکستان (خواستهٔ مالک
+   *  ۲۸-۱۱ دور ۴ — فیلترهای مرتبط مثل کشور ← نوع/برند برنج) */
+  when?: { key: string; any: string[] };
 }
 
 export interface CatalogV2Attr {
@@ -170,4 +174,86 @@ export function catalogFindNode(
     return null;
   };
   return walk(tree);
+}
+
+/** زنجیرهٔ گره از ریشه تا کلید — [] برای «همه» (به‌ارث‌بری اتریبیوت‌ها از خانواده) */
+export function chainOf(
+  roots: CatalogV2TreeNode[] | undefined,
+  key: string,
+): CatalogV2TreeNode[] {
+  if (!roots || key === 'all') return [];
+  const walk = (nodes: CatalogV2TreeNode[], acc: CatalogV2TreeNode[]): CatalogV2TreeNode[] | null => {
+    for (const n of nodes) {
+      const na = [...acc, n];
+      if (n.key === key) return na;
+      if (key.startsWith(`${n.key}.`) && n.children) {
+        const deep = walk(n.children, na);
+        if (deep) return deep;
+      }
+    }
+    return null;
+  };
+  return walk(roots, []) ?? [];
+}
+
+// ─── وابستگی گزینه‌ها (خواستهٔ مالک ۲۸-۱۱ دور ۴) ─────────────────────────────
+//
+// «اگر کشور=پاکستان شد، نوع/برند ایرانی نیاید» — گزینه‌ها با `when` به والدشان
+// گره خورده‌اند. قاعدهٔ ساده و یکسان برای فیلتر عمومی و فرم فروشنده:
+//  • والد انتخاب نشده → همهٔ گزینه‌ها (معمول و وابسته) می‌آیند؛
+//  • والد انتخاب شده → فقط گزینه‌های هم‌خانواده + بدون قید (مثل «بدون برند»)؛
+//  • انتخاب یک گزینهٔ وابسته → والدش هم خودکار انتخاب می‌شود (بدون اصطکاک).
+
+/** گزینهٔ وابسته با انتخاب فعلی والد مرئی است؟ */
+function optionVisible(
+  opt: CatalogV2AttrOption,
+  selection: Record<string, string[]>,
+): boolean {
+  if (!opt.when) return true;
+  const parent = selection[opt.when.key] ?? [];
+  if (parent.length === 0) return true; // والد باز → همه
+  return opt.when.any.some((v) => parent.includes(v));
+}
+
+/** گزینه‌های مرئیِ یک ویژگی با توجه به انتخاب فعلی بقیهٔ ویژگی‌ها */
+export function visibleAttrOptions(
+  attr: CatalogV2Attr,
+  selection: Record<string, string[]>,
+): CatalogV2AttrOption[] {
+  return attr.options.filter((o) => optionVisible(o, selection));
+}
+
+/** اگر گزینهٔ وابسته انتخاب شود، والدش (اگر خالی/ناهمخانواده) خودکار پر می‌شود —
+ *  مقدار برگشتی = انتخاب والدِ تازه‌لازم (undefined = تغییری لازم نیست) */
+export function impliedParent(
+  opt: CatalogV2AttrOption,
+  selection: Record<string, string[]>,
+): { key: string; value: string } | undefined {
+  if (!opt.when) return undefined;
+  const parent = selection[opt.when.key] ?? [];
+  if (opt.when.any.some((v) => parent.includes(v))) return undefined; // هم‌خانواده است
+  const value = opt.when.any.find((v) => !parent.includes(v));
+  return value ? { key: opt.when.key, value } : undefined;
+}
+
+/** ناسازگاری را پاک می‌کند: گزینه‌ای که با انتخاب فعلی والدش دیگر مرئی نیست
+ *  از انتخاب حذف می‌شود (والد عوض شد، فرزند کهن باید برود) */
+export function pruneAttrSelection(
+  attrs: CatalogV2Attr[],
+  selection: Record<string, string[]>,
+): Record<string, string[]> {
+  const next: Record<string, string[]> = {};
+  for (const [key, labels] of Object.entries(selection)) {
+    const attr = attrs.find((a) => a.key === key);
+    if (!attr) {
+      if (labels.length) next[key] = labels;
+      continue;
+    }
+    const kept = labels.filter((l) => {
+      const opt = attr.options.find((o) => o.label === l);
+      return opt ? optionVisible(opt, selection) : false;
+    });
+    if (kept.length) next[key] = kept;
+  }
+  return next;
 }

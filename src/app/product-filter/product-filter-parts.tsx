@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -25,6 +26,7 @@ import {
   Layers,
   MapPin,
   Package,
+  Store,
   TrendingUp,
   X,
 } from 'lucide-react';
@@ -41,8 +43,9 @@ import { cn } from '@/lib/utils';
 import { priceFa, stockFa, timeAgoFa, toFa } from '@/lib/format';
 import { useAuth } from '@/lib/mock/auth';
 import { getCities } from '@/lib/mock/api';
+import { chainOf } from '@/lib/catalog-v2';
 import type { City, Province } from '@/lib/types';
-import type { CatalogV2Attr, CatalogV2Row, CatalogV2Sort, CatalogV2TreeNode } from '@/lib/catalog-v2';
+import type { CatalogV2Attr, CatalogV2AttrOption, CatalogV2Row, CatalogV2Sort, CatalogV2TreeNode } from '@/lib/catalog-v2';
 
 // ─── ثابت‌ها و ابزارهای نمایش ────────────────────────────────────────────────
 
@@ -233,7 +236,7 @@ export function DualChip({
  *  جدا و چشمگیر باشد (خواستهٔ مالک ۲۸-۱۱ دور ۳) */
 export function ActiveChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
-    <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-primary/50 bg-primary/10 py-1 ps-2.5 pe-1 text-[11px] font-bold text-primary">
+    <span className="inline-flex max-w-full shrink-0 items-center gap-1 rounded-full border border-primary/50 bg-primary/10 py-1 ps-2.5 pe-1 text-[11px] font-bold text-primary">
       <span className="truncate">{label}</span>
       <button
         type="button"
@@ -370,25 +373,8 @@ export function MoqChips({
 
 // ─── سایدبار دسته‌بندی دریل‌شونده (الگوی product-list) ─────────────────────
 
-/** زنجیرهٔ گره از ریشه تا کلید — [] برای «همه» */
-export function chainOf(
-  roots: CatalogV2TreeNode[] | undefined,
-  key: string,
-): CatalogV2TreeNode[] {
-  if (!roots || key === 'all') return [];
-  const walk = (nodes: CatalogV2TreeNode[], acc: CatalogV2TreeNode[]): CatalogV2TreeNode[] | null => {
-    for (const n of nodes) {
-      const na = [...acc, n];
-      if (n.key === key) return na;
-      if (key.startsWith(`${n.key}.`) && n.children) {
-        const deep = walk(n.children, na);
-        if (deep) return deep;
-      }
-    }
-    return null;
-  };
-  return walk(roots, []) ?? [];
-}
+// chainOf به lib/catalog-v2.ts منتقل شد (مشترک با فرم ویژگی‌های پنل)
+
 
 /**
  * سایدبار دسته‌ها — بدون درختِ کامل بازشونده: مثل product-list، سطحِ مرتبط
@@ -814,18 +800,23 @@ export function LocationPickerBody({
   );
 }
 
-/** شیت گزینه‌های یک ویژگی — چندانتخابی + «همه» + شمارش زنده */
+/** شیت گزینه‌های یک ویژگی — چندانتخابی + «همه» + شمارش زنده؛
+ *  options (اختیاری) = لیست مرئیِ پیش‌پاک‌سازی‌شده (وابستگی کشور/نوع — دور ۴) */
 export function OptionsSheetBody({
   attr,
+  options,
   selected,
   counts,
   onApply,
 }: {
   attr: CatalogV2Attr;
+  /** لیست گزینه‌های مرئی — پیش‌فرض همهٔ گزینه‌ها */
+  options?: CatalogV2AttrOption[];
   selected: string[];
   counts?: Record<string, number>;
   onApply: (vals: string[]) => void;
 }) {
+  const list = options ?? attr.options;
   const [temp, setTemp] = useState<string[]>(selected);
   useEffect(() => setTemp(selected), [attr.key, selected.join('|')]);
 
@@ -851,7 +842,7 @@ export function OptionsSheetBody({
           همه
           {temp.length === 0 && <BadgeCheck size={15} />}
         </button>
-        {attr.options.map((opt) => {
+        {list.map((opt) => {
           const n = counts?.[opt.label];
           const on = temp.includes(opt.label);
           return (
@@ -985,6 +976,46 @@ export function RangeSheetBody({
         </button>
       </div>
     </div>
+  );
+}
+
+// ─── کارت دعوت فروشنده (دور ۴) ─────────────────────────────────────────────
+
+/** کارت دعوت فروشنده — «محصول برای فروش عمده دارید؟» + دکمهٔ ساخت ویترین
+ *  محصولات + تصویر register-banner (خواستهٔ مالک ۲۸-۱۱ دور ۴؛ جایگزین پیام
+ *  متنی «فروشنده هستید؟ ویژگی‌های آگهی را…»). واردشده → ثبت کالای تازه در
+ *  پنل؛ مهمان → ثبت‌نام. هم سایدبار دسکتاپ، هم انتهای لیست موبایل. */
+export function SellerCtaCard({ className }: { className?: string }) {
+  const { user } = useAuth();
+  return (
+    <Link
+      href={user ? '/panel/products/new' : '/register'}
+      className={cn(
+        'group mt-2.5 block overflow-hidden rounded-xl border bg-card transition-colors hover:border-primary/40',
+        className,
+      )}
+      aria-label="ساخت ویترین محصولات در ایمچ"
+    >
+      <div className="relative h-28 bg-secondary/60">
+        <Image
+          src="/images/register-banner.png"
+          alt="ساخت ویترین عمده در ایمچ"
+          fill
+          sizes="(max-width: 1024px) 100vw, 264px"
+          className="object-contain p-2.5"
+        />
+      </div>
+      <div className="space-y-1.5 p-3 text-center">
+        <p className="text-[12.5px] font-extrabold leading-6">محصول برای فروش عمده دارید؟</p>
+        <p className="text-[10px] leading-5 text-muted-foreground">
+          ویترین بسازید و ویژگی‌های کالا را کامل کنید تا در نتایج فیلتر پیشرفته دیده شوید.
+        </p>
+        <span className="mt-1 inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-[11.5px] font-bold text-primary-foreground transition-colors group-hover:bg-primary-deep">
+          <Store size={13} />
+          ساخت ویترین محصولات
+        </span>
+      </div>
+    </Link>
   );
 }
 
