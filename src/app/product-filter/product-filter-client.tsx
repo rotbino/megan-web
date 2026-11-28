@@ -1,21 +1,20 @@
 'use client';
 
 /**
- * صفحهٔ فیلتر پیشرفتهٔ عمده — دور ۴ (بازخورد مالک ۲۸-۱۱ دور ۴):
+ * صفحهٔ فیلتر پیشرفتهٔ عمده — دور ۵ (بازخورد مالک ۲۸-۱۱ دور ۵):
  *
- *  ۱) سرچ‌باکس فقط در هدر — درِ بدنه حذف شد؛ با پراپ filterSearch هدر، جستجو
- *     همین‌جا در صفحه فیلتر می‌زند (رویداد محلی + آینهٔ عبارت/چیپ)؛
- *  ۲) زیر-هدر چسبان (به‌جای نوار «دسته بندی | فروشنده شوید» حذف‌شده): نوار
- *     فیلتر + نوار نتیجه (چیپ‌های فعال + شمار + مرتب‌سازی) — موقع اسکرول
- *     هرگز غیب نمی‌شود، نه در دسکتاپ نه موبایل؛ ارتفاع هدر زمان اجرا اندازه
- *     می‌شود تا چسبندگی بی‌درز باشد؛
- *  ۳) مرتب‌سازی «تهِ نوار» است — اول فیلترهای منتخب/شمار، آخر (فاصلهٔ
- *     space-between) دکمهٔ درآپ‌داون سورت؛
- *  ۴) گزینه‌های وابسته (دور ۴): کشور تولیدکننده ← نوع/برند؛ انتخاب فرزند
- *     والدش را خودکار می‌نشاند و والد عوض‌شده فرزند ناهمخوان را می‌پاکد؛
- *  ۵) کارت دعوت فروشنده با تصویر — سایدبار دسکتاپ + انتهای لیست موبایل؛
- *  ۶) اسکرول بی‌نهایت + پیش‌واکش بافر ۲ صفحه + دکمهٔ «مشاهده آگهی‌های بیشتر»
- *     با href واقعی برای گوگل؛ شیت‌های دریل‌شونده ارتفاع ثابت ۷۰٪ دارند.
+ *  ۱) فیلترهای هم‌مقیاس خریدار عمده (عین باسکول): نوع فروشنده (کشاورز/
+ *     تولیدکننده/…)، نوع پرداخت (نقد/چک سررسید/اعتباری)، سوییچ «فقط بارهای
+ *     دارای گواهی/آنالیز» و سوییچ «فقط ارسال‌دار (باربری)» — با شمارش زنده؛
+ *  ۲) دسکتاپ: فیلترها مثل دیجی‌کالا/دیوار در سایدبار زیر دسته‌بندی‌ها —
+ *     کادرهای بازِ جمع‌شونده (SideFilterBox)؛ سایدبار به زیر-هدر می‌چسبد و
+ *     اسکرول عمودی مستقل با نوار نامرئی دارد (عرض اسکرول صفر — خواستهٔ مالک)؛
+ *     فقط «فیلترهای منتخب + شمار + مرتب‌سازی» در نوار افقی بالای لیست می‌ماند؛
+ *  ۳) موبایل: همان نوار فیلتر افقی قبلی + چیپ‌های جدید — دست‌نخورده؛
+ *  ۴) دسته‌بندی‌های سایدبار بدون بولد؛ دکمهٔ بازگشت فلش راست‌گرد (قانون RTL؛
+ *     خواستهٔ مالک: جهت قبلی برعکس بود)؛
+ *  ۵) اسکرول بی‌نهایت + پیش‌واکش بافر ۲ صفحه + دکمهٔ سئو — عین دورهای قبل؛
+ *  ۶) سرچ‌باکس فقط در هدر (دور ۴)؛ گزینه‌های وابستهٔ برنج (دور ۴) سالم.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -31,6 +30,8 @@ import {
   Loader2,
   MapPin,
   Package,
+  Store,
+  Truck,
 } from 'lucide-react';
 import {
   chainOf,
@@ -39,6 +40,8 @@ import {
   visibleAttrOptions,
   fetchCatalogV2List,
   fetchCatalogV2Tree,
+  PAYMENT_OPTIONS,
+  SELLER_TYPE_OPTIONS,
   type CatalogV2Attr,
   type CatalogV2Row,
   type CatalogV2Sort,
@@ -66,12 +69,29 @@ import {
   RangeSheetBody,
   SellerCtaCard,
   SideCategories,
+  SideFilterBox,
   SORTS,
+  SwitchRow,
+  ToggleChip,
   unitShort,
   type FilterState,
 } from './product-filter-parts';
 
 // ─── کامپوننت اصلی ─────────────────────────────────────────────────────────
+
+/** شبه-اتریبیوت برای شیت موبایل شرایط معامله — OptionsSheetBody همان کار را می‌کند */
+const sellerTypeAttr = {
+  key: 'seller_type',
+  label: 'نوع فروشنده',
+  hint: 'از نگاه چه کسی می‌خری؟ — شمار آگهی کنار هر گزینه است.',
+  options: SELLER_TYPE_OPTIONS.map((label) => ({ label, match: [] as string[] })),
+};
+const paymentAttr = {
+  key: 'payment',
+  label: 'نوع پرداخت',
+  hint: 'آگهی باید حداقل یکی از نحوه‌های انتخابی را بپذیرد.',
+  options: PAYMENT_OPTIONS.map((label) => ({ label, match: [] as string[] })),
+};
 
 export function ProductFilterClient() {
   const sp = useSearchParams();
@@ -89,6 +109,9 @@ export function ProductFilterClient() {
     return out;
   };
 
+  const parseListParam = (raw: string | null): string[] =>
+    raw ? raw.split('|').filter(Boolean) : [];
+
   /** ورود عمیق ?page=N — لینک سئو/گوگل: صفحه‌های ۲..N بی‌صدا پشت هم لود
    *  می‌شوند. یک‌بار در مونت خوانده می‌شود (setState-اِول) چون همگام‌ساز URL
    *  بعد از مونت پارامتر page را بازنویسی می‌کند و خوانش دوباره از sp عمق
@@ -104,6 +127,11 @@ export function ProductFilterClient() {
     priceMax: sp.get('pmax') ? Number(sp.get('pmax')) : undefined,
     moqMin: sp.get('mmin') ? Number(sp.get('mmin')) : undefined,
     moqMax: sp.get('mmax') ? Number(sp.get('mmax')) : undefined,
+    // (دور ۵) شرایط معاملهٔ عمده — st=کشاورز|واردکننده / pay=نقد|چک سررسید
+    sellerTypes: parseListParam(sp.get('st')),
+    payments: parseListParam(sp.get('pay')),
+    analysisOnly: sp.get('cert') === '1',
+    shippingOnly: sp.get('ship') === '1',
     // مرتبط‌ترین = پیش‌فرض (امتیاز تطابق سمت سرور — شهر کاربر + ویژگی‌ها + تازگی)
     sort: (sp.get('sort') as CatalogV2Sort) || 'related',
   }));
@@ -167,6 +195,10 @@ export function ProductFilterClient() {
       priceMax: f.priceMax,
       moqMin: f.moqMin,
       moqMax: f.moqMax,
+      sellerTypes: f.sellerTypes,
+      payments: f.payments,
+      analysisOnly: f.analysisOnly,
+      shippingOnly: f.shippingOnly,
       sort: f.sort,
       perPage: PER_PAGE,
     }),
@@ -205,8 +237,9 @@ export function ProductFilterClient() {
   const lastMeta = data?.pages.at(-1);
   const total = lastMeta?.total ?? 0;
   const facets = lastMeta?.facets;
+  const tradeFacets = facets?.trade;
   const unit = lastMeta?.unit?.top;
-  const bounds = facets ?? { price: { min: null, max: null }, moq: { min: null, max: null } };
+  const bounds = facets ?? { price: { min: null, max: null }, moq: { min: null, max: null }, trade: { sellerTypes: {}, payments: {}, analysis: 0, shipping: 0 } };
 
   /** ورود عمیق ?page=N: صفحه‌های ۲..N بی‌صدا لود شوند تا کاربر همان عمق را ببیند */
   useEffect(() => {
@@ -327,6 +360,10 @@ export function ProductFilterClient() {
       if (f.priceMax) qp.set('pmax', String(f.priceMax));
       if (f.moqMin) qp.set('mmin', String(f.moqMin));
       if (f.moqMax) qp.set('mmax', String(f.moqMax));
+      if (f.sellerTypes.length) qp.set('st', f.sellerTypes.join('|'));
+      if (f.payments.length) qp.set('pay', f.payments.join('|'));
+      if (f.analysisOnly) qp.set('cert', '1');
+      if (f.shippingOnly) qp.set('ship', '1');
       if (f.sort !== 'related') qp.set('sort', f.sort);
       if (q) qp.set('q', q);
       const attrEntries = Object.entries(f.attrs).filter(([, v]) => v.length > 0);
@@ -346,7 +383,7 @@ export function ProductFilterClient() {
   const nodeChain = useMemo(() => chainOf(tree?.roots, f.nodeKey), [tree, f.nodeKey]);
   const selectedNode = nodeChain.length ? nodeChain[nodeChain.length - 1] : null;
 
-  /** ویژگی‌های نوار افقی — بدون عنوان‌بندی؛ فقط چیپ‌های خودشان */
+  /** ویژگی‌های سایدبار دسکتاپ + چیپ‌های نوار موبایل — زنجیرهٔ خانواده */
   const attrList = useMemo(
     () => nodeChain.flatMap((n) => n.attrs ?? []),
     [nodeChain],
@@ -364,6 +401,10 @@ export function ProductFilterClient() {
       priceMax: undefined,
       moqMin: undefined,
       moqMax: undefined,
+      sellerTypes: [],
+      payments: [],
+      analysisOnly: false,
+      shippingOnly: false,
     });
     setQ('');
   };
@@ -396,9 +437,25 @@ export function ProductFilterClient() {
     patch({ attrs });
   };
 
+  // ─── (دور ۵) شرایط معاملهٔ عمده — toggle ها ───────────────────────────
+  const toggleSellerType = (label: string) => {
+    const cur = f.sellerTypes;
+    const next = cur.includes(label) ? cur.filter((l) => l !== label) : [...cur, label];
+    patch({ sellerTypes: next });
+  };
+  const togglePayment = (label: string) => {
+    const cur = f.payments;
+    const next = cur.includes(label) ? cur.filter((l) => l !== label) : [...cur, label];
+    patch({ payments: next });
+  };
+
   /** شمارش زندهٔ یک گزینه — «چند آگهی با این گزینه می‌ماند» */
   const attrCount = (key: string, label: string): number | undefined =>
     facets?.attrs?.[key]?.[label];
+  const sellerTypeCount = (label: string): number | undefined =>
+    tradeFacets?.sellerTypes?.[label];
+  const paymentCount = (label: string): number | undefined =>
+    tradeFacets?.payments?.[label];
   const provinceCount = (id: number): number | undefined =>
     facets?.provinces?.find((p) => p.id === id)?.count;
   const cityCount = (id: number): number | undefined =>
@@ -415,6 +472,10 @@ export function ProductFilterClient() {
     (f.provinceId || f.cityId ? 1 : 0) +
     (f.priceMin || f.priceMax ? 1 : 0) +
     (f.moqMin || f.moqMax ? 1 : 0) +
+    f.sellerTypes.length +
+    f.payments.length +
+    (f.analysisOnly ? 1 : 0) +
+    (f.shippingOnly ? 1 : 0) +
     Object.values(f.attrs).reduce((a, v) => a + v.length, 0);
 
   const priceValue =
@@ -432,6 +493,18 @@ export function ProductFilterClient() {
           .filter(Boolean)
           .join('، ') + (uShort ? ` ${uShort}` : '')
       : undefined;
+  const sellerTypeValue =
+    f.sellerTypes.length === 1
+      ? f.sellerTypes[0]
+      : f.sellerTypes.length > 1
+        ? `${toFa(f.sellerTypes.length)} گزینه`
+        : undefined;
+  const paymentValue =
+    f.payments.length === 1
+      ? f.payments[0]
+      : f.payments.length > 1
+        ? `${toFa(f.payments.length)} گزینه`
+        : undefined;
   const sortValue = SORTS.find((s) => s.key === f.sort)?.label;
   const attrValue = (attr: CatalogV2Attr): string | undefined => {
     const sel = f.attrs[attr.key] ?? [];
@@ -457,6 +530,19 @@ export function ProductFilterClient() {
   if (f.priceMax) chips.push({ label: `قیمت تا ${priceFa(f.priceMax)}`, onClear: () => patch({ priceMax: undefined }) });
   if (f.moqMin) chips.push({ label: `حجم از ${toFa(f.moqMin)} ${uShort}`.trim(), onClear: () => patch({ moqMin: undefined }) });
   if (f.moqMax) chips.push({ label: `حجم تا ${toFa(f.moqMax)} ${uShort}`.trim(), onClear: () => patch({ moqMax: undefined }) });
+  // (دور ۵) شرایط معامله
+  for (const st of f.sellerTypes) {
+    chips.push({ label: st, onClear: () => toggleSellerType(st) });
+  }
+  for (const pay of f.payments) {
+    chips.push({ label: pay, onClear: () => togglePayment(pay) });
+  }
+  if (f.analysisOnly) {
+    chips.push({ label: 'فقط گواهی/آنالیز‌دار', onClear: () => patch({ analysisOnly: false }) });
+  }
+  if (f.shippingOnly) {
+    chips.push({ label: 'فقط ارسال‌دار', onClear: () => patch({ shippingOnly: false }) });
+  }
   for (const [key, labels] of Object.entries(f.attrs)) {
     for (const l of labels) {
       chips.push({ label: l, onClear: () => toggleAttr(key, l) });
@@ -493,16 +579,184 @@ export function ProductFilterClient() {
     </div>
   );
 
-  // ─── نوار افقی فیلترها — همه کنار هم (الگوی دیوار)؛ متغیر JSX (نه
-  //      کامپوننت داخلی!) تا با هر رندرِ والد، ساب‌تری نریمانت نشود — ریمانت
-  //      DualChipها را می‌بست و کلیک‌ها را می‌خورد (باگ کشف‌شدهٔ دور ۴) ─────
+  // ─── سایدبار دسکتاپ (دور ۵ — الگوی دیجی‌کالا/دیوار): دسته‌بندی + همهٔ
+  //      فیلترها در کادرهای بازِ جمع‌شونده؛ خود سایدبار یک اسکرول عمودی
+  //      مستقل با نوار نامرئی دارد و به زیر-هدر می‌چسبد ───────────────────
+  const sidebar = (
+    <div className="space-y-2.5">
+      {/* دسته‌بندی‌ها — دریل‌شونده، بدون بولد (دور ۵) */}
+      <SideFilterBox title="دسته‌بندی‌ها" icon={Layers}>
+        <SideCategories
+          tree={tree?.roots}
+          loading={treeLoading}
+          selected={f.nodeKey}
+          onSelect={(k) => patch({ nodeKey: k })}
+        />
+      </SideFilterBox>
+
+      {/* موقعیت — دریل استان←شهر همان انتخابگر مشترک */}
+      <SideFilterBox
+        title="موقعیت فروشنده"
+        icon={MapPin}
+        activeCount={f.provinceId || f.cityId ? 1 : 0}
+      >
+        <LocationPickerBody
+          variant="inline"
+          provinces={provinces ?? []}
+          provinceId={provinceId}
+          cityId={f.cityId}
+          provinceCount={provinceCount}
+          cityCount={cityCount}
+          onAll={() => patch({ provinceId: undefined, cityId: undefined })}
+          onProvince={(id) => patch({ provinceId: id, cityId: undefined })}
+          onCity={(pid, id) => patch({ provinceId: pid, cityId: id })}
+        />
+      </SideFilterBox>
+
+      {/* (دور ۵) نوع فروشنده — فیلتر مهم خریدار عمده */}
+      <SideFilterBox title="نوع فروشنده" icon={Store} activeCount={f.sellerTypes.length}>
+        {SELLER_TYPE_OPTIONS.map((label) => (
+          <AttrCheckboxRow
+            key={label}
+            label={label}
+            count={sellerTypeCount(label)}
+            on={f.sellerTypes.includes(label)}
+            onClick={() => toggleSellerType(label)}
+          />
+        ))}
+      </SideFilterBox>
+
+      {/* (دور ۵) نوع پرداخت */}
+      <SideFilterBox title="نوع پرداخت" icon={Banknote} activeCount={f.payments.length}>
+        {PAYMENT_OPTIONS.map((label) => (
+          <AttrCheckboxRow
+            key={label}
+            label={label}
+            count={paymentCount(label)}
+            on={f.payments.includes(label)}
+            onClick={() => togglePayment(label)}
+          />
+        ))}
+      </SideFilterBox>
+
+      {/* (دور ۵) سوییچ‌های بار — گواهی/آنالیز و ارسال باربری */}
+      <SideFilterBox
+        title="گواهی و تحویل بار"
+        icon={Truck}
+        activeCount={(f.analysisOnly ? 1 : 0) + (f.shippingOnly ? 1 : 0)}
+      >
+        <SwitchRow
+          label="فقط بارهای دارای گواهی / آنالیز کیفیت"
+          on={f.analysisOnly}
+          onToggle={() => patch({ analysisOnly: !f.analysisOnly })}
+          count={tradeFacets?.analysis}
+        />
+        <SwitchRow
+          label="فقط ارسال‌دار (باربری)"
+          on={f.shippingOnly}
+          onToggle={() => patch({ shippingOnly: !f.shippingOnly })}
+          count={tradeFacets?.shipping}
+        />
+      </SideFilterBox>
+
+      {/* قیمت — بازهٔ دو-ورودی + بازهٔ واقعی دسته */}
+      <SideFilterBox
+        title={`قیمت${uShort ? ` (هر ${uShort})` : ''}`}
+        icon={Banknote}
+        activeCount={f.priceMin || f.priceMax ? 1 : 0}
+      >
+        <p className="px-1 pb-1 text-[10px] text-muted-foreground">تومان</p>
+        <RangeInputs
+          min={f.priceMin}
+          max={f.priceMax}
+          onMin={(v) => patch({ priceMin: v })}
+          onMax={(v) => patch({ priceMax: v })}
+        />
+        {bounds.price.min != null &&
+          bounds.price.max != null &&
+          bounds.price.min > 0 &&
+          bounds.price.max / bounds.price.min < 1000 && (
+            <p className="px-1 pt-1 text-[10px] text-muted-foreground">
+              بازهٔ واقعی این دسته: {priceFa(bounds.price.min)} تا {priceFa(bounds.price.max)} تومان
+            </p>
+          )}
+        {(f.priceMin || f.priceMax) && (
+          <button
+            type="button"
+            onClick={() => patch({ priceMin: undefined, priceMax: undefined })}
+            className="mt-1 w-full rounded-lg border border-dashed px-2 py-1.5 text-[11px] font-bold text-primary hover:bg-primary/5"
+          >
+            حذف محدودیت قیمت
+          </button>
+        )}
+      </SideFilterBox>
+
+      {/* حجم خرید — بازه + چیپ‌های سریع */}
+      <SideFilterBox
+        title="حجم خرید (حداقل سفارش)"
+        icon={Package}
+        activeCount={f.moqMin || f.moqMax ? 1 : 0}
+      >
+        <RangeInputs
+          min={f.moqMin}
+          max={f.moqMax}
+          onMin={(v) => patch({ moqMin: v })}
+          onMax={(v) => patch({ moqMax: v })}
+          unit={unit}
+        />
+        <MoqChips unit={unit} f={f} onPick={(p) => patch({ moqMin: p.min, moqMax: p.max })} />
+        {(f.moqMin || f.moqMax) && (
+          <button
+            type="button"
+            onClick={() => patch({ moqMin: undefined, moqMax: undefined })}
+            className="mt-1 w-full rounded-lg border border-dashed px-2 py-1.5 text-[11px] font-bold text-primary hover:bg-primary/5"
+          >
+            حذف محدودیت حجم
+          </button>
+        )}
+      </SideFilterBox>
+
+      {/* ویژگی‌های تخصصی دستهٔ فعال — گزینه‌های وابسته فقط مرئی‌ها */}
+      {attrList.map((attr) => {
+        const vis = visibleAttrOptions(attr, f.attrs);
+        return (
+          <SideFilterBox
+            key={attr.key}
+            title={attr.label}
+            activeCount={(f.attrs[attr.key] ?? []).length}
+          >
+            {attr.hint && (
+              <p className="px-1 pb-1 text-[10px] leading-5 text-muted-foreground">{attr.hint}</p>
+            )}
+            {vis.map((opt) => (
+              <AttrCheckboxRow
+                key={opt.label}
+                label={opt.label}
+                count={attrCount(attr.key, opt.label)}
+                on={(f.attrs[attr.key] ?? []).includes(opt.label)}
+                onClick={() => toggleAttr(attr.key, opt.label)}
+              />
+            ))}
+          </SideFilterBox>
+        );
+      })}
+
+      {/* دعوت فروشنده با تصویر (دور ۴) */}
+      <SellerCtaCard />
+    </div>
+  );
+
+  // ─── نوار افقی فیلترها — فقط موبایل (دور ۵: دسکتاپ فیلترها را در سایدبار
+  //      دارد؛ الگوی دیوار)؛ متغیر JSX (نه کامپوننت داخلی!) تا با هر رندرِ
+  //      والد، ساب‌تری نریمانت نشود — ریمانت DualChipها را می‌بست و کلیک‌ها
+  //      را می‌خورد (باگ کشف‌شدهٔ دور ۴) ──────────────────────────────────
   const filterBar = (
     <div
       className="flex items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       role="toolbar"
       aria-label="فیلترها"
     >
-      {/* دسته‌بندی — فقط موبایل؛ دسکتاپ: سایدبار دریل‌شونده (شیت ارتفاع ثابت) */}
+      {/* دسته‌بندی — موبایل؛ دسکتاپ: سایدبار دریل‌شونده */}
       <DualChip
         mobileOnly
         fixedSheet
@@ -522,8 +776,7 @@ export function ProductFilterClient() {
         )}
       />
 
-      {/* شهر فروشنده — انتخابگر دو-مرحله‌ای: استان ← شهرهای همان استان؛
-          شهر = فیلتر نهایی، «کل استان» = فیلتر استان؛ ارتفاع ثابت، بدون پرش */}
+      {/* شهر فروشنده — انتخابگر دو-مرحله‌ای (دور ۳) */}
       <DualChip
         fixedSheet
         popClass="h-[min(520px,70vh)] w-80 overflow-hidden"
@@ -567,6 +820,46 @@ export function ProductFilterClient() {
             onProvince={(id) => patch({ provinceId: id, cityId: undefined })}
             onCity={(pid, id) => {
               patch({ provinceId: pid, cityId: id });
+              close();
+            }}
+          />
+        )}
+      />
+
+      {/* (دور ۵) نوع فروشنده — شیت چندانتخابی با شمارش زنده */}
+      <DualChip
+        fixedSheet
+        label="نوع فروشنده"
+        value={sellerTypeValue}
+        active={f.sellerTypes.length > 0}
+        icon={Store}
+        sheet={(close) => (
+          <OptionsSheetBody
+            attr={sellerTypeAttr}
+            selected={f.sellerTypes}
+            counts={tradeFacets?.sellerTypes}
+            onApply={(vals) => {
+              patch({ sellerTypes: vals });
+              close();
+            }}
+          />
+        )}
+      />
+
+      {/* (دور ۵) نوع پرداخت */}
+      <DualChip
+        fixedSheet
+        label="نوع پرداخت"
+        value={paymentValue}
+        active={f.payments.length > 0}
+        icon={Banknote}
+        sheet={(close) => (
+          <OptionsSheetBody
+            attr={paymentAttr}
+            selected={f.payments}
+            counts={tradeFacets?.payments}
+            onApply={(vals) => {
+              patch({ payments: vals });
               close();
             }}
           />
@@ -671,6 +964,20 @@ export function ProductFilterClient() {
 
       {/* مرتب‌سازی اینجا نیست — «تهِ» نوار نتیجه است (خواستهٔ مالک دور ۴) */}
 
+      {/* (دور ۵) سوییچ‌های بار — چیپ یک‌کلیکی، بدون شیت (الگوی «فقط…» دیوار) */}
+      <ToggleChip
+        label="فقط گواهی/آنالیز"
+        on={f.analysisOnly}
+        onToggle={() => patch({ analysisOnly: !f.analysisOnly })}
+        count={tradeFacets?.analysis}
+      />
+      <ToggleChip
+        label="فقط ارسال‌دار"
+        on={f.shippingOnly}
+        onToggle={() => patch({ shippingOnly: !f.shippingOnly })}
+        count={tradeFacets?.shipping}
+      />
+
       {/* ویژگی‌های تخصصی دستهٔ فعال — چیپ خودشان، بدون عنوان‌بندیِ بخش؛
           گزینه‌های وابسته فقط مرئی‌هایشان لیست می‌شوند (کشور ← نوع/برند) */}
       {attrList.map((attr) => {
@@ -739,8 +1046,8 @@ export function ProductFilterClient() {
 
   // ─── نوار نتیجه — چیپ‌های فیلتر فعال (رنگی، حذف‌پذیر تکی) + شمار آگهی،
   //      و مرتب‌سازی «تهِ نوار» (space-between — خواستهٔ مالک دور ۴)؛
-  //      متغیر JSX نه کامپوننت داخلی — هویت پایدار تا با هر رندر والد،
-  //      ساب‌تری نریمانت شود و DualChipها بسته/کلیک‌خوره نشوند (باگ دور ۴)
+  //      در دسکتاپ تنها نوار افقی بالای لیست است (دور ۵ — فیلترهای
+  //      منتخب + سورت)؛ متغیر JSX نه کامپوننت داخلی — هویت پایدار
   const resultsBar = (
     <div
       className="flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] lg:flex-wrap lg:justify-between lg:overflow-visible lg:pb-0 [&::-webkit-scrollbar]:hidden"
@@ -815,50 +1122,32 @@ export function ProductFilterClient() {
       </h1>
 
       {/* ═══ زیر-هدر چسبان (دور ۴) — جای نوار «دسته بندی | فروشنده شوید»؛
-          نوار فیلتر + نوار نتیجه، همه‌جا (موبایل/دسکتاپ) بدون غیب‌شدگی در اسکرول؛
-          سرچ‌باکس فقط در هدر است (رویداد محلی filterSearch) ═══ */}
+          موبایل: نوار فیلتر + نوار نتیجه؛ دسکتاپ (دور ۵): فقط نوار نتیجه —
+          فیلترهای منتخب + شمار + مرتب‌سازی؛ بقیهٔ فیلترها در سایدبار ═══ */}
       <div
         ref={subRef}
         style={headerH != null ? { top: headerH } : undefined}
         className="sticky top-[60px] z-30 -mx-3 border-b bg-background/95 px-3 py-2 backdrop-blur sm:-mx-4 sm:px-4 lg:-mx-5 lg:px-5"
       >
-        {filterBar}
-        <div className="mt-1.5 lg:mt-2">
+        <div className="lg:hidden">{filterBar}</div>
+        <div className="mt-1.5 lg:mt-0">
           {resultsBar}
         </div>
       </div>
 
-      <div className="grid items-start gap-4 py-3 lg:grid-cols-[264px_minmax(0,1fr)] lg:py-4">
-        {/* ═══ سایدبار دسکتاپ: فقط دسته‌بندی (دریل‌شونده + اسکرول مستقل) +
-                کارت دعوت فروشنده (دور ۴) ═══ */}
+      <div className="grid items-start gap-4 py-3 lg:grid-cols-[276px_minmax(0,1fr)] lg:py-4">
+        {/* ═══ سایدبار دسکتاپ (دور ۵) — دسته‌بندی‌ها + همهٔ فیلترها در کادرهای
+                جمع‌شونده + کارت دعوت؛ چسبان به زیر-هدر با اسکرول عمودی مستقل و
+                نوار نامرئی (عرض اسکرول صفر — خواستهٔ مالک دور ۵) ═══ */}
         <aside
-          className="hidden lg:sticky lg:top-24 lg:block"
-          style={asideTop != null ? { top: asideTop } : undefined}
+          className="hidden lg:block lg:sticky lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:pe-1"
+          style={
+            asideTop != null
+              ? { top: asideTop, maxHeight: `calc(100vh - ${asideTop + 20}px)` }
+              : undefined
+          }
         >
-          <section className="rounded-xl border bg-card" aria-label="دسته‌بندی‌ها">
-            <header className="flex items-center gap-2 border-b px-3 py-2.5">
-              <Layers size={15} className="text-primary" />
-              <h2 className="text-[13px] font-bold">دسته‌بندی‌ها</h2>
-              {tree && (
-                <span className="ms-auto text-[10px] text-muted-foreground">
-                  {toFa(tree.mapped)} آگهی
-                </span>
-              )}
-            </header>
-            {/* اسکرول مستقل — لیست بلند گروه‌ها هرگز صفحه را نمی‌راند */}
-            <div className="max-h-[calc(100vh-360px)] overflow-y-auto">
-              <SideCategories
-                tree={tree?.roots}
-                loading={treeLoading}
-                selected={f.nodeKey}
-                onSelect={(k) => patch({ nodeKey: k })}
-              />
-            </div>
-          </section>
-
-          {/* دعوت فروشنده با تصویر (دور ۴) — «محصول برای فروش عمده دارید؟»
-              + دکمهٔ ساخت ویترین محصولات */}
-          <SellerCtaCard />
+          {sidebar}
         </aside>
 
         {/* ═══ محتوای اصلی ═══ */}
@@ -904,10 +1193,7 @@ export function ProductFilterClient() {
             </div>
           )}
 
-          {/* ─── اسکرول بی‌نهایت: لینک «مشاهده بیشتر» سئو (عین product-list) ───
-              موتور جستجو نمی‌تواند اسکرول کند — این <a href> واقعی به URL صفحهٔ
-              بعدی می‌رود و زنجیرهٔ کشف گوگل را زنده نگه می‌دارد؛ برای کاربرِ
-              جاوااسکریپت‌دار کلیک = لود درجا؛ صفحهٔ آخر → دکمه حذف می‌شود */}
+          {/* ─── اسکرول بی‌نهایت: لینک «مشاهده بیشتر» سئو (عین product-list) ─── */}
           {!isLoading && items.length > 0 && hasNextPage && (
             <div className="flex justify-center pt-2">
               <Button asChild variant="outline" className="gap-1.5 rounded-md px-6 font-bold">

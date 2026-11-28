@@ -115,6 +115,11 @@ interface RawProduct {
   status?: string;
   features?: Array<{ key: string; value: string }>;
   rejectionReasons?: string[];
+  /** (۲۸-۱۱ دور ۵) شرایط معاملهٔ عمده — پیش‌پر کردن فرم ویرایش */
+  sellerType?: string | null;
+  paymentTypes?: string[];
+  hasAnalysis?: boolean;
+  shipping?: boolean;
 }
 
 const toProduct = (p: RawProduct): Product => {
@@ -945,6 +950,11 @@ export async function submitProduct(input: {
   minSalePrice: number;
   description: string;
   features: { key: string; value: string }[];
+  /** (۲۸-۱۱ دور ۵) شرایط معاملهٔ عمده — فیلتر پیشرفته همین‌ها را فیلتر می‌کند */
+  sellerType?: string;
+  paymentTypes?: string[];
+  hasAnalysis?: boolean;
+  shipping?: boolean;
   photos?: File[];
 }): Promise<{ ok: true; id: number; status: 'pending'; failedPhotos: File[] }> {
   const created = await apiFetch<{ id: number; status: string }>('/products/createProduct', {
@@ -957,6 +967,11 @@ export async function submitProduct(input: {
     minSalePrice: input.minSalePrice,
     description: input.description,
     features: input.features,
+    // (دور ۵) شرایط معامله — خالی = نامشخص
+    ...(input.sellerType ? { sellerType: input.sellerType } : {}),
+    ...(input.paymentTypes?.length ? { paymentTypes: input.paymentTypes } : {}),
+    ...(input.hasAnalysis != null ? { hasAnalysis: input.hasAnalysis } : {}),
+    ...(input.shipping != null ? { shipping: input.shipping } : {}),
   });
 
   // آپلود عکس‌ها به گالری همین آگهی — ناموفق‌ها برای «تلاش دوباره» برمی‌گردند
@@ -1036,6 +1051,11 @@ export async function updateMyProduct(input: {
   minSalePrice: number;
   description: string;
   features: { key: string; value: string }[];
+  /** (۲۸-۱۱ دور ۵) شرایط معاملهٔ عمده */
+  sellerType?: string;
+  paymentTypes?: string[];
+  hasAnalysis?: boolean;
+  shipping?: boolean;
   /** اعتبار قیمت به روز (۷-۱۱ دور هفدهم) — پیش‌فرض ۳ روز */
   priceValidityDays?: number;
   newPhotos?: File[];
@@ -1052,6 +1072,11 @@ export async function updateMyProduct(input: {
     minSalePrice: input.minSalePrice,
     description: input.description,
     features: input.features,
+    // (دور ۵) شرایط معامله — فرم کل مقادیر فعلی را می‌فرستد (خالی = پاک شدن)
+    ...(input.sellerType ? { sellerType: input.sellerType } : {}),
+    ...(input.paymentTypes?.length ? { paymentTypes: input.paymentTypes } : {}),
+    ...(input.hasAnalysis != null ? { hasAnalysis: input.hasAnalysis } : {}),
+    ...(input.shipping != null ? { shipping: input.shipping } : {}),
     priceValidityDays: input.priceValidityDays,
   });
 

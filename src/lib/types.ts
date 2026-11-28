@@ -125,6 +125,12 @@ export interface Product {
   features?: ProductFeature[];
   /** دلایل رد — فقط آگهی‌های رد شده پنل */
   rejectionReasons?: string[];
+
+  /** (۲۸-۱۱ دور ۵) شرایط معاملهٔ عمده — فرم ویرایش/ثبت آگهی و فیلتر پیشرفته */
+  sellerType?: string | null;
+  paymentTypes?: string[];
+  hasAnalysis?: boolean;
+  shipping?: boolean;
 }
 
 export interface BuyRequest {

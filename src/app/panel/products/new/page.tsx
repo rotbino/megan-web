@@ -39,6 +39,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ProductAttrsCard, useLeafAttrs } from '@/components/panel/product-form/product-attrs';
+import { TradeTermsCard, type TradeTermsValue } from '@/components/panel/product-form/trade-terms';
 import { ProductStepper } from '@/components/panel/product-form/stepper';
 import { CategoryCascade } from '@/components/panel/product-form/category-cascade';
 import { WebImportModal } from '@/components/panel/web-import-modal';
@@ -73,6 +74,8 @@ interface Draft {
   photos: { id: number; url: string; file: File }[];
   description: string;
   features: ProductFeature[];
+  /** (۲۸-۱۱ دور ۵) شرایط معاملهٔ عمده — نوع فروشنده/پرداخت/گواهی/باربری */
+  trade: TradeTermsValue;
 }
 
 const EMPTY_DRAFT: Draft = {
@@ -88,6 +91,7 @@ const EMPTY_DRAFT: Draft = {
   photos: [],
   description: '',
   features: [],
+  trade: { sellerType: null, paymentTypes: [], hasAnalysis: false, shipping: false },
 };
 
 const IMAGE_RULES = [
@@ -229,6 +233,11 @@ export default function RegisterProductPage() {
           ...(brand ? [{ key: 'برند', value: brand }] : []),
         ],
         photos: draft.photos.map((p) => p.file),
+        // (دور ۵) شرایط معاملهٔ عمده — فیلتر پیشرفته همین‌ها را فیلتر می‌کند
+        sellerType: draft.trade.sellerType ?? undefined,
+        paymentTypes: draft.trade.paymentTypes,
+        hasAnalysis: draft.trade.hasAnalysis === true,
+        shipping: draft.trade.shipping === true,
       });
       setFailedPhotos(result.failedPhotos);
       setCreatedId(result.id);
@@ -783,6 +792,13 @@ export default function RegisterProductPage() {
               )}
             </>
           )}
+
+          {/* ── (دور ۵) شرایط معاملهٔ عمده — نوع فروشنده/نحوهٔ پرداخت/گواهی/باربری؛
+              همان چیزی که فیلتر پیشرفته فیلتر می‌کند؛ قبل از ویژگی‌های کالا ── */}
+          <TradeTermsCard
+            value={draft.trade}
+            onChange={(trade) => patch({ trade })}
+          />
 
           {/* ── ویژگی‌های کالا (دور ۴) — چیپ‌های تک‌انتخابی اتریبیوت‌های همین
               دسته (تاکسونومی v2)؛ آخرین بخش فرم؛ گزینه‌های وابسته (کشور ←

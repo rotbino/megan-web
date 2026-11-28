@@ -19,6 +19,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
+  ArrowRight,
   BadgeCheck,
   ChevronDown,
   ChevronLeft,
@@ -39,11 +40,12 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { priceFa, stockFa, timeAgoFa, toFa } from '@/lib/format';
 import { useAuth } from '@/lib/mock/auth';
 import { getCities } from '@/lib/mock/api';
-import { chainOf } from '@/lib/catalog-v2';
+import { chainOf, PAYMENT_OPTIONS, SELLER_TYPE_OPTIONS } from '@/lib/catalog-v2';
 import type { City, Province } from '@/lib/types';
 import type { CatalogV2Attr, CatalogV2AttrOption, CatalogV2Row, CatalogV2Sort, CatalogV2TreeNode } from '@/lib/catalog-v2';
 
@@ -89,6 +91,11 @@ export interface FilterState {
   priceMax?: number;
   moqMin?: number;
   moqMax?: number;
+  /** (۲۸-۱۱ دور ۵) شرایط معاملهٔ عمده */
+  sellerTypes: string[];
+  payments: string[];
+  analysisOnly: boolean;
+  shippingOnly: boolean;
   sort: CatalogV2Sort;
 }
 
@@ -231,6 +238,119 @@ export function DualChip({
 }
 
 // ─── اجزای کوچک نمایشی ─────────────────────────────────────────────────────
+
+// ─── جعبهٔ فیلتر سایدبار دسکتاپ (دور ۵ — الگوی دیجی‌کالا/دیوار) ─────────────
+// کادرهای بازِ جمع‌شونده در سایدبار — باز پیش‌فرض؛ سربرگ = عنوان + شمار
+// انتخاب‌های همان جعبه + شِورون؛ انتخاب فعال = رنگ برند کنار عنوان.
+export function SideFilterBox({
+  title,
+  icon: Icon,
+  activeCount = 0,
+  children,
+  defaultOpen = true,
+}: {
+  title: string;
+  icon?: typeof Layers;
+  /** تعداد انتخاب‌های فعال همین جعبه — بج کوچک کنار عنوان */
+  activeCount?: number;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className="overflow-hidden rounded-xl border bg-card">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 border-b px-3 py-2.5 text-start transition-colors hover:bg-secondary/40"
+      >
+        {Icon && <Icon size={15} className="shrink-0 text-primary" />}
+        <h2 className={cn('text-[13px] font-bold', activeCount > 0 && 'text-primary')}>{title}</h2>
+        {activeCount > 0 && (
+          <span className="grid size-4.5 shrink-0 place-items-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+            {toFa(activeCount)}
+          </span>
+        )}
+        <ChevronDown
+          size={14}
+          className={cn('ms-auto shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
+        />
+      </button>
+      {open && <div className="p-2">{children}</div>}
+    </section>
+  );
+}
+
+/** سوییچ سایدبار/شیت — «فقط بارهای دارای گواهی/آنالیز» و «فقط ارسال‌دار (باربری)»
+ *  (دور ۵ — خواستهٔ مالک: سوییچ‌هایی که برای خریدار عمده مهم‌اند) */
+export function SwitchRow({
+  label,
+  on,
+  onToggle,
+  count,
+}: {
+  label: string;
+  on: boolean;
+  onToggle: () => void;
+  count?: number;
+}) {
+  return (
+    <div className="flex items-center gap-2.5 rounded-lg px-2 py-2">
+      <Switch checked={on} onCheckedChange={onToggle} className="shrink-0" aria-label={label} />
+      <span className={cn('min-w-0 flex-1 text-[12px]', on && 'font-bold')}>{label}</span>
+      <CountLabel n={count} />
+    </div>
+  );
+}
+
+/** چیپ سوییچی نوار موبایل — روشن/خاموش با یک کلیک، بدون شیت (الگوی «فقط…» دیوار) */
+export function ToggleChip({
+  label,
+  on,
+  onToggle,
+  count,
+}: {
+  label: string;
+  on: boolean;
+  onToggle: () => void;
+  count?: number;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={on}
+      className={cn(
+        'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-[12px] font-bold transition-colors',
+        on ? 'border-primary bg-primary/10 text-primary' : 'bg-card text-foreground/85 hover:bg-secondary/60',
+      )}
+    >
+      <span
+        className={cn(
+          'grid size-3.5 shrink-0 place-items-center rounded-full border',
+          on ? 'border-primary bg-primary text-primary-foreground' : 'border-input',
+        )}
+        aria-hidden
+      >
+        {on && <BadgeCheck size={9} />}
+      </span>
+      {label}
+      {count != null && (
+        <span
+          className={cn(
+            'text-[10px] font-bold',
+            count === 0 && !on && 'text-muted-foreground/50',
+            on && count > 0 && 'text-primary/70',
+            !on && count > 0 && 'text-muted-foreground',
+          )}
+        >
+          {toFa(count)}
+        </span>
+      )}
+    </button>
+  );
+}
 
 /** چیپ فیلتر فعال — حذف‌پذیر تکی؛ پس‌زمینهٔ رنگی تا در نوار از دکمه‌های فیلتر
  *  جدا و چشمگیر باشد (خواستهٔ مالک ۲۸-۱۱ دور ۳) */
@@ -405,11 +525,11 @@ export function SideCategories({
     );
   }
 
-  // نمای ریشه — فقط گروه‌های اول (بدون درخت کامل)
+  // نمای ریشه — فقط گروه‌های اول (بدون درخت کامل) — بدون بولد (خواستهٔ مالک ۲۸-۱۱ دور ۵)
   if (!chain.length) {
     return (
       <nav className="p-1.5">
-        <TreeRow label="همهٔ دسته‌ها" count={0} active={selected === 'all'} onClick={() => onSelect('all')} bold allLabel />
+        <TreeRow label="همهٔ دسته‌ها" count={0} active={selected === 'all'} onClick={() => onSelect('all')} allLabel />
         {(tree ?? []).map((root) => {
           const Icon = root.icon ? ROOT_ICONS[root.icon] : undefined;
           return (
@@ -419,7 +539,6 @@ export function SideCategories({
                 count={root.count}
                 active={selected === root.key}
                 onClick={() => onSelect(root.key)}
-                bold
                 icon={Icon ? <Icon size={14} className="shrink-0 text-primary" /> : undefined}
               />
               {!!root.children?.length && (
@@ -448,13 +567,14 @@ export function SideCategories({
 
   return (
     <nav aria-label="زیردسته‌ها" className="p-1.5">
-      {/* بازگشت به سطح بالاتر */}
+      {/* بازگشت به سطح بالاتر — فلش راست‌گرد (قانون RTL: بازگشت به سمت راست؛
+          خواستهٔ مالک ۲۸-۱۱ دور ۵ — قبلاً چپ‌گرد بود و جهتش برعکس دیده می‌شد) */}
       <button
         type="button"
         onClick={() => onSelect(backKey)}
         className="mb-1.5 flex w-full items-center gap-1.5 rounded-lg px-2.5 py-2 text-[12.5px] font-bold text-primary transition-colors hover:bg-primary/5"
       >
-        <ChevronLeft size={15} className="shrink-0" strokeWidth={2.5} aria-hidden />
+        <ArrowRight size={15} className="shrink-0" strokeWidth={2.5} aria-hidden />
         {focusIndex > 0 ? chain[focusIndex - 1].name : 'همهٔ دسته‌ها'}
       </button>
 
@@ -468,8 +588,8 @@ export function SideCategories({
         />
       )}
 
-      {/* فرزندان سطح فعال — اسکرول مستقل */}
-      <div className="max-h-[62vh] space-y-0.5 overflow-y-auto pe-1">
+      {/* فرزندان سطح فعال — بدون اسکرول داخلی؛ کل سایدبار خودش اسکرول دارد (دور ۵) */}
+      <div className="space-y-0.5 pe-1">
         {(focus.children ?? []).map((child) => (
           <div key={child.key} className="flex items-center">
             <TreeRow
@@ -496,13 +616,12 @@ export function SideCategories({
   );
 }
 
-/** ردیف درخت سایدبار — نام + شمار آگهی */
+/** ردیف درخت سایدبار — نام + شمار آگهی؛ وزن معمولی (بدون بولد — دور ۵) */
 export function TreeRow({
   label,
   count,
   active,
   onClick,
-  bold,
   icon,
   depth = 0,
   allLabel,
@@ -511,7 +630,6 @@ export function TreeRow({
   count: number;
   active: boolean;
   onClick: () => void;
-  bold?: boolean;
   icon?: ReactNode;
   depth?: number;
   allLabel?: boolean;
@@ -524,7 +642,6 @@ export function TreeRow({
       className={cn(
         'flex min-w-0 flex-1 items-center gap-2 rounded-lg py-1.5 pe-2 text-start text-[12px] transition-colors',
         active ? 'bg-primary/10 font-bold text-primary' : 'hover:bg-secondary/60',
-        bold && !active && 'font-bold',
         count === 0 && !active && !allLabel && 'opacity-50',
       )}
     >
@@ -669,7 +786,7 @@ export function LocationPickerBody({
   onProvince,
   onCity,
 }: {
-  variant?: 'sheet' | 'popover';
+  variant?: 'sheet' | 'popover' | 'inline';
   provinces: Province[];
   provinceId?: number;
   cityId?: number;
@@ -705,7 +822,7 @@ export function LocationPickerBody({
         </SheetDescription>
       </SheetHeader>
     ) : (
-      <p className="shrink-0 border-b px-3 py-2.5 text-[12.5px] font-bold">
+      <p className={cn('shrink-0 text-[12px] font-bold text-muted-foreground', variant === 'popover' && 'border-b px-3 py-2.5 text-[12.5px] text-foreground')}>
         {province ? `شهرهای ${province.name}` : 'انتخاب استان'}
       </p>
     );
@@ -1074,6 +1191,27 @@ export function CatalogCard({ row }: { row: CatalogV2Row }) {
                 <b key={k} className="font-bold text-foreground/70">{v}</b>
               ))
               .reduce<ReactNode[]>((acc, el, i) => (i === 0 ? [el] : [...acc, ' · ', el]), [])}
+          </p>
+        )}
+
+        {/* (۲۸-۱۱ دور ۵) بج شرایط معامله — نوع فروشنده/گواهی/باربری؛ خالی = هیچ */}
+        {(row.seller_type || row.has_analysis || row.shipping) && (
+          <p className="flex flex-wrap items-center gap-1">
+            {row.seller_type && (
+              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[9.5px] font-bold text-foreground/70">
+                {row.seller_type}
+              </span>
+            )}
+            {row.has_analysis && (
+              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[9.5px] font-bold text-foreground/70">
+                گواهی/آنالیز
+              </span>
+            )}
+            {row.shipping && (
+              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[9.5px] font-bold text-foreground/70">
+                ارسال باربری
+              </span>
+            )}
           </p>
         )}
 

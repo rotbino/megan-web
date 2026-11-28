@@ -42,6 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CategoryCascade } from '@/components/panel/product-form/category-cascade';
 import { PriceValidityPicker } from '@/components/panel/product-form/price-validity-picker';
 import { ProductAttrsCard, useLeafAttrs } from '@/components/panel/product-form/product-attrs';
+import { TradeTermsCard, type TradeTermsValue } from '@/components/panel/product-form/trade-terms';
 import { PanelCard } from '@/components/panel/panel-parts';
 import { UnitInput } from '@/components/shared/unit-input';
 import { optimizeProductImage } from '@/lib/image-optimize';
@@ -80,6 +81,8 @@ interface EditDraft {
   priceValidityDays: number | null;
   description: string;
   features: ProductFeature[];
+  /** (۲۸-۱۱ دور ۵) شرایط معاملهٔ عمده — نوع فروشنده/پرداخت/گواهی/باربری */
+  trade: TradeTermsValue;
 }
 
 /** مسیر دسته در درخت v2 — (۲۶-۱۱) با کلید v2 آگهی حل می‌شود */
@@ -169,6 +172,13 @@ export default function EditProductPage() {
       // (مثل برنج) بخش «ویژگی‌های کالا» همان را مصرف/مدیریت می‌کند؛ وگرنه
       // ورودی آزاد برند + انتهای عنوان — منطق ذخیره به hasBrandAttr تصمیم می‌گیرد
       features: (p.features ?? []).map((f) => ({ ...f })),
+      // (دور ۵) شرایط معاملهٔ عمده — پیش‌پر از رکورد
+      trade: {
+        sellerType: p.sellerType ?? null,
+        paymentTypes: p.paymentTypes ?? [],
+        hasAnalysis: p.hasAnalysis ?? false,
+        shipping: p.shipping ?? false,
+      },
     });
     setExistingPhotos(detail.photoFiles.map((f) => ({ id: f.id, url: f.thumbUrl ?? f.url })));
   }
@@ -242,6 +252,11 @@ export default function EditProductPage() {
         ],
         newPhotos: newPhotos.map((p) => p.file),
         removedPhotoIds,
+        // (دور ۵) شرایط معاملهٔ عمده — فرم مقدار واقعی می‌فرستد (خالی = پاک‌شدن)
+        sellerType: draft.trade.sellerType ?? undefined,
+        paymentTypes: draft.trade.paymentTypes,
+        hasAnalysis: draft.trade.hasAnalysis === true,
+        shipping: draft.trade.shipping === true,
       });
       setFailedPhotos(result.failedPhotos);
       setDoneStatus(result.status ?? 'pending');
@@ -767,6 +782,16 @@ export default function EditProductPage() {
           </span>
         </div>
         <SectionError id="description" />
+      </PanelCard>
+
+      {/* ═══ شرایط معامله (دور ۵) — نوع فروشنده/نحوهٔ پرداخت/گواهی/باربری؛
+          همان چیزی که فیلتر پیشرفتهٔ عمده فیلتر می‌کند؛ «ویژگی‌های کالا»
+          طبق خواستهٔ دور ۴ همچنان آخرین بخش فرم می‌ماند ═══ */}
+      <PanelCard>
+        <TradeTermsCard
+          value={draft.trade}
+          onChange={(trade) => patch({ trade })}
+        />
       </PanelCard>
 
       {/* ═══ ویژگی‌های کالا — آخرین بخش فرم (خواستهٔ مالک ۲۸-۱۱ دور ۴: «زیر

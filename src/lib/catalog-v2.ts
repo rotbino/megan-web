@@ -48,6 +48,24 @@ export interface CatalogV2Tree {
   roots: CatalogV2TreeNode[];
 }
 
+// ─── شرایط معاملهٔ عمده (۲۸-۱۱ دور ۵ — خواستهٔ مالک) ─────────────────────
+//
+// فیلترهای هم‌مقیاس خریدار عمده (عین پنل باسکول): نوع فروشنده، نحوهٔ پرداخت،
+// سوییچ «فقط بارهای دارای گواهی/آنالیز» و سوییچ «فقط ارسال‌دار (باربری)».
+// برچسب‌ها با بک‌اند (dto ads-report) هم‌زنجیره‌اند — بک مقادیر غیرمجاز را می‌اندازد.
+
+export const SELLER_TYPE_OPTIONS = [
+  'کشاورز',
+  'تولیدکننده',
+  'بسته‌بندی‌کننده',
+  'پخش رسمی',
+  'عمده‌فروش بازار',
+  'صادرکننده',
+  'واردکننده',
+] as const;
+
+export const PAYMENT_OPTIONS = ['نقد', 'چک سررسید', 'اعتباری'] as const;
+
 export interface CatalogV2Row {
   id: number;
   product_name: string;
@@ -69,6 +87,11 @@ export interface CatalogV2Row {
   photo: string | null;
   updated_at: string;
   resolved_attrs?: Record<string, string>;
+  /** (دور ۵) شرایط معامله — بج کارت */
+  seller_type?: string | null;
+  payment_types?: string[];
+  has_analysis?: boolean;
+  shipping?: boolean;
 }
 
 /** related = مرتبط‌ترین (پیش‌فرض): امتیاز تطابق سمت سرور — آگهی‌های شهر/استان
@@ -90,6 +113,20 @@ export interface CatalogV2Facets {
   attrs: Record<string, Record<string, number>>;
   price: { min: number | null; max: number | null };
   moq: { min: number | null; max: number | null };
+  /** (۲۸-۱۱ دور ۵) شرایط معامله — شمارش زندهٔ نوع فروشنده/پرداخت/گواهی/باربری */
+  trade: CatalogV2TradeFacets;
+}
+
+/** (۲۸-۱۱ دور ۵) فاست شرایط معامله — قرینهٔ PublicCatalogTradeFacets بک */
+export interface CatalogV2TradeFacets {
+  /** نوع فروشنده → شمار آگهی (بقیهٔ فیلترها به‌جز خودش) */
+  sellerTypes: Record<string, number>;
+  /** نحوهٔ پرداخت → شمار آگهی که آن را می‌پذیرد */
+  payments: Record<string, number>;
+  /** شمار آگهی‌های دارای گواهی/آنالیز کیفیت */
+  analysis: number;
+  /** شمار آگهی‌های ارسال‌دار (باربری) */
+  shipping: number;
 }
 
 export interface CatalogV2Filters {
@@ -102,6 +139,13 @@ export interface CatalogV2Filters {
   priceMax?: number;
   moqMin?: number;
   moqMax?: number;
+  /** (۲۸-۱۱ دور ۵) شرایط معامله — چندانتخابی؛ آگهی باید یکی از مقادیر را داشته باشد */
+  sellerTypes?: string[];
+  payments?: string[];
+  /** فقط بارهای دارای گواهی/آنالیز کیفیت */
+  analysisOnly?: boolean;
+  /** فقط آگهی‌های ارسال‌دار (باربری) */
+  shippingOnly?: boolean;
   sort?: CatalogV2Sort;
   page?: number;
   perPage?: number;
@@ -135,6 +179,10 @@ export async function fetchCatalogV2List(filters: CatalogV2Filters = {}): Promis
     {
       ...filters,
       attrs: filters.attrs && Object.keys(filters.attrs).length ? filters.attrs : undefined,
+      sellerTypes: filters.sellerTypes?.length ? filters.sellerTypes : undefined,
+      payments: filters.payments?.length ? filters.payments : undefined,
+      analysisOnly: filters.analysisOnly || undefined,
+      shippingOnly: filters.shippingOnly || undefined,
     },
     { auth: 'optional' },
   );
