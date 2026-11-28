@@ -113,8 +113,9 @@ export async function tryRefreshTokens(): Promise<boolean> {
 // ─── فراخوانی اصلی ────────────────────────────────────────────────────────────
 
 export interface ApiFetchOptions {
-  /** false → بدون هدر توکن (عمومی) */
-  auth?: boolean;
+  /** false → بدون هدر توکن (عمومی)؛ true → توکن الزامی؛ «optional» → توکن اگر
+  *  باشد چسبانده می‌شود و نبودنش خطا نیست (اندپوینت عمومیِ شخصی‌سازی‌شده) */
+  auth?: boolean | 'optional';
   /** 401 → یک‌بار رفرش و تکرار (پیش‌فرض روشن) */
   retryOn401?: boolean;
 }
@@ -125,23 +126,29 @@ export function joinUrl(base: string, path: string): string {
 }
 
 export async function apiFetch<T>(path: string, body?: unknown, opts: ApiFetchOptions = {}): Promise<T> {
-  const needAuth = opts.auth !== false;
+  const needAuth = opts.auth !== false && opts.auth !== 'optional';
+  const attachToken = opts.auth === 'optional' ? true : needAuth; // optional: اگر هست بچسبد
   const tokens = getTokens();
 
   const res = await fetch(joinUrl(apiBase(), path), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(needAuth && tokens?.accessToken ? { Authorization: `Bearer ${tokens.accessToken}` } : {}),
+      ...(attachToken && tokens?.accessToken ? { Authorization: `Bearer ${tokens.accessToken}` } : {}),
     },
     body: JSON.stringify(body ?? {}),
     cache: 'no-store',
   });
 
-  // 401 → رفرش تک‌پرواز + یک تکرار
-  if (res.status === 401 && needAuth && opts.retryOn401 !== false && tokens) {
-    const refreshed = await tryRefreshTokens();
-    if (refreshed) return apiFetch<T>(path, body, { ...opts, retryOn401: false });
+  // 401 → رفرش تک‌پرواز + یک تکرار (برای optional: توکن مرده نباید صفحهٔ عمومی
+  // را بشکند — بدون هدر، همان مهمان تکرار می‌شود)
+  if (res.status === 401 && opts.retryOn401 !== false && tokens) {
+    if (needAuth) {
+      const refreshed = await tryRefreshTokens();
+      if (refreshed) return apiFetch<T>(path, body, { ...opts, retryOn401: false });
+    } else if (opts.auth === 'optional') {
+      return apiFetch<T>(path, body, { ...opts, auth: false, retryOn401: false });
+    }
   }
 
   const json = (await res.json().catch(() => null)) as

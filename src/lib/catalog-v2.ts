@@ -67,7 +67,11 @@ export interface CatalogV2Row {
   resolved_attrs?: Record<string, string>;
 }
 
+/** related = مرتبط‌ترین (پیش‌فرض): امتیاز تطابق سمت سرور — آگهی‌های شهر/استان
+ *  کاربر واردشده جلوتر + کامل بودن ویژگی‌ها + تازگی؛ خودِ امتیاز هرگز به
+ *  کاربر نمایش داده نمی‌شود (خواستهٔ مالک ۲۸-۱۱ دور ۳). */
 export type CatalogV2Sort =
+  | 'related'
   | 'newest'
   | 'price-asc'
   | 'price-desc'
@@ -118,7 +122,9 @@ export async function fetchCatalogV2Tree(): Promise<CatalogV2Tree> {
   return apiFetch<CatalogV2Tree>('/catalog/v2/getTree', {}, { auth: false });
 }
 
-/** آگهی‌های confirmed روی دستهٔ جدید — گره/شهر/جستجو/اتریبیوت/بازه‌ها/سورت + فاست‌ها */
+/** آگهی‌های confirmed روی دستهٔ جدید — گره/شهر/جستجو/اتریبیوت/بازه‌ها/سورت + فاست‌ها
+ *  auth=optional: اگر کاربر وارد شده باشد توکن می‌چسبد تا سورت «مرتبط‌ترین» بتواند
+ *  شهر خودِ کاربر را در امتیاز بیاورد؛ مهمان هم همین‌طور جواب می‌گیرد. */
 export async function fetchCatalogV2List(filters: CatalogV2Filters = {}): Promise<CatalogV2List> {
   return apiFetch<CatalogV2List>(
     '/catalog/v2/getList',
@@ -126,7 +132,7 @@ export async function fetchCatalogV2List(filters: CatalogV2Filters = {}): Promis
       ...filters,
       attrs: filters.attrs && Object.keys(filters.attrs).length ? filters.attrs : undefined,
     },
-    { auth: false },
+    { auth: 'optional' },
   );
 }
 

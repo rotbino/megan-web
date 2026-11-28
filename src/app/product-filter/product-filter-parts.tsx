@@ -16,6 +16,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import {
   BadgeCheck,
   ChevronDown,
@@ -39,6 +40,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { priceFa, stockFa, timeAgoFa, toFa } from '@/lib/format';
 import { useAuth } from '@/lib/mock/auth';
+import { getCities } from '@/lib/mock/api';
 import type { City, Province } from '@/lib/types';
 import type { CatalogV2Attr, CatalogV2Row, CatalogV2Sort, CatalogV2TreeNode } from '@/lib/catalog-v2';
 
@@ -46,7 +48,9 @@ import type { CatalogV2Attr, CatalogV2Row, CatalogV2Sort, CatalogV2TreeNode } fr
 
 export const PER_PAGE = 24;
 
+/** مرتبط‌ترین (پیش‌فرض) = امتیاز تطابق سمت سرور؛ امتیاز خودش هرگز نمایش نمی‌یابد */
 export const SORTS: { key: CatalogV2Sort; label: string }[] = [
+  { key: 'related', label: 'مرتبط‌ترین' },
   { key: 'newest', label: 'جدیدترین' },
   { key: 'price-asc', label: 'ارزان‌ترین' },
   { key: 'price-desc', label: 'گران‌ترین' },
@@ -154,6 +158,7 @@ export function DualChip({
   sheet,
   popClass,
   mobileOnly,
+  fixedSheet,
 }: {
   label: string;
   value?: string;
@@ -166,6 +171,9 @@ export function DualChip({
   popClass?: string;
   /** فقط موبایل (دسته‌بندی — دسکتاپ سایدبار دارد) */
   mobileOnly?: boolean;
+  /** شیت موبایل ارتفاع ثابت ~۷۰٪ صفحه بگیرد (دریل‌های چندسطحی) — انتخاب/بازگشت
+   *  هیچ پرشی در ارتفاع نمی‌سازد و محتوا اسکرول عمودی مستقل می‌گیرد (خواستهٔ مالک ۲۸-۱۱ دور ۳) */
+  fixedSheet?: boolean;
 }) {
   const [popOpen, setPopOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -203,7 +211,14 @@ export function DualChip({
       <div className="shrink-0 lg:hidden">
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>{btn}</SheetTrigger>
-          <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto p-0">
+          {/* ارتفاع ثابت ۷۰٪ برای دریل‌ها — بدون پرش؛ محتوای داخل خودش overflow دارد */}
+          <SheetContent
+            side="bottom"
+            className={cn(
+              'gap-0 p-0',
+              fixedSheet ? 'h-[70dvh] overflow-hidden' : 'max-h-[85vh] overflow-y-auto',
+            )}
+          >
             {sheet(() => setSheetOpen(false))}
           </SheetContent>
         </Sheet>
@@ -214,15 +229,16 @@ export function DualChip({
 
 // ─── اجزای کوچک نمایشی ─────────────────────────────────────────────────────
 
-/** چیپ فیلتر فعال — حذف‌پذیر تکی */
+/** چیپ فیلتر فعال — حذف‌پذیر تکی؛ پس‌زمینهٔ رنگی تا در نوار از دکمه‌های فیلتر
+ *  جدا و چشمگیر باشد (خواستهٔ مالک ۲۸-۱۱ دور ۳) */
 export function ActiveChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
-    <span className="inline-flex max-w-full items-center gap-1 rounded-full border bg-card py-1 ps-2.5 pe-1 text-[11px] font-bold">
+    <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-primary/50 bg-primary/10 py-1 ps-2.5 pe-1 text-[11px] font-bold text-primary">
       <span className="truncate">{label}</span>
       <button
         type="button"
         onClick={onClear}
-        className="grid size-4 shrink-0 place-items-center rounded-full text-primary hover:bg-primary/10"
+        className="grid size-4 shrink-0 place-items-center rounded-full text-primary hover:bg-primary/20"
         aria-label={`حذف فیلتر ${label}`}
       >
         <X size={11} />
@@ -544,7 +560,8 @@ export function TreeRow({
 
 // ─── بدنه‌های شیت موبایل ───────────────────────────────────────────────────
 
-/** شیت دسته‌بندی — دریل چندسطحی با breadcrumb و شمار */
+/** شیت دسته‌بندی — دریل چندسطحی با breadcrumb و شمار؛ ارتفاع ثابت (شیت ۷۰٪)
+ *  + اسکرول عمودی مستقل — ورود به هر سطح ارتفاع را عوض نمی‌کند (خواستهٔ مالک ۲۸-۱۱ دور ۳) */
 export function CategorySheetBody({
   tree,
   selected,
@@ -570,8 +587,8 @@ export function CategorySheetBody({
   const level = nodesAt(path);
 
   return (
-    <div className="pb-8">
-      <SheetHeader className="px-4 pt-4 pb-1 text-start">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <SheetHeader className="shrink-0 px-4 pt-4 pb-1 text-start">
         <SheetTitle className="text-[14px]">{current ? current.name : 'همهٔ دسته‌بندی‌ها'}</SheetTitle>
         <SheetDescription className="text-[11px]">
           تا خودِ کالا — شمار آگهی هر شاخه کنارش است.
@@ -579,7 +596,7 @@ export function CategorySheetBody({
       </SheetHeader>
 
       {/* breadcrumb دریل */}
-      <div className="flex flex-wrap gap-1.5 px-4 pb-2">
+      <div className="flex shrink-0 flex-wrap gap-1.5 px-4 pb-2">
         <button
           type="button"
           onClick={() => setPath([])}
@@ -606,7 +623,7 @@ export function CategorySheetBody({
         <button
           type="button"
           onClick={() => onPick(current.key)}
-          className="mx-4 mb-2 flex items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-2.5 text-[12px] font-bold text-primary"
+          className="mx-4 mb-2 flex shrink-0 items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-2.5 text-[12px] font-bold text-primary"
         >
           <ChevronLeft size={15} />
           <span>مشاهدهٔ آگهی‌های {current.name}</span>
@@ -614,7 +631,7 @@ export function CategorySheetBody({
         </button>
       )}
 
-      <div className="max-h-[52vh] overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {level.map((n) => (
           <button
             key={n.key}
@@ -650,10 +667,14 @@ export function CategorySheetBody({
   );
 }
 
-/** شیت شهر — دریل استان ← شهر با شمارش فاست */
-export function CitySheetBody({
+/** انتخابگر مکان دو-مرحله‌ای — الگوی دریل دسته‌بندی (خواستهٔ مالک ۲۸-۱۱ دور ۳):
+ *  مرحلهٔ ۱ استان‌ها؛ با انتخاب استان، شهرهای همان استان می‌آیند + گزینهٔ
+ *  «کل استان». یک انتخابگرِ مشترک دسکتاپ/موبایل — فقط تیترش فرق دارد. اگر
+ *  فیلتر استان از قبل فعال باشد دریل همان‌جا باز می‌شود (ادامهٔ مسیر).
+ *  شهرهای هر استان را خودش می‌آورد (کش مشترک با بقیهٔ صفحه). */
+export function LocationPickerBody({
+  variant = 'sheet',
   provinces,
-  cities,
   provinceId,
   cityId,
   provinceCount,
@@ -662,92 +683,133 @@ export function CitySheetBody({
   onProvince,
   onCity,
 }: {
+  variant?: 'sheet' | 'popover';
   provinces: Province[];
-  cities: City[];
   provinceId?: number;
   cityId?: number;
   provinceCount: (id: number) => number | undefined;
   cityCount: (id: number) => number | undefined;
   onAll: () => void;
   onProvince: (id: number) => void;
-  onCity: (id: number) => void;
+  /** انتخاب شهر — همراه با استانش می‌آید تا برچسب/چیپ و کش شهرها درست کار کند */
+  onCity: (provinceId: number, cityId: number) => void;
 }) {
-  const province = provinces.find((p) => p.id === provinceId);
-  return (
-    <div className="pb-6">
-      <SheetHeader className="px-4 pt-4 pb-1 text-start">
-        <SheetTitle className="text-[14px]">{province ? province.name : 'انتخاب استان'}</SheetTitle>
+  /** دریل محلی — با فیلتر فعلی هم‌قدم شروع می‌شود (هر بازشدن تازه mount است) */
+  const [pid, setPid] = useState<number | null>(provinceId ?? null);
+  const province = provinces.find((p) => p.id === pid) ?? null;
+
+  /** شهرهای استانِ در حال نمایش — کلید کش مشترک با صفحهٔ اصلی */
+  const { data: cities } = useQuery({
+    queryKey: ['catalog-v2-cities', pid],
+    queryFn: () => getCities(pid!),
+    enabled: pid != null,
+    staleTime: 10 * 60_000,
+  });
+
+  const title =
+    variant === 'sheet' ? (
+      <SheetHeader className="shrink-0 px-4 pt-4 pb-1 text-start">
+        <SheetTitle className="text-[14px]">
+          {province ? `شهرهای ${province.name}` : 'انتخاب استان'}
+        </SheetTitle>
         <SheetDescription className="text-[11px]">
           {province
-            ? 'شهر را انتخاب کنید یا کل استان را بگیرید — شمار آگهی کنار هر شهر است.'
-            : 'فروشنده‌هایی که بارشان در این استان‌ها آمادهٔ تحویل است.'}
+            ? 'شهر را انتخاب کن یا کل استان را — شمار آگهی کنار هر گزینه است.'
+            : 'اول استان؛ با انتخابش شهرهای همان استان می‌آیند.'}
         </SheetDescription>
       </SheetHeader>
-      {province ? (
-        <div className="p-2">
+    ) : (
+      <p className="shrink-0 border-b px-3 py-2.5 text-[12.5px] font-bold">
+        {province ? `شهرهای ${province.name}` : 'انتخاب استان'}
+      </p>
+    );
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      {title}
+
+      {/* breadcrumb دریل — فقط وقتی داخل استان هستیم (در سطح استان، خودِ
+          دکمهٔ «همهٔ ایران» همان نقش را دارد) */}
+      {province && (
+        <div className="flex shrink-0 items-center gap-1.5 px-3 pb-1 pt-2">
           <button
             type="button"
-            onClick={() => onProvince(province.id)}
-            className={cn(
-              'flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-[12.5px] font-bold transition-colors',
-              !cityId ? 'bg-primary/10 text-primary' : 'hover:bg-secondary/60',
-            )}
-          >
-            کل استان {province.name}
-            {!cityId && <BadgeCheck size={14} />}
-          </button>
-          <p className="px-3 pb-1 pt-3 text-[10.5px] font-bold text-muted-foreground">شهرها</p>
-          <div className="grid grid-cols-2 gap-1">
-            {cities.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => onCity(c.id)}
-                className={cn(
-                  'flex items-center justify-between rounded-lg px-3 py-2.5 text-[12px] transition-colors',
-                  cityId === c.id ? 'bg-primary/10 font-bold text-primary' : 'hover:bg-secondary/60',
-                )}
-              >
-                {c.name}
-                <span className="text-[10px] text-muted-foreground">
-                  {cityCount(c.id) != null ? toFa(cityCount(c.id)!) : ''}
-                </span>
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={onAll}
-            className="mt-3 w-full rounded-lg border border-dashed px-3 py-2 text-[11.5px] font-bold text-primary hover:bg-primary/5"
-          >
-            بازگشت به همهٔ ایران
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-1 p-2">
-          <button
-            type="button"
-            onClick={onAll}
-            className="col-span-2 flex items-center justify-between rounded-lg bg-primary/10 px-3 py-2.5 text-[12.5px] font-bold text-primary"
+            onClick={() => setPid(null)}
+            className="rounded-lg bg-secondary px-2.5 py-1 text-[11px]"
           >
             همهٔ ایران
-            <MapPin size={14} />
           </button>
-          {provinces.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => onProvince(p.id)}
-              className="flex items-center justify-between rounded-lg px-3 py-2.5 text-[12px] transition-colors hover:bg-secondary/60"
-            >
-              {p.name}
-              <span className="text-[10px] text-muted-foreground">
-                {provinceCount(p.id) != null ? toFa(provinceCount(p.id)!) : ''}
-              </span>
-            </button>
-          ))}
+          <span className="rounded-lg bg-foreground px-2.5 py-1 text-[11px] font-bold text-white">
+            {province.name}
+          </span>
         </div>
       )}
+
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        {!province ? (
+          <>
+            <button
+              type="button"
+              onClick={onAll}
+              className={cn(
+                'mb-1 flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-[12.5px] font-bold transition-colors',
+                !provinceId && !cityId ? 'bg-primary/10 text-primary' : 'hover:bg-secondary/60',
+              )}
+            >
+              همهٔ ایران
+              {!provinceId && !cityId && <BadgeCheck size={14} />}
+            </button>
+            <div className="grid grid-cols-2 gap-1">
+              {provinces.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPid(p.id)}
+                  className="flex items-center justify-between rounded-lg px-3 py-2.5 text-[12px] transition-colors hover:bg-secondary/60"
+                >
+                  {p.name}
+                  <span className="text-[10px] text-muted-foreground">
+                    {provinceCount(p.id) != null ? toFa(provinceCount(p.id)!) : ''}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => onProvince(province.id)}
+              className={cn(
+                'flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-[12.5px] font-bold transition-colors',
+                provinceId === province.id && !cityId ? 'bg-primary/10 text-primary' : 'hover:bg-secondary/60',
+              )}
+            >
+              کل استان {province.name}
+              {provinceId === province.id && !cityId && <BadgeCheck size={14} />}
+            </button>
+            <p className="px-3 pb-1 pt-2 text-[10.5px] font-bold text-muted-foreground">شهرها</p>
+            <div className="grid grid-cols-2 gap-1">
+              {(cities ?? []).map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => onCity(province.id, c.id)}
+                  className={cn(
+                    'flex items-center justify-between rounded-lg px-3 py-2.5 text-[12px] transition-colors',
+                    cityId === c.id ? 'bg-primary/10 font-bold text-primary' : 'hover:bg-secondary/60',
+                  )}
+                >
+                  {c.name}
+                  <span className="text-[10px] text-muted-foreground">
+                    {cityCount(c.id) != null ? toFa(cityCount(c.id)!) : ''}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

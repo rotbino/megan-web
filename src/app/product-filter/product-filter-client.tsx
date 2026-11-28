@@ -1,18 +1,21 @@
 'use client';
 
 /**
- * صفحهٔ فیلتر پیشرفتهٔ عمده — بازطراحی «دیواری» (بازخورد مالک ۲۸-۱۱ دور ۲):
+ * صفحهٔ فیلتر پیشرفتهٔ عمده — دور ۳ (بازخورد مالک ۲۸-۱۱ دور ۳):
  *
- *  ۱) نوار فیلتر افقی زیر هدر و بالای لیست — همهٔ فیلترها کنار هم، چه عمومی
- *     (شهر/قیمت/حجم خرید/مرتب‌سازی) چه تخصصی (ویژگی‌های هر دسته)؛ بدون
- *     دکمهٔ «فیلترهای عمومی» و بدون عنوان‌بندیِ بخش‌ها؛ دسکتاپ: پاپ‌آور،
+ *  ۱) بدون خط سربرگ اضافه — شمار آگهی + چیپ‌های فیلتر فعال (رنگی) + دکمهٔ
+ *     «مرتب‌سازی» همه در «یک نوار نتیجه» زیر نوار فیلتر؛ دستهٔ انتخابی هم
+ *     چیپ حذف‌پذیر همان نوار است (نه خط جدا)؛
+ *  ۲) انتخابگر شهر/استان دو-مرحله‌ای (دریل مثل دسته‌بندی) — کلیک استان =
+ *     شهرهای همان استان + «کل استان»؛ شهر انتخاب شد فقط خودش فیلتر می‌شود؛
+ *  ۳) پیش‌فرض سورت «مرتبط‌ترین» = امتیاز تطابق سمت سرور (شهر خودِ کاربر +
+ *     کامل بودن ویژگی‌ها + تازگی) — امتیاز هرگز نمایش نمی‌یابد؛
+ *  ۴) نوار فیلتر افقی زیر هدر و بالای لیست — همهٔ فیلترها کنار هم، چه عمومی
+ *     (شهر/قیمت/حجم خرید) چه تخصصی (ویژگی‌های هر دسته)؛ دسکتاپ: پاپ‌آور،
  *     موبایل: شیت پایین‌رونده (عین نوار دیوار)؛
- *  ۲) سایدبار فقط دسته‌بندی — دریل‌شونده مثل product-list: انتخاب گروه (مثلاً
- *     کشاورزی) = ورود به محیط تخصصی همان گروه؛ بقیهٔ گروه‌ها حذف می‌شوند؛
- *     اسکرول سایدبار مستقل است تا لیست بلند گروه‌ها فیلترها را پایین نبرد؛
- *  ۳) لیست بدون پیجینگ سنتی — اسکرول بی‌نهایت + پیش‌واکش بافر ۲ صفحه +
- *     دکمهٔ «مشاهده آگهی‌های بیشتر» با href واقعی برای گوگل (عین
- *     product-list)؛ ورود عمیق ?page=N همهٔ صفحه‌هایش را بی‌صدا می‌آورد.
+ *  ۵) سایدبار فقط دسته‌بندی دریل‌شونده مثل product-list + لیست اسکرول بی‌نهایت
+ *     + پیش‌واکش بافر ۲ صفحه + دکمهٔ «مشاهده آگهی‌های بیشتر» با href واقعی
+ *     برای گوگل؛ شیت‌های دریل‌شونده ارتفاع ثابت ۷۰٪ دارند (بدون پرش).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -29,7 +32,6 @@ import {
   MapPin,
   Package,
   Search,
-  Sparkles,
   X,
 } from 'lucide-react';
 import {
@@ -41,16 +43,10 @@ import {
   type CatalogV2TreeNode,
 } from '@/lib/catalog-v2';
 import { getCities, getProvinces } from '@/lib/mock/api';
+import { useAuth } from '@/lib/mock/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Sheet,
   SheetContent,
@@ -64,8 +60,8 @@ import {
   AttrCheckboxRow,
   CatalogCard,
   CategorySheetBody,
-  CitySheetBody,
   DualChip,
+  LocationPickerBody,
   MoqChips,
   OptionsSheetBody,
   PER_PAGE,
@@ -111,7 +107,8 @@ export function ProductFilterClient() {
     priceMax: sp.get('pmax') ? Number(sp.get('pmax')) : undefined,
     moqMin: sp.get('mmin') ? Number(sp.get('mmin')) : undefined,
     moqMax: sp.get('mmax') ? Number(sp.get('mmax')) : undefined,
-    sort: (sp.get('sort') as CatalogV2Sort) || 'newest',
+    // مرتبط‌ترین = پیش‌فرض (امتیاز تطابق سمت سرور — شهر کاربر + ویژگی‌ها + تازگی)
+    sort: (sp.get('sort') as CatalogV2Sort) || 'related',
   }));
   const [search, setSearch] = useState(sp.get('q') ?? '');
   const [debounced, setDebounced] = useState(sp.get('q') ?? '');
@@ -125,6 +122,10 @@ export function ProductFilterClient() {
   }, [search]);
 
   // ─── داده‌ها: درخت / استان‌ها / شهرها ─────────────────────────────
+  /** بینندهٔ واردشده — سورت «مرتبط‌ترین» برایش شهر خودش را در امتیاز می‌آورد؛
+   *  مهمان هم همان اندپوینت را می‌زند (توکن فقط وقتی هست چسبیده) */
+  const { user } = useAuth();
+
   const { data: tree, isLoading: treeLoading } = useQuery({
     queryKey: ['catalog-v2-tree'],
     queryFn: fetchCatalogV2Tree,
@@ -165,7 +166,8 @@ export function ProductFilterClient() {
 
   const { data, isLoading, isFetching, isFetchingNextPage, fetchNextPage, hasNextPage } =
     useInfiniteQuery({
-      queryKey: ['catalog-v2-infinite', filters],
+      // بیننده جزء کلید است — ورود/خروج کاربر نتایج شخصی‌شده را تازه می‌کند
+      queryKey: ['catalog-v2-infinite', filters, user?.phone ?? 'guest'],
       queryFn: ({ pageParam }: { pageParam: number }) =>
         fetchCatalogV2List({ ...filters, page: pageParam }),
       initialPageParam: 1,
@@ -286,7 +288,7 @@ export function ProductFilterClient() {
       if (f.priceMax) q.set('pmax', String(f.priceMax));
       if (f.moqMin) q.set('mmin', String(f.moqMin));
       if (f.moqMax) q.set('mmax', String(f.moqMax));
-      if (f.sort !== 'newest') q.set('sort', f.sort);
+      if (f.sort !== 'related') q.set('sort', f.sort);
       if (debounced) q.set('q', debounced);
       const attrEntries = Object.entries(f.attrs).filter(([, v]) => v.length > 0);
       if (attrEntries.length) q.set('a', attrEntries.map(([k, v]) => `${k}:${v.join('|')}`).join(','));
@@ -315,6 +317,7 @@ export function ProductFilterClient() {
 
   const resetFilters = () => {
     patch({
+      nodeKey: 'all',
       provinceId: undefined,
       cityId: undefined,
       attrs: {},
@@ -353,8 +356,8 @@ export function ProductFilterClient() {
     : provinceId
       ? (provinces ?? []).find((p) => p.id === provinceId)?.name
       : undefined;
-
   const activeCount =
+    (f.nodeKey !== 'all' ? 1 : 0) +
     (f.provinceId || f.cityId ? 1 : 0) +
     (f.priceMin || f.priceMax ? 1 : 0) +
     (f.moqMin || f.moqMax ? 1 : 0) +
@@ -383,8 +386,17 @@ export function ProductFilterClient() {
   };
 
   // ─── چیپ‌های فیلتر فعال (حذف‌پذیر تکی) ──────────────────────────────
+  /** دستهٔ انتخابی = چیپ اولِ نوار نتیجه — خط سربرگ جداگانه‌ای وجود ندارد
+  *  (خواستهٔ مالک ۲۸-۱۱ دور ۳: «سیب» جزء آیتم‌های فیلتر، با حذف‌پذیری تکی) */
   const chips: { label: string; onClear: () => void }[] = [];
-  if (cityLabel) {
+  if (selectedNode) {
+    chips.push({ label: selectedNode.name, onClear: () => patch({ nodeKey: 'all' }) });
+  }
+  /** مکان: فقط عمیق‌ترین سطح — شهر حذف شد به استان برمی‌گردد (دریل برعکس)؛
+  *  وقتی شهر انتخاب است استان در چیپ‌ها نیست */
+  if (f.cityId && cityLabel) {
+    chips.push({ label: cityLabel, onClear: () => patch({ cityId: undefined }) });
+  } else if (provinceId && cityLabel) {
     chips.push({ label: cityLabel, onClear: () => patch({ provinceId: undefined, cityId: undefined }) });
   }
   if (f.priceMin) chips.push({ label: `قیمت از ${priceFa(f.priceMin)}`, onClear: () => patch({ priceMin: undefined }) });
@@ -433,9 +445,10 @@ export function ProductFilterClient() {
       role="toolbar"
       aria-label="فیلترها"
     >
-      {/* دسته‌بندی — فقط موبایل؛ دسکتاپ: سایدبار دریل‌شونده */}
+      {/* دسته‌بندی — فقط موبایل؛ دسکتاپ: سایدبار دریل‌شونده (شیت ارتفاع ثابت) */}
       <DualChip
         mobileOnly
+        fixedSheet
         label="دسته‌بندی"
         value={selectedNode?.name}
         active={Boolean(selectedNode)}
@@ -452,68 +465,40 @@ export function ProductFilterClient() {
         )}
       />
 
-      {/* شهر فروشنده */}
+      {/* شهر فروشنده — انتخابگر دو-مرحله‌ای: استان ← شهرهای همان استان؛
+          شهر = فیلتر نهایی، «کل استان» = فیلتر استان؛ ارتفاع ثابت، بدون پرش */}
       <DualChip
+        fixedSheet
+        popClass="h-[min(520px,70vh)] w-80 overflow-hidden"
         label="شهر"
         value={cityLabel}
         active={Boolean(f.provinceId || f.cityId)}
         icon={MapPin}
-        panel={() => (
-          <div className="space-y-1.5 p-2">
-            <Select
-              value={f.provinceId ? String(f.provinceId) : 'all'}
-              onValueChange={(v) => patch({ provinceId: v === 'all' ? undefined : Number(v), cityId: undefined })}
-            >
-              <SelectTrigger className="h-8 text-[12px]">
-                <SelectValue placeholder="همهٔ استان‌ها" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-xs">همهٔ استان‌ها</SelectItem>
-                {(provinces ?? []).map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)} className="text-xs">
-                    {p.name}
-                    {provinceCount(p.id) != null && (
-                      <span className="ms-1 text-[10px] text-muted-foreground">({toFa(provinceCount(p.id)!)})</span>
-                    )}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={f.cityId ? String(f.cityId) : 'all'}
-              onValueChange={(v) => patch({ cityId: v === 'all' ? undefined : Number(v) })}
-              disabled={!f.provinceId}
-            >
-              <SelectTrigger className="h-8 text-[12px]">
-                <SelectValue placeholder={f.provinceId ? 'همهٔ شهرها' : 'ابتدا استان را انتخاب کنید'} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-xs">همهٔ شهرها</SelectItem>
-                {(cities ?? []).map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)} className="text-xs">
-                    {c.name}
-                    {cityCount(c.id) != null && (
-                      <span className="ms-1 text-[10px] text-muted-foreground">({toFa(cityCount(c.id)!)})</span>
-                    )}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {(f.provinceId || f.cityId) && (
-              <button
-                type="button"
-                onClick={() => patch({ provinceId: undefined, cityId: undefined })}
-                className="w-full rounded-lg border border-dashed px-2 py-1.5 text-[11px] font-bold text-primary hover:bg-primary/5"
-              >
-                حذف محدودیت مکان
-              </button>
-            )}
-          </div>
+        panel={(close) => (
+          <LocationPickerBody
+            variant="popover"
+            provinces={provinces ?? []}
+            provinceId={provinceId}
+            cityId={f.cityId}
+            provinceCount={provinceCount}
+            cityCount={cityCount}
+            onAll={() => {
+              patch({ provinceId: undefined, cityId: undefined });
+              close();
+            }}
+            onProvince={(id) => {
+              patch({ provinceId: id, cityId: undefined });
+              close();
+            }}
+            onCity={(pid, id) => {
+              patch({ provinceId: pid, cityId: id });
+              close();
+            }}
+          />
         )}
         sheet={(close) => (
-          <CitySheetBody
+          <LocationPickerBody
             provinces={provinces ?? []}
-            cities={cities ?? []}
             provinceId={provinceId}
             cityId={f.cityId}
             provinceCount={provinceCount}
@@ -523,8 +508,8 @@ export function ProductFilterClient() {
               close();
             }}
             onProvince={(id) => patch({ provinceId: id, cityId: undefined })}
-            onCity={(id) => {
-              patch({ cityId: id });
+            onCity={(pid, id) => {
+              patch({ provinceId: pid, cityId: id });
               close();
             }}
           />
@@ -627,35 +612,8 @@ export function ProductFilterClient() {
         )}
       />
 
-      {/* مرتب‌سازی */}
-      <DualChip
-        label="مرتب‌سازی"
-        value={sortValue}
-        icon={ArrowUpDown}
-        panel={(close) => (
-          <ul className="p-1">
-            {SORTS.map((s) => (
-              <li key={s.key}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    patch({ sort: s.key });
-                    close();
-                  }}
-                  className={cn(
-                    'flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-start text-[12.5px] transition-colors hover:bg-secondary/60',
-                    f.sort === s.key && 'font-bold text-primary',
-                  )}
-                >
-                  <span>{s.label}</span>
-                  {f.sort === s.key && <BadgeCheck size={14} className="text-primary" />}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        sheet={(close) => <SortSheetBody onPick={(k) => patch({ sort: k })} close={close} />}
-      />
+      {/* مرتب‌سازی اینجا نیست — پایین‌تر، در نوار نتیجه کنار چیپ‌های فعال است
+         (خواستهٔ مالک ۲۸-۱۱ دور ۳: دکمهٔ درآپ‌داون در همان نوار فیلترهای انتخاب‌شده) */}
 
       {/* ویژگی‌های تخصصی دستهٔ فعال — چیپ خودشان، بدون عنوان‌بندیِ بخش */}
       {attrList.map((attr) => (
@@ -712,18 +670,10 @@ export function ProductFilterClient() {
 
   return (
     <div className="mx-auto w-full max-w-[1240px] px-3 sm:px-4 lg:px-5">
-      {/* ═══ سربرگ صفحه ═══ */}
-      <header className="flex flex-wrap items-center gap-2 pb-2 pt-4 lg:pt-5">
-        <h1 className="text-base font-extrabold lg:text-lg">
-          {selectedNode ? `${selectedNode.name} — خرید و فروش عمده` : 'خرید و فروش عمده'}
-        </h1>
-        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10.5px] font-bold text-primary">
-          <Sparkles size={11} /> فیلتر پیشرفته
-        </span>
-        {!isLoading && (
-          <span className="text-[11.5px] text-muted-foreground">{toFa(total)} آگهی</span>
-        )}
-      </header>
+      {/* سربرگ فقط برای سئو/a11y — هیچ خط سربرگ بصری وجود ندارد (دور ۳) */}
+      <h1 className="sr-only">
+        {selectedNode ? `خرید و فروش عمده ${selectedNode.name}` : 'خرید و فروش عمده'}
+      </h1>
 
       {/* ═══ موبایل: جستجو + نوار فیلتر (چسبان — الگوی دیوار) ═══ */}
       <div className="sticky top-14 z-30 -mx-3 border-b bg-background/95 px-3 py-2 backdrop-blur sm:-mx-4 sm:px-4 lg:hidden">
@@ -752,7 +702,7 @@ export function ProductFilterClient() {
       </div>
 
       {/* ═══ دسکتاپ: جستجو + نوار فیلتر — زیر هدر و بالای لیست ═══ */}
-      <div className="hidden py-2 lg:block">
+      <div className="hidden pt-4 pb-2 lg:block">
         <div className="relative mx-auto max-w-md">
           <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -767,21 +717,63 @@ export function ProductFilterClient() {
         </div>
       </div>
 
-      {/* ═══ چیپ‌های فیلتر فعال — حذف‌پذیر تکی (هر دو نما) ═══ */}
-      {chips.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 lg:mt-2.5">
-          {chips.map((c, i) => (
-            <ActiveChip key={`${i}:${c.label}`} label={c.label} onClear={c.onClear} />
-          ))}
+      {/* ═══ نوار نتیجه — مرتب‌سازی + شمار آگهی + چیپ‌های فیلتر فعال (رنگی،
+          حذف‌پذیر تکی) همه در یک نوار؛ موبایل: اسکرول افقی (الگوی دیوار) ═══ */}
+      <div
+        className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] lg:mt-3 lg:flex-wrap lg:overflow-visible lg:pb-0 [&::-webkit-scrollbar]:hidden"
+        aria-label="نتیجه‌ها و فیلترهای فعال"
+      >
+        {/* مرتب‌سازی — دکمهٔ درآپ‌داون داخل همین نوار (خواستهٔ دور ۳)؛
+            پیش‌فرض «مرتبط‌ترین» = امتیاز تطابق؛ خود امتیاز نمایش داده نمی‌شود */}
+        <DualChip
+          label="مرتب‌سازی"
+          value={sortValue}
+          icon={ArrowUpDown}
+          popClass="w-52"
+          panel={(close) => (
+            <ul className="p-1">
+              {SORTS.map((s) => (
+                <li key={s.key}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      patch({ sort: s.key });
+                      close();
+                    }}
+                    className={cn(
+                      'flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-start text-[12.5px] transition-colors hover:bg-secondary/60',
+                      f.sort === s.key && 'font-bold text-primary',
+                    )}
+                  >
+                    <span>{s.label}</span>
+                    {f.sort === s.key && <BadgeCheck size={14} className="text-primary" />}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          sheet={(close) => <SortSheetBody onPick={(k) => patch({ sort: k })} close={close} />}
+        />
+
+        {/* شمار آگهی — تنها باقی‌ماندهٔ سربرگ حذف‌شده؛ کنار فیلترها نه خط جدا */}
+        <span className="shrink-0 text-[11px] text-muted-foreground">
+          {isLoading ? '…' : `${toFa(total)} آگهی${debounced ? ' در نتایج جستجو' : ''}`}
+        </span>
+
+        {chips.map((c, i) => (
+          <ActiveChip key={`${i}:${c.label}`} label={c.label} onClear={c.onClear} />
+        ))}
+
+        {chips.length > 0 && (
           <button
             type="button"
             onClick={resetFilters}
-            className="text-[11px] font-bold text-primary hover:underline"
+            className="shrink-0 rounded-full text-[11px] font-bold text-primary hover:underline"
           >
             حذف همه ({toFa(activeCount)})
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="grid items-start gap-4 py-3 lg:grid-cols-[264px_minmax(0,1fr)] lg:py-4">
         {/* ═══ سایدبار دسکتاپ: فقط دسته‌بندی (دریل‌شونده + اسکرول مستقل) ═══ */}
@@ -818,47 +810,6 @@ export function ProductFilterClient() {
 
         {/* ═══ محتوای اصلی ═══ */}
         <main className="min-w-0 space-y-3">
-          {/* نوار نتیجه — breadcrumb + شمار */}
-          <div className="rounded-xl border bg-card px-3 py-2">
-            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-              <nav className="flex min-w-0 flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
-                <button
-                  type="button"
-                  onClick={() => patch({ nodeKey: 'all' })}
-                  className={cn('hover:underline', f.nodeKey === 'all' && 'font-bold text-foreground/80')}
-                >
-                  همهٔ دسته‌ها
-                </button>
-                {nodeChain.map((n, i) => (
-                  <span key={n.key} className="flex items-center gap-1">
-                    <span className="opacity-40">›</span>
-                    <button
-                      type="button"
-                      onClick={() => patch({ nodeKey: n.key })}
-                      className={cn(
-                        'hover:underline',
-                        i === nodeChain.length - 1 && 'font-bold text-foreground/80',
-                      )}
-                    >
-                      {n.name}
-                    </button>
-                  </span>
-                ))}
-              </nav>
-              <span className="ms-auto text-[11px] text-muted-foreground">
-                {isLoading ? '…' : `${toFa(total)} آگهی${debounced ? ' در نتایج جستجو' : ''}`}
-              </span>
-            </div>
-            <p className="mt-0.5 text-[13px] font-extrabold">
-              {selectedNode ? `خرید عمده ${selectedNode.name}` : 'آگهی‌های عمده بازار B2B'}
-            </p>
-            {attrList.length > 0 && (
-              <p className="mt-0.5 text-[10px] text-muted-foreground lg:hidden">
-                شمارِ کنار هر گزینهٔ فیلتر = زنده و از همین نتایج.
-              </p>
-            )}
-          </div>
-
           {/* کارت‌ها — اسکرول بی‌نهایت */}
           {isLoading && !data ? (
             <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
